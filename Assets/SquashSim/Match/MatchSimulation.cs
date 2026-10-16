@@ -31,6 +31,7 @@ namespace SquashSim
         public int Shots;
         public double Seconds;
         public double Run0, Run1;      // metres covered by each athlete during the rally
+        public double Stamina0, Stamina1;   // stamina at the end of the rally
         public RallyOutcome Outcome;
     }
 
@@ -76,8 +77,12 @@ namespace SquashSim
         {
             Players[0].Index = 0;
             Players[1].Index = 1;
+            // The rules allow one bounce after the front wall: predict only contacts before the second.
+            Players[0].Prediction.MaxFloorBounces = 1;
+            Players[1].Prediction.MaxFloorBounces = 1;
             Ball.Temperature = PhysicsConfig.Current.Match.StartTemperature;   // warmed up in the knock-up
             Score = MatchScore.FromConfig(firstServer);
+            Referee.Surfaces = Surfaces;
             SetUpServe();
         }
 
@@ -178,8 +183,10 @@ namespace SquashSim
                 for (int i = 0; i < 2; i++)
                 {
                     if (!Intents[i].AppealPressed) continue;
-                    ObstructionKind seen = Interference.ObstructedThisTurn(i) ? Interference.ThisTurn : ObstructionKind.None;
-                    if (Referee.OnAppeal(i, seen, Time)) { FinishRally(); break; }
+                    InterferenceDecision d = Interference.Striker == i
+                        ? Interference.Decide()
+                        : new InterferenceDecision { Call = InterferenceCall.NoLet, Reason = "No let - opponent was clear" };
+                    if (Referee.OnAppeal(i, d, Time)) { FinishRally(); break; }
                 }
             }
 
@@ -229,6 +236,11 @@ namespace SquashSim
 
             // ---- split-step presses whose window passed unanswered: planted ----
             SplitStep.Update(Time, Players[0].Player, Players[1].Player);
+
+            // ---- fatigue ----
+            bool rallyLive = Phase == MatchPhase.Rally && Referee.Outcome == null;
+            Fatigue.Update(Players[0].Player, rallyLive, dt);
+            Fatigue.Update(Players[1].Player, rallyLive, dt);
 
             // ---- running totals for rally stats ----
             for (int i = 0; i < 2; i++)
@@ -283,6 +295,7 @@ namespace SquashSim
                 Shots = Referee.Shots,
                 Seconds = Time - _rallyStart,
                 Run0 = _run[0], Run1 = _run[1],
+                Stamina0 = Players[0].Player.Stamina, Stamina1 = Players[1].Player.Stamina,
                 Outcome = LastOutcome
             });
             Score.Apply(LastOutcome);
@@ -306,6 +319,7 @@ namespace SquashSim
                 default: t = rec.Normal; break;
             }
             if (t > 0) Players[i].Player.RecoveryTimer = t;
+            Fatigue.OnStroke(Players[i].Player, contact.ReachState);
 
             SplitStep.Contact(i, Time, Players[1 - i].Player);
         }
@@ -329,6 +343,7 @@ namespace SquashSim
             Stats.Clear();
             LastOutcome = null;
             Ball.Reset(null, null, null, PhysicsConfig.Current.Match.StartTemperature);
+            Players[0].Player.Stamina = 1.0; Players[1].Player.Stamina = 1.0;
             SetUpServe();
         }
     }

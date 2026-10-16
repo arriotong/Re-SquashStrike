@@ -35,6 +35,7 @@ public static class Program
         bool verbose = Array.IndexOf(args, "--verbose") >= 0;
         if (Array.IndexOf(args, "--trace") >= 0) { TraceRallies(int.Parse(Arg(args, "--trace-rallies") ?? "4")); return 0; }
         if (Array.IndexOf(args, "--calibrate") >= 0) { Calibrate(games); return 0; }
+        if (Array.IndexOf(args, "--notup") >= 0) { NotUpReport(games); return 0; }
 
         Console.WriteLine("P1 = " + Describe(P0, D0) + "   vs   P2 = " + Describe(P1, D1) + "   (" + scoring + ")");
         var kinds = new Dictionary<string, int>();
@@ -58,7 +59,7 @@ public static class Program
             foreach (var o in m.History)
             {
                 rallies++;
-                string k = o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.Out || o.Kind == RallyEnd.Let ? o.Reason : o.Kind.ToString();
+                string k = o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.Out || o.Kind == RallyEnd.Let || o.Kind == RallyEnd.Stroke || o.Kind == RallyEnd.NoLet ? o.Reason : o.Kind.ToString();
                 kinds[k] = kinds.TryGetValue(k, out int n) ? n + 1 : 1;
             }
             stats.AddRange(m.Stats);
@@ -85,6 +86,10 @@ public static class Program
             Console.WriteLine("shots per rally: mean " + stats.Average(s => s.Shots).ToString("0.00") + ", median " + Median(stats.Select(s => (double)s.Shots))
                 + ", max " + stats.Max(s => s.Shots) + ", rallies with 6+ shots " + stats.Count(s => s.Shots >= 6));
             Console.WriteLine("rally duration: mean " + stats.Average(s => s.Seconds).ToString("0.0") + " s, max " + stats.Max(s => s.Seconds).ToString("0.0") + " s");
+            Console.WriteLine("stamina at rally end: mean " + stats.Average(s => (s.Stamina0 + s.Stamina1) / 2).ToString("0.00")
+                + ", lowest " + stats.Min(s => Math.Min(s.Stamina0, s.Stamina1)).ToString("0.00")
+                + "   after 10+ s rallies: " + (stats.Any(s => s.Seconds >= 10) ? stats.Where(s => s.Seconds >= 10).Average(s => Math.Min(s.Stamina0, s.Stamina1)).ToString("0.00") : "-")
+                + "   after rallies < 3 s: " + (stats.Any(s => s.Seconds < 3) ? stats.Where(s => s.Seconds < 3).Average(s => Math.Min(s.Stamina0, s.Stamina1)).ToString("0.00") : "-"));
             Console.WriteLine("metres run per rally: P1 " + stats.Average(s => s.Run0).ToString("0.0") + ", P2 " + stats.Average(s => s.Run1).ToString("0.0")
                 + "   (per second of rally: " + (stats.Sum(s => s.Run0 + s.Run1) / Math.Max(1e-9, 2 * stats.Sum(s => s.Seconds))).ToString("0.00") + " m/s)");
         }
@@ -187,6 +192,65 @@ public static class Program
             Console.WriteLine("  contact " + grp.Key + ": " + grp.Count() + " strokes, down " + grp.Count(r => r.actual < 0)
                 + ", mean err " + (reached.Count > 0 ? reached.Average(r => r.actual - r.pred) : 0).ToString("0.00"));
         }
+    }
+
+    /// <summary>
+    /// For every Not up: was the ball reachable? Records the failing player's distance to the ball's
+    /// path and the time they had, from the moment the ball came off the front wall.
+    /// </summary>
+    static void NotUpReport(int games)
+    {
+        int total = 0, easy = 0, hard = 0, impossible = 0, neverPressed = 0, whiffed = 0;
+        var req = new List<double>();
+        for (int g = 0; g < games; g++)
+        {
+            PhysicsConfig.ResetToDefaults();
+            var m = new MatchSimulation(0);
+            m.Bots[0] = Brain(P0, D0, (uint)(1000 + g * 2));
+            m.Bots[1] = Brain(P1, D1, (uint)(1001 + g * 2));
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            // Per turn: best (lowest) required speed for the pending striker to reach the ball while playable.
+            double best = double.PositiveInfinity, prevBest = double.PositiveInfinity; double turnStart = 0; int turnKey = -1;
+            bool swung = false, prevSwung = false;
+            var log = new Queue<string>(); int shown = 0;
+            while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.StepCount < 240L * 1800)
+            {
+                m.Step(dt);
+                var r = m.Referee;
+                int key = r.Shots * 4 + r.PendingStriker + 1 + m.History.Count * 1000;
+                if (key != turnKey) { prevBest = best; prevSwung = swung; turnKey = key; best = double.PositiveInfinity; turnStart = m.Time; swung = false; }
+                int s = r.PendingStriker;
+                if (m.Phase == MatchPhase.Rally && s >= 0 && r.ExpectedStriker == s && !m.Ball.Asleep &&
+                    m.Ball.Pos.Y > 0.15 && m.Ball.Pos.Y < 1.8)
+                {
+                    var p = m.Players[s].Player.Pos;
+                    double dx = m.Ball.Pos.X - p.X, dz = m.Ball.Pos.Z - p.Z;
+                    double gap = Math.Max(0, Math.Sqrt(dx * dx + dz * dz) - 0.9);
+                    double t = m.Time - turnStart;
+                    double need = gap <= 0 ? 0 : gap / Math.Max(0.05, t);
+                    if (need < best) best = need;
+                }
+                if (s >= 0 && m.Players[s].Swing.State != SwingStates.Idle) swung = true;
+                if (s >= 0 && m.Bots[s] is OpponentBrain obd && (m.StepCount % 6) == 0)
+                {
+                    var bp = m.Ball.Pos; var pp = m.Players[s].Player.Pos;
+                    log.Enqueue("    t=" + m.Time.ToString("0.000") + " P" + (s + 1) + " at (" + pp.X.ToString("0.0") + "," + pp.Z.ToString("0.0") + ") ball (" + bp.X.ToString("0.0") + "," + bp.Y.ToString("0.0") + "," + bp.Z.ToString("0.0") + ") " + obd.DebugState);
+                    while (log.Count > 40) log.Dequeue();
+                }
+                if (m.Phase == MatchPhase.RallyOver && m.PhaseTime <= dt * 1.5 && m.LastOutcome.Kind == RallyEnd.NotUp)
+                {
+                    total++;
+                    if (double.IsPositiveInfinity(best)) { best = prevBest; swung = prevSwung; }
+                    req.Add(best);
+                    if (best <= 3.5) easy++; else if (best <= 5.5) hard++; else impossible++;
+                    if (!swung) neverPressed++; else whiffed++;
+                    if (!swung && shown < 2 && g == 0) { shown++; Console.WriteLine("--- never pressed: " + m.LastOutcome); foreach (var l in log) Console.WriteLine(l); }
+                }
+            }
+        }
+        Console.WriteLine("Not up calls: " + total);
+        Console.WriteLine("  ball was reachable at <= 3.5 m/s average: " + easy + "   (3.5-5.5 m/s): " + hard + "   (> 5.5 m/s, a winner): " + impossible);
+        Console.WriteLine("  failing player never started a swing: " + neverPressed + "   swung and missed / too late: " + whiffed);
     }
 
     /// <summary>Print every event of the first few rallies of one game.</summary>

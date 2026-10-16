@@ -130,7 +130,35 @@ AI beats the wall-bot, hard beats easy, determinism, rally stats); PlayMode
 `AppealReplayTests` appeals with a virtual pad and checks the replay pauses and resumes play.
 80 EditMode + 6 PlayMode pass.
 
-## Next: M3.5 — interference v2 + fatigue
+## M3.5 — interference v2, fatigue, AI rally length
 
-Stroke decisions (effort and clearing), the full ball-hits-player rules, body-visible
-fatigue tuned from MatchBench rally data, and AI rally-length tuning.
+| Piece | Where |
+| --- | --- |
+| Referee judgement on an appeal: no obstruction, unreachable ball or no effort -> **No let**; in the swing or in the line to the front wall -> **Stroke**; in the way but clearing -> **Let**; in the way and not clearing -> **Stroke**. Effort and clearing are measured as speeds over the turn | `Interference.Judge` / `Decide` |
+| Ball hits a player: own shot -> striker loses; opponent, ball going straight to the front wall -> Stroke; via a side wall -> Let; would not have been good -> striker loses; after the front wall, touches the next striker -> they lose; hits the non-striker -> Stroke | `RallyReferee.OnBodyHit` (projects the deflected ball's path) |
+| Fatigue: stamina drains with (speed/max)^2 and lunges, recovers standing and between rallies; costs a little top speed, acceleration and reach balance; shown on the body (stoop + breathing), never as a bar | `Match/Fatigue`, `AthleteView` |
+| Contact prediction respects the one-bounce rule in matches (the lab's is unchanged) | `Prediction.MaxFloorBounces` |
+| AI: intercept-based ball read, plants when within reach, waits outside the striker's corridor/swing/line, starts clearing early, appeals only when it expects the decision | `BallReader`, `OpponentBrain` |
+
+Tuning, from `Tools/MatchBench` (10 games, hard Grinder vs Retriever):
+
+| | M3 | M3.5 |
+| --- | --- | --- |
+| shots per rally (mean / median / max) | 3.1 / 2 / 12 | **4.6 / 4 / 17** |
+| rallies with 6+ shots | 17 of 211 | **59 of 190** |
+| AI rally strokes contacted | ~87% | **95%** |
+| stamina at rally end (mean / after 10 s+ rallies / lowest) | - | **0.89 / 0.72 / 0.51** |
+
+Diagnostics added to MatchBench: `--notup` (was a failed retrieval reachable? did the
+player swing?), `--calibrate` (AI model accuracy). Interference still ends about 30% of
+evenly matched AI rallies (lets ~11%, strokes ~18%), on the high side of club squash.
+Real squash rally lengths (club ~5-6, pro ~10+) remain ahead.
+
+Tests: 99 EditMode (referee judgement table, every ball-hits-player case, fatigue
+drain/recovery/slowdown, fresh athlete moves exactly as in the lab) + 7 PlayMode
+(including a tired athlete visibly stooping) pass; lab parity still bit-identical.
+
+## Next: M4 — the athlete in
+
+Gate B mesh (or the Gate A mannequin on the Gate B skeleton), locomotion, phase-sampled
+stroke poses, racket IK onto the simulated racket.

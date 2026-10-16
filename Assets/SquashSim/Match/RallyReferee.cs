@@ -18,9 +18,14 @@
 // Lines are OUT (walls) and FAULT (serve floor lines): a ball whose
 // contact point touches the painted line is judged as if it hit beyond.
 //
-// Interference v1 (Phase 1 decision): a ball hitting the OTHER player
-// is a let. Hitting yourself with your own shot before the front wall
-// loses the rally. Lets and strokes with appeals arrive in M3.
+// Interference v2: appeals are decided by Interference.Decide (reach,
+// effort, clearing). Ball hitting a player:
+//   before the front wall, the striker      -> striker loses
+//   before the front wall, the opponent     -> would it have reached the
+//        front wall directly? Stroke to the striker. Via a side wall? Let.
+//        Not good anyway (tin, floor, out)? The striker loses.
+//   after the front wall, the next striker  -> they lose (touched the ball)
+//   after the front wall, the non-striker   -> Stroke to the next striker
 // ===========================================================
 
 using static SquashSim.CourtDimensions;
@@ -35,8 +40,9 @@ namespace SquashSim
         Fault,       // serve: below the service line, side wall first, wrong quarter
         FootFault,   // serve: server not in the box at contact
         HitSelf,     // own shot struck own body before the front wall
-        Let,         // replay the rally (ball hit the opponent; upheld appeal)
-        NoLet        // appeal rejected: the appellant was not obstructed and loses the rally
+        Let,         // replay the rally (interference the opponent tried to clear; ball deflected off the opponent)
+        NoLet,       // appeal rejected: the appellant loses the rally
+        Stroke       // interference awarded to the striker: they win the rally
     }
 
     public sealed class RallyOutcome
@@ -79,6 +85,11 @@ namespace SquashSim
         public int Shots { get; private set; }                  // racket contacts this rally
         public RallyOutcome Outcome { get; private set; }
         public bool TossDropped { get; private set; }           // tossed ball fell untouched: re-toss, no fault
+
+        /// <summary>The court, for projecting where a deflected ball would have gone.</summary>
+        public System.Collections.Generic.List<Surface> Surfaces;
+        readonly BallState _proj = new BallState();
+        readonly System.Collections.Generic.List<SimEvent> _projEvents = new System.Collections.Generic.List<SimEvent>();
 
         bool _toFrontWall;           // struck, has not yet reached the front wall
         int _floorAfterFront;        // floor bounces since the front wall
@@ -279,27 +290,64 @@ namespace SquashSim
                 return;
             }
             if (LastHitter < 0) return;
-            if (body == LastHitter && _toFrontWall)
+
+            if (_toFrontWall)
             {
-                End(RallyEnd.HitSelf, LastHitter, "Ball hit the striker", ev);
-                return;
+                if (body == LastHitter) { End(RallyEnd.HitSelf, LastHitter, "Ball hit the striker", ev); return; }
+                // Hit the opponent on its way to the front wall: where would it have gone?
+                switch (WouldHaveBeen(ev))
+                {
+                    case 1: End(RallyEnd.Stroke, Other(LastHitter), "Stroke - ball hit P" + (body + 1) + " going straight to the front wall", ev); return;
+                    case 2: End(RallyEnd.Let, -1, "Let - ball hit P" + (body + 1) + " going via the side wall", ev); return;
+                    default: End(RallyEnd.Down, LastHitter, "Ball hit P" + (body + 1) + " but would not have been good", ev); return;
+                }
             }
-            // v1 interference: the ball hit the other player -> replay.
-            End(RallyEnd.Let, -1, "Let - ball hit P" + (body + 1), ev);
+
+            // After the front wall.
+            int striker = PendingStriker;
+            if (body == striker) End(RallyEnd.HitSelf, striker, "Ball touched P" + (striker + 1) + " before they played it", ev);
+            else End(RallyEnd.Stroke, body, "Stroke - ball hit the non-striker after the front wall", ev);
+        }
+
+        /// <summary>
+        /// Project the deflected ball from where it met the body with the velocity it had:
+        /// 1 = front wall directly (good), 2 = side/back wall then front wall (good), 0 = not good.
+        /// </summary>
+        int WouldHaveBeen(SimEvent ev)
+        {
+            if (Surfaces == null || ev.InPos == null || ev.InVel == null) return 2;
+            _proj.Reset(ev.InPos, ev.InVel, null, ev.Temperature);
+            bool otherWallFirst = false;
+            double dt = 1.0 / 240;
+            for (int i = 0; i < 480; i++)
+            {
+                _projEvents.Clear();
+                BallPhysics.Step(_proj, Surfaces, dt, _projEvents);
+                foreach (var e in _projEvents)
+                {
+                    if (OutReason(e) != null) return 0;
+                    if (e.SurfaceClass == "tin" || e.SurfaceClass == "floor") return 0;
+                    if (e.SurfaceClass == "frontWall") return otherWallFirst ? 2 : 1;
+                    otherWallFirst = true;
+                }
+            }
+            return 0;
         }
 
         /// <summary>
         /// "Let, please." Only the player going for the ball may appeal; anyone else's appeal is ignored.
-        /// v1: obstructed at any point this turn -> Let; otherwise -> No let, the appellant loses.
+        /// The decision (No let / Let / Stroke) comes from Interference.Decide.
         /// </summary>
-        public bool OnAppeal(int appellant, ObstructionKind obstruction, double time)
+        public bool OnAppeal(int appellant, InterferenceDecision decision, double time)
         {
             if (Outcome != null || Shots == 0 || appellant != PendingStriker) return false;
             var ev = new SimEvent { Time = time };
-            if (obstruction != ObstructionKind.None)
-                End(RallyEnd.Let, -1, "Let - opponent " + Interference.Describe(obstruction), ev);
-            else
-                End(RallyEnd.NoLet, appellant, "No let - opponent was clear", ev);
+            switch (decision.Call)
+            {
+                case InterferenceCall.Let: End(RallyEnd.Let, -1, decision.Reason, ev); break;
+                case InterferenceCall.Stroke: End(RallyEnd.Stroke, Other(appellant), decision.Reason, ev); break;
+                default: End(RallyEnd.NoLet, appellant, decision.Reason, ev); break;
+            }
             return true;
         }
     }

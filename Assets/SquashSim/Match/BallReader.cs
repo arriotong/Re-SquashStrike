@@ -27,6 +27,8 @@ namespace SquashSim
         public double Z { get; private set; }
         /// <summary>Seconds from the read until the ball is there.</summary>
         public double Time { get; private set; }
+        /// <summary>With a player: seconds the player is short of the intercept (0 = they can make it).</summary>
+        public double ShortBy { get; private set; }
 
         readonly BallState _scratch = new BallState();
         readonly List<SimEvent> _events = new List<SimEvent>();
@@ -34,12 +36,21 @@ namespace SquashSim
 
         public void Invalidate() { _age = 1 << 20; Valid = false; }
 
-        /// <summary>Refreshes every RefreshSteps calls (or when forced). Returns Valid.</summary>
+        /// <summary>Refreshes every RefreshSteps calls (or when forced). Returns Valid.
+        /// Without a player: the first playable point. With one: the first playable point that
+        /// player can get to in time (an INTERCEPT); if none is reachable, the one they come
+        /// closest to reaching.</summary>
         public bool Read(BallState ball, List<Surface> surfaces, bool force = false)
+        {
+            return Read(ball, surfaces, null, force);
+        }
+
+        public bool Read(BallState ball, List<Surface> surfaces, TestPlayer player, bool force = false)
         {
             if (!force && ++_age < RefreshSteps) return Valid;
             _age = 0;
             Valid = false;
+            ShortBy = 0;
             if (ball.Asleep) return false;
 
             _scratch.Pos.CopyFrom(ball.Pos); _scratch.Vel.CopyFrom(ball.Vel); _scratch.Omega.CopyFrom(ball.Omega);
@@ -47,6 +58,9 @@ namespace SquashSim
             _scratch.LastCollisionSurface = ball.LastCollisionSurface;
             _scratch.FloorBounces = 0; _scratch.ImpactHistory.Clear();
 
+            double speed = PhysicsConfig.Current.Player.MaxSpeed;
+            double reach = PhysicsConfig.Current.Reach.Normal;
+            double bestShort = double.PositiveInfinity;
             int bounces = ball.FloorSinceFrontWall;
             int steps = (int)(Horizon / Step);
             for (int i = 1; i <= steps; i++)
@@ -55,12 +69,27 @@ namespace SquashSim
                 BallPhysics.Step(_scratch, surfaces, Step, _events);
                 foreach (var e in _events) if (e.SurfaceClass == "floor") bounces++;
                 if (bounces >= 2) break;
-                if (_scratch.Pos.Y >= MinHeight && _scratch.Pos.Y <= MaxHeight && _scratch.Vel.Y <= 0.5 && _scratch.Pos.Z > MinZ)
+                if (!(_scratch.Pos.Y >= MinHeight && _scratch.Pos.Y <= MaxHeight && _scratch.Vel.Y <= 0.5 && _scratch.Pos.Z > MinZ))
+                    continue;
+
+                double t = i * Step;
+                if (player == null)
                 {
-                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z;
-                    Time = i * Step;
-                    Valid = true;
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true;
                     break;
+                }
+                double dx = _scratch.Pos.X - player.Pos.X, dz = _scratch.Pos.Z - player.Pos.Z;
+                double need = System.Math.Max(0, System.Math.Sqrt(dx * dx + dz * dz) - reach) / speed;
+                double shortBy = need - t;
+                if (shortBy <= 0)
+                {
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = 0;
+                    break;                                    // first point we can be at in time
+                }
+                if (shortBy < bestShort)
+                {
+                    bestShort = shortBy;
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = shortBy;
                 }
             }
             return Valid;

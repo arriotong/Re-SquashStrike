@@ -131,6 +131,7 @@ namespace SquashSim
         static void UpdateBalance(MovementAssist ma, TestPlayer player, string reachState, double dt)
         {
             double cost = BalanceCostFor(reachState);
+            if (player.Stamina < 1.0) cost *= Fatigue.BalanceCostScale(player);   // match only
             double speedPenalty = DMath.Min(0.35, player.Speed / (PhysicsConfig.Current.Player.MaxSpeed * 3));
             double target = DMath.Max(0, 1 - cost - speedPenalty);
 

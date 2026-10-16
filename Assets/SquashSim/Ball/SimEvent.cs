@@ -30,6 +30,8 @@ namespace SquashSim
         public int PlayerIndex = -1;
         /// <summary>PlayerContact: the other player.</summary>
         public int OtherIndex = -1;
+        /// <summary>BodyHit: ball centre and velocity just before the body deflected it.</summary>
+        public V3 InPos, InVel;
 
         // ---- impact ----
         public string SurfaceId;

@@ -20,6 +20,10 @@ namespace SquashSim
         public int BouncesBefore;
         public bool IsVolley;
         public int StepsSinceRefresh;
+
+        /// <summary>Match rules: ignore contacts after this many floor bounces since the front wall
+        /// (1 = a ball may bounce once). -1 = unlimited, the lab's behaviour.</summary>
+        public int MaxFloorBounces = -1;
     }
 
     public static class ContactPrediction
@@ -82,6 +86,9 @@ namespace SquashSim
                 _events.Clear();
                 BallPhysics.Step(_scratch, surfaces, dt, _events);
                 double t = i * dt;
+
+                // Match only (the lab leaves this at -1): a ball past its legal bounce is not a contact.
+                if (pred.MaxFloorBounces >= 0 && ball.FloorSinceFrontWall + _scratch.FloorBounces > pred.MaxFloorBounces) break;
 
                 if (_scratch.Pos.Y < minH || _scratch.Pos.Y > maxH) continue;
 

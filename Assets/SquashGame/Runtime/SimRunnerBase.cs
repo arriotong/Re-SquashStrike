@@ -29,6 +29,7 @@ namespace SquashGame
         public Vector3 RacketAnchor;
         public Vector3 RacketHead;
         public Vector3 RacketFaceNormal;
+        public float Stamina;               // 0..1 (match fatigue); 1 in the lab
 
         public static AthleteSnapshot Capture(TestPlayerController c)
         {
@@ -39,7 +40,8 @@ namespace SquashGame
                 ShoulderForward = SimToWorld.YawForward(c.IntentSolver.BodyYaw),
                 RacketAnchor = SimToWorld.Pos(c.Racket.Anchor),
                 RacketHead = SimToWorld.Pos(c.Racket.HeadPos),
-                RacketFaceNormal = SimToWorld.Dir(c.Racket.FaceNormal)
+                RacketFaceNormal = SimToWorld.Dir(c.Racket.FaceNormal),
+                Stamina = (float)c.Player.Stamina
             };
         }
 
@@ -52,7 +54,8 @@ namespace SquashGame
                 ShoulderForward = Vector3.Slerp(a.ShoulderForward, b.ShoulderForward, t),
                 RacketAnchor = Vector3.LerpUnclamped(a.RacketAnchor, b.RacketAnchor, t),
                 RacketHead = Vector3.LerpUnclamped(a.RacketHead, b.RacketHead, t),
-                RacketFaceNormal = Vector3.Slerp(a.RacketFaceNormal, b.RacketFaceNormal, t)
+                RacketFaceNormal = Vector3.Slerp(a.RacketFaceNormal, b.RacketFaceNormal, t),
+                Stamina = Mathf.LerpUnclamped(a.Stamina, b.Stamina, t)
             };
         }
     }

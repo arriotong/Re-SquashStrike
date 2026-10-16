@@ -65,6 +65,9 @@ namespace SquashSim
             double rvx = ball.Vel.X - body.Vel.X, rvy = ball.Vel.Y, rvz = ball.Vel.Z - body.Vel.Z;
             double vn = rvx * nx + rvy * ny + rvz * nz;
 
+            var inPos = new V3(hx, hy, hz);
+            var inVel = ball.Vel.Clone();
+
             // Place the ball on the capsule surface at the contact point.
             ball.Pos.X = body.Pos.X + nx * (reach + SKIN);
             ball.Pos.Z = body.Pos.Z + nz * (reach + SKIN);
@@ -89,7 +92,9 @@ namespace SquashSim
                 NormalSpeed = -vn,
                 Restitution = e,
                 Temperature = ball.Temperature,
-                Time = time
+                Time = time,
+                InPos = inPos,
+                InVel = inVel
             };
         }
 

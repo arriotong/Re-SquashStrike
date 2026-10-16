@@ -5,7 +5,7 @@
 // IntentSource); athlete 1 is OpponentBrain (or the M2 wall-bot), which
 // plays through the same InputIntent a human does.
 //
-// After every let / no let call the referee's view is replayed
+// After every let / no let / stroke call the referee's view is replayed
 // automatically (V replays the last rally on demand).
 // ===========================================================
 
@@ -69,7 +69,7 @@ namespace SquashGame
         void OnRallyEnded(RallyOutcome o)
         {
             // Interference calls are reviewed on the referee camera.
-            if (o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet) { _replayRequested = true; _replayCaption = o.Reason; }
+            if (o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet || o.Kind == RallyEnd.Stroke) { _replayRequested = true; _replayCaption = o.Reason; }
         }
 
         protected override void Update()

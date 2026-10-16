@@ -41,6 +41,15 @@ namespace SquashSim
                 maxSpeed *= modSpeed;
             }
 
+            // Fatigue (match only): the lab's stamina is exactly 1.0, so this never runs there.
+            bool tired = player.Stamina < 1.0;
+            double fatigueScale = 1;
+            if (tired)
+            {
+                fatigueScale = Fatigue.MovementScale(player);
+                maxSpeed *= fatigueScale;
+            }
+
             double desiredX = intent.Move.X * maxSpeed;
             double desiredZ = intent.Move.Z * maxSpeed;
 
@@ -68,6 +77,7 @@ namespace SquashSim
             }
 
             if (modified) rate *= modRate;
+            if (tired) rate *= fatigueScale;
 
             double maxDelta = rate * dt;
             if (deltaMag > maxDelta && deltaMag > 1e-8)

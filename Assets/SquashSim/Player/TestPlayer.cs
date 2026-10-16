@@ -39,6 +39,9 @@ namespace SquashSim
         public double BoostTimer;        // well-timed split-step: quicker first step
         public double PlantTimer;        // mistimed split-step: briefly planted
 
+        /// <summary>0..1, match only (Match/Fatigue.cs). Exactly 1.0 in the lab.</summary>
+        public double Stamina = 1.0;
+
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 
         public TestPlayer(V3 spawn)

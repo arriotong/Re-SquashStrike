@@ -7,6 +7,9 @@
 // The shoulder bar follows the commitment solver's BODY yaw - the
 // direction the athlete visibly prepares to play - not the aim. That
 // difference is what an opponent reads and what a late change hides.
+//
+// Fatigue is shown ON THE BODY, never as a bar (Phase 1 decision): a
+// tired athlete stoops forward and breathes harder and faster.
 // ===========================================================
 
 using SquashSim;
@@ -19,6 +22,7 @@ namespace SquashGame
         SimRunnerBase _runner;
         int _index;
         Transform _body, _shoulders, _shadow;
+        float _breath;
 
         public void Build(SimRunnerBase runner, int index, Color bodyColor, GreyboxPalette palette)
         {
@@ -55,8 +59,18 @@ namespace SquashGame
         {
             if (_runner == null || _runner.Clock == null) return;
             AthleteSnapshot v = _runner.View.Athlete(_index);
-            _body.SetPositionAndRotation(v.Pos, Quaternion.LookRotation(v.Forward, Vector3.up));
-            _shoulders.SetPositionAndRotation(v.Pos, Quaternion.LookRotation(v.ShoulderForward, Vector3.up));
+
+            // Fatigue posture: up to ~14 degrees of stoop, and a breathing rise and fall that gets
+            // deeper and quicker as stamina drops. Presentation only.
+            float tired = Mathf.Clamp01(1f - v.Stamina);
+            float lean = tired * 14f;
+            _breath += Time.unscaledDeltaTime * Mathf.Lerp(1.6f, 4.2f, tired);
+            float breathe = 1f + Mathf.Sin(_breath) * Mathf.Lerp(0.004f, 0.03f, tired);
+
+            Quaternion facing = Quaternion.LookRotation(v.Forward, Vector3.up);
+            _body.SetPositionAndRotation(v.Pos, facing * Quaternion.Euler(lean, 0f, 0f));
+            _body.localScale = new Vector3(1f, breathe, 1f);
+            _shoulders.SetPositionAndRotation(v.Pos, Quaternion.LookRotation(v.ShoulderForward, Vector3.up) * Quaternion.Euler(lean, 0f, 0f));
             _shadow.position = new Vector3(v.Pos.x, 0.008f, v.Pos.z);
         }
     }

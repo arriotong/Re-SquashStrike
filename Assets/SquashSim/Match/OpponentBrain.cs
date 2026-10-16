@@ -43,7 +43,8 @@ namespace SquashSim
         public double PreparedPreference; // 0..1: holds for a Prepared stroke when time allows
         public double DeceptionChance;    // 0..1: shows one direction, plays another
         public double Discipline;         // 0..1: how fully it recovers to the T
-        public double AppealTendency;     // 0..1: asks for a let when obstructed
+        public double AppealTendency;     // 0..1: asks for a let when obstructed and it expects one
+        public double Misjudge = 0.1;     // 0..1: how often it misreads whether it would get the decision
 
         public AiProfile Clone() { return (AiProfile)MemberwiseClone(); }
 
@@ -172,6 +173,8 @@ namespace SquashSim
         public string LastChoice { get; private set; } = "";
         /// <summary>Diagnostics: rally strokes pressed, and turns that ended with no press at all.</summary>
         public int RallyPresses, TurnsWithoutPress;
+        /// <summary>Diagnostics: one-line state of the shot logic this step.</summary>
+        public string DebugState { get; private set; } = "";
         /// <summary>Rollout's predicted front-wall height and launch speed for the last choice (calibration).</summary>
         public double LastPredFrontH { get; private set; }
         public double LastPredSpeed { get; private set; }
@@ -266,8 +269,14 @@ namespace SquashSim
             if (myTurn && r.Shots > 0)
             {
                 if (t - _oppContactTime < Profile.ReactionTime) { tx = _tgtX; tz = _tgtZ; }   // still reacting
+                else if (canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Distance <= PhysicsConfig.Current.Reach.Normal)
+                {
+                    // Already within normal reach of the contact: plant and let the ball come. Chasing it
+                    // makes "closest approach" recede with the athlete and the ball is never met.
+                    tx = p.Pos.X; tz = p.Pos.Z;
+                }
                 else if (canStrike && ctrl.Assist.HasIdealSpot) { tx = ctrl.Assist.IdealSpot.X; tz = ctrl.Assist.IdealSpot.Z; }
-                else if (_read.Read(m.Ball, m.Surfaces))
+                else if (_read.Read(m.Ball, m.Surfaces, p))
                 {
                     tx = _read.X - PhysicsConfig.Current.MovementAssist.PreferredSpacing;
                     tz = _read.Z + 0.15;
@@ -281,6 +290,7 @@ namespace SquashSim
             else if (live)
             {
                 tx = _tgtX; tz = _tgtZ;
+                ShadowPosition(m, me, ref tx, ref tz);
                 ClearTheWay(m, me, ref tx, ref tz);
             }
 
@@ -367,24 +377,33 @@ namespace SquashSim
                 else if (_choiceTouch) intent.Touch.Held = true; else intent.Hit.Held = true;
             }
 
-            // ---- appeal: obstructed on the way to the ball ----
+            // ---- appeal: only when obstructed AND it expects the decision ----
+            // A player knows the rules: they ask when they would get a let or a stroke, and
+            // otherwise play on. Their read of the situation is imperfect (Misjudge).
             if (myTurn && r.Shots > 0 && !_appealed && m.Interference.Striker == me &&
-                m.Interference.Current != ObstructionKind.None)
+                m.Interference.ThisTurn != ObstructionKind.None)
             {
                 _obstructedFor += dt;
-                // Only when it costs the shot: about to strike with the opponent in the swing or the
-                // line, or blocked on the way with no way round to the ball in time.
                 var kind = m.Interference.Current;
                 bool aboutToStrike = canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Time < 0.45;
-                bool blockedForReal = _obstructedFor > 0.25 &&
-                    ((kind != ObstructionKind.Access && aboutToStrike) ||
-                     (kind == ObstructionKind.Access && !ctrl.Prediction.Valid && _read.Valid && _read.Time < 0.6));
-                if (blockedForReal)
+                bool cannotPlay = !ctrl.Prediction.Valid && _read.Valid && _read.Time < 0.6;
+                bool hampered = _obstructedFor > 0.25 &&
+                    ((kind != ObstructionKind.None && kind != ObstructionKind.Access && aboutToStrike) || cannotPlay);
+                if (hampered)
                 {
                     _appealed = true;
-                    if (Uniform() < Profile.AppealTendency) intent.AppealPressed = true;
+                    var verdict = m.Interference.Decide().Call;
+                    bool expectsIt = verdict != InterferenceCall.NoLet;
+                    if (Uniform() < Profile.Misjudge) expectsIt = !expectsIt;
+                    if (expectsIt && Uniform() < Profile.AppealTendency) intent.AppealPressed = true;
                 }
             }
+
+            DebugState = "turn " + (myTurn ? "Y" : "n") + " strike " + (canStrike ? "Y" : "n") + " pred " +
+                (ctrl.Prediction.Valid ? ctrl.Prediction.Time.ToString("0.00") + "@" + ctrl.Prediction.Distance.ToString("0.00") : "-") +
+                " dec " + (_decided ? "Y" : "n") + " prep " + (_choicePrepared ? "Y" : "n") + " pressed " + (_pressed ? "Y" : "n") +
+                " swing " + ctrl.Swing.State + " react " + (t - _oppContactTime < Profile.ReactionTime ? "Y" : "n") +
+                " read " + (_read.Valid ? _read.Time.ToString("0.00") : "-") + " assist " + (ctrl.Assist.HasIdealSpot ? "Y" : "n");
 
             // ---- stick: a thumb, not a teleport ----
             _stickX += Clamp(_stickTX - _stickX, -Profile.AimSlew, Profile.AimSlew);
@@ -433,6 +452,50 @@ namespace SquashSim
             _tgtZ = p.Pos.Z + (tz - p.Pos.Z) * k;
         }
 
+        /// <summary>
+        /// Where to wait while the opponent plays the ball: the T (shaded toward their usual side),
+        /// pushed out of the three spaces the striker is entitled to - the corridor from where they
+        /// are to the ball, the swing around the hitting point, and the straight line from the
+        /// hitting point to the front wall.
+        /// </summary>
+        void ShadowPosition(MatchSimulation m, int me, ref double tx, ref double tz)
+        {
+            var it = m.Interference;
+            if (it.Striker != 1 - me || it.TargetZ <= 0) return;
+            var s = m.Players[1 - me].Player.Pos;
+            double bx = it.TargetX, bz = it.TargetZ;
+            double clear = 2 * PhysicsConfig.Current.Player.Radius + it.AccessClearance + 0.25;
+
+            for (int iter = 0; iter < 3; iter++)
+            {
+                // 1. Corridor from the striker to the hitting point.
+                double px = bx - s.X, pz = bz - s.Z;
+                double len2 = px * px + pz * pz;
+                double u = len2 < 1e-9 ? 0 : Clamp(((tx - s.X) * px + (tz - s.Z) * pz) / len2, 0, 1);
+                double cx = s.X + px * u, cz = s.Z + pz * u;
+                double dx = tx - cx, dz = tz - cz, d = System.Math.Sqrt(dx * dx + dz * dz);
+                if (d < clear)
+                {
+                    if (d < 1e-6) { dx = -pz; dz = px; d = System.Math.Sqrt(dx * dx + dz * dz); if (d < 1e-9) { dx = 1; dz = 0; d = 1; } }
+                    tx = cx + dx / d * clear; tz = cz + dz / d * clear;
+                }
+                // 2. Swing space around the hitting point.
+                double sx = tx - bx, sz = tz - bz, sd = System.Math.Sqrt(sx * sx + sz * sz);
+                double swing = it.SwingClearance + 0.2;
+                if (sd < swing)
+                {
+                    if (sd < 1e-6) { sx = 0; sz = 1; sd = 1; }
+                    tx = bx + sx / sd * swing; tz = bz + sz / sd * swing;
+                }
+                // 3. The line from the hitting point to the front wall.
+                double lineHalf = it.LineHalfWidth + PhysicsConfig.Current.Player.Radius + 0.2;
+                if (tz < bz && System.Math.Abs(tx - bx) < lineHalf)
+                    tx = bx + (tx >= bx ? 1 : -1) * lineHalf;
+                tx = Clamp(tx, -HALF_W + 0.35, HALF_W - 0.35);
+                tz = Clamp(tz, 1.0, LENGTH - 0.35);
+            }
+        }
+
         /// <summary>If I am in the striker's way, step out of it (clearing - the opponent's right to the ball).</summary>
         void ClearTheWay(MatchSimulation m, int me, ref double tx, ref double tz)
         {
@@ -440,7 +503,10 @@ namespace SquashSim
             if (it.Striker != 1 - me) return;
             var p = m.Players[me].Player;
             var o = m.Players[1 - me].Player;
-            if (it.Detect(o.Pos.X, o.Pos.Z, p.Pos.X, p.Pos.Z, it.TargetX, it.TargetZ) == ObstructionKind.None) return;
+            // Look a quarter-second ahead: start clearing before actually being in the way.
+            double lx = p.Pos.X + p.Vel.X * 0.25, lz = p.Pos.Z + p.Vel.Z * 0.25;
+            if (it.Detect(o.Pos.X, o.Pos.Z, p.Pos.X, p.Pos.Z, it.TargetX, it.TargetZ) == ObstructionKind.None &&
+                it.Detect(o.Pos.X, o.Pos.Z, lx, lz, it.TargetX, it.TargetZ) == ObstructionKind.None) return;
 
             // Move away from the hitting point, and sideways out of the line to the front wall.
             double ax = p.Pos.X - it.TargetX, az = p.Pos.Z - it.TargetZ;

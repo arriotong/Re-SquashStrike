@@ -242,6 +242,20 @@ namespace SquashSim
         public double Softness;             // 0..1 share of the closing speed removed per contact
     }
 
+    /// <summary>Fatigue (match only). Tuned from MatchBench rally data; see Match/Fatigue.cs.</summary>
+    public sealed class FatigueSection
+    {
+        public bool Enabled;
+        public double DrainRate;              // per second at full speed (scales with (speed/max)^2)
+        public double LungeCost, DeepLungeCost, StretchCost;   // per stroke
+        public double RecoverStanding;        // per second, below StandingSpeed during a rally
+        public double StandingSpeed;
+        public double RecoverBetweenRallies;  // per second while the rally is over / before the serve
+        public double Floor;                  // never below this
+        public double SpeedLoss;              // top speed and acceleration lose this much at zero stamina
+        public double BalanceCostGain;        // reach balance costs gain this much at zero stamina
+    }
+
     /// <summary>Rules, serve and match flow.</summary>
     public sealed class MatchSection
     {
@@ -287,6 +301,7 @@ namespace SquashSim
         public SplitStepSection SplitStep;
         public PlayerContactSection PlayerContact;
         public MatchSection Match;
+        public FatigueSection Fatigue;
 
         /// <summary>The shipped defaults. Must equal lab/config/PhysicsConfig.js defaults()
         /// (SimParity checks this against every trace's config).</summary>
@@ -425,6 +440,13 @@ namespace SquashSim
                     Scoring = "par", ParPoints = 11, EnglishPoints = 9, EnglishSetTwo = true, GamesToWin = 1,
                     TX = 0.0, TZ = 5.0,
                     StartTemperature = 30.0
+                },
+                Fatigue = new FatigueSection
+                {
+                    Enabled = true, DrainRate = 0.075,
+                    LungeCost = 0.012, DeepLungeCost = 0.024, StretchCost = 0.04,
+                    RecoverStanding = 0.015, StandingSpeed = 1.0, RecoverBetweenRallies = 0.09,
+                    Floor = 0.2, SpeedLoss = 0.15, BalanceCostGain = 0.6
                 }
             };
         }
