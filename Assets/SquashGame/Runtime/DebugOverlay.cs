@@ -309,6 +309,14 @@ namespace SquashGame
                 ctrl.IntentSolver.BodyYaw * Mathf.Rad2Deg, ctrl.IntentSolver.FaceYaw * Mathf.Rad2Deg);
             sb.AppendFormat("aim bias ({0:0.00}, {1:0.00})   device {2}\n\n", ctrl.Aim.BiasX, ctrl.Aim.BiasY, Runner.Input.Device);
 
+            var match = Runner as MatchRunner;
+            if (match != null)
+            {
+                var it = match.Sim.Interference;
+                sb.AppendFormat("<b>Interference</b>  striker {0}   now {1}   this turn {2}\n\n",
+                    it.Striker < 0 ? "-" : "P" + (it.Striker + 1), it.Current, it.ThisTurn);
+            }
+
             var c = Runner.LastRacketContact;
             if (c != null)
             {

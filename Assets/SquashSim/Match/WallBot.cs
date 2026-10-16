@@ -12,7 +12,7 @@
 
 namespace SquashSim
 {
-    public sealed class WallBot
+    public sealed class WallBot : IAthleteBrain
     {
         // Tunables (a difficulty preset can change these).
         public double TriggerLead = 0.42;     // press Hit when the predicted contact is this close (s)
@@ -32,15 +32,8 @@ namespace SquashSim
         bool _releaseNext;
         long _strokeKey = -1;                 // (rally, shot) we last pressed for: one press per ball
 
-        // The bot's own "read" of the ball: where it will be playable, found by running the
-        // real integrator on a scratch ball (like ContactPrediction, but not limited to reach).
-        public double ReadHorizon = 2.2, ReadMinHeight = 0.35, ReadMaxHeight = 1.4, ReadStep = 1.0 / 120;
-        public int ReadRefreshSteps = 8;
-        readonly BallState _scratch = new BallState();
-        readonly System.Collections.Generic.List<SimEvent> _scratchEvents = new System.Collections.Generic.List<SimEvent>();
-        bool _readValid;
-        double _readX, _readZ;
-        int _readAge = 1000;
+        // The bot's own read of the ball: where it will be playable (not limited to reach).
+        readonly BallReader _read = new BallReader();
 
         public WallBot(uint seed) { _seed = seed == 0 ? 1u : seed; }
 
@@ -70,11 +63,11 @@ namespace SquashSim
             {
                 tx = ctrl.Assist.IdealSpot.X; tz = ctrl.Assist.IdealSpot.Z;
             }
-            else if (myTurn && ReadBall(m, ctrl))
+            else if (myTurn && _read.Read(m.Ball, m.Surfaces))
             {
                 // Head for the read, standing beside it on the forehand-side spacing.
-                tx = _readX - PhysicsConfig.Current.MovementAssist.PreferredSpacing;
-                tz = _readZ + 0.15;
+                tx = _read.X - PhysicsConfig.Current.MovementAssist.PreferredSpacing;
+                tz = _read.Z + 0.15;
             }
             else
             {
@@ -134,40 +127,6 @@ namespace SquashSim
             intent.AimRawY = _aimY;
 
             intent.Touch.Pressed = false; intent.Touch.Held = false;
-        }
-
-        /// <summary>Where will the ball be playable (after the front wall, at most one bounce)?</summary>
-        bool ReadBall(MatchSimulation m, TestPlayerController ctrl)
-        {
-            if (++_readAge < ReadRefreshSteps) return _readValid;
-            _readAge = 0;
-            _readValid = false;
-            BallState b = m.Ball;
-            if (b.Asleep) return false;
-
-            _scratch.Pos.CopyFrom(b.Pos); _scratch.Vel.CopyFrom(b.Vel); _scratch.Omega.CopyFrom(b.Omega);
-            _scratch.Temperature = b.Temperature; _scratch.Resting = b.Resting; _scratch.Asleep = false;
-            _scratch.LastCollisionSurface = b.LastCollisionSurface;
-            _scratch.FloorBounces = 0; _scratch.ImpactHistory.Clear();
-
-            int bounces = b.FloorSinceFrontWall;
-            int steps = (int)(ReadHorizon / ReadStep);
-            for (int i = 0; i < steps; i++)
-            {
-                _scratchEvents.Clear();
-                BallPhysics.Step(_scratch, m.Surfaces, ReadStep, _scratchEvents);
-                foreach (var e in _scratchEvents) if (e.SurfaceClass == "floor") bounces++;
-                if (bounces >= 2) break;
-                // Playable: a comfortable height, falling or at the top, not in the front corners.
-                if (_scratch.Pos.Y >= ReadMinHeight && _scratch.Pos.Y <= ReadMaxHeight && _scratch.Vel.Y <= 0.5 &&
-                    _scratch.Pos.Z > 1.2)
-                {
-                    _readX = _scratch.Pos.X; _readZ = _scratch.Pos.Z;
-                    _readValid = true;
-                    break;
-                }
-            }
-            return _readValid;
         }
 
         static long StrokeKey(MatchSimulation m) { return m.History.Count * 1000L + m.Referee.Shots; }

@@ -26,14 +26,27 @@ namespace SquashSim
 {
     public enum MatchPhase { AwaitToss, Rally, RallyOver, GameOver, MatchOver }
 
+    public sealed class RallyStats
+    {
+        public int Shots;
+        public double Seconds;
+        public double Run0, Run1;      // metres covered by each athlete during the rally
+        public RallyOutcome Outcome;
+    }
+
     public sealed class MatchSimulation
     {
         public readonly List<Surface> Surfaces = CourtSurfaces.Create();
         public readonly BallState Ball = new BallState();
         public readonly TestPlayerController[] Players = { new TestPlayerController(), new TestPlayerController() };
         public readonly InputIntent[] Intents = { new InputIntent(), new InputIntent() };
-        /// <summary>A bot drives a player when its slot is non-null; otherwise Intents[i] is filled externally.</summary>
-        public readonly WallBot[] Bots = new WallBot[2];
+        /// <summary>A brain (wall-bot, AI) drives a player when its slot is non-null; otherwise Intents[i] is filled externally.</summary>
+        public readonly IAthleteBrain[] Bots = new IAthleteBrain[2];
+        public readonly Interference Interference = new Interference();
+        /// <summary>Per finished rally: duration and metres each athlete ran (fatigue tuning data).</summary>
+        public readonly List<RallyStats> Stats = new List<RallyStats>();
+        /// <summary>Racket contacts per athlete, serves excluded (diagnostics).</summary>
+        public readonly int[] RallyContacts = new int[2];
 
         public readonly RallyReferee Referee = new RallyReferee();
         public MatchScore Score { get; private set; }
@@ -51,6 +64,10 @@ namespace SquashSim
         /// <summary>Raised when a rally ends (after scoring is applied).</summary>
         public event System.Action<RallyOutcome> RallyEnded;
 
+        double _rallyStart;
+        readonly double[] _run = new double[2];
+        readonly double[] _lastX = new double[2], _lastZ = new double[2];
+
         readonly V3 _prevBall = new V3();
         bool _bodiesTouching;
         public readonly SplitStepTracker SplitStep = new SplitStepTracker();
@@ -59,6 +76,7 @@ namespace SquashSim
         {
             Players[0].Index = 0;
             Players[1].Index = 1;
+            Ball.Temperature = PhysicsConfig.Current.Match.StartTemperature;   // warmed up in the knock-up
             Score = MatchScore.FromConfig(firstServer);
             SetUpServe();
         }
@@ -83,6 +101,7 @@ namespace SquashSim
             SplitStep.Reset();
 
             Referee.BeginRally(server, Score.ServeSide);
+            Interference.Reset();
             HoldBallForServe(keepTemperature: true);
             Phase = MatchPhase.AwaitToss;
             PhaseTime = 0;
@@ -117,6 +136,8 @@ namespace SquashSim
             BallPhysics.Wake(Ball);
             Phase = MatchPhase.Rally;
             PhaseTime = 0;
+            _rallyStart = Time;
+            _run[0] = 0; _run[1] = 0;
         }
 
         // ---------------- the fixed step ----------------
@@ -151,6 +172,17 @@ namespace SquashSim
                 else SetUpServe();
             }
 
+            // ---- appeals: the player going for the ball stops and asks for a let ----
+            if (Phase == MatchPhase.Rally && Referee.Outcome == null)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    if (!Intents[i].AppealPressed) continue;
+                    ObstructionKind seen = Interference.ObstructedThisTurn(i) ? Interference.ThisTurn : ObstructionKind.None;
+                    if (Referee.OnAppeal(i, seen, Time)) { FinishRally(); break; }
+                }
+            }
+
             // ---- split-step presses ----
             for (int i = 0; i < 2; i++)
                 if (Intents[i].SplitStepPressed) SplitStep.Press(i, Time, Players[i].Player);
@@ -165,6 +197,7 @@ namespace SquashSim
                 {
                     contact.Time = Time;
                     StepEvents.Add(contact);
+                    if (Referee.Shots > 0) RallyContacts[i]++;
                     OnRacketContact(i, contact);
                 }
             }
@@ -197,8 +230,21 @@ namespace SquashSim
             // ---- split-step presses whose window passed unanswered: planted ----
             SplitStep.Update(Time, Players[0].Player, Players[1].Player);
 
+            // ---- running totals for rally stats ----
+            for (int i = 0; i < 2; i++)
+            {
+                var p = Players[i].Player.Pos;
+                double dx = p.X - _lastX[i], dz = p.Z - _lastZ[i];
+                if (Phase == MatchPhase.Rally) _run[i] += System.Math.Sqrt(dx * dx + dz * dz);
+                _lastX[i] = p.X; _lastZ[i] = p.Z;
+            }
+
             // ---- the referee watches everything that happened ----
-            if (Phase == MatchPhase.Rally) Referee_Observe();
+            if (Phase == MatchPhase.Rally)
+            {
+                Interference.Update(this, dt);
+                Referee_Observe();
+            }
         }
 
         void Referee_Observe()
@@ -224,17 +270,26 @@ namespace SquashSim
                 return;
             }
 
-            if (Referee.Outcome != null)
+            if (Referee.Outcome != null) FinishRally();
+        }
+
+        void FinishRally()
+        {
+            LastOutcome = Referee.Outcome;
+            History.Add(LastOutcome);
+            ShotsPerRally.Add(Referee.Shots);
+            Stats.Add(new RallyStats
             {
-                LastOutcome = Referee.Outcome;
-                History.Add(LastOutcome);
-                ShotsPerRally.Add(Referee.Shots);
-                Score.Apply(LastOutcome);
-                Phase = MatchPhase.RallyOver;
-                PhaseTime = 0;
-                var h = RallyEnded;
-                if (h != null) h(LastOutcome);
-            }
+                Shots = Referee.Shots,
+                Seconds = Time - _rallyStart,
+                Run0 = _run[0], Run1 = _run[1],
+                Outcome = LastOutcome
+            });
+            Score.Apply(LastOutcome);
+            Phase = MatchPhase.RallyOver;
+            PhaseTime = 0;
+            var h = RallyEnded;
+            if (h != null) h(LastOutcome);
         }
 
         // ---------------- recovery + split-step ----------------
@@ -271,8 +326,9 @@ namespace SquashSim
             Score = MatchScore.FromConfig(firstServer);
             History.Clear();
             ShotsPerRally.Clear();
+            Stats.Clear();
             LastOutcome = null;
-            Ball.Reset(null, null, null, null);
+            Ball.Reset(null, null, null, PhysicsConfig.Current.Match.StartTemperature);
             SetUpServe();
         }
     }

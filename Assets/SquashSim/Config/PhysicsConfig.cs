@@ -255,6 +255,7 @@ namespace SquashSim
         public bool EnglishSetTwo;
         public int GamesToWin;
         public double TX, TZ;               // where players recover to (the T)
+        public double StartTemperature;     // ball temperature at the first serve (after the knock-up; the warm-up phase is M5)
     }
 
     public sealed class SimConfig
@@ -422,7 +423,8 @@ namespace SquashSim
                     ServeTossSpeed = 3.6, ServeTossHeight = 1.0, ServeTossForward = 0.35, ServeTossSide = 0.35,
                     BetweenRallySeconds = 2.0,
                     Scoring = "par", ParPoints = 11, EnglishPoints = 9, EnglishSetTwo = true, GamesToWin = 1,
-                    TX = 0.0, TZ = 5.0
+                    TX = 0.0, TZ = 5.0,
+                    StartTemperature = 30.0
                 }
             };
         }

@@ -100,7 +100,37 @@ Tests: EditMode `MatchTests` (34: every referee call, both scoring systems,
 collisions, recovery, split-step, full deterministic games); PlayMode
 `MatchPlayTests` serve with a virtual gamepad through to a referee call.
 
-## Next: M3 — AI opponent v1 + interference v1
+## M3 — AI opponent v1 + interference v1
 
-Real AI (rollouts, positioning, personalities) replacing the wall-bot;
-obstruction detection, the appeal key, Let / No let, referee replay.
+The Match scene now plays the AI (default: Retriever, medium). F6 cycles the
+opponent (Retriever, Attacker, Shot-maker, Grinder, wall-bot), F7 the difficulty.
+
+| Piece | Where |
+| --- | --- |
+| AI v1: perceives with a reaction delay; picks shots by rolling out the real ball integrator for ~50 candidate aims (+ Touch drops) from the predicted contact, using RacketPhysics' contact maths for the planned swing; scores pressure, length, width, height and risk margins sized to its own measured accuracy; re-plans until the stroke commits; acts only through InputIntent (stick slew, timing jitter, aim error) | `SquashSim/Match/OpponentBrain` |
+| Personalities (weights) x difficulty (execution) | `AiProfile` |
+| Recovery to a T shaded by the opponent's recent shots; clearing out of the striker's way; split-step timed to the opponent's contact; appeals when an obstruction costs it the shot | `OpponentBrain` |
+| A player's read of where the ball will be playable | `BallReader` (shared with the wall-bot) |
+| Obstruction detection: access to the ball, swing space, line to the front wall | `Interference` |
+| Appeal (Q / pad Y): obstructed this turn -> Let, clear -> No let (appellant loses) | `RallyReferee.OnAppeal` |
+| Referee replay: last 3.5 s of render state at 0.5x from an overhead camera, automatic after let / no let, V on demand; the simulation waits | `SimRunnerBase` replay buffer, `GameplayCameraRig` |
+
+`Tools/MatchBench` now pits any two brains (`--p0/--p1 retriever|attacker|shotmaker|grinder|wallbot`,
+`--d0/--d1` difficulty) and reports wins, endings, shots per rally, rally duration and
+metres run (the fatigue-tuning data). `--calibrate` measures the AI's model error.
+
+Where AI v1 stands (8-game benches, hard): Grinder vs Retriever mean 3.1 shots per rally,
+rallies up to 12; AI beats the wall-bot 8-0; hard beats easy 7-1 with the same personality;
+every game replays identically. Rallies are still shorter than real squash (club players
+average ~5-6 shots): most rallies end on a winner the receiver cannot reach or an
+unforced error. Raising that is AI tuning work for M3.5 alongside fatigue.
+
+Tests: EditMode `InterferenceAndAiTests` (detection geometry, Let / No let, who may appeal,
+AI beats the wall-bot, hard beats easy, determinism, rally stats); PlayMode
+`AppealReplayTests` appeals with a virtual pad and checks the replay pauses and resumes play.
+80 EditMode + 6 PlayMode pass.
+
+## Next: M3.5 — interference v2 + fatigue
+
+Stroke decisions (effort and clearing), the full ball-hits-player rules, body-visible
+fatigue tuned from MatchBench rally data, and AI rally-length tuning.

@@ -35,7 +35,8 @@ namespace SquashSim
         Fault,       // serve: below the service line, side wall first, wrong quarter
         FootFault,   // serve: server not in the box at contact
         HitSelf,     // own shot struck own body before the front wall
-        Let          // replay the rally (v1: ball hit the opponent)
+        Let,         // replay the rally (ball hit the opponent; upheld appeal)
+        NoLet        // appeal rejected: the appellant was not obstructed and loses the rally
     }
 
     public sealed class RallyOutcome
@@ -60,6 +61,17 @@ namespace SquashSim
 
         /// <summary>Who may legally strike the ball next; -1 = nobody (ball travelling to the front wall).</summary>
         public int ExpectedStriker { get; private set; } = -1;
+
+        /// <summary>Who will strike next once the ball reaches the front wall (the player going for it).</summary>
+        public int PendingStriker
+        {
+            get
+            {
+                if (Outcome != null) return -1;
+                if (ExpectedStriker >= 0) return ExpectedStriker;
+                return LastHitter >= 0 ? Other(LastHitter) : -1;
+            }
+        }
         public int LastHitter { get; private set; } = -1;
         public bool InServe { get; private set; }
         public bool ServeStruck { get; private set; }
@@ -274,6 +286,21 @@ namespace SquashSim
             }
             // v1 interference: the ball hit the other player -> replay.
             End(RallyEnd.Let, -1, "Let - ball hit P" + (body + 1), ev);
+        }
+
+        /// <summary>
+        /// "Let, please." Only the player going for the ball may appeal; anyone else's appeal is ignored.
+        /// v1: obstructed at any point this turn -> Let; otherwise -> No let, the appellant loses.
+        /// </summary>
+        public bool OnAppeal(int appellant, ObstructionKind obstruction, double time)
+        {
+            if (Outcome != null || Shots == 0 || appellant != PendingStriker) return false;
+            var ev = new SimEvent { Time = time };
+            if (obstruction != ObstructionKind.None)
+                End(RallyEnd.Let, -1, "Let - opponent " + Interference.Describe(obstruction), ev);
+            else
+                End(RallyEnd.NoLet, appellant, "No let - opponent was clear", ev);
+            return true;
         }
     }
 }

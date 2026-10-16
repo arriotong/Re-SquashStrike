@@ -121,6 +121,47 @@ namespace SquashGame
 
         RenderSnapshot _prev, _curr;
 
+        // ---- referee replay: the last few seconds of render state, replayed from a referee camera ----
+        public const int HistorySteps = 240 * 8;
+        readonly RenderSnapshot[] _history = new RenderSnapshot[HistorySteps];
+        int _historyCount, _historyHead;
+        readonly System.Collections.Generic.List<RenderSnapshot> _replay = new System.Collections.Generic.List<RenderSnapshot>();
+        double _replayCursor, _replaySpeed;
+        public bool ReplayActive { get; private set; }
+        public string ReplayCaption { get; private set; }
+        /// <summary>World point the replay camera looks at.</summary>
+        public Vector3 ReplayFocus { get; private set; }
+        public float ReplayProgress { get { return _replay.Count == 0 ? 1f : (float)(_replayCursor / _replay.Count); } }
+
+        /// <summary>Replay the last <paramref name="seconds"/> of play at <paramref name="speed"/> x, then carry on.</summary>
+        public void StartReplay(double seconds, double speed, string caption)
+        {
+            int steps = Mathf.Min(_historyCount, (int)(seconds / PhysicsConfig.Current.Sim.FixedDt));
+            if (steps < 2) return;
+            _replay.Clear();
+            for (int i = steps; i >= 1; i--)
+                _replay.Add(_history[((_historyHead - i) % HistorySteps + HistorySteps) % HistorySteps]);
+            _replayCursor = 0;
+            _replaySpeed = speed;
+            ReplayCaption = caption;
+            var last = _replay[_replay.Count - 1];
+            ReplayFocus = last.Count > 1 ? (last.A0.Pos + last.A1.Pos) * 0.5f : last.A0.Pos;
+            ReplayActive = true;
+        }
+
+        public void StopReplay() { ReplayActive = false; View = _curr; }
+
+        bool AdvanceReplay(float dt)
+        {
+            if (!ReplayActive) return false;
+            _replayCursor += dt * _replaySpeed / PhysicsConfig.Current.Sim.FixedDt;
+            int i = (int)_replayCursor;
+            if (i >= _replay.Count - 1) { StopReplay(); return false; }
+            float f = (float)(_replayCursor - i);
+            View = RenderSnapshot.Lerp(_replay[i], _replay[i + 1], f);
+            return true;
+        }
+
         protected abstract void CreateSimulation();
         protected abstract void SimStep(double dt);
 
@@ -141,7 +182,10 @@ namespace SquashGame
         {
             float rawDt = Time.unscaledDeltaTime;
             Input.Sample(rawDt);
-            if (Input.ConsumePause()) Clock.TogglePause();
+            if (Input.ConsumePause()) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
+
+            // During a referee replay the simulation waits; the views show the recording.
+            if (AdvanceReplay(rawDt)) return;
 
             Clock.Advance(rawDt);
 
@@ -154,6 +198,9 @@ namespace SquashGame
             _prev = _curr;
             SimStep(dt);
             _curr = RenderSnapshot.Capture(Ball, Athletes);
+            _history[_historyHead] = _curr;
+            _historyHead = (_historyHead + 1) % HistorySteps;
+            if (_historyCount < HistorySteps) _historyCount++;
 
             var athletes = Athletes;
             int h = HumanIndex;

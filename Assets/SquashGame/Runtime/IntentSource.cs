@@ -9,6 +9,7 @@
 //          here - AimController applies them once for both devices.
 //   Hit    LMB / pad South      Touch  RMB / pad East
 //   Focus  Space / LT: split-step, timed to the opponent's contact
+//   Appeal Q / pad Y: "Let, please"
 //   Pause  Esc / Start
 //
 // Stroke edges are ACCUMULATED until a fixed step consumes them
@@ -39,7 +40,7 @@ namespace SquashGame
         const float MOVE_DEADZONE = 0.18f;
 
         readonly InputActionMap _map;
-        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause;
+        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal;
 
         float _vx, _vy;
         bool _recentering;
@@ -71,6 +72,10 @@ namespace SquashGame
             _focus = _map.AddAction("MomentumFocus", InputActionType.Button);
             _focus.AddBinding("<Keyboard>/space");
             _focus.AddBinding("<Gamepad>/leftTrigger");
+
+            _appeal = _map.AddAction("Appeal", InputActionType.Button);
+            _appeal.AddBinding("<Keyboard>/q");
+            _appeal.AddBinding("<Gamepad>/buttonNorth");
 
             _pause = _map.AddAction("Pause", InputActionType.Button);
             _pause.AddBinding("<Keyboard>/escape");
@@ -181,6 +186,7 @@ namespace SquashGame
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
+            if (_appeal.WasPressedThisFrame()) Intent.AppealPressed = true;   // consumed by the next fixed step
         }
 
         void SampleStroke(InputAction a, StrokeButton b, float dt)

@@ -19,7 +19,7 @@ namespace SquashGame
     public sealed class MatchHud : MonoBehaviour
     {
         public MatchRunner Runner;
-        public string[] Names = { "YOU", "WALL-BOT" };
+        public string[] Names = { "YOU", "OPPONENT" };
 
         GUIStyle _bug, _bugText, _bugPoints, _banner, _prompt, _small;
         Texture2D _dark, _accent, _serveDot;
@@ -52,6 +52,14 @@ namespace SquashGame
             EnsureStyles();
             MatchSimulation m = Runner.Sim;
             MatchScore s = m.Score;
+            Names[1] = Runner.OpponentName ?? Names[1];
+
+            // ---------------- referee replay ----------------
+            if (Runner.ReplayActive)
+            {
+                GUI.Label(new Rect(Screen.width / 2f - 330, 22, 660, 52), "REFEREE REVIEW   " + Runner.ReplayCaption, _banner);
+                GUI.Label(new Rect(Screen.width / 2f - 200, 80, 400, 24), "replay " + Runner.ReplaySpeed.ToString("0.0") + "x   (Esc skips)", _prompt);
+            }
 
             // ---------------- score bug (top left) ----------------
             float x = 16, y = 16, w = 300, row = 34;
@@ -73,10 +81,11 @@ namespace SquashGame
                 BallTemperature.StateName(m.Ball.Temperature).ToLowerInvariant(), _small);
 
             // ---------------- referee call ----------------
-            if (m.Phase == MatchPhase.RallyOver && m.LastOutcome != null)
+            if (m.Phase == MatchPhase.RallyOver && m.LastOutcome != null && !Runner.ReplayActive)
             {
                 RallyOutcome o = m.LastOutcome;
                 string call = o.Kind == RallyEnd.Let ? o.Reason : o.Reason + "   -   point " + Names[o.Winner];
+                GUI.Label(new Rect(Screen.width / 2f - 200, 80, 400, 24), "V: replay", _prompt);
                 GUI.Label(new Rect(Screen.width / 2f - 330, 22, 660, 52), call, _banner);
             }
 
@@ -100,7 +109,7 @@ namespace SquashGame
             }
 
             GUI.Label(new Rect(16, Screen.height - 48, 900, 20),
-                "Move WASD / left stick   Aim mouse / right stick   Hit LMB / A   Touch RMB / B   Split-step Space / LT (time it to the bot's hit)   Esc pause",
+                "Move WASD / left stick   Aim mouse / right stick   Hit LMB / A   Touch RMB / B   Split-step Space / LT   Let please Q / Y   Esc pause   F6 opponent  F7 difficulty",
                 _small);
         }
     }

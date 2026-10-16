@@ -34,6 +34,8 @@ namespace SquashSim
         public bool MomentumFocus;   // held state of the split-step button
         /// <summary>Split-step press edge (Space / LT). One-shot, cleared with the stroke edges.</summary>
         public bool SplitStepPressed;
+        /// <summary>"Let, please" (Q / pad Y). One-shot edge.</summary>
+        public bool AppealPressed;
         public bool PausePressed;
 
         public void ClearEdges()
@@ -41,6 +43,7 @@ namespace SquashSim
             Hit.Pressed = false; Hit.Released = false;
             Touch.Pressed = false; Touch.Released = false;
             SplitStepPressed = false;
+            AppealPressed = false;
         }
     }
 }

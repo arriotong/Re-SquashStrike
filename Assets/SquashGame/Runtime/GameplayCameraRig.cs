@@ -33,6 +33,16 @@ namespace SquashGame
         {
             var cfg = PhysicsConfig.Current.Camera;
 
+            // Referee replay: high above the court, looking down on the incident.
+            if (Runner != null && Runner.ReplayActive)
+            {
+                _cam.fieldOfView = 55f;
+                Vector3 focus = Runner.ReplayFocus;
+                transform.position = SimToWorld.Pos(0, 8.5, 8.5);
+                transform.LookAt(new Vector3(focus.x * 0.6f, 0.6f, focus.z), Vector3.up);
+                return;
+            }
+
             // Projection: hold the horizontal field on narrow windows.
             float aspect = _cam.aspect;
             float fov = (float)cfg.Fov;
