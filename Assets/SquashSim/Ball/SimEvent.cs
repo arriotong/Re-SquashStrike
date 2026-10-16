@@ -8,7 +8,7 @@
 
 namespace SquashSim
 {
-    public enum SimEventType { Impact, RacketContact }
+    public enum SimEventType { Impact, RacketContact, BodyHit, PlayerContact }
 
     public sealed class DeceptionRecord
     {
@@ -26,6 +26,10 @@ namespace SquashSim
         public double Restitution;
         public double EnergyLost;
         public double Temperature;
+        /// <summary>Racket contact: who struck. BodyHit: whose body. PlayerContact: the first player.</summary>
+        public int PlayerIndex = -1;
+        /// <summary>PlayerContact: the other player.</summary>
+        public int OtherIndex = -1;
 
         // ---- impact ----
         public string SurfaceId;

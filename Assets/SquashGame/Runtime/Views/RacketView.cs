@@ -12,12 +12,14 @@ namespace SquashGame
 {
     public sealed class RacketView : MonoBehaviour
     {
-        LabSimRunner _runner;
+        SimRunnerBase _runner;
+        int _index;
         Transform _shaft, _head;
 
-        public void Build(LabSimRunner runner, GreyboxPalette palette)
+        public void Build(SimRunnerBase runner, int index, GreyboxPalette palette)
         {
             _runner = runner;
+            _index = index;
             float hr = (float)PhysicsConfig.Current.Racket.HeadRadius;
             float sweet = (float)PhysicsConfig.Current.Racket.SweetSpotRadius;
 
@@ -41,8 +43,8 @@ namespace SquashGame
 
         void LateUpdate()
         {
-            if (_runner == null || _runner.Sim == null) return;
-            RenderSnapshot v = _runner.View;
+            if (_runner == null || _runner.Clock == null) return;
+            AthleteSnapshot v = _runner.View.Athlete(_index);
 
             Greybox.PlaceBar(_shaft, v.RacketAnchor, v.RacketHead, 0.03f, 0.03f);
 

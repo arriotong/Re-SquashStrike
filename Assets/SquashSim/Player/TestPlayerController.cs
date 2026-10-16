@@ -26,6 +26,13 @@ namespace SquashSim
         public SimEvent LastContact;
         public bool StrokeFinished;
 
+        /// <summary>Which athlete this is (0 or 1 in a match). Stamped on racket contacts.</summary>
+        public int Index;
+
+        /// <summary>When false the racket swings but cannot touch the ball (match: not this
+        /// player's turn). Always true in the lab.</summary>
+        public bool ContactEnabled = true;
+
         readonly V3 _origin = new V3(0, 1.0, 0);
 
         public TestPlayerController() : this(null) { }
@@ -70,9 +77,11 @@ namespace SquashSim
             RacketIntentSolver.Step(IntentSolver, Aim, Swing, controlQuality, dt);
 
             RacketPhysics.Step(Racket, Swing, IntentSolver, Aim, Player, ball, Prediction, dt);
-            SimEvent contact = RacketPhysics.TryContact(Racket, ball, Swing, dt);
+            SimEvent contact = ContactEnabled ? RacketPhysics.TryContact(Racket, ball, Swing, dt) : null;
             if (contact != null)
             {
+                contact.PlayerIndex = Index;
+                if (ball.LastRacketContact != null) ball.LastRacketContact.By = Index.ToString();
                 contact.Label = Interpretation.Label;
                 contact.ReachState = Assist.ReachState;
                 contact.Balance = Assist.Balance;

@@ -19,11 +19,11 @@ namespace SquashGame
         static readonly Color Cold = new Color(0.20f, 0.30f, 0.55f);
         static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
 
-        LabSimRunner _runner;
+        SimRunnerBase _runner;
         Transform _ball, _shadow;
         Material _ballMat, _shadowMat;
 
-        public void Build(LabSimRunner runner, GreyboxPalette palette)
+        public void Build(SimRunnerBase runner, GreyboxPalette palette)
         {
             _runner = runner;
             _ballMat = palette.LitColor(Cold);
@@ -37,8 +37,8 @@ namespace SquashGame
 
         void LateUpdate()
         {
-            if (_runner == null || _runner.Sim == null) return;
-            BallState ball = _runner.Sim.Ball;
+            if (_runner == null || _runner.Clock == null) return;
+            BallState ball = _runner.Ball;
             SimConfig cfg = PhysicsConfig.Current;
 
             float visualRadius = (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale);

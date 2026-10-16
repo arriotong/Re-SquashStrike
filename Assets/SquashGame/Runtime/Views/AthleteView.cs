@@ -16,16 +16,18 @@ namespace SquashGame
 {
     public sealed class AthleteView : MonoBehaviour
     {
-        LabSimRunner _runner;
+        SimRunnerBase _runner;
+        int _index;
         Transform _body, _shoulders, _shadow;
 
-        public void Build(LabSimRunner runner, GreyboxPalette palette)
+        public void Build(SimRunnerBase runner, int index, Color bodyColor, GreyboxPalette palette)
         {
             _runner = runner;
+            _index = index;
             var cfg = PhysicsConfig.Current.Player;
             float r = (float)cfg.Radius, h = (float)cfg.Height;
 
-            var bodyMat = palette.LitColor(Greybox.Hex(0x4d6d8f));
+            var bodyMat = palette.LitColor(bodyColor);
             _body = new GameObject("Body").transform;
             _body.SetParent(transform, false);
             var capsule = Greybox.Primitive(PrimitiveType.Capsule, "Capsule", _body, bodyMat);
@@ -51,11 +53,11 @@ namespace SquashGame
 
         void LateUpdate()
         {
-            if (_runner == null || _runner.Sim == null) return;
-            RenderSnapshot v = _runner.View;
-            _body.SetPositionAndRotation(v.PlayerPos, Quaternion.LookRotation(v.PlayerForward, Vector3.up));
-            _shoulders.SetPositionAndRotation(v.PlayerPos, Quaternion.LookRotation(v.ShoulderForward, Vector3.up));
-            _shadow.position = new Vector3(v.PlayerPos.x, 0.008f, v.PlayerPos.z);
+            if (_runner == null || _runner.Clock == null) return;
+            AthleteSnapshot v = _runner.View.Athlete(_index);
+            _body.SetPositionAndRotation(v.Pos, Quaternion.LookRotation(v.Forward, Vector3.up));
+            _shoulders.SetPositionAndRotation(v.Pos, Quaternion.LookRotation(v.ShoulderForward, Vector3.up));
+            _shadow.position = new Vector3(v.Pos.x, 0.008f, v.Pos.z);
         }
     }
 }

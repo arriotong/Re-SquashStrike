@@ -33,6 +33,12 @@ namespace SquashSim
         public bool Adjusting;
         public double Balance = 1.0;
 
+        // Movement modifiers (match only; the lab never sets them, so its
+        // arithmetic is untouched). Seconds remaining for each effect.
+        public double RecoveryTimer;     // after a stroke: slower to push off again
+        public double BoostTimer;        // well-timed split-step: quicker first step
+        public double PlantTimer;        // mistimed split-step: briefly planted
+
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 
         public TestPlayer(V3 spawn)
@@ -54,6 +60,7 @@ namespace SquashSim
             MovementState = "set";
             ReachState = ReachStates.Normal;
             Adjusting = false;
+            RecoveryTimer = 0; BoostTimer = 0; PlantTimer = 0;
         }
     }
 }

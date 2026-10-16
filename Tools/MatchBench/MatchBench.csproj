@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Headless matches: wall-bot vs wall-bot through SquashSim.Core's
+    MatchSimulation. Prints rally statistics and checks determinism.
+    The seed of the Phase 1 "AI-vs-AI balance dashboard".
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/SquashSim/**/*.cs" LinkBase="SquashSim" />
+  </ItemGroup>
+</Project>

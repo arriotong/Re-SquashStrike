@@ -8,7 +8,7 @@
 //          (never screen position). Deadzone/curves are NOT applied
 //          here - AimController applies them once for both devices.
 //   Hit    LMB / pad South      Touch  RMB / pad East
-//   Focus  Space / LT (reserved for split-step)
+//   Focus  Space / LT: split-step, timed to the opponent's contact
 //   Pause  Esc / Start
 //
 // Stroke edges are ACCUMULATED until a fixed step consumes them
@@ -179,6 +179,7 @@ namespace SquashGame
             }
 
             Intent.MomentumFocus = _focus.IsPressed();
+            if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
         }
 

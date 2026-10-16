@@ -27,7 +27,7 @@ namespace SquashSim
         public V3 CopyFrom(V3 b) { X = b.X; Y = b.Y; Z = b.Z; return this; }
         public V3 Clone() { return new V3(X, Y, Z); }
 
-        public override string ToString() { return "(" + X + ", " + Y + ", " + Z + ")"; }
+        public override string ToString() { return "(" + X.ToString("0.00") + ", " + Y.ToString("0.00") + ", " + Z.ToString("0.00") + ")"; }
 
         public static double Dot(V3 a, V3 b) { return a.X * b.X + a.Y * b.Y + a.Z * b.Z; }
 

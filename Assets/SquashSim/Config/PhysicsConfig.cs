@@ -205,6 +205,58 @@ namespace SquashSim
 
     public sealed class NickSection { public double DetectHeight, MinNormalSpeed; }
 
+    // ---------------- match-only sections (M2) ----------------
+    // The HTML lab has no equivalent of these; LabSimulation never reads them,
+    // which is what keeps the lab parity traces bit-identical.
+
+    /// <summary>Ball hitting a player's body (a vertical capsule of Player.Radius / Player.Height).</summary>
+    public sealed class BodySection
+    {
+        public bool Enabled;
+        public double Restitution;          // normal bounce off a body: clothing and flesh are dead
+        public double TangentialRetain;     // fraction of sliding speed kept along the body
+        public double SpinRetain;
+        public int SweepSamples;            // sub-samples of the ball's path per step (thin grazes at 70 m/s)
+    }
+
+    /// <summary>After a stroke the body needs time to recover; stretched strokes cost more.</summary>
+    public sealed class RecoverySection
+    {
+        public double Normal, Lunge, DeepLunge, Stretch;    // seconds of reduced movement after contact
+        public double RateScale;                             // acceleration multiplier while recovering
+        public double SpeedScale;                            // top-speed multiplier while recovering
+    }
+
+    /// <summary>Momentum Focus = split-step: a hop timed to the opponent's contact.</summary>
+    public sealed class SplitStepSection
+    {
+        public double Window;               // +-seconds around the opponent's racket contact
+        public double BoostSeconds, BoostRateScale;
+        public double PlantSeconds, PlantRateScale;        // mistimed: briefly planted
+    }
+
+    /// <summary>Player bodies cannot pass through each other.</summary>
+    public sealed class PlayerContactSection
+    {
+        public bool Enabled;
+        public double Softness;             // 0..1 share of the closing speed removed per contact
+    }
+
+    /// <summary>Rules, serve and match flow.</summary>
+    public sealed class MatchSection
+    {
+        public double LineWidth;            // painted lines count as OUT (walls) / FAULT (serve floor lines)
+        public double FootFaultTolerance;   // server's centre may be this far outside the box at contact
+        public double ServeTossSpeed, ServeTossHeight, ServeTossForward, ServeTossSide;
+        public double BetweenRallySeconds;
+        public string Scoring;              // "par" | "english"
+        public int ParPoints;               // 11, win by 2
+        public int EnglishPoints;           // 9; at 8-8 the receiver may "set two" (to 10)
+        public bool EnglishSetTwo;
+        public int GamesToWin;
+        public double TX, TZ;               // where players recover to (the T)
+    }
+
     public sealed class SimConfig
     {
         public SimSection Sim;
@@ -227,6 +279,13 @@ namespace SquashSim
         public AssistSection Assist;
         public CameraSection Camera;
         public NickSection Nick;
+
+        // Match-only (M2). Never read by LabSimulation.
+        public BodySection Body;
+        public RecoverySection Recovery;
+        public SplitStepSection SplitStep;
+        public PlayerContactSection PlayerContact;
+        public MatchSection Match;
 
         /// <summary>The shipped defaults. Must equal lab/config/PhysicsConfig.js defaults()
         /// (SimParity checks this against every trace's config).</summary>
@@ -345,7 +404,26 @@ namespace SquashSim
                     Height = 3.95, Distance = 6.60, Fov = 52, LookAtHeight = 1.55, LookAtDepth = 3.20,
                     LateralFollow = 0.22, FollowSmoothing = 2.4
                 },
-                Nick = new NickSection { DetectHeight = 0.09, MinNormalSpeed = 2.5 }
+                Nick = new NickSection { DetectHeight = 0.09, MinNormalSpeed = 2.5 },
+
+                Body = new BodySection { Enabled = true, Restitution = 0.15, TangentialRetain = 0.45, SpinRetain = 0.5, SweepSamples = 4 },
+                Recovery = new RecoverySection
+                {
+                    Normal = 0.0, Lunge = 0.12, DeepLunge = 0.22, Stretch = 0.35, RateScale = 0.35, SpeedScale = 0.6
+                },
+                SplitStep = new SplitStepSection
+                {
+                    Window = 0.12, BoostSeconds = 0.25, BoostRateScale = 1.3, PlantSeconds = 0.10, PlantRateScale = 0.2
+                },
+                PlayerContact = new PlayerContactSection { Enabled = true, Softness = 0.5 },
+                Match = new MatchSection
+                {
+                    LineWidth = 0.05, FootFaultTolerance = 0.15,
+                    ServeTossSpeed = 3.6, ServeTossHeight = 1.0, ServeTossForward = 0.35, ServeTossSide = 0.35,
+                    BetweenRallySeconds = 2.0,
+                    Scoring = "par", ParPoints = 11, EnglishPoints = 9, EnglishSetTwo = true, GamesToWin = 1,
+                    TX = 0.0, TZ = 5.0
+                }
             };
         }
     }

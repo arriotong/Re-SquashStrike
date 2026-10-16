@@ -68,7 +68,39 @@ Tests: EditMode `ClockTests` drive golden rallies through the clock at 30/60/144
 jittery frames and 0.1x — every step bit-identical. PlayMode `WarmUpCourtTests` boot the
 scene, drive a virtual gamepad, and save `Captures/M1_WarmUpCourt.png`.
 
-## Next: M2 — one full game vs a wall-bot
+## M2 — one full game vs the wall-bot
 
-Referee, serve, PAR-11 + English scoring, ball-vs-body, player capsules,
-recovery penalty, split-step.
+Open `Assets/Scenes/Match.unity` and press Play (scenes are rebuilt by
+**re:SquashStrike > Build Scenes**). You serve first from the right box: Hit to
+toss, Hit again to strike — aim up and across.
+
+| Piece | Where |
+| --- | --- |
+| Two athletes, one ball, serve flow, turn gating | `SquashSim/Match/MatchSimulation` |
+| Rules: tin, out lines (lines are out), down, not up, serve faults (service line, front wall first, opposite back quarter), foot fault, dropped toss, let / hit-self | `RallyReferee` — an observer, never touches the ball |
+| PAR-11 (win by 2) and English (hand-out, 8-8 set one/two), box alternation, lets | `Scoring` (`MatchScore`) |
+| Ball vs body (dead bounce, swept so 70 m/s cannot slip through), body vs body | `BodyCollision` |
+| Recovery after a stroke (longer when stretched) | `Recovery` config + `PlayerMovement` modifiers |
+| Split-step (Space / LT) timed to the opponent's contact: boost, or planted if mistimed | `SplitStepTracker` |
+| The opponent: plays through `InputIntent` only, reads the ball with the real integrator | `WallBot` |
+| Score bug, referee call banner, serve prompt, game over | `SquashGame/MatchHud` |
+
+The lab simulation is untouched: every match mechanic is off unless
+`MatchSimulation` drives it, and SimParity still reports all 19 lab traces
+bit-identical.
+
+```bash
+dotnet run --project Tools/MatchBench -c Release -- --games 20 [--scoring english] [--verbose] [--trace]
+```
+
+plays wall-bot vs wall-bot headless (~250x real time), prints how rallies end
+and shots per rally, and replays every game to prove it is deterministic.
+
+Tests: EditMode `MatchTests` (34: every referee call, both scoring systems,
+collisions, recovery, split-step, full deterministic games); PlayMode
+`MatchPlayTests` serve with a virtual gamepad through to a referee call.
+
+## Next: M3 — AI opponent v1 + interference v1
+
+Real AI (rollouts, positioning, personalities) replacing the wall-bot;
+obstruction detection, the appeal key, Let / No let, referee replay.

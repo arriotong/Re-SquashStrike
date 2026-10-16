@@ -31,13 +31,16 @@ namespace SquashSim
         public readonly StrokeButton Hit = new StrokeButton();
         public readonly StrokeButton Touch = new StrokeButton();
 
-        public bool MomentumFocus;   // reserved (split-step, Phase 2 decision)
+        public bool MomentumFocus;   // held state of the split-step button
+        /// <summary>Split-step press edge (Space / LT). One-shot, cleared with the stroke edges.</summary>
+        public bool SplitStepPressed;
         public bool PausePressed;
 
         public void ClearEdges()
         {
             Hit.Pressed = false; Hit.Released = false;
             Touch.Pressed = false; Touch.Released = false;
+            SplitStepPressed = false;
         }
     }
 }

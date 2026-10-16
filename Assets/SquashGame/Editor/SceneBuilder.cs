@@ -1,9 +1,9 @@
 // ===========================================================
 // Assets/SquashGame/Editor/SceneBuilder.cs
-// Builds the M1 warm-up court scene and its greybox material assets
-// from code, so the scene is reproducible and reviewable as a diff.
+// Builds the scenes (M2 match, M1 warm-up court) and their greybox
+// material assets from code, so they are reproducible and diffable.
 //
-//   Menu:   re:SquashStrike > Build Warm-Up Court Scene
+//   Menu:   re:SquashStrike > Build Scenes (Warm-Up Court + Match)
 //   Batch:  unity run . -- -executeMethod SquashGame.Editor.SceneBuilder.BuildFromCommandLine
 // ===========================================================
 
@@ -21,31 +21,47 @@ namespace SquashGame.Editor
         const string MaterialDir = "Assets/SquashGame/Materials";
         const string PalettePath = MaterialDir + "/GreyboxPalette.asset";
 
-        [MenuItem("re:SquashStrike/Build Warm-Up Court Scene")]
+        public const string MatchScenePath = "Assets/Scenes/Match.unity";
+
+        [MenuItem("re:SquashStrike/Build Scenes (Warm-Up Court + Match)")]
         public static void Build()
         {
             GreyboxPalette palette = EnsurePalette();
 
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Camera cam;
+            var scene = NewCourtScene(out cam);
+            var lab = new GameObject("WarmUpCourt").AddComponent<WarmUpCourt>();
+            lab.Palette = palette;
+            lab.GameplayCamera = cam;
+            EditorSceneManager.SaveScene(scene, ScenePath);
 
+            scene = NewCourtScene(out cam);
+            var match = new GameObject("MatchCourt").AddComponent<MatchCourt>();
+            match.Palette = palette;
+            match.GameplayCamera = cam;
+            EditorSceneManager.SaveScene(scene, MatchScenePath);
+
+            EditorBuildSettings.scenes = new[]
+            {
+                new EditorBuildSettingsScene(MatchScenePath, true),
+                new EditorBuildSettingsScene(ScenePath, true)
+            };
+            AssetDatabase.SaveAssets();
+            Debug.Log("[SceneBuilder] Built " + MatchScenePath + " and " + ScenePath);
+        }
+
+        static UnityEngine.SceneManagement.Scene NewCourtScene(out Camera cam)
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var camGo = new GameObject("Main Camera");
             camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
+            cam = camGo.AddComponent<Camera>();
             camGo.AddComponent<AudioListener>();
             camGo.AddComponent<GameplayCameraRig>();
             cam.fieldOfView = 52f;
             cam.transform.position = new Vector3(0f, 3.95f, 16.35f);
             cam.transform.LookAt(new Vector3(0f, 1.55f, 3.2f));
-
-            var root = new GameObject("WarmUpCourt");
-            var court = root.AddComponent<WarmUpCourt>();
-            court.Palette = palette;
-            court.GameplayCamera = cam;
-
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
-            AssetDatabase.SaveAssets();
-            Debug.Log("[SceneBuilder] Built " + ScenePath);
+            return scene;
         }
 
         public static void BuildFromCommandLine()

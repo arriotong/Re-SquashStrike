@@ -24,7 +24,9 @@ namespace SquashGame
 {
     public sealed class DebugOverlay : MonoBehaviour
     {
-        public LabSimRunner Runner;
+        public SimRunnerBase Runner;
+        LabSimRunner Lab { get { return Runner as LabSimRunner; } }
+        TestPlayerController Human { get { var a = Runner.Athletes; int h = Runner.HumanIndex; return a[h < a.Length ? h : 0]; } }
         public bool PanelVisible;
         public bool DebugView;   // off by default: normal play shows no aim target (lab invariant 11)
 
@@ -35,7 +37,7 @@ namespace SquashGame
         float _fps = 60f, _fpsAccum; int _fpsFrames;
         GUIStyle _box, _label, _small;
 
-        public void Build(LabSimRunner runner, GreyboxPalette palette)
+        public void Build(SimRunnerBase runner, GreyboxPalette palette)
         {
             Runner = runner;
             _palette = palette;
@@ -78,7 +80,7 @@ namespace SquashGame
         {
             _fpsAccum += Time.unscaledDeltaTime; _fpsFrames++;
             if (_fpsAccum >= 0.4f) { _fps = _fpsFrames / _fpsAccum; _fpsAccum = 0; _fpsFrames = 0; }
-            if (Runner == null || Runner.Sim == null) return;
+            if (Runner == null || Runner.Clock == null) return;
 
             HandleKeys();
             UpdateCursor();
@@ -100,14 +102,18 @@ namespace SquashGame
             if (kb.digit4Key.wasPressedThisFrame) Runner.SetTimeScale(0.1);
             if (kb.pKey.wasPressedThisFrame) Runner.TogglePause();
             if (kb.periodKey.wasPressedThisFrame) Runner.StepOnce();
-            if (kb.rKey.wasPressedThisFrame || kb.backspaceKey.wasPressedThisFrame)
+            var lab = Lab;
+            if (lab != null)
             {
-                if (ctrl) Runner.ResetFull(); else Runner.ResetBall();
+                if (kb.rKey.wasPressedThisFrame || kb.backspaceKey.wasPressedThisFrame)
+                {
+                    if (ctrl) lab.ResetFull(); else lab.ResetBall();
+                }
+                if (kb.fKey.wasPressedThisFrame) lab.FeedSingle();
+                if (kb.gKey.wasPressedThisFrame) lab.ToggleRepeat();
+                if (kb.rightBracketKey.wasPressedThisFrame) lab.CyclePreset(1);
+                if (kb.leftBracketKey.wasPressedThisFrame) lab.CyclePreset(-1);
             }
-            if (kb.fKey.wasPressedThisFrame) Runner.FeedSingle();
-            if (kb.gKey.wasPressedThisFrame) Runner.ToggleRepeat();
-            if (kb.rightBracketKey.wasPressedThisFrame) Runner.CyclePreset(1);
-            if (kb.leftBracketKey.wasPressedThisFrame) Runner.CyclePreset(-1);
             if (kb.hKey.wasPressedThisFrame) PhysicsConfig.Current.Assist.Enabled = !PhysicsConfig.Current.Assist.Enabled;
         }
 
@@ -139,7 +145,8 @@ namespace SquashGame
         void DrawDebug()
         {
             bool on = DebugView;
-            var ctrl = Runner.Sim.Player;
+            var ctrl = Human;
+            AthleteSnapshot hv = Runner.View.Athlete(Runner.HumanIndex);
 
             _trail.positionCount = on ? Runner.Trail.Count : 0;
             if (on)
@@ -162,7 +169,7 @@ namespace SquashGame
             {
                 Vector3 target = SimToWorld.Pos(ctrl.Aim.IntendedPoint);
                 _aimMarker.position = target;
-                Vector3 from = ctrl.Prediction.Valid ? SimToWorld.Pos(ctrl.Prediction.Point) : Runner.View.RacketHead;
+                Vector3 from = ctrl.Prediction.Valid ? SimToWorld.Pos(ctrl.Prediction.Point) : hv.RacketHead;
                 _aimRay.SetPosition(0, from);
                 _aimRay.SetPosition(1, target);
             }
@@ -170,8 +177,8 @@ namespace SquashGame
             _faceNormal.positionCount = on ? 2 : 0;
             if (on)
             {
-                _faceNormal.SetPosition(0, Runner.View.RacketHead);
-                _faceNormal.SetPosition(1, Runner.View.RacketHead + Runner.View.RacketFaceNormal * 0.35f);
+                _faceNormal.SetPosition(0, hv.RacketHead);
+                _faceNormal.SetPosition(1, hv.RacketHead + hv.RacketFaceNormal * 0.35f);
             }
 
             var events = Runner.RecentEvents;
@@ -183,6 +190,7 @@ namespace SquashGame
                 var ev = events[i];
                 _contactMarkers[i].position = SimToWorld.Pos(ev.Point);
                 var col = ev.Type == SimEventType.RacketContact ? new Color(0.37f, 1f, 0.75f)
+                    : ev.Type == SimEventType.BodyHit ? new Color(1f, 0.85f, 0.2f)
                     : ev.Nick ? new Color(1f, 0.2f, 0.9f)
                     : ev.SurfaceClass == "tin" ? new Color(1f, 0.25f, 0.25f) : Color.white;
                 _contactMarkers[i].GetComponent<MeshRenderer>().sharedMaterial.color = col;
@@ -211,13 +219,14 @@ namespace SquashGame
 
         void OnGUI()
         {
-            if (Runner == null || Runner.Sim == null) return;
+            if (Runner == null || Runner.Clock == null) return;
             EnsureStyles();
             var clock = Runner.Clock;
 
             // Always-on one-liner, bottom left.
-            string status = string.Format("re:SquashStrike warm-up court  |  {0:0} fps  |  {1}x{2}  |  preset: {3}  |  F1 lab panel  F2 debug view",
-                _fps, clock.TimeScale, clock.Paused ? " PAUSED" : "", Runner.CurrentPreset);
+            string where = Lab != null ? "warm-up court  |  preset: " + Lab.CurrentPreset : "match";
+            string status = string.Format("re:SquashStrike {0}  |  {1:0} fps  |  {2}x{3}  |  F1 lab panel  F2 debug view",
+                where, _fps, clock.TimeScale, clock.Paused ? " PAUSED" : "");
             GUI.Label(new Rect(12, Screen.height - 26, Screen.width - 24, 22), status, _small);
 
             if (Cursor.lockState != CursorLockMode.Locked && !PanelVisible && !clock.Paused)
@@ -226,7 +235,7 @@ namespace SquashGame
             if (DebugView && PhysicsConfig.Current.Aim.ShowDebugLabel)
             {
                 var lc = Runner.LastRacketContact;
-                string label = Runner.Sim.Player.Interpretation.Label;
+                string label = Human.Interpretation.Label;
                 GUI.Label(new Rect(Screen.width / 2 - 200, 14, 400, 24), "<b>" + label + "</b>" +
                     (lc != null ? "   last: " + lc.Technique : ""), _label);
             }
@@ -244,24 +253,28 @@ namespace SquashGame
             if (GUILayout.Button("0.1x")) Runner.SetTimeScale(0.1);
             GUILayout.EndHorizontal();
 
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Feed")) Runner.FeedSingle();
-            if (GUILayout.Button(Runner.Sim.Launcher.IsRepeating ? "Repeat: ON" : "Repeat: off")) Runner.ToggleRepeat();
-            if (GUILayout.Button("Reset ball")) Runner.ResetBall();
-            if (GUILayout.Button("Reset all")) Runner.ResetFull();
-            GUILayout.EndHorizontal();
-
-            GUILayout.Label("Preset", _small);
-            int cols = 3, i = 0;
-            GUILayout.BeginHorizontal();
-            foreach (var p in TestPresets.All())
+            var lab = Lab;
+            if (lab != null)
             {
-                if (i > 0 && i % cols == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
-                string n = p.Id == Runner.CurrentPreset ? "[" + p.Name + "]" : p.Name;
-                if (GUILayout.Button(n)) Runner.SelectPreset(p.Id);
-                i++;
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Feed")) lab.FeedSingle();
+                if (GUILayout.Button(lab.Sim.Launcher.IsRepeating ? "Repeat: ON" : "Repeat: off")) lab.ToggleRepeat();
+                if (GUILayout.Button("Reset ball")) lab.ResetBall();
+                if (GUILayout.Button("Reset all")) lab.ResetFull();
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label("Preset", _small);
+                int cols = 3, i = 0;
+                GUILayout.BeginHorizontal();
+                foreach (var p in TestPresets.All())
+                {
+                    if (i > 0 && i % cols == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
+                    string n = p.Id == lab.CurrentPreset ? "[" + p.Name + "]" : p.Name;
+                    if (GUILayout.Button(n)) lab.SelectPreset(p.Id);
+                    i++;
+                }
+                GUILayout.EndHorizontal();
             }
-            GUILayout.EndHorizontal();
 
             var cfg = PhysicsConfig.Current;
             cfg.Assist.Enabled = GUILayout.Toggle(cfg.Assist.Enabled, " Contact assistance");
@@ -274,13 +287,12 @@ namespace SquashGame
 
         string PanelText()
         {
-            var sim = Runner.Sim;
-            var ball = sim.Ball;
-            var ctrl = sim.Player;
+            var ball = Runner.Ball;
+            var ctrl = Human;
             var clock = Runner.Clock;
             var sb = new StringBuilder();
             sb.AppendFormat("<b>WARM-UP COURT</b>   {0:0} fps   steps/frame {1}{2}\n", _fps, clock.StepsLastFrame, clock.Clamped ? " (clamped)" : "");
-            sb.AppendFormat("sim t {0:0.00}s   step {1}   {2}x{3}\n\n", clock.SimulatedTime, sim.StepCount, clock.TimeScale, clock.Paused ? "  PAUSED" : "");
+            sb.AppendFormat("sim t {0:0.00}s   step {1}   {2}x{3}\n\n", clock.SimulatedTime, clock.TotalSteps, clock.TimeScale, clock.Paused ? "  PAUSED" : "");
 
             sb.AppendFormat("<b>Ball</b>  {0:0.0} m/s   spin {1:0} rad/s\n", ball.Speed(), ball.SpinRate());
             sb.AppendFormat("temp {0:0.0}  ({1})\n", ball.Temperature, BallTemperature.StateName(ball.Temperature));

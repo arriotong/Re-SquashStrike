@@ -35,11 +35,11 @@ namespace SquashGame
 
             var athlete = new GameObject("AthleteView").AddComponent<AthleteView>();
             athlete.transform.SetParent(transform, false);
-            athlete.Build(Runner, Palette);
+            athlete.Build(Runner, 0, Greybox.Hex(0x4d6d8f), Palette);
 
             var racket = new GameObject("RacketView").AddComponent<RacketView>();
             racket.transform.SetParent(transform, false);
-            racket.Build(Runner, Palette);
+            racket.Build(Runner, 0, Palette);
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();
             overlay.transform.SetParent(transform, false);

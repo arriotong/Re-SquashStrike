@@ -27,6 +27,20 @@ namespace SquashSim
             bool wantsMove = intent.MoveMagnitude > 0.01;
             player.Adjusting = adjusting;
 
+            // Match-only modifiers. All timers are zero in the lab, so this block
+            // never runs there and the lab's arithmetic is exactly unchanged.
+            bool modified = player.RecoveryTimer > 0 || player.BoostTimer > 0 || player.PlantTimer > 0;
+            double modRate = 1, modSpeed = 1;
+            if (modified)
+            {
+                var rec = PhysicsConfig.Current.Recovery;
+                var ss = PhysicsConfig.Current.SplitStep;
+                if (player.RecoveryTimer > 0) { modRate *= rec.RateScale; modSpeed *= rec.SpeedScale; }
+                if (player.PlantTimer > 0) modRate *= ss.PlantRateScale;
+                else if (player.BoostTimer > 0) modRate *= ss.BoostRateScale;
+                maxSpeed *= modSpeed;
+            }
+
             double desiredX = intent.Move.X * maxSpeed;
             double desiredZ = intent.Move.Z * maxSpeed;
 
@@ -53,6 +67,8 @@ namespace SquashSim
                 }
             }
 
+            if (modified) rate *= modRate;
+
             double maxDelta = rate * dt;
             if (deltaMag > maxDelta && deltaMag > 1e-8)
             {
@@ -70,6 +86,13 @@ namespace SquashSim
 
             player.Speed = DMath.Hypot(player.Vel.X, player.Vel.Z);
             player.MovementState = DeriveMovementState(player, intent, adjusting);
+
+            if (modified)
+            {
+                if (player.RecoveryTimer > 0) player.RecoveryTimer = DMath.Max(0, player.RecoveryTimer - dt);
+                if (player.BoostTimer > 0) player.BoostTimer = DMath.Max(0, player.BoostTimer - dt);
+                if (player.PlantTimer > 0) player.PlantTimer = DMath.Max(0, player.PlantTimer - dt);
+            }
         }
 
         /// <summary>Which footwork is the athlete using? Derived; drives readout/animation, never physics.</summary>
