@@ -1,0 +1,59 @@
+// ===========================================================
+// Assets/SquashSim/Player/TestPlayer.cs
+// Port of lab/player/TestPlayer.js. Player STATE only - pure data.
+// Movement, facing, aim, swing and racket systems each write into it.
+// ===========================================================
+
+namespace SquashSim
+{
+    public static class ReachStates
+    {
+        public const string Normal = "normal";
+        public const string Lunge = "lunge";
+        public const string DeepLunge = "deepLunge";
+        public const string Stretch = "stretch";
+        public const string Unreachable = "unreachable";
+    }
+
+    public sealed class TestPlayer
+    {
+        public readonly V3 Pos;
+        public readonly V3 Vel = new V3(0, 0, 0);
+        public double Facing;            // radians; 0 looks toward the front wall
+        public double Speed;
+        public bool Precision;
+        public readonly V3 Spawn;
+
+        /// <summary>+1 forehand side, -1 backhand. DERIVED from the ball. 0 = undetermined.</summary>
+        public int SwingSide;
+
+        // Derived athletic state, chosen FOR the player.
+        public string MovementState = "set";
+        public string ReachState = ReachStates.Normal;
+        public bool Adjusting;
+        public double Balance = 1.0;
+
+        public TestPlayer() : this(new V3(0, 0, 6.2)) { }
+
+        public TestPlayer(V3 spawn)
+        {
+            Pos = new V3(spawn.X, spawn.Y, spawn.Z);
+            Spawn = spawn.Clone();
+        }
+
+        public void Reset()
+        {
+            Pos.X = Spawn.X;
+            Pos.Y = Spawn.Y;
+            Pos.Z = Spawn.Z;
+            Vel.X = 0; Vel.Y = 0; Vel.Z = 0;
+            Speed = 0;
+            Facing = 0;
+            SwingSide = 0;
+            Balance = 1.0;
+            MovementState = "set";
+            ReachState = ReachStates.Normal;
+            Adjusting = false;
+        }
+    }
+}

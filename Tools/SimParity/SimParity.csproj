@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Replays the HTML lab's golden traces through SquashSim.Core and checks
+    every fixed step is bit-identical.
+
+    Compiles the SAME source files Unity compiles (Assets/SquashSim), at the
+    C# version Unity 6 supports, so anything that builds here builds there.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RootNamespace>SimParity</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/SquashSim/**/*.cs" LinkBase="SquashSim" />
+    <Compile Include="../../Assets/SquashSim.Testing/*.cs" LinkBase="SquashSim.Testing" />
+  </ItemGroup>
+</Project>
