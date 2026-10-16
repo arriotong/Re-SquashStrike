@@ -22,6 +22,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
+            r.BeginMatch(MatchSettings.QuickGame());
             r.Clock.Pause();
 
             // Fresh you, exhausted opponent, side by side.

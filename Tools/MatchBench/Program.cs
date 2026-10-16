@@ -10,6 +10,8 @@
 //   dotnet run --project Tools/MatchBench -c Release -- [--games N] [--scoring par|english]
 //        [--p0 wallbot|retriever|attacker|shotmaker|grinder] [--p1 ...]
 //        [--d0 0..1] [--d1 0..1] [--verbose] [--trace]
+//        [--games-to-win N]  (3 = best of 5: breaks between games, the ball cools)
+//        [--warmup]          (each "game" starts with the knock-up and a cold ball)
 // ===========================================================
 
 using System;
@@ -24,6 +26,8 @@ public static class Program
 {
     static string P0 = "retriever", P1 = "wallbot";
     static double D0 = 0.7, D1 = 0.7;
+    static int GamesToWin = 1;
+    static bool WarmUp;
 
     public static int Main(string[] args)
     {
@@ -33,9 +37,12 @@ public static class Program
         P0 = Arg(args, "--p0") ?? P0; P1 = Arg(args, "--p1") ?? P1;
         D0 = double.Parse(Arg(args, "--d0") ?? D0.ToString()); D1 = double.Parse(Arg(args, "--d1") ?? D1.ToString());
         bool verbose = Array.IndexOf(args, "--verbose") >= 0;
+        GamesToWin = int.Parse(Arg(args, "--games-to-win") ?? "1");
+        WarmUp = Array.IndexOf(args, "--warmup") >= 0;
         if (Array.IndexOf(args, "--trace") >= 0) { TraceRallies(int.Parse(Arg(args, "--trace-rallies") ?? "4")); return 0; }
         if (Array.IndexOf(args, "--calibrate") >= 0) { Calibrate(games); return 0; }
         if (Array.IndexOf(args, "--notup") >= 0) { NotUpReport(games); return 0; }
+        if (Array.IndexOf(args, "--knockup") >= 0) { KnockUpReport(); return 0; }
 
         Console.WriteLine("P1 = " + Describe(P0, D0) + "   vs   P2 = " + Describe(P1, D1) + "   (" + scoring + ")");
         var kinds = new Dictionary<string, int>();
@@ -53,7 +60,7 @@ public static class Program
             string log2 = PlayGame(seedA, seedB, scoring, out _, out _);
             if (log1 != log2) nondeterministic++;
             if (!finished) unfinished++;
-            else wins[m.Score.GameWinner]++;
+            else wins[GamesToWin > 1 ? m.Score.MatchWinner : m.Score.GameWinner]++;
 
             simSeconds += m.Time;
             foreach (var o in m.History)
@@ -69,9 +76,12 @@ public static class Program
                 contacts[i] += m.RallyContacts[i];
             }
 
-            Console.WriteLine("game " + (g + 1).ToString().PadLeft(2) + ": " + m.Score.Points[0] + "-" + m.Score.Points[1]
-                + "  winner P" + (m.Score.GameWinner + 1) + "  " + m.History.Count + " rallies  "
-                + m.Time.ToString("0") + " s sim" + (finished ? "" : "  (DID NOT FINISH)"));
+            string result = GamesToWin > 1
+                ? "games " + m.Score.Games[0] + "-" + m.Score.Games[1] + "  winner P" + (m.Score.MatchWinner + 1)
+                : m.Score.Points[0] + "-" + m.Score.Points[1] + "  winner P" + (m.Score.GameWinner + 1);
+            Console.WriteLine((GamesToWin > 1 ? "match " : "game ") + (g + 1).ToString().PadLeft(2) + ": " + result
+                + "  " + m.History.Count + " rallies  "
+                + m.Time.ToString("0") + " s sim  ball at serves " + LastServeTemps + (finished ? "" : "  (DID NOT FINISH)"));
             if (verbose) foreach (var o in m.History) Console.WriteLine("      " + o);
         }
 
@@ -123,23 +133,56 @@ public static class Program
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
+    static string LastServeTemps = "";
+
+    /// <summary>One knock-up half: every feed, stroke and dead ball, with times.</summary>
+    static void KnockUpReport()
+    {
+        PhysicsConfig.ResetToDefaults();
+        PhysicsConfig.Current.Match.WarmUpEnabled = true;
+        var m = new MatchSimulation(0);
+        m.Bots[0] = Brain(P0, D0, 7); m.Bots[1] = Brain(P1, D1, 8);
+        double dt = PhysicsConfig.Current.Sim.FixedDt;
+        int shots = 0; bool asleep = false;
+        while (m.Phase == MatchPhase.WarmUp && m.WarmUpHalf == 0)
+        {
+            m.Step(dt);
+            foreach (var e in m.StepEvents)
+            {
+                if (e.Type == SimEventType.RacketContact) { shots++; Console.WriteLine(m.PhaseTime.ToString("0.00").PadLeft(6) + "  STROKE " + e.Label + " reach " + e.ReachState + " out " + e.BallSpeedOut.ToString("0.0")); }
+                else if (e.Type == SimEventType.Impact && !e.Resting) Console.WriteLine(m.PhaseTime.ToString("0.00").PadLeft(6) + "    " + e.SurfaceClass + " at " + e.Point + " v " + e.ImpactSpeed.ToString("0.0"));
+            }
+            if (m.Ball.Asleep != asleep) { asleep = m.Ball.Asleep; Console.WriteLine(m.PhaseTime.ToString("0.00").PadLeft(6) + (asleep ? "  ball asleep" : "  ball woken (feed)")); }
+        }
+        var c = m.Players[0];
+        Console.WriteLine("shots " + shots + ", ball " + m.Ball.Temperature.ToString("0.0") + " C, player at " + c.Player.Pos);
+    }
+
     /// <summary>Play one game; returns a log that fingerprints everything that happened.</summary>
     static string PlayGame(uint seedA, uint seedB, string scoring, out MatchSimulation m, out bool finished)
     {
         PhysicsConfig.ResetToDefaults();
         PhysicsConfig.Current.Match.Scoring = scoring;
+        PhysicsConfig.Current.Match.GamesToWin = GamesToWin;
+        PhysicsConfig.Current.Match.WarmUpEnabled = WarmUp;
         m = new MatchSimulation(0);
         m.Bots[0] = Brain(P0, D0, seedA);
         m.Bots[1] = Brain(P1, D1, seedB);
         double dt = PhysicsConfig.Current.Sim.FixedDt;
         var sb = new StringBuilder();
-        long maxSteps = (long)(60 * 60 / dt);      // an hour of play
-        while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.StepCount < maxSteps)
+        long maxSteps = (long)(60 * 60 * GamesToWin * 2 / dt);      // an hour of play per game
+        bool oneGame = GamesToWin <= 1;
+        double coldest = 99, warmest = 0;
+        while (!(m.Phase == MatchPhase.MatchOver || (oneGame && m.Phase == MatchPhase.GameOver)) && m.StepCount < maxSteps)
+        {
             m.Step(dt);
+            if (m.Phase == MatchPhase.AwaitToss && m.PhaseTime == dt) { coldest = Math.Min(coldest, m.Ball.Temperature); warmest = Math.Max(warmest, m.Ball.Temperature); }
+        }
+        LastServeTemps = coldest.ToString("0.0") + "-" + warmest.ToString("0.0") + " C";
         foreach (var o in m.History) sb.Append(o).Append('|').Append(o.Time.ToString("R")).Append('\n');
         sb.Append(m.Ball.Pos.X.ToString("R")).Append(m.Ball.Vel.Z.ToString("R"))
           .Append(m.Players[0].Player.Pos.X.ToString("R")).Append(m.Players[1].Player.Pos.Z.ToString("R"));
-        finished = m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver;
+        finished = m.Phase == MatchPhase.MatchOver || (oneGame && m.Phase == MatchPhase.GameOver);
         return sb.ToString();
     }
 

@@ -42,6 +42,10 @@ namespace SquashGame
             overlay.transform.SetParent(transform, false);
             overlay.Build(Runner, Palette);
 
+            var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
+            audio.transform.SetParent(transform, false);
+            audio.Build(Runner);
+
             if (GameplayCamera == null) GameplayCamera = Camera.main;
             if (GameplayCamera != null)
             {

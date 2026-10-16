@@ -11,6 +11,11 @@
 //   Focus  Space / LT: split-step, timed to the opponent's contact
 //   Appeal Q / pad Y: "Let, please"
 //   Pause  Esc / Start
+//   Ready  Enter / pad Y outside a rally: skip the knock-up or break
+//
+// Local two-player: each player owns an IntentSource restricted to
+// their devices (InputActionMap.devices), e.g. keyboard + mouse vs a
+// pad, or one pad each. With no restriction it listens to everything.
 //
 // Stroke edges are ACCUMULATED until a fixed step consumes them
 // (LabSimulation clears them). A press during a frame that runs zero
@@ -30,6 +35,10 @@ namespace SquashGame
         /// <summary>"keyboard" or "gamepad": which device last steered the aim.</summary>
         public string Device { get; private set; } = "keyboard";
         public bool HasGamepad { get; private set; }
+        /// <summary>The devices this source listens to (null = all).</summary>
+        public InputDevice[] Devices { get; private set; }
+        /// <summary>Short label for HUD prompts: "keyboard", "pad 1", ...</summary>
+        public string DeviceLabel { get; private set; } = "keyboard";
         public float VirtualAimX { get { return _vx; } }
         public float VirtualAimY { get { return _vy; } }
         public bool Recentering { get { return _recentering; } }
@@ -44,8 +53,9 @@ namespace SquashGame
 
         float _vx, _vy;
         bool _recentering;
+        bool _ready;
 
-        public IntentSource()
+        public IntentSource(InputDevice[] devices = null)
         {
             _map = new InputActionMap("Gameplay");
 
@@ -81,7 +91,40 @@ namespace SquashGame
             _pause.AddBinding("<Keyboard>/escape");
             _pause.AddBinding("<Gamepad>/start");
 
+            UseDevices(devices);
             _map.Enable();
+        }
+
+        /// <summary>Listen only to these devices (null = every device). Safe to call at any time.</summary>
+        public void UseDevices(InputDevice[] devices)
+        {
+            Devices = devices;
+            // A null InputDevice[] would convert to an EMPTY restriction (no devices at all).
+            // Re-resolve the bindings cleanly: swap devices on a disabled map.
+            bool wasEnabled = _map.enabled;
+            if (wasEnabled) _map.Disable();
+            if (devices == null) _map.devices = null; else _map.devices = devices;
+            if (wasEnabled) _map.Enable();
+            bool keyboard = devices == null || System.Array.Exists(devices, d => d is Keyboard);
+            Gamepad pad = OwnPad();
+            if (!keyboard && pad != null) Device = "gamepad";
+            else if (keyboard && devices != null && pad == null) Device = "keyboard";
+            DeviceLabel = keyboard ? (pad != null && devices != null ? "keyboard + pad" : "keyboard") : PadLabel(pad);
+            _vx = 0; _vy = 0; _recentering = false;
+        }
+
+        static string PadLabel(Gamepad pad)
+        {
+            int i = -1;
+            for (int k = 0; pad != null && k < Gamepad.all.Count; k++) if (Gamepad.all[k] == pad) i = k;
+            return i >= 0 ? "pad " + (i + 1) : "pad";
+        }
+
+        Gamepad OwnPad()
+        {
+            if (Devices == null) return Gamepad.current;
+            foreach (var d in Devices) if (d is Gamepad g && g.added) return g;
+            return null;
         }
 
         public void Dispose() { _map.Disable(); _map.Dispose(); }
@@ -115,7 +158,7 @@ namespace SquashGame
         public void Sample(float dt)
         {
             var aimCfg = PhysicsConfig.Current.Aim;
-            HasGamepad = Gamepad.current != null;
+            HasGamepad = OwnPad() != null;
 
             // ---- movement: court-relative, never camera-relative ----
             // Sim axes: +x = right side wall (seen from the back), -z = toward the front wall.
@@ -187,6 +230,22 @@ namespace SquashGame
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame()) Intent.AppealPressed = true;   // consumed by the next fixed step
+            if (_appeal.WasPressedThisFrame() || ReadyKey()) _ready = true;
+        }
+
+        bool ReadyKey()
+        {
+            bool keyboard = Devices == null || System.Array.Exists(Devices, d => d is Keyboard);
+            var kb = Keyboard.current;
+            return keyboard && kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame);
+        }
+
+        /// <summary>Did this player press Ready (Enter / pad Y) since the last call? Consumes it.</summary>
+        public bool ConsumeReady()
+        {
+            bool r = _ready;
+            _ready = false;
+            return r;
         }
 
         void SampleStroke(InputAction a, StrokeButton b, float dt)

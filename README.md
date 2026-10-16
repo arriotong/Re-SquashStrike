@@ -188,6 +188,14 @@ EditMode `AthleteRigTests` re-derive the frozen Gate A measurements from the C# 
 (segment lengths, separations, stature, socket 62.3 mm from the wrist), check the body
 stands at 1.800 m on the floor, the racket is within the WSF length, and the IK.
 
-## Next: M5 — local 2-player and match flow
+## M5 — match flow, audio, local 2-player
 
-Warm-up phase, best-of-5, breaks with ball cooling, an audio pass, two local players.
+- **Setup panel** (`MatchSetupPanel`): opponent (AI personality + difficulty, or Player 2), match length (1 / best of 3 / best of 5), PAR-11 or English, knock-up on/off. Keyboard, mouse or any pad; replaces the F6/F7 debug keys.
+- **Knock-up** (`MatchPhase.WarmUp`): a new ball starts cold (16 °C) and is warmed by the real thermal model. Each player has a 45 s half; dead balls are fed again; the AI knocks up with straight drives back to itself. Enter / pad Y skips it.
+- **Best of 5**: a 45 s break between games (the ball cools to about 24 °C, players recover). It starts the next game by itself, or Enter / Y starts it now. At the match result, Enter / Y returns to setup.
+- **Local 2P**: each player has an `IntentSource` restricted to their own devices. With one pad: keyboard + mouse vs the pad. With two pads: one pad each (the keyboard stays with P1). Pause from either player; play pauses if a pad is unplugged.
+- **Audio** (`Audio/AudioDirector`, `ProceduralSounds`): every sound is synthesised at start-up (no files): strings and frame clack, front / side / glass / tin / floor / nick, bodies, shoe squeaks on hard stops, and a referee chime.
+- Core defaults are unchanged (warm-up off, one game), so the lab, the benches and the earlier tests behave exactly as before. The Match scene turns the full flow on.
+- MatchBench: `--games-to-win 3 --warmup` plays full matches; `--knockup` traces one knock-up half.
+
+## Next: M6

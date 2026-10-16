@@ -269,7 +269,12 @@ namespace SquashSim
         public bool EnglishSetTwo;
         public int GamesToWin;
         public double TX, TZ;               // where players recover to (the T)
-        public double StartTemperature;     // ball temperature at the first serve (after the knock-up; the warm-up phase is M5)
+        public double StartTemperature;     // ball temperature at the first serve when the warm-up is skipped
+        public bool WarmUpEnabled;          // knock-up before the first serve (the ball starts cold)
+        public double WarmUpSecondsEach;    // each player's half of the knock-up (real squash: 150 s)
+        public double WarmUpRefeedSeconds;  // a dead ball is fed again after this long
+        public double BetweenGamesSeconds;  // break between games (real squash: 90 s); the ball cools
+        public bool AutoNextGame;           // after the break, the next game starts by itself
     }
 
     public sealed class SimConfig
@@ -439,7 +444,9 @@ namespace SquashSim
                     BetweenRallySeconds = 2.0,
                     Scoring = "par", ParPoints = 11, EnglishPoints = 9, EnglishSetTwo = true, GamesToWin = 1,
                     TX = 0.0, TZ = 5.0,
-                    StartTemperature = 30.0
+                    StartTemperature = 30.0,
+                    WarmUpEnabled = false, WarmUpSecondsEach = 45.0, WarmUpRefeedSeconds = 0.6,
+                    BetweenGamesSeconds = 45.0, AutoNextGame = true
                 },
                 Fatigue = new FatigueSection
                 {

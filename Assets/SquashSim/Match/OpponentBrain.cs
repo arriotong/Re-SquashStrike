@@ -234,31 +234,33 @@ namespace SquashSim
             _lastPhase = m.Phase;
 
             // Where did the opponent's last shot first land? (shades the T)
-            if (!_notedLanding && r.LastHitter == opp && r.Shots > 1 && m.Ball.FloorSinceFrontWall == 1)
+            if (!_notedLanding && m.TurnLastHitter == opp && m.TurnShots > 1 && m.Ball.FloorSinceFrontWall == 1)
             {
                 _notedLanding = true;
                 NoteOpponentLanding(m.Ball.LastImpactPoint.X);
             }
 
-            if (r.Shots != _lastShots)
+            if (m.TurnShots != _lastShots)
             {
-                if (r.Shots > 0 && r.LastHitter == opp)
+                if (m.TurnShots > 0 && m.TurnLastHitter == opp)
                 {
                     _oppContactTime = t;
                     if (Profile.SplitStepError > 0) _splitAt = t + System.Math.Abs(Gauss()) * Profile.SplitStepError;
                 }
-                if (r.Shots > 0 && r.LastHitter == me)
+                if (m.TurnShots > 0 && m.TurnLastHitter == me)
                 {
                     // Just played: decide where to recover to.
                     RecoveryTarget(m, p);
                 }
-                _lastShots = r.Shots;
+                _lastShots = m.TurnShots;
                 ResetTurn();
             }
 
-            bool live = m.Phase == MatchPhase.Rally && r.Outcome == null;
-            bool myTurn = live && r.PendingStriker == me;
-            bool canStrike = live && r.ExpectedStriker == me;
+            // Turn queries come from the match, so the same brain knocks up in the warm-up.
+            bool live = m.BallLive;
+            bool myTurn = m.GoingForBall(me);
+            bool canStrike = m.CanStrike(me);
+            bool warmUp = m.Phase == MatchPhase.WarmUp;
 
             // ---- split-step, timed to the opponent's contact ----
             if (_splitAt >= 0 && t >= _splitAt) { intent.SplitStepPressed = true; _splitAt = -1; }
@@ -266,7 +268,7 @@ namespace SquashSim
             // ---- movement ----
             double tx = p.Pos.X, tz = p.Pos.Z;
             bool move = live;
-            if (myTurn && r.Shots > 0)
+            if (myTurn && m.TurnShots > 0)
             {
                 if (t - _oppContactTime < Profile.ReactionTime) { tx = _tgtX; tz = _tgtZ; }   // still reacting
                 else if (canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Distance <= PhysicsConfig.Current.Reach.Normal)
@@ -283,9 +285,13 @@ namespace SquashSim
                 }
                 else { tx = _tgtX; tz = _tgtZ; }
             }
-            else if (myTurn && r.Shots == 0)
+            else if (myTurn && m.TurnShots == 0)
             {
                 move = false;                                    // serving: stay in the box
+            }
+            else if (warmUp)
+            {
+                move = false;                                    // the other half of the knock-up: wait in the corner
             }
             else if (live)
             {
@@ -321,7 +327,7 @@ namespace SquashSim
                     _pressed = true;                               // the toss
                 }
             }
-            if (canStrike && r.Shots == 0 && !_decided && ctrl.Prediction.Valid && !m.Ball.Asleep &&
+            if (canStrike && m.TurnShots == 0 && !_decided && ctrl.Prediction.Valid && !m.Ball.Asleep &&
                 m.PhaseTime >= ServeStrikeDelay && ctrl.Prediction.Time < TriggerLead)
             {
                 _decided = true;
@@ -329,7 +335,7 @@ namespace SquashSim
             }
 
             // ---- rally shot: decide, (maybe disguise), press ----
-            if (canStrike && r.Shots > 0)
+            if (canStrike && m.TurnShots > 0)
             {
                 var pred = ctrl.Prediction;
                 if (!_decided && pred.Valid && !m.Ball.Asleep && pred.Time < DecisionLead)
@@ -380,7 +386,7 @@ namespace SquashSim
             // ---- appeal: only when obstructed AND it expects the decision ----
             // A player knows the rules: they ask when they would get a let or a stroke, and
             // otherwise play on. Their read of the situation is imperfect (Misjudge).
-            if (myTurn && r.Shots > 0 && !_appealed && m.Interference.Striker == me &&
+            if (!warmUp && myTurn && m.TurnShots > 0 && !_appealed && m.Interference.Striker == me &&
                 m.Interference.ThisTurn != ObstructionKind.None)
             {
                 _obstructedFor += dt;
@@ -519,9 +525,13 @@ namespace SquashSim
 
         // ---------------- shot choice by rollouts ----------------
 
+        bool _knockUp;
+
         void Decide(MatchSimulation m, TestPlayerController ctrl, int me)
         {
-            var o = m.Players[1 - me].Player;
+            // Knock-up: the "opponent" to play for is yourself - a ball that comes back to you.
+            _knockUp = m.Phase == MatchPhase.WarmUp;
+            var o = m.Players[_knockUp ? me : 1 - me].Player;
             double best = double.NegativeInfinity;
             double bx = 0, by = 0.3;
             bool bt = false;
@@ -533,7 +543,7 @@ namespace SquashSim
                     if (s > best) { best = s; bx = CandX[ix]; by = CandY[iy]; bt = false; }
                 }
 
-            if (Profile.TouchPreference > 0 && Uniform() < Profile.TouchPreference)
+            if (!_knockUp && Profile.TouchPreference > 0 && Uniform() < Profile.TouchPreference)
             {
                 for (int ix = 0; ix < CandX.Length; ix++)
                     for (int iy = 0; iy < TouchY.Length; iy++)
@@ -640,16 +650,25 @@ namespace SquashSim
             double low = 1 - Clamp((frontH - TIN_H) / 3.0, 0, 1);
             double shortness = 1 - length;
 
+            // Tin and out margins against the model's own accuracy (see below).
+            double tinScale = pred.IsVolley ? TinMarginVolley : TinMarginScale;
+            double tinMargin = frontH - TIN_H;
+            double outMargin = FRONT_WALL_OUT_H - PhysicsConfig.Current.Match.LineWidth - frontH;
+            double risk = DMath.Exp(-tinMargin / tinScale) + DMath.Exp(-outMargin / OutMarginScale);
+
+            // Knock-up: easy to reach again (low "pressure" on yourself), a good length, safe.
+            if (_knockUp)
+            {
+                double offLine = Clamp(System.Math.Abs(x2 - opp.Pos.X) / HALF_W, 0, 1);   // straight back down your own wall
+                return -2.0 * pressure - 1.5 * offLine + 0.5 * length - risk;
+            }
+
             double score = Profile.WPressure * pressure + Profile.WLength * length + Profile.WWidth * width +
                            Profile.WLow * low + Profile.WShort * shortness;
 
             // Margins: how close to the tin and the out line this aim flies, measured against
             // the model's own accuracy (MatchBench --calibrate: about +-0.5 m, worse on volleys,
             // where the real contact point drifts most from the predicted one).
-            double tinScale = pred.IsVolley ? TinMarginVolley : TinMarginScale;
-            double tinMargin = frontH - TIN_H;
-            double outMargin = FRONT_WALL_OUT_H - PhysicsConfig.Current.Match.LineWidth - frontH;
-            double risk = DMath.Exp(-tinMargin / tinScale) + DMath.Exp(-outMargin / OutMarginScale);
             score -= (1 - Profile.RiskAppetite) * 2.0 * risk;
             return score;
         }

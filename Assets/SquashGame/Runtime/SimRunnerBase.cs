@@ -187,6 +187,12 @@ namespace SquashGame
         }
 
         protected abstract void CreateSimulation();
+
+        /// <summary>Sample any further local players before the clock runs. Returns true if one pressed pause.</summary>
+        protected virtual bool SampleExtraInput(float dt) { return false; }
+
+        /// <summary>The input source steering athlete i, or null when it is not a local player.</summary>
+        protected virtual IntentSource SourceFor(int i) { return i == HumanIndex ? Input : null; }
         protected abstract void SimStep(double dt);
 
         protected virtual void Awake()
@@ -206,7 +212,9 @@ namespace SquashGame
         {
             float rawDt = Time.unscaledDeltaTime;
             Input.Sample(rawDt);
-            if (Input.ConsumePause()) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
+            bool pause = Input.ConsumePause();
+            pause |= SampleExtraInput(rawDt);
+            if (pause) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
 
             // During a referee replay the simulation waits; the views show the recording.
             if (AdvanceReplay(rawDt)) return;
@@ -227,8 +235,12 @@ namespace SquashGame
             if (_historyCount < HistorySteps) _historyCount++;
 
             var athletes = Athletes;
-            int h = HumanIndex;
-            if (h >= 0 && h < athletes.Length && athletes[h].StrokeFinished) Input.BeginRecenter();
+            for (int a = 0; a < athletes.Length; a++)
+            {
+                if (!athletes[a].StrokeFinished) continue;
+                IntentSource src = SourceFor(a);
+                if (src != null) src.BeginRecenter();
+            }
 
             if ((Clock.TotalSteps & 1) == 0)
             {

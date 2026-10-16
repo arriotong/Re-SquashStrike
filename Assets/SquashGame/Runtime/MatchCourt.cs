@@ -48,6 +48,14 @@ namespace SquashGame
             hud.transform.SetParent(transform, false);
             hud.Runner = Runner;
 
+            var setup = new GameObject("MatchSetupPanel").AddComponent<MatchSetupPanel>();
+            setup.transform.SetParent(transform, false);
+            setup.Runner = Runner;
+
+            var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
+            audio.transform.SetParent(transform, false);
+            audio.Build(Runner);
+
             if (GameplayCamera == null) GameplayCamera = Camera.main;
             if (GameplayCamera != null)
             {

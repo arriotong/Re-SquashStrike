@@ -49,13 +49,13 @@ namespace SquashSim
             var ctrl = m.Players[me];
             var p = ctrl.Player;
             var cfg = PhysicsConfig.Current.Match;
-            bool myTurn = m.Phase == MatchPhase.Rally && m.Referee.Outcome == null && m.Referee.ExpectedStriker == me;
+            bool myTurn = m.CanStrike(me);
             bool serving = m.Score.Server == me;
 
             // ---------------- movement ----------------
             double tx, tz;
             bool move = true;
-            if (m.Phase != MatchPhase.Rally || m.Referee.Outcome != null)
+            if (!m.BallLive || (m.Phase == MatchPhase.WarmUp && !m.GoingForBall(me)))
             {
                 move = false; tx = p.Pos.X; tz = p.Pos.Z;           // serve setup or rally over: stay put
             }
@@ -106,7 +106,7 @@ namespace SquashSim
                      ctrl.Prediction.Valid && !m.Ball.Asleep && ctrl.Prediction.Time < TriggerLead &&
                      _strokeKey != StrokeKey(m))
             {
-                bool serveStroke = m.Referee.Shots == 0;
+                bool serveStroke = m.TurnShots == 0;
                 if (!serveStroke)
                 {
                     _aimTX = (Next() * 2 - 1) * RallyAimSpreadX;
@@ -129,7 +129,7 @@ namespace SquashSim
             intent.Touch.Pressed = false; intent.Touch.Held = false;
         }
 
-        static long StrokeKey(MatchSimulation m) { return m.History.Count * 1000L + m.Referee.Shots; }
+        static long StrokeKey(MatchSimulation m) { return m.History.Count * 1000L + m.TurnShots; }
 
         void Tap(InputIntent intent)
         {

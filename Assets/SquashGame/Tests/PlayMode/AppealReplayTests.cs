@@ -26,6 +26,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
+            r.BeginMatch(MatchSettings.QuickGame());      // past the setup panel: one game vs the Retriever
             MatchSimulation m = r.Sim;
             Assert.That(r.OpponentName, Does.Contain("RETRIEVER"), "the AI opponent should be in the match");
 

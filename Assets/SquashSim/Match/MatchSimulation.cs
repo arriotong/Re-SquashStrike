@@ -15,6 +15,9 @@
 //   collisions     ball vs body, body vs body
 //   recovery       movement penalty after a stroke, by reach
 //   split-step     Momentum Focus timed to the opponent's contact
+//   warm-up        each player knocks up in turn with a COLD ball that
+//                  warms through the real thermal model
+//   breaks         between games the ball sits and cools, players recover
 //
 // Deterministic: same inputs -> same match, at any frame rate.
 // ===========================================================
@@ -24,7 +27,7 @@ using static SquashSim.CourtDimensions;
 
 namespace SquashSim
 {
-    public enum MatchPhase { AwaitToss, Rally, RallyOver, GameOver, MatchOver }
+    public enum MatchPhase { WarmUp, AwaitToss, Rally, RallyOver, GameOver, MatchOver }
 
     public sealed class RallyStats
     {
@@ -73,6 +76,35 @@ namespace SquashSim
         bool _bodiesTouching;
         public readonly SplitStepTracker SplitStep = new SplitStepTracker();
 
+        // ---- warm-up ----
+        public int WarmUpOwner { get; private set; }
+        public int WarmUpShots { get; private set; }
+        public int WarmUpHalf { get; private set; }
+        public int WarmUpFeeds { get; private set; }
+        double _deadFor;
+
+        // ---- turn queries shared by every brain (rally or warm-up) ----
+        /// <summary>Is the ball in play for someone (a live rally, or the knock-up)?</summary>
+        public bool BallLive { get { return Phase == MatchPhase.WarmUp || (Phase == MatchPhase.Rally && Referee.Outcome == null); } }
+        /// <summary>May player i touch the ball right now?</summary>
+        public bool CanStrike(int i)
+        {
+            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !Ball.Asleep;
+            return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i;
+        }
+        /// <summary>Is player i the one going for this ball?</summary>
+        public bool GoingForBall(int i)
+        {
+            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner;
+            return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.PendingStriker == i;
+        }
+        /// <summary>Shot counter for this rally (in the knock-up it never reads as a serve).</summary>
+        public int TurnShots { get { return Phase == MatchPhase.WarmUp ? WarmUpShots + WarmUpFeeds + 1 : Referee.Shots; } }   // every feed is a new turn
+        public int TurnLastHitter { get { return Phase == MatchPhase.WarmUp ? WarmUpOwner : Referee.LastHitter; } }
+        /// <summary>Seconds left in the current knock-up half.</summary>
+        public double WarmUpRemaining { get { return Phase == MatchPhase.WarmUp ? System.Math.Max(0, PhysicsConfig.Current.Match.WarmUpSecondsEach - PhaseTime) : 0; } }
+        public double BreakRemaining { get { return Phase == MatchPhase.GameOver ? System.Math.Max(0, PhysicsConfig.Current.Match.BetweenGamesSeconds - PhaseTime) : 0; } }
+
         public MatchSimulation(int firstServer = 0)
         {
             Players[0].Index = 0;
@@ -83,7 +115,61 @@ namespace SquashSim
             Ball.Temperature = PhysicsConfig.Current.Match.StartTemperature;   // warmed up in the knock-up
             Score = MatchScore.FromConfig(firstServer);
             Referee.Surfaces = Surfaces;
+            if (PhysicsConfig.Current.Match.WarmUpEnabled) StartWarmUp(); else SetUpServe();
+        }
+
+        // ---------------- warm-up ----------------
+
+        void StartWarmUp()
+        {
+            // A new ball is cold: the knock-up is what warms it (BallTemperature does the physics).
+            Ball.Reset(null, null, null, PhysicsConfig.Current.Temperature.Initial);
+            WarmUpHalf = 0;
+            BeginWarmUpHalf(0);
+        }
+
+        void BeginWarmUpHalf(int owner)
+        {
+            WarmUpOwner = owner;
+            WarmUpShots = 0;
+            Phase = MatchPhase.WarmUp;
+            PhaseTime = 0;
+            PlaceAt(Players[owner], new V3(0.4, 0, 5.4));
+            PlaceAt(Players[1 - owner], new V3(-2.3, 0, 8.6));     // waiting in the back corner
+            Feed();
+        }
+
+        /// <summary>A feed off the front wall to the player knocking up.</summary>
+        void Feed()
+        {
+            var p = Players[WarmUpOwner].Player.Pos;
+            double t = Ball.Temperature;
+            Ball.Reset(new V3(p.X + 0.5, 1.4, 1.0), new V3(0, 2.6, 9.0), null, t);
+            BallPhysics.Wake(Ball);
+            WarmUpFeeds++;
+            _deadFor = 0;
+        }
+
+        /// <summary>Skip the rest of the knock-up (both players ready).</summary>
+        public void SkipWarmUp()
+        {
+            if (Phase != MatchPhase.WarmUp) return;
             SetUpServe();
+        }
+
+        void StepWarmUp(double dt)
+        {
+            var m = PhysicsConfig.Current.Match;
+            if (PhaseTime >= m.WarmUpSecondsEach)
+            {
+                if (WarmUpHalf == 0) { WarmUpHalf = 1; BeginWarmUpHalf(1 - WarmUpOwner); }
+                else SetUpServe();
+                return;
+            }
+            // Dead ball (parked, second bounce, or out of court): feed again shortly.
+            bool dead = Ball.Asleep || Ball.FloorSinceFrontWall >= 2 || Ball.Pos.Z > CourtDimensions.LENGTH;
+            _deadFor = dead ? _deadFor + dt : 0;
+            if (_deadFor >= m.WarmUpRefeedSeconds) Feed();
         }
 
         public int Receiver { get { return 1 - Score.Server; } }
@@ -158,7 +244,16 @@ namespace SquashSim
                 if (Bots[i] != null) Bots[i].Fill(Intents[i], this, i, dt);
 
             // ---- phase logic before anyone moves ----
-            if (Phase == MatchPhase.AwaitToss)
+            if (Phase == MatchPhase.WarmUp)
+            {
+                StepWarmUp(dt);
+            }
+            else if (Phase == MatchPhase.GameOver)
+            {
+                if (PhysicsConfig.Current.Match.AutoNextGame && PhaseTime >= PhysicsConfig.Current.Match.BetweenGamesSeconds)
+                    NextGame();
+            }
+            else if (Phase == MatchPhase.AwaitToss)
             {
                 // The ball rides in the server's hand until the toss.
                 Ball.Pos.CopyFrom(HandPosition());
@@ -172,8 +267,8 @@ namespace SquashSim
             }
             else if (Phase == MatchPhase.RallyOver && PhaseTime >= PhysicsConfig.Current.Match.BetweenRallySeconds)
             {
-                if (Score.MatchOver) Phase = MatchPhase.MatchOver;
-                else if (Score.GameOver) Phase = MatchPhase.GameOver;
+                if (Score.MatchOver) { Phase = MatchPhase.MatchOver; PhaseTime = 0; }
+                else if (Score.GameOver) { Phase = MatchPhase.GameOver; PhaseTime = 0; }   // the break: ball cools, players recover
                 else SetUpServe();
             }
 
@@ -198,13 +293,14 @@ namespace SquashSim
             for (int i = 0; i < 2; i++)
             {
                 var c = Players[i];
-                c.ContactEnabled = Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i;
+                c.ContactEnabled = CanStrike(i);
                 SimEvent contact = c.Step(Intents[i], Ball, Surfaces, dt);
                 if (contact != null)
                 {
                     contact.Time = Time;
                     StepEvents.Add(contact);
-                    if (Referee.Shots > 0) RallyContacts[i]++;
+                    if (Phase == MatchPhase.WarmUp) WarmUpShots++;
+                    else if (Referee.Shots > 0) RallyContacts[i]++;
                     OnRacketContact(i, contact);
                 }
             }
@@ -344,7 +440,7 @@ namespace SquashSim
             LastOutcome = null;
             Ball.Reset(null, null, null, PhysicsConfig.Current.Match.StartTemperature);
             Players[0].Player.Stamina = 1.0; Players[1].Player.Stamina = 1.0;
-            SetUpServe();
+            if (PhysicsConfig.Current.Match.WarmUpEnabled) StartWarmUp(); else SetUpServe();
         }
     }
 }
