@@ -34,3 +34,4 @@ Tools/**/bin/
 Tools/**/obj/
 Tools/**/node_modules/
 Tools/SimParity/Reports/
+/Captures/

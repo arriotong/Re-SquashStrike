@@ -45,8 +45,30 @@ dotnet run --project Tools/SimParity -c Release -- --traces Tools/SimParity/Trac
 unity test . --mode EditMode
 ```
 
-## Next: M1 — Unity warm-up court
+## M1 — Unity warm-up court
 
-Greybox court and capsule athlete driven by `LabSimulation`, Input System →
-`InputIntent`, fixed-step accumulator + render interpolation, back-wall
-camera, debug overlay.
+Open `Assets/Scenes/WarmUpCourt.unity` and press Play (rebuild it any time with
+**re:SquashStrike > Build Warm-Up Court Scene**). It is the HTML lab, in Unity:
+same sim (`LabSimulation`), same presets, same feel.
+
+| Piece | Where |
+| --- | --- |
+| Fixed 240 Hz step on real time, time scale, pause, single step, 12-step cap | `SquashSim.Lab.SimulationClock` (Core) driven by `LabSimRunner` in `Update` |
+| Render interpolation between the last two steps | `RenderSnapshot` in `LabSimRunner` |
+| Input System → `InputIntent` (WASD/stick, mouse = relative virtual stick, LMB/A Hit, RMB/B Touch) | `IntentSource` |
+| Sim → Unity coordinates (x mirrored; the only place that converts) | `SimToWorld` |
+| Greybox court, ball (visual scale, temperature colour, real spin), capsule athlete with shoulder line, racket from the physics transform | `Views/` |
+| Back-wall TV camera | `GameplayCameraRig` |
+| Lab tools: F1 panel, F2 debug view, 1-4 time scale, P, `.`, R, Ctrl+R, F, G, [ ], H, F3 | `DebugOverlay` |
+
+Click the court to capture the mouse (aim is relative, like a stick); Esc pauses
+and frees it.
+
+Tests: EditMode `ClockTests` drive golden rallies through the clock at 30/60/144/240 fps,
+jittery frames and 0.1x — every step bit-identical. PlayMode `WarmUpCourtTests` boot the
+scene, drive a virtual gamepad, and save `Captures/M1_WarmUpCourt.png`.
+
+## Next: M2 — one full game vs a wall-bot
+
+Referee, serve, PAR-11 + English scoring, ball-vs-body, player capsules,
+recovery penalty, split-step.

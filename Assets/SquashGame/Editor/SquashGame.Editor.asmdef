@@ -1,0 +1,14 @@
+{
+    "name": "SquashGame.Editor",
+    "rootNamespace": "SquashGame.Editor",
+    "references": ["SquashSim.Core", "SquashGame"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
