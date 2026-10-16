@@ -12,6 +12,9 @@
 //        [--d0 0..1] [--d1 0..1] [--verbose] [--trace]
 //        [--games-to-win N]  (3 = best of 5: breaks between games, the ball cools)
 //        [--warmup]          (each "game" starts with the knock-up and a cold ball)
+//        [--lab-ball]        (the lab's ball instead of the game's double-yellow match ball)
+//        [--ballcheck]       (the ball vs the WSF double-yellow spec and PSA pace)
+//        [--drive S [--temp C] [--aim-height m]]  (trace one straight drive)
 // ===========================================================
 
 using System;
@@ -28,6 +31,7 @@ public static class Program
     static double D0 = 0.7, D1 = 0.7;
     static int GamesToWin = 1;
     static bool WarmUp;
+    static bool MatchBall;
 
     public static int Main(string[] args)
     {
@@ -39,10 +43,13 @@ public static class Program
         bool verbose = Array.IndexOf(args, "--verbose") >= 0;
         GamesToWin = int.Parse(Arg(args, "--games-to-win") ?? "1");
         WarmUp = Array.IndexOf(args, "--warmup") >= 0;
+        MatchBall = Array.IndexOf(args, "--lab-ball") < 0;      // the game's ball unless asked for the lab's
         if (Array.IndexOf(args, "--trace") >= 0) { TraceRallies(int.Parse(Arg(args, "--trace-rallies") ?? "4")); return 0; }
         if (Array.IndexOf(args, "--calibrate") >= 0) { Calibrate(games); return 0; }
         if (Array.IndexOf(args, "--notup") >= 0) { NotUpReport(games); return 0; }
-        if (Array.IndexOf(args, "--knockup") >= 0) { KnockUpReport(); return 0; }
+        if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
+        if (Array.IndexOf(args, "--drive") >= 0) { DriveTrace(double.Parse(Arg(args, "--drive")), double.Parse(Arg(args, "--temp") ?? "45"), double.Parse(Arg(args, "--aim-height") ?? "0.9"), Array.IndexOf(args, "--lab-ball") < 0); return 0; }
+        if (Array.IndexOf(args, "--ballcheck") >= 0) { BallCheck(Array.IndexOf(args, "--lab-ball") < 0); return 0; }
 
         Console.WriteLine("P1 = " + Describe(P0, D0) + "   vs   P2 = " + Describe(P1, D1) + "   (" + scoring + ")");
         var kinds = new Dictionary<string, int>();
@@ -135,16 +142,105 @@ public static class Program
 
     static string LastServeTemps = "";
 
+    /// <summary>One straight drive from the back at S m/s, aimed aimH up the front wall: every impact.</summary>
+    static void DriveTrace(double S, double T, double aimH, bool matchBall)
+    {
+        PhysicsConfig.ResetToDefaults();
+        if (matchBall) PhysicsConfig.UseMatchBall();
+        var surfaces = CourtSurfaces.Create(); var evs = new List<SimEvent>();
+        double z0 = 7.5, y0 = 0.6, t = z0 / S, vy = (aimH - y0) / t + 0.5 * 9.81 * t;
+        var b = new BallState(); b.Reset(new V3(2.2, y0, z0), new V3(0, vy, -Math.Sqrt(S * S - vy * vy)), null, T); BallPhysics.Wake(b);
+        int floors = 0;
+        for (int i = 0; i < 240 * 6 && floors < 3; i++)
+        {
+            evs.Clear(); BallPhysics.Step(b, surfaces, PhysicsConfig.Current.Sim.FixedDt, evs);
+            foreach (var e in evs) { if (e.SurfaceClass == "floor") floors++; Console.WriteLine((i / 240.0).ToString("0.000") + "  " + e.SurfaceId.PadRight(14) + " at " + e.Point + "  in " + e.ImpactSpeed.ToString("0.0") + " (n " + e.NormalSpeed.ToString("0.0") + ")  out " + V3.Length(b.Vel).ToString("0.0") + "  e " + e.Restitution.ToString("0.00")); }
+        }
+    }
+
+    /// <summary>The ball against the double-yellow spec and PSA pace: drop rebound, drives, match temperature.</summary>
+    static void BallCheck(bool matchBall)
+    {
+        PhysicsConfig.ResetToDefaults();
+        if (matchBall) PhysicsConfig.UseMatchBall();
+        var surfaces = CourtSurfaces.Create();
+        double dt = PhysicsConfig.Current.Sim.FixedDt;
+        var evs = new List<SimEvent>();
+        Console.WriteLine(matchBall ? "MATCH BALL" : "LAB BALL");
+        Console.WriteLine("Drop from 100 in (2.54 m) onto the floor - WSF double yellow: 12-14% at 23 C, 26-33% at 45 C");
+        foreach (double T in new[] { 16.0, 23.0, 30.0, 37.0, 45.0, 48.0 })
+        {
+            var b = new BallState(); b.Reset(new V3(0, 2.54, 5), new V3(0, 0, 0), null, T); BallPhysics.Wake(b);
+            double peak = 0; bool bounced = false;
+            for (int i = 0; i < 240 * 4; i++)
+            {
+                evs.Clear(); BallPhysics.Step(b, surfaces, dt, evs); b.Temperature = T;
+                if (evs.Count > 0) { if (bounced) break; bounced = true; }
+                if (bounced) peak = Math.Max(peak, b.Pos.Y - 0.0203);
+            }
+            Console.WriteLine("  " + T.ToString("0").PadLeft(3) + " C   rebound " + (100 * peak / (2.54 - 0.0203)).ToString("0.0").PadLeft(5) + " %");
+        }
+        Console.WriteLine("Straight drive struck at 0.6 m from z = 7.5, 1.0 m off the side wall, aimed 2.0 m up the front wall");
+        Console.WriteLine("  (PSA: ~40-50 m/s off the racket; a good length dies near the back wall)");
+        foreach (double T in new[] { 23.0, 45.0 })
+            foreach (double S in new[] { 20.0, 30.0, 45.0 })
+            {
+                double x = 2.2, y0 = 0.6, z0 = 7.5, yAim = 2.0;
+                // Aim: straight at (x, yAim, 0), lofted for gravity over the flight time.
+                double tFly = z0 / S;
+                double vy = (yAim - y0) / tFly + 0.5 * 9.81 * tFly;
+                double vz = -Math.Sqrt(Math.Max(1, S * S - vy * vy));
+                var b = new BallState(); b.Reset(new V3(x, y0, z0), new V3(0, vy, vz), null, T); BallPhysics.Wake(b);
+                string report = ""; int floors = 0; double offFront = 0, frontH = 0;
+                for (int i = 0; i < 240 * 6 && floors < 2; i++)
+                {
+                    evs.Clear(); BallPhysics.Step(b, surfaces, dt, evs); b.Temperature = T;
+                    foreach (var e in evs)
+                    {
+                        if (e.SurfaceClass == "frontWall") { offFront = V3.Length(b.Vel); frontH = e.Point.Y; }
+                        if (e.SurfaceClass == "floor") { floors++; report += "  floor" + floors + " z " + e.Point.Z.ToString("0.0"); }
+                        if (e.SurfaceClass == "backWall") report += "  BACK WALL (" + e.ImpactSpeed.ToString("0.0") + " m/s, " + e.Point.Y.ToString("0.00") + " m up)";
+                    }
+                }
+                Console.WriteLine("  " + T.ToString("0") + " C  " + S.ToString("0").PadLeft(2) + " m/s -> front wall at " + frontH.ToString("0.0") + " m, off it at " + offFront.ToString("0.0") + " m/s (" + (offFront / S).ToString("0.00") + ")" + report);
+            }
+        // In play: racket pace and the ball's temperature over a best of 5.
+        PhysicsConfig.ResetToDefaults();
+        if (matchBall) PhysicsConfig.UseMatchBall();
+        PhysicsConfig.Current.Match.GamesToWin = 3; PhysicsConfig.Current.Match.WarmUpEnabled = true;
+        var m = new MatchSimulation(0);
+        m.Bots[0] = Brain("grinder", 0.85, 3); m.Bots[1] = Brain("retriever", 0.85, 4);
+        var outs = new List<double>(); var temps = new List<double>(); var offWall = new List<double>();
+        double sampleAt = 0;
+        while (m.Phase != MatchPhase.MatchOver && m.Time < 3 * 3600)
+        {
+            m.Step(dt);
+            foreach (var e in m.StepEvents)
+            {
+                if (e.Type == SimEventType.RacketContact && m.Phase == MatchPhase.Rally) outs.Add(e.BallSpeedOut);
+                if (e.Type == SimEventType.Impact && e.SurfaceClass == "frontWall" && m.Phase == MatchPhase.Rally) offWall.Add(V3.Length(m.Ball.Vel));
+            }
+            if (m.Phase == MatchPhase.Rally && m.Time >= sampleAt) { temps.Add(m.Ball.Temperature); sampleAt = m.Time + 1; }
+        }
+        outs.Sort(); offWall.Sort(); temps.Sort();
+        Func<List<double>, double, double> Q = (l, q) => l.Count == 0 ? 0 : l[(int)Math.Min(l.Count - 1, q * l.Count)];
+        Console.WriteLine("In play (best of 5, hard AIs, " + outs.Count + " strokes):");
+        Console.WriteLine("  off the racket  median " + Q(outs, 0.5).ToString("0.0") + "  90th " + Q(outs, 0.9).ToString("0.0") + "  max " + Q(outs, 1).ToString("0.0") + " m/s");
+        Console.WriteLine("  off front wall  median " + Q(offWall, 0.5).ToString("0.0") + "  90th " + Q(offWall, 0.9).ToString("0.0") + " m/s");
+        Console.WriteLine("  ball in rallies median " + Q(temps, 0.5).ToString("0.0") + "  10th " + Q(temps, 0.1).ToString("0.0") + "  90th " + Q(temps, 0.9).ToString("0.0") + " C");
+    }
+
     /// <summary>One knock-up half: every feed, stroke and dead ball, with times.</summary>
     static void KnockUpReport()
     {
         PhysicsConfig.ResetToDefaults();
+        if (MatchBall) PhysicsConfig.UseMatchBall();
         PhysicsConfig.Current.Match.WarmUpEnabled = true;
         var m = new MatchSimulation(0);
         m.Bots[0] = Brain(P0, D0, 7); m.Bots[1] = Brain(P1, D1, 8);
         double dt = PhysicsConfig.Current.Sim.FixedDt;
         int shots = 0; bool asleep = false;
-        while (m.Phase == MatchPhase.WarmUp && m.WarmUpHalf == 0)
+        while (m.Phase == MatchPhase.WarmUp)
         {
             m.Step(dt);
             foreach (var e in m.StepEvents)
@@ -162,6 +258,7 @@ public static class Program
     static string PlayGame(uint seedA, uint seedB, string scoring, out MatchSimulation m, out bool finished)
     {
         PhysicsConfig.ResetToDefaults();
+        if (MatchBall) PhysicsConfig.UseMatchBall();
         PhysicsConfig.Current.Match.Scoring = scoring;
         PhysicsConfig.Current.Match.GamesToWin = GamesToWin;
         PhysicsConfig.Current.Match.WarmUpEnabled = WarmUp;

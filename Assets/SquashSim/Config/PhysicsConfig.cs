@@ -69,6 +69,13 @@ namespace SquashSim
         public double CoolingRate;
         public TempPoint[] Response;
         public TempState[] States;
+        /// <summary>
+        /// Game only (null in the lab = off): how much of a HOT ball's extra liveliness survives at a
+        /// given normal impact speed. A warm double yellow bounces higher on soft impacts, but still
+        /// dies when it is hit hard into a wall (and a cold one is no deader than a warm one at pace).
+        /// Sampled by normal speed: scales the Response's departure from 1 (1 = the full effect).
+        /// </summary>
+        public SpeedPoint[] HotSpeedFade;
     }
 
     public sealed class SurfaceProps
@@ -465,6 +472,33 @@ namespace SquashSim
         public static SimConfig Current = SimConfig.Defaults();
 
         public static void ResetToDefaults() { Current = SimConfig.Defaults(); }
+
+        /// <summary>
+        /// The game's match ball on top of the lab defaults (the lab itself stays on Defaults(),
+        /// which SimParity holds bit-identical to the JS lab).
+        /// </summary>
+        public static void UseMatchBall()
+        {
+            var c = Current;
+            // PSA pace: a hard drive leaves the racket at ~40-50 m/s (the lab swings were club pace).
+            c.Racket.Swing.Neutral.HeadSpeed = 24.0;
+            c.Racket.Swing.Attack.HeadSpeed = 37.0;
+            // (Lift - lobs and serves - keeps the lab's soft pace.)
+            // A double yellow is dead at pace: restitution falls off further at high impact speed...
+            c.Restitution.SpeedResponse = new[]
+            {
+                new SpeedPoint(0.0, 1.10), new SpeedPoint(2.0, 1.00), new SpeedPoint(10.0, 0.88),
+                new SpeedPoint(25.0, 0.70), new SpeedPoint(50.0, 0.58)
+            };
+            // ...and warming it buys bounce height (margin), not pace off the walls.
+            c.Temperature.HotSpeedFade = new[]
+            {
+                new SpeedPoint(0.0, 1.0), new SpeedPoint(6.0, 1.0), new SpeedPoint(15.0, 0.55),
+                new SpeedPoint(30.0, 0.25), new SpeedPoint(50.0, 0.15)
+            };
+            // Runs at ~42-45 C in a rally (it sat on the 48 C cap).
+            c.Temperature.HeatPerJoule = 0.22;
+        }
 
         /// <summary>Piecewise-linear curve read (lab sampleCurve).</summary>
         public static double SampleCurve(ICurvePoint[] points, double x)

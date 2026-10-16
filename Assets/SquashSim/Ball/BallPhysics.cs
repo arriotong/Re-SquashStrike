@@ -31,6 +31,9 @@ namespace SquashSim
             var cfg = PhysicsConfig.Current.Restitution;
             double baseE = (PhysicsConfig.Current.Surfaces.Get(surfaceClass) ?? PhysicsConfig.Current.Surfaces.Floor).Restitution;
             double tempMul = BallTemperature.RestitutionMultiplier(temperature);
+            var fade = PhysicsConfig.Current.Temperature.HotSpeedFade;
+            if (fade != null)       // at pace the ball's temperature matters less, warm or cold
+                tempMul = 1 + (tempMul - 1) * PhysicsConfig.SampleCurve(fade, System.Math.Abs(normalImpactSpeed));
             double speedMul = PhysicsConfig.SampleCurve(cfg.SpeedResponse, System.Math.Abs(normalImpactSpeed));
             return PhysicsConfig.Clamp(baseE * tempMul * speedMul, cfg.MinRestitution, cfg.MaxRestitution);
         }

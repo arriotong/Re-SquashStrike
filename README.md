@@ -198,4 +198,14 @@ stands at 1.800 m on the floor, the racket is within the WSF length, and the IK.
 - Core defaults are unchanged (warm-up off, one game), so the lab, the benches and the earlier tests behave exactly as before. The Match scene turns the full flow on.
 - MatchBench: `--games-to-win 3 --warmup` plays full matches; `--knockup` traces one knock-up half.
 
+## Match ball — double yellow at PSA pace
+
+`PhysicsConfig.UseMatchBall()` is the game's ball, layered on the lab defaults. The lab itself, and SimParity, stay on `Defaults()`. The Match scene and MatchBench use it (`--lab-ball` for the lab's ball).
+
+- **Bounce height follows the WSF double yellow:** from a 100 in drop, 15% at 23 °C and 25% at 45 °C (spec 12–14% / 26–33%). A warm ball gives players a little more height and time.
+- **Hard hits still die:** at high impact speed the temperature effect fades (`Temperature.HotSpeedFade`) and restitution falls further. Hot or cold, a hard ball comes off the front wall at nearly the same pace (about 6% apart at 40 m/s), and a 40 m/s length drive dies in the back corner.
+- **PSA pace:** off the racket the median is 28 m/s, the 90th percentile 36 and the maximum ~50 (the lab's were 20 / 25 / 30). Lobs and serves keep the lab's soft pace.
+- **Temperature:** heating is slowed so a rally ball runs at ~44 °C (median) instead of sitting on the 48 °C cap. It cools to ~33 °C over a break and warms up again in play.
+- `MatchBench --ballcheck` measures all of this; `--drive 40 --temp 45` traces one drive.
+
 ## Next: M6

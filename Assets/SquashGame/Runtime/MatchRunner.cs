@@ -80,6 +80,8 @@ namespace SquashGame
 
         void ApplyConfig(MatchSettings s)
         {
+            PhysicsConfig.ResetToDefaults();
+            PhysicsConfig.UseMatchBall();          // the game's double yellow at PSA pace
             var m = PhysicsConfig.Current.Match;
             m.Scoring = s.Scoring;
             m.GamesToWin = Mathf.Max(1, s.GamesToWin);
