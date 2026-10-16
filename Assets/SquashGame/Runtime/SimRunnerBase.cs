@@ -30,6 +30,10 @@ namespace SquashGame
         public Vector3 RacketHead;
         public Vector3 RacketFaceNormal;
         public float Stamina;               // 0..1 (match fatigue); 1 in the lab
+        public Vector3 Velocity;            // world, m/s
+        public int Reach;                   // 0 normal, 1 lunge, 2 deep lunge, 3 stretch
+        public int SwingSide;               // +1 forehand, -1 backhand
+        public bool Swinging;
 
         public static AthleteSnapshot Capture(TestPlayerController c)
         {
@@ -41,8 +45,23 @@ namespace SquashGame
                 RacketAnchor = SimToWorld.Pos(c.Racket.Anchor),
                 RacketHead = SimToWorld.Pos(c.Racket.HeadPos),
                 RacketFaceNormal = SimToWorld.Dir(c.Racket.FaceNormal),
-                Stamina = (float)c.Player.Stamina
+                Stamina = (float)c.Player.Stamina,
+                Velocity = SimToWorld.Dir(c.Player.Vel),
+                Reach = ReachIndex(c.Player.ReachState),
+                SwingSide = c.Player.SwingSide >= 0 ? 1 : -1,
+                Swinging = c.Swing.State == SwingStates.Swinging
             };
+        }
+
+        static int ReachIndex(string r)
+        {
+            switch (r)
+            {
+                case ReachStates.Lunge: return 1;
+                case ReachStates.DeepLunge: return 2;
+                case ReachStates.Stretch: case ReachStates.Unreachable: return 3;
+                default: return 0;
+            }
         }
 
         public static AthleteSnapshot Lerp(AthleteSnapshot a, AthleteSnapshot b, float t)
@@ -55,7 +74,9 @@ namespace SquashGame
                 RacketAnchor = Vector3.LerpUnclamped(a.RacketAnchor, b.RacketAnchor, t),
                 RacketHead = Vector3.LerpUnclamped(a.RacketHead, b.RacketHead, t),
                 RacketFaceNormal = Vector3.Slerp(a.RacketFaceNormal, b.RacketFaceNormal, t),
-                Stamina = Mathf.LerpUnclamped(a.Stamina, b.Stamina, t)
+                Stamina = Mathf.LerpUnclamped(a.Stamina, b.Stamina, t),
+                Velocity = Vector3.LerpUnclamped(a.Velocity, b.Velocity, t),
+                Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging
             };
         }
     }

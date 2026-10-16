@@ -158,7 +158,36 @@ Tests: 99 EditMode (referee judgement table, every ball-hits-player case, fatigu
 drain/recovery/slowdown, fresh athlete moves exactly as in the lab) + 7 PlayMode
 (including a tired athlete visibly stooping) pass; lab parity still bit-identical.
 
-## Next: M4 — the athlete in
+## M4 — the athlete in (built in code)
 
-Gate B mesh (or the Gate A mannequin on the Gate B skeleton), locomotion, phase-sampled
-stroke poses, racket IK onto the simulated racket.
+Both scenes now show the Gate A athlete instead of the greybox capsule, built at
+runtime with no Blender and no new packages:
+
+| Piece | Where |
+| --- | --- |
+| Gate B rig contract: 74 bones at frozen rest positions, racket sockets, helpers | `SquashGame/Runtime/Athlete/RigContract` (port of `lab/character/RigDefinition.js`) |
+| Gate A body: superellipse lofts with Catmull-Rom smoothing, surface normals, mirrored limbs, joint blends - each form riding its Gate B bone | `Loft`, `MannequinForms` (port of `SurfaceSweep.js` / `MannequinBuilder.js`) |
+| Gate A racket A.1 (684 mm, teardrop 301 x 188, sweet spot 570 mm) | `RacketMesh` (port of `RacketProxy.js`) |
+| Skeleton + meshes assembled; rig frame -> Unity mirror happens here only | `AthleteRig` |
+| Our own analytic two-bone IK | `TwoBoneIK` |
+| Posing from sim state every frame: root (gameplay), crouch by reach rung and low balls, gait, torso twist to the commitment solver's body yaw, lean, head on the ball, leg IK to gait/lunge targets, the body travelling toward far balls, racket placed exactly on the simulated racket, hand IK onto its grip socket, free-arm balance, fatigue stoop | `AthleteFigure` |
+
+The racket is never animated: its sweet spot is the simulated racket head and its strings
+face the simulated face normal, so the racket you see is the racket that hits. Stroke
+"poses" are sampled by the swing itself - arm, torso and lunge follow the sim racket.
+
+M4 exit test (PlayMode `AthleteTests`, ~42k frames of live feeds with a virtual pad):
+rendered sweet spot vs simulated racket **0.00 mm** worst; hand on the grip at racket
+contact **<= 3.4 mm**; median grip gap 0 mm. Off-contact, the biggest backswings still
+leave the hand up to ~0.1-0.2 m off the grip (95th percentile) where the sim's swing
+radius exceeds an arm plus a racket. Known Gate A artefacts remain (thin seams where
+separate forms meet under twist); the Gate B skinned mesh replaces the forms later
+without touching the skeleton or the poser.
+
+EditMode `AthleteRigTests` re-derive the frozen Gate A measurements from the C# bones
+(segment lengths, separations, stature, socket 62.3 mm from the wrist), check the body
+stands at 1.800 m on the floor, the racket is within the WSF length, and the IK.
+
+## Next: M5 — local 2-player and match flow
+
+Warm-up phase, best-of-5, breaks with ball cooling, an audio pass, two local players.

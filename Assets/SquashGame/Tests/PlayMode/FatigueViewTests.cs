@@ -33,13 +33,13 @@ namespace SquashGame.Tests
             r.StepOnce();                          // capture the new state into the render snapshot
             yield return null; yield return null; yield return null;
 
-            Transform fresh = GameObject.Find("AthleteView0").transform.Find("Body");
-            Transform tired = GameObject.Find("AthleteView1").transform.Find("Body");
+            // M4 athletes: compare the chest's lean from vertical (the ready stance itself leans a little).
+            Transform fresh = GameObject.Find("Athlete0").GetComponent<Athlete.AthleteFigure>().Rig.Bones["Chest"];
+            Transform tired = GameObject.Find("Athlete1").GetComponent<Athlete.AthleteFigure>().Rig.Bones["Chest"];
             float freshLean = Vector3.Angle(fresh.up, Vector3.up);
             float tiredLean = Vector3.Angle(tired.up, Vector3.up);
-            Debug.Log("[M3.5] lean: fresh " + freshLean.ToString("0.0") + " deg, tired " + tiredLean.ToString("0.0") + " deg");
-            Assert.That(freshLean, Is.LessThan(1f), "a fresh athlete stands upright");
-            Assert.That(tiredLean, Is.GreaterThan(8f), "a tired athlete should visibly stoop");
+            Debug.Log("[M3.5] chest lean: fresh " + freshLean.ToString("0.0") + " deg, tired " + tiredLean.ToString("0.0") + " deg");
+            Assert.That(tiredLean, Is.GreaterThan(freshLean + 6f), "a tired athlete should visibly stoop");
 
             Camera cam = Camera.main;
             cam.GetComponent<GameplayCameraRig>().enabled = false;

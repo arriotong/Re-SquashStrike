@@ -31,16 +31,13 @@ namespace SquashGame
             ball.transform.SetParent(transform, false);
             ball.Build(Runner, Palette);
 
-            Color[] colours = { Greybox.Hex(0x4d6d8f), Greybox.Hex(0x8f4d4d) };
+            // M4: two Gate A athletes on the Gate B skeleton (replace the greybox capsules + rackets).
+            Color[] colours = { Greybox.Hex(0x7d93ab), Greybox.Hex(0xab7d7d) };
             for (int i = 0; i < 2; i++)
             {
-                var athlete = new GameObject("AthleteView" + i).AddComponent<AthleteView>();
+                var athlete = new GameObject("Athlete" + i).AddComponent<Athlete.AthleteFigure>();
                 athlete.transform.SetParent(transform, false);
-                athlete.Build(Runner, i, colours[i], Palette);
-
-                var racket = new GameObject("RacketView" + i).AddComponent<RacketView>();
-                racket.transform.SetParent(transform, false);
-                racket.Build(Runner, i, Palette);
+                athlete.Build(Runner, i, Palette, colours[i]);
             }
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();

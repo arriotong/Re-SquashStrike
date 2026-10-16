@@ -33,13 +33,10 @@ namespace SquashGame
             ball.transform.SetParent(transform, false);
             ball.Build(Runner, Palette);
 
-            var athlete = new GameObject("AthleteView").AddComponent<AthleteView>();
+            // M4: the Gate A athlete on the Gate B skeleton (replaces the greybox capsule + racket).
+            var athlete = new GameObject("Athlete0").AddComponent<Athlete.AthleteFigure>();
             athlete.transform.SetParent(transform, false);
-            athlete.Build(Runner, 0, Greybox.Hex(0x4d6d8f), Palette);
-
-            var racket = new GameObject("RacketView").AddComponent<RacketView>();
-            racket.transform.SetParent(transform, false);
-            racket.Build(Runner, 0, Palette);
+            athlete.Build(Runner, 0, Palette, Greybox.Hex(0x7d93ab));
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();
             overlay.transform.SetParent(transform, false);
