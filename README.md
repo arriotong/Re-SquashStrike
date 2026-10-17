@@ -293,4 +293,9 @@ Playtest round (feedback before playing):
 - **Ball:** drawn 2.2× its real size (physics unchanged) with a short trail.
 - **Mouse:** captured as soon as play starts, so the first click is already a stroke.
 
+Playtest round 2:
+- **Athletes:** drawn at 88% size (gameplay distances unchanged) and 12% quicker (top speed, acceleration, braking; AI too).
+- **Normal shots** are accurate: half the old aim error at a stretch, and gross misses at most 12% (at full stretch).
+- **A full charge** (held 0.6 s) gives a special shot: Hit = a very fast **kill** kept low over the tin; Touch = a pin-point **drop**. The aim ring turns gold when the charge is ready and shows where the special will go; the pop-ups say "Kill!" / "Drop!".
+
 ## Next: M7

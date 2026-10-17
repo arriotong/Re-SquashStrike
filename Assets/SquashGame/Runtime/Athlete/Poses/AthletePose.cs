@@ -126,9 +126,10 @@ namespace SquashGame.Athlete
             if (normal.sqrMagnitude < 1e-6f) normal = Vector3.Cross(dir, Vector3.up).normalized;
             // Racket mesh: local -Y = butt -> tip, local +X = string normal; origin at the butt.
             Quaternion racketRot = Basis(normal, -dir);
-            Vector3 butt = sweet - dir * GateA.SweetSpotFromButt;
+            float scale = rig.transform.lossyScale.x;                    // the drawn athlete (and racket) may be scaled
+            Vector3 butt = sweet - dir * (GateA.SweetSpotFromButt * scale);
             Quaternion handRot = racketRot * Quaternion.Inverse(rig.GripLocalRot);
-            Vector3 wrist = butt - handRot * rig.GripLocalPos;
+            Vector3 wrist = butt - handRot * (rig.GripLocalPos * scale);
             wristTarget = wrist;
             Transform shoulder = rig.Bones["UpperArm_R"];
             float err = TwoBoneIK.Solve(shoulder, rig.Bones["Forearm_R"], rig.Bones["Hand_R"], wrist, shoulder.position + elbowOffset);

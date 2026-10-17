@@ -95,6 +95,15 @@ namespace SquashGame
 
             Color c = Preview.Down ? new Color(0.95f, 0.25f, 0.2f) : Colour;
             c.a = Preview.FromContact ? 0.9f : 0.45f;
+            // Fully charged: the special shot (kill / drop) is ready - the ring turns gold and pulses.
+            var ctrl = athletes[Athlete];
+            if (ctrl.ArcadeHitEnabled && (ctrl.Arcade.Charging || ctrl.Arcade.Waiting) && ctrl.Arcade.ChargeRatio >= 0.999)
+            {
+                float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 14f);
+                c = Color.Lerp(new Color(1f, 0.8f, 0.1f), Color.white, 0.3f * pulse);
+                c.a = 1f;
+                _ring.localScale = new Vector3(_radius * (1.05f + 0.1f * pulse), _radius * (1.05f + 0.1f * pulse), 1f);
+            }
             _mat.color = c;
         }
 

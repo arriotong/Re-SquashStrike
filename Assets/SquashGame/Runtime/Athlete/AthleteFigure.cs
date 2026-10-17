@@ -83,7 +83,11 @@ namespace SquashGame.Athlete
         const float MaxFacingFromFront = 115f;               // degrees either side of facing the front wall (between strokes)
         const float TurnRateIdle = 300f, TurnRateSwing = 540f; // degrees per second
         const float StepThreshold = 0.22f, StepThresholdFast = 0.14f;
-        const float ComfortReach = 0.90f;                    // shoulder -> sweet spot an arm + racket (strings set) cover
+        /// <summary>The athlete is drawn at this fraction of life size (the court is not): smaller figures read
+        /// better from the broadcast camera. Gameplay distances (reach, hitting) are unchanged.</summary>
+        public const float VisualScale = 0.88f;
+        static float Ankle { get { return GateA.Ankle * VisualScale; } }
+        const float ComfortReach = 0.90f * VisualScale;                    // shoulder -> sweet spot an arm + racket (strings set) cover
         const float MaxBodyShift = 0.60f, MaxBodyShiftLocked = 1.10f;   // locked: the drawn lunge may lead the sim's
         const float LockNear = 0.30f, LockFar = 0.75f;       // sim racket head to ball: fully locked .. free
 
@@ -94,6 +98,7 @@ namespace SquashGame.Athlete
             Rig = gameObject.AddComponent<AthleteRig>();
             Rig.Build(palette, bodyColor);
             Rig.HoldRacketInHand();
+            transform.localScale = Vector3.one * VisualScale;
             var lib = PoseLibrary.Active;
             _ready = lib.Find("ready"); _shuffle = lib.Find("shuffle");
             _runA = lib.Find("run_a"); _runB = lib.Find("run_b"); _backpedal = lib.Find("backpedal");
@@ -283,8 +288,8 @@ namespace SquashGame.Athlete
             {
                 Vector3 local = side == 0 ? _out.FootR : _out.FootL;
                 Vector3 target = transform.TransformPoint(new Vector3(local.x, 0f, local.z)) + shiftFlat * 0.6f;
-                float lift = Mathf.Max(0f, local.y - GateA.Ankle);
-                target.y = GateA.Ankle;
+                float lift = Mathf.Max(0f, local.y - GateA.Ankle) * VisualScale;   // pose units are life-size
+                target.y = Ankle;
                 if (!_hasFeet) Feet[side] = target;
 
                 if (_stepT[side] < 0)
@@ -298,16 +303,16 @@ namespace SquashGame.Athlete
                         _stepDur[side] = Mathf.Clamp(0.24f - 0.025f * speed, 0.12f, 0.24f);
                         _footFrom[side] = Feet[side];
                     }
-                    else Feet[side] = new Vector3(Feet[side].x, GateA.Ankle + lift, Feet[side].z);
+                    else Feet[side] = new Vector3(Feet[side].x, Ankle + lift, Feet[side].z);
                 }
                 if (_stepT[side] >= 0)
                 {
                     _footTo[side] = target + vflat * (_stepDur[side] * 0.5f);
-                    _footTo[side].y = GateA.Ankle;
+                    _footTo[side].y = Ankle;
                     _stepT[side] += dt / _stepDur[side];
                     float u = Mathf.Clamp01(_stepT[side]);
                     Vector3 p = Vector3.Lerp(_footFrom[side], _footTo[side], Ease(u));
-                    p.y = GateA.Ankle + Mathf.Sin(u * Mathf.PI) * Mathf.Min(0.12f, 0.05f + 0.02f * speed);
+                    p.y = Ankle + Mathf.Sin(u * Mathf.PI) * Mathf.Min(0.12f, 0.05f + 0.02f * speed);
                     Feet[side] = p;
                     if (u >= 1f) { _stepT[side] = -1f; Feet[side] = _footTo[side]; }
                 }

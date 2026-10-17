@@ -60,6 +60,16 @@ namespace SquashSim
                 // Front-wall aim: exactly the aim the athlete will swing with (solved on its last step).
                 if (wallAim) { _aim.CopyFrom(ctrl.Aim); Target.CopyFrom(_aim.WallTarget); TargetWall = _aim.TargetWall; }
                 else { AimController.Step(_aim, intent, _origin); TargetWall = 0; }
+                if (ctrl.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null && wallAim && TargetWall == 0)
+                {
+                    // The simple hitting system sends the ball to the target itself: show that (a charged special where it goes).
+                    FrontPoint.CopyFrom(Target);
+                    ctrl.Arcade.SpecialTarget(FrontPoint);
+                    FromContact = true;
+                    Spread = 0.2;
+                    Valid = true;
+                    return;
+                }
                 var plan = SwingPlanner.Plan(touch ? "touch" : "hit", _aim, ctrl.Player.SwingSide >= 0 ? 1 : -1, new SwingContext
                 {
                     Mode = prepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
