@@ -28,6 +28,9 @@ namespace SquashSim
 
         /// <summary>Which athlete this is (0 or 1 in a match). Stamped on racket contacts.</summary>
         public int Index;
+        /// <summary>Game only: a local human player aims at a point on the front wall (WallAim).</summary>
+        public bool WallAimEnabled;
+        public readonly WallAim WallAimSolver = new WallAim();
 
         /// <summary>When false the racket swings but cannot touch the ball (match: not this
         /// player's turn). Always true in the lab.</summary>
@@ -62,6 +65,7 @@ namespace SquashSim
                 _origin.X = Player.Pos.X; _origin.Y = PhysicsConfig.Current.Racket.RestHeight; _origin.Z = Player.Pos.Z;
             }
             AimController.Step(Aim, intent, _origin);
+            if (WallAimEnabled && PhysicsConfig.Current.WallAim != null) WallAimSolver.Apply(this, Aim, _origin, ball, surfaces);
 
             string strokeForLabel = Swing.State == SwingStates.Idle ? "hit" : Swing.Stroke;
             Interpretation = ShotInterpreter.Interpret(Aim, strokeForLabel, Prediction.IsVolley);

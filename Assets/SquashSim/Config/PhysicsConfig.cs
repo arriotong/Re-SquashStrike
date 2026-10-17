@@ -316,6 +316,8 @@ namespace SquashSim
         public FatigueSection Fatigue;
         /// <summary>Game only (null in the lab): the visible lunge step (LungeStep).</summary>
         public LungeSection Lunge;
+        /// <summary>Game only (null in the lab): front-wall target aim for local players (WallAim).</summary>
+        public WallAimSection WallAim;
 
         /// <summary>The shipped defaults. Must equal lab/config/PhysicsConfig.js defaults()
         /// (SimParity checks this against every trace's config).</summary>
@@ -488,6 +490,21 @@ namespace SquashSim
             UseMatchBall();
             UseGameReach();
             UseGameMovement();
+            UseGameAim();
+        }
+
+        /// <summary>
+        /// Front-wall target aim for local players: the stick picks a point on the wall that stays put
+        /// as you move, and the shot is solved to really go there. The lowest point is kept clear of
+        /// the tin (0.48 m): playable first, realistic second.
+        /// </summary>
+        public static void UseGameAim()
+        {
+            Current.WallAim = new WallAimSection
+            {
+                HalfWidth = 2.75, NeutralHeight = 1.7, MinHeight = 0.85, MaxHeight = 4.0,
+                RefreshSteps = 4, Iterations = 3
+            };
         }
 
         /// <summary>

@@ -36,6 +36,7 @@ namespace SquashGame
             PhysicsConfig.ResetToDefaults();
             if (MatchBall) PhysicsConfig.UseGameProfile();
             Sim = new LabSimulation();
+            Sim.Player.WallAimEnabled = MatchBall;      // practise with the match's aim
             _athletes = new[] { Sim.Player };
             CurrentPreset = TestPresets.Find(StartPreset).Id;
             Sim.SelectPreset(CurrentPreset);

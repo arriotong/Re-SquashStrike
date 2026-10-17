@@ -20,6 +20,16 @@ namespace SquashSim
         public double NeutralPitch = 0.1;
         public readonly V3 IntendedPoint = new V3(0, 1.5, 0);   // debug only
         public string IntendedWall = "frontWall";               // debug only
+        /// <summary>Front-wall target aim (WallAim, game only): the point the stick picked on the front wall.</summary>
+        public bool HasWallTarget;
+        public readonly V3 WallTarget = new V3(0, 1.6, 0);
+
+        public void CopyFrom(AimState o)
+        {
+            RawX = o.RawX; RawY = o.RawY; BiasX = o.BiasX; BiasY = o.BiasY;
+            DesiredYaw = o.DesiredYaw; DesiredPitch = o.DesiredPitch; NeutralPitch = o.NeutralPitch;
+            HasWallTarget = o.HasWallTarget; WallTarget.CopyFrom(o.WallTarget);
+        }
     }
 
     public static class AimController

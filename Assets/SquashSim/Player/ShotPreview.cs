@@ -50,10 +50,12 @@ namespace SquashSim
             bool prepared = sw.State == SwingStates.Preparing || sw.Mode == "prepared";
             bool touch = intent.Touch.Held || sw.Stroke == "touch" && sw.State != SwingStates.Idle;
 
+            bool wallAim = ctrl.WallAimEnabled && PhysicsConfig.Current.WallAim != null;
             if (pred.Valid && ball != null && !ball.Asleep)
             {
                 _origin.CopyFrom(pred.Point);
-                AimController.Step(_aim, intent, _origin);
+                // Front-wall aim: exactly the aim the athlete will swing with (solved on its last step).
+                if (wallAim) _aim.CopyFrom(ctrl.Aim); else AimController.Step(_aim, intent, _origin);
                 var plan = SwingPlanner.Plan(touch ? "touch" : "hit", _aim, ctrl.Player.SwingSide >= 0 ? 1 : -1, new SwingContext
                 {
                     Mode = prepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
@@ -73,7 +75,8 @@ namespace SquashSim
             var p = ctrl.Player.Pos;
             _origin.X = p.X; _origin.Y = 1.0; _origin.Z = p.Z;
             AimController.Step(_aim, intent, _origin);
-            AimController.WallIntersection(FrontPoint, _origin, _aim.DesiredYaw, _aim.DesiredPitch);
+            if (wallAim) WallAim.TargetFor(_aim.BiasX, _aim.BiasY, FrontPoint);       // the point you picked
+            else AimController.WallIntersection(FrontPoint, _origin, _aim.DesiredYaw, _aim.DesiredPitch);
             FromContact = false;
             Spread = 0.35;
             Valid = true;

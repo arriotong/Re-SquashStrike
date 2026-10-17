@@ -108,6 +108,9 @@ namespace SquashGame
                 Names[0] = "YOU"; Names[1] = OpponentName;
             }
             Sim.RallyEnded += OnRallyEnded;
+            // Local players aim at a point on the front wall; the AI keeps its own aim model.
+            Sim.Players[0].WallAimEnabled = true;
+            Sim.Players[1].WallAimEnabled = Settings.TwoPlayer;
         }
 
         // ---------------- devices ----------------

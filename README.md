@@ -240,6 +240,12 @@ Plan and research data: `RE_SQUASHSTRIKE_M6_CONTROLS_PLAN.md`. Measured with `Ma
 - **Movement:**
   - The AI reads low balls (a double yellow often stays under knee height) and eases off inside braking distance. That brought mean movement speed to ~2.0 m/s (PSA: 1.88).
   - The lab's acceleration and braking are kept: slower values cost the AI accuracy, and there's no published squash figure to justify them.
-- `PhysicsConfig.UseGameProfile()` = the match ball + the M6 reach. The lab and SimParity stay on `Defaults()`.
+- **Front-wall target aim** (`WallAim`, local players only):
+  - The stick or mouse picks a point on the front wall (±2.75 m across, 0.85–4.0 m up, centre 1.7 m) that stays put however the athlete moves.
+  - Yaw and pitch are solved through the launch model and real ball flight so the ball goes there.
+  - The lowest point is kept above the tin.
+  - Scripted human-style play: 94% of strokes reach the front wall (63% before), 0.7% go down (7% before).
+  - The AI keeps the lab aim.
+- `PhysicsConfig.UseGameProfile()` = the match ball + the M6 reach + the wall aim. The lab and SimParity stay on `Defaults()`.
 
 ## Next: M7
