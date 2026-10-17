@@ -116,6 +116,11 @@ namespace SquashGame.Athlete
             Pose(v, Runner.View.BallPos, dt);
         }
 
+        float _diveW;
+        AthletePose _diveFrom;
+        /// <summary>How much of the dive / get-up pose is drawn (tests).</summary>
+        public float DiveWeight { get; private set; }
+
         static bool Committed(AthleteSnapshot v) { return v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Swinging; }
         static bool InStroke(AthleteSnapshot v) { return v.Swing != SwingPhase.Idle; }
 
@@ -216,6 +221,26 @@ namespace SquashGame.Athlete
                 _out.Blend(_stroke, Ease(_strokeW));
             }
             else _out.CopyFrom(_loco);
+
+            // ---------------- the dive (the original SquashStrike): flat out toward the ball, then up again ----------------
+            float diveWant = v.Diving ? 1f : (v.GetUp > 0f ? 0.55f * v.GetUp : 0f);
+            _diveW = Mathf.MoveTowards(_diveW, diveWant, (v.Diving ? 12f : 2.5f) * dt);
+            if (_diveW > 0.001f)
+            {
+                var lib = PoseLibrary.Active;
+                if (v.Diving || _diveFrom == null)
+                {
+                    // The side the dive goes: toward the racket side (forehand) or the other way (backhand).
+                    Vector3 vel = new Vector3(v.Velocity.x, 0, v.Velocity.z);
+                    float side = vel.sqrMagnitude > 0.1f ? Vector3.Dot(vel, Vector3.Cross(Vector3.up, DrawnForward)) : v.SwingSide;
+                    _diveFrom = lib.Find(side >= 0 ? "dive_fh" : "dive_bh");
+                }
+                if (v.Diving) _tmp.Set(_diveFrom);
+                else { _tmp.Set(lib.Find("get_up")); }
+                _out.Blend(_tmp, Ease(_diveW));
+            }
+            else _diveFrom = null;
+            DiveWeight = _diveW;
 
             // ---------------- body ----------------
             _out.ApplyBody(Rig);

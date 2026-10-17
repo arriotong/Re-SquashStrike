@@ -41,6 +41,8 @@ namespace SquashSim
 
         /// <summary>0..1, match only (Match/Fatigue.cs). Exactly 1.0 in the lab.</summary>
         public double Stamina = 1.0;
+        /// <summary>Game only: sprint / dive-recovery speed scale (exactly 1 in the lab: no effect).</summary>
+        public double SpeedScale = 1.0;
 
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 

@@ -3,7 +3,7 @@
 // The simple hitting system (game profile; local human players only),
 // after the original SquashStrike (player.js attemptHit):
 //
-//   hold Hit / Touch   ready the stroke (how long you hold does not matter)
+//   hold Hit / Touch   charge (up to ChargeFull seconds: more pace on drives / kills)
 //   release            if the ball is within REACH of you right now, it is
 //                      HIT - no racket arc to line up, no swing timing.
 //                      Released a little early (the ball will be in reach
@@ -14,7 +14,13 @@
 //                      LungeMax) - the Mario-style "get there" help.
 //   the shot           goes to your aim target on the wall, accurately; only
 //                      a stretched ball (past the sweet spot) drifts a little.
-//                      High aim = a lob, low aim = a low drive, Touch = soft.
+//                      The shot type comes from the aim height (the
+//                      original SquashStrike): above LobHeight a LOB; below
+//                      LowHeight a DROP - or a KILL if charged past
+//                      KillCharge; otherwise a DRIVE.
+//   dive               (Space / pad B) a lunge in the move direction: 1.5x
+//                      reach (less accurate), then a slow recovery.
+//   sprint             (Shift / pad LB) faster, at a stamina cost.
 //
 // The hit is a normal racket contact to everything downstream (the
 // referee, sounds, pop-ups, the timing note), and the swing still plays
@@ -39,6 +45,10 @@ namespace SquashSim
         public double GrossMissChance;  // at full stretch, the chance the shot goes badly wrong
         public double LungeMax, LungeSpeed;   // the "auto jump closer": a step toward the ball while the stroke is ready
         public double BackWallSafeHeight;     // a shot that would reach the back wall on the full above this is played softer
+        // The original SquashStrike: shot type from aim height; dive; sprint.
+        public double LowHeight, KillCharge, KillHeightAboveTin, DropHeightAboveTin, DropSpeed;
+        public double DiveSeconds, DiveSpeedScale, DiveRecovery, DiveRecoverySpeed, DiveReachScale, DiveStamina, DiveMinStamina;
+        public double SprintScale, SprintDrain, WindedStamina;
     }
 
     public sealed class ArcadeStroke
@@ -59,6 +69,65 @@ namespace SquashSim
         /// <summary>0..1 how charged the stroke being held is (presentation).</summary>
         public double ChargeRatio { get { var c = PhysicsConfig.Current.ArcadeHit; return c == null ? 0 : System.Math.Min(1, _charge / c.ChargeFull); } }
         public bool Charging { get { return _charging; } }
+
+        // ---- dive ----
+        double _diveT = -1, _diveRecover, _diveX, _diveZ;
+        /// <summary>Mid-dive (the lunge).</summary>
+        public bool Diving { get { return _diveT > 0; } }
+        /// <summary>Seconds of post-dive recovery left (slower, a little less accurate).</summary>
+        public double DiveRecovery { get { return _diveRecover; } }
+        public int DiveCount { get; private set; }
+
+        /// <summary>Sprint and dive recovery as a top-speed scale; sprinting costs stamina.</summary>
+        public double SpeedScaleFor(TestPlayer p, InputIntent intent, double dt)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double s = 1.0;
+            bool moving = intent.MoveMagnitude > 0.1;
+            if (_diveRecover > 0) s *= c.DiveRecoverySpeed;
+            else if (intent.Sprint && moving && p.Stamina > c.WindedStamina)
+            {
+                s *= c.SprintScale;
+                p.Stamina = System.Math.Max(0, p.Stamina - c.SprintDrain * dt);
+            }
+            return s;
+        }
+
+        /// <summary>The dive. Returns true while diving (the athlete is carried by the lunge, not by running).</summary>
+        public bool StepDive(TestPlayerController ctrl, InputIntent intent, double dt)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var p = ctrl.Player;
+            if (_diveRecover > 0) _diveRecover = System.Math.Max(0, _diveRecover - dt);
+            if (intent.DivePressed && _diveT <= 0 && _diveRecover <= 0 && p.Stamina >= c.DiveMinStamina)
+            {
+                double mx = intent.Move.X, mz = intent.Move.Z, m = System.Math.Sqrt(mx * mx + mz * mz);
+                if (m < 0.1) { mx = DMath.Sin(p.Facing); mz = -DMath.Cos(p.Facing); m = 1; }
+                _diveX = mx / m; _diveZ = mz / m;
+                _diveT = c.DiveSeconds;
+                p.Stamina = System.Math.Max(0, p.Stamina - c.DiveStamina);
+                DiveCount++;
+            }
+            if (_diveT <= 0) return false;
+            double speed = PhysicsConfig.Current.Player.MaxSpeed * c.DiveSpeedScale;
+            p.Vel.X = _diveX * speed; p.Vel.Z = _diveZ * speed;
+            p.Pos.X += p.Vel.X * dt; p.Pos.Z += p.Vel.Z * dt;
+            PlayerMovement.ClampToCourt(p);
+            p.Speed = speed;
+            _diveT -= dt;
+            if (_diveT <= 0) { _diveRecover = c.DiveRecovery; p.Vel.X = 0; p.Vel.Z = 0; }
+            return true;
+        }
+
+        /// <summary>The shot type the reticle height (and the charge) would play: lob / drop / kill / drive.</summary>
+        public string ShotTypeFor(double aimHeight)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            if (c == null) return "drive";
+            if (aimHeight > c.LobHeight) return "lob";
+            if (aimHeight < c.LowHeight) return ChargeRatio > c.KillCharge ? "kill" : "drop";
+            return "drive";
+        }
         /// <summary>"hit" or "touch": the stroke being held.</summary>
         public string Stroke { get { return _stroke; } }
 
@@ -69,11 +138,13 @@ namespace SquashSim
         double Rnd() { _rng = unchecked(_rng * 1664525u + 1013904223u); return _rng / 4294967296.0; }
 
         /// <summary>Horizontal distance from the athlete to the ball, if the ball is hittable at this height.</summary>
-        static bool InReach(TestPlayer p, BallState ball, ArcadeHitSection c, out double dist)
+        double ReachScale { get { return Diving ? PhysicsConfig.Current.ArcadeHit.DiveReachScale : 1.0; } }
+
+        bool InReach(TestPlayer p, BallState ball, ArcadeHitSection c, out double dist)
         {
             double dx = ball.Pos.X - p.Pos.X, dz = ball.Pos.Z - p.Pos.Z;
             dist = System.Math.Sqrt(dx * dx + dz * dz);
-            return dist <= c.Reach && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
+            return dist <= c.Reach * ReachScale && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
         }
 
         /// <summary>One fixed step. Returns the contact event when the ball is hit.</summary>
@@ -154,7 +225,9 @@ namespace SquashSim
         {
             var player = ctrl.Player;
             var aim = ctrl.Aim;
-            double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach - c.SweetSpot), 0, 1);
+            double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale - c.SweetSpot), 0, 1);
+            if (Diving) missRatio = System.Math.Min(1, missRatio + 0.35);            // a diving hit is a scramble
+            else if (_diveRecover > 0) missRatio = System.Math.Min(1, missRatio + 0.15);
 
             // ---- where it goes ----
             double tx, ty, tz = 0;
@@ -168,8 +241,18 @@ namespace SquashSim
                 if (System.Math.Abs(aim.BiasX) < 0.08) tx = ctrl.ServeDefaultX;    // no drag: the normal cross-court serve
             }
             bool touch = _stroke == "touch";
-            double speed = touch ? c.TouchSpeed : (ty >= c.LobHeight ? c.LobSpeed : c.DriveSpeed);
-            double spread = missRatio * missRatio * c.MaxSpread;
+            // The shot type from the aim height (the original SquashStrike); charge adds pace to drives and kills.
+            string shot = ctrl.ServeStroke ? "serve" : ShotTypeFor(ty);
+            double speed;
+            switch (shot)
+            {
+                case "lob": speed = c.LobSpeed; break;
+                case "drop": ty = CourtDimensions.TIN_H + c.DropHeightAboveTin; speed = c.DropSpeed; break;
+                case "kill": ty = CourtDimensions.TIN_H + c.KillHeightAboveTin; speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
+                default: speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
+            }
+            if (touch && shot != "drop") speed = c.TouchSpeed;
+            double spread = missRatio * missRatio * c.MaxSpread * (charge > 0.8 ? 0.6 : 1.0);
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
@@ -213,7 +296,7 @@ namespace SquashSim
                 Point = new V3(ball.Pos.X, ball.Pos.Y, ball.Pos.Z),
                 Stroke = _stroke,
                 Mode = sw.Mode,
-                Technique = sw.Plan != null ? sw.Plan.Technique : null,
+                Technique = shot,
                 Side = player.SwingSide >= 0 ? 1 : -1,
                 HeadSpeed = speed * 0.8,
                 FaceNormal = new V3(_vel.X / speed, _vel.Y / speed, _vel.Z / speed),

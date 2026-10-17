@@ -58,6 +58,8 @@ namespace SquashGame
         public bool Touch;                  // the stroke is a touch (soft) stroke
         public bool HasPred;                // a contact is predicted
         public Vector3 PredContact;         // where (world)
+        public bool Diving;                 // mid-dive (the original SquashStrike dive)
+        public float GetUp;                 // 0..1 of the post-dive recovery left
 
         public static AthleteSnapshot Capture(TestPlayerController c)
         {
@@ -78,7 +80,10 @@ namespace SquashGame
                 SwingT = (float)c.Swing.Phase,
                 Touch = c.Swing.Stroke == "touch",
                 HasPred = c.Prediction.Valid,
-                PredContact = c.Prediction.Valid ? SimToWorld.Pos(c.Prediction.Point) : Vector3.zero
+                PredContact = c.Prediction.Valid ? SimToWorld.Pos(c.Prediction.Point) : Vector3.zero,
+                Diving = c.ArcadeHitEnabled && c.Arcade.Diving,
+                GetUp = c.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null && PhysicsConfig.Current.ArcadeHit.DiveRecovery > 0
+                    ? (float)(c.Arcade.DiveRecovery / PhysicsConfig.Current.ArcadeHit.DiveRecovery) : 0f
             };
         }
 
@@ -108,7 +113,8 @@ namespace SquashGame
                 Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging, Swing = b.Swing,
                 SwingT = a.Swing == b.Swing ? Mathf.LerpUnclamped(a.SwingT, b.SwingT, t) : b.SwingT,
                 Touch = b.Touch, HasPred = b.HasPred,
-                PredContact = a.HasPred && b.HasPred ? Vector3.LerpUnclamped(a.PredContact, b.PredContact, t) : b.PredContact
+                PredContact = a.HasPred && b.HasPred ? Vector3.LerpUnclamped(a.PredContact, b.PredContact, t) : b.PredContact,
+                Diving = b.Diving, GetUp = b.GetUp
             };
         }
     }
@@ -226,6 +232,37 @@ namespace SquashGame
         /// exactly the same (the fixed step is unchanged), there is just more time to get there.
         /// </summary>
         public const double GameSpeed = 0.85;
+        /// <summary>A local player's dive: a moment of slow motion (real seconds, and the speed during it).</summary>
+        public const float DiveSlowMoSeconds = 0.38f;
+        public const double DiveSlowMoScale = 0.3;
+        float _slowMo;
+        readonly int[] _dives = new int[4];
+        /// <summary>A local player started a dive (athlete index).</summary>
+        public event System.Action<int> Dived;
+
+        void WatchDives(float rawDt)
+        {
+            var athletes = Athletes;
+            for (int i = 0; athletes != null && i < athletes.Length && i < _dives.Length; i++)
+            {
+                if (SourceFor(i) == null || !athletes[i].ArcadeHitEnabled) continue;
+                int n = athletes[i].Arcade.DiveCount;
+                if (n != _dives[i])
+                {
+                    bool fresh = n > _dives[i];
+                    _dives[i] = n;
+                    if (!fresh) continue;
+                    if (_slowMo <= 0 && System.Math.Abs(Clock.TimeScale - GameSpeed) < 1e-9) _slowMo = DiveSlowMoSeconds;
+                    if (_slowMo > 0) Clock.TimeScale = GameSpeed * DiveSlowMoScale;
+                    var d = Dived; if (d != null) d(i);
+                }
+            }
+            if (_slowMo > 0)
+            {
+                _slowMo -= rawDt;
+                if (_slowMo <= 0) { _slowMo = 0; Clock.TimeScale = GameSpeed; }
+            }
+        }
 
         protected abstract void CreateSimulation();
 
@@ -265,6 +302,7 @@ namespace SquashGame
             // During a referee replay the simulation waits; the views show the recording.
             if (AdvanceReplay(rawDt)) return;
 
+            WatchDives(rawDt);
             Clock.Advance(rawDt);
 
             float alpha = Interpolate ? (float)Clock.Alpha : 1f;

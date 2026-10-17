@@ -38,12 +38,23 @@ namespace SquashSim
         public bool AppealPressed;
         public bool PausePressed;
 
+        // ---- the original SquashStrike controls (game, local players) ----
+        /// <summary>The aim reticle as an absolute point: x across the front wall (beyond +-HALF_W it runs onto
+        /// that side wall, measured from the front corner), y = height. Set by the input layer.</summary>
+        public bool HasAimPoint;
+        public double AimPointX, AimPointY = 1.8;
+        /// <summary>Dive (Space / pad B). One-shot edge.</summary>
+        public bool DivePressed;
+        /// <summary>Sprint held (Shift / pad LB).</summary>
+        public bool Sprint;
+
         public void ClearEdges()
         {
             Hit.Pressed = false; Hit.Released = false;
             Touch.Pressed = false; Touch.Released = false;
             SplitStepPressed = false;
             AppealPressed = false;
+            DivePressed = false;
         }
     }
 }

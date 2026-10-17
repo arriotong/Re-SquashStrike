@@ -76,6 +76,30 @@ namespace SquashSim
             return wall;
         }
 
+        /// <summary>
+        /// The original SquashStrike reticle (aim-space: x across the front wall, past +-HALF_W onto that side
+        /// wall measured from the front corner; y = height) as a wall point. Returns the wall (0 front, -1/+1 side).
+        /// </summary>
+        public static int TargetFromPoint(double ax, double ay, V3 output)
+        {
+            if (ax > HALF_W) { output.X = HALF_W; output.Y = ay; output.Z = ax - HALF_W; return 1; }
+            if (ax < -HALF_W) { output.X = -HALF_W; output.Y = ay; output.Z = -ax - HALF_W; return -1; }
+            output.X = ax; output.Y = ay; output.Z = 0;
+            return 0;
+        }
+
+        /// <summary>Aim straight at the reticle point (the simple hitting system solves the real flight itself).</summary>
+        public void ApplyPoint(AimState aim, double ax, double ay, V3 origin)
+        {
+            aim.TargetWall = TargetFromPoint(ax, ay, aim.WallTarget);
+            aim.HasWallTarget = true;
+            aim.FromPoint = true;
+            double dx = aim.WallTarget.X - origin.X, dz = DMath.Max(0.4, origin.Z - aim.WallTarget.Z);
+            double horiz = System.Math.Sqrt(dx * dx + dz * dz);
+            aim.DesiredYaw = DMath.Atan2(dx, dz);
+            aim.DesiredPitch = DMath.Atan2(aim.WallTarget.Y - origin.Y, horiz);
+        }
+
         readonly BallState _ball = new BallState();
         readonly List<SimEvent> _events = new List<SimEvent>();
         readonly V3 _launch = new V3();

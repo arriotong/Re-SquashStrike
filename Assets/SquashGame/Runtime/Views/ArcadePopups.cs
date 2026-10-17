@@ -69,11 +69,12 @@ namespace SquashGame
             Runner = runner;
             LoadSettings();
             Runner.Stepped += OnStepped;
+            Runner.Dived += OnDived;
         }
 
         void OnDestroy()
         {
-            if (Runner != null) Runner.Stepped -= OnStepped;
+            if (Runner != null) { Runner.Stepped -= OnStepped; Runner.Dived -= OnDived; }
             Watch(null);
         }
 
@@ -112,6 +113,9 @@ namespace SquashGame
                     else if (e.Stroke == "touch") Spawn("Touch!", null, Cyan, true, at, 0.42f, 0.7f);
                     else if (e.BallSpeedOut >= 42) Spawn("Smash!", null, Orange, true, at, 0.5f, 0.75f);
                     else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("Volley!", null, Green, true, at, 0.42f, 0.7f);
+                    else if (tech == "kill") Spawn("Kill!", null, Red, true, at, 0.45f, 0.7f);
+                    else if (tech == "drop") Spawn("Drop!", null, Cyan, true, at, 0.42f, 0.7f);
+                    else if (tech == "lob") Spawn("Lob!", null, Gold, true, at, 0.42f, 0.7f);
                     else Spawn("Hit!", null, Yellow, true, at, 0.42f, 0.7f);
                 }
                 else if (e.Type == SimEventType.Impact && e.Nick)
@@ -119,6 +123,12 @@ namespace SquashGame
                     Spawn("NICK!", null, Magenta, true, at, 0.7f, 1.1f);
                 }
             }
+        }
+
+        void OnDived(int i)
+        {
+            if (Runner == null || i >= Runner.View.Count) return;
+            Spawn("Dive!", null, Orange, true, Runner.View.Athlete(i).Pos + Vector3.up * 1.9f, 0.5f, 0.8f);
         }
 
         void Watch(MatchSimulation sim)

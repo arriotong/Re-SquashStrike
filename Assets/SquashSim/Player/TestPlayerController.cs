@@ -60,7 +60,14 @@ namespace SquashSim
         {
             StrokeFinished = false;
 
-            PlayerMovement.Step(Player, intent, Assist, dt);
+            // The original SquashStrike moves (game, local players): sprint, and the dive replaces running for its duration.
+            bool diving = false;
+            if (ArcadeOn)
+            {
+                Player.SpeedScale = Arcade.SpeedScaleFor(Player, intent, dt);
+                diving = Arcade.StepDive(this, intent, dt);
+            }
+            if (!diving) PlayerMovement.Step(Player, intent, Assist, dt);
             ContactPrediction.Step(Prediction, ball, Player, surfaces);
             MovementAssistance.Step(Assist, Player, Prediction, intent, dt);
             PlayerFacing.Step(Player, ball, dt);
@@ -74,7 +81,11 @@ namespace SquashSim
                 _origin.X = Player.Pos.X; _origin.Y = PhysicsConfig.Current.Racket.RestHeight; _origin.Z = Player.Pos.Z;
             }
             AimController.Step(Aim, intent, _origin);
-            if (WallAimEnabled && PhysicsConfig.Current.WallAim != null) WallAimSolver.Apply(this, Aim, _origin, ball, surfaces);
+            if (WallAimEnabled && PhysicsConfig.Current.WallAim != null)
+            {
+                if (intent.HasAimPoint) WallAimSolver.ApplyPoint(Aim, intent.AimPointX, intent.AimPointY, _origin);
+                else WallAimSolver.Apply(this, Aim, _origin, ball, surfaces);
+            }
 
             string strokeForLabel = Swing.State == SwingStates.Idle ? "hit" : Swing.Stroke;
             Interpretation = ShotInterpreter.Interpret(Aim, strokeForLabel, Prediction.IsVolley);

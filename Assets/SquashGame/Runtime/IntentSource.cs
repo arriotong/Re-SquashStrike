@@ -4,15 +4,15 @@
 // of lab/core/InputIntent.js. The only class that touches devices.
 //
 //   Move   WASD / arrows (always full speed) or left stick (analog)
-//   Aim    right stick, or the mouse as a DRAG STICK (M9): press Hit /
-//          Touch and the stick starts in the middle; drag while holding
-//          to push it (about DragRadiusPx for full deflection); let go to
-//          hit. After the stroke the stick snaps back to the middle.
-//          Moving the mouse without holding does nothing. Deadzone/curves
-//          are NOT applied here - AimController applies them once.
-//   Hit    LMB / pad South      Touch  RMB / pad East
-//   Focus  Space / LT: split-step, timed to the opponent's contact
-//   Appeal Q / pad Y: "Let, please"
+//   Aim    the original SquashStrike RETICLE: a point on the front wall
+//          that stays where you leave it. The mouse moves it (no button
+//          needed); the right stick drives it. Past the edge of the front
+//          wall it runs onto that side wall (a boast). Its height picks
+//          the shot: high = lob, low = drop (or a kill when charged).
+//   Hit    LMB / pad South: hold to charge, let go as the ball arrives
+//   Dive   Space / pad East     Sprint  Shift / pad LB
+//   Let    RMB / Q / pad Y: "Let, please"   Touch  pad West
+//   Focus  pad LT: split-step, timed to the opponent's contact
 //   Pause  Esc / Start
 //   Ready  Enter / pad Y outside a rally: skip the knock-up or break
 //
@@ -42,18 +42,17 @@ namespace SquashGame
         public InputDevice[] Devices { get; private set; }
         /// <summary>Short label for HUD prompts: "keyboard", "pad 1", ...</summary>
         public string DeviceLabel { get; private set; } = "keyboard";
-        public float VirtualAimX { get { return _vx; } }
-        public float VirtualAimY { get { return _vy; } }
-        public bool Recentering { get { return _recentering; } }
+        /// <summary>The reticle (aim space: x across the front wall, beyond +-HALF_W on a side wall; y = height).</summary>
+        public float ReticleX { get { return _rx; } }
+        public float ReticleY { get { return _ry; } }
 
         // ---- player settings (setup panel; saved per machine) ----
-        /// <summary>Drag length multiplier: 1 = a 120 px drag for full deflection; higher = a shorter drag.</summary>
+        /// <summary>Aim speed: 1 = the original 0.015 m of wall per pixel of mouse movement.</summary>
         public static float MouseSensitivityScale = 1f;
-        /// <summary>Mouse drag (pixels) for full stick deflection.</summary>
-        public static float DragRadiusPx { get { return 120f / Mathf.Max(0.2f, MouseSensitivityScale); } }
+        public const float MetresPerPixel = 0.015f;
+        /// <summary>Right-stick reticle speed (m/s at full deflection).</summary>
+        public const float StickReticleSpeed = 9f;
         public static bool InvertMouseY;
-        /// <summary>Ease the mouse aim back to the middle after a stroke. Off: the target stays where you put it.</summary>
-        public static bool RecenterMouseAim;
         public static readonly float[] SensitivitySteps = { 0.5f, 0.7f, 1f, 1.4f, 2f };
 
         public static void LoadSettings()
@@ -62,7 +61,6 @@ namespace SquashGame
             {
                 MouseSensitivityScale = PlayerPrefs.GetFloat("aim.mouseSensitivity", 1f);
                 InvertMouseY = PlayerPrefs.GetInt("aim.invertY", 0) == 1;
-                RecenterMouseAim = PlayerPrefs.GetInt("aim.recenter", 0) == 1;
             }
             catch (System.Exception) { }
         }
@@ -73,7 +71,6 @@ namespace SquashGame
             {
                 PlayerPrefs.SetFloat("aim.mouseSensitivity", MouseSensitivityScale);
                 PlayerPrefs.SetInt("aim.invertY", InvertMouseY ? 1 : 0);
-                PlayerPrefs.SetInt("aim.recenter", RecenterMouseAim ? 1 : 0);
                 PlayerPrefs.Save();
             }
             catch (System.Exception) { }
@@ -85,21 +82,14 @@ namespace SquashGame
         const float MOVE_DEADZONE = 0.18f;
 
         readonly InputActionMap _map;
-        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal;
+        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint;
 
-        float _vx, _vy;
-        bool _recentering;
+        public const float ReticleStartX = 0f, ReticleStartY = 1.8f;
+        float _rx = ReticleStartX, _ry = ReticleStartY;
         bool _ready;
-        bool _strokeHeld, _awaitRecentre;
-        float _releasedAt;
 
-        /// <summary>Hit or Touch is held right now (the drag stick is live; the widget shows).</summary>
-        public bool StrokeHeld { get { return _strokeHeld; } }
-        /// <summary>Released, the stroke not yet over: the aim is still the one you dragged.</summary>
-        public bool AwaitingHit { get { return _awaitRecentre; } }
-        /// <summary>The stick as aimed (-1..1 each axis; +x = right, +y = up).</summary>
-        public float StickX { get { return (float)Intent.AimRawX; } }
-        public float StickY { get { return (float)Intent.AimRawY; } }
+        /// <summary>Hit is held right now (charging).</summary>
+        public bool StrokeHeld { get { return _hit.IsPressed() || _touch.IsPressed(); } }
 
         public IntentSource(InputDevice[] devices = null)
         {
@@ -122,15 +112,23 @@ namespace SquashGame
             _hit.AddBinding("<Gamepad>/buttonSouth");
 
             _touch = _map.AddAction("Touch", InputActionType.Button);
-            _touch.AddBinding("<Mouse>/rightButton").WithGroup("Mouse");
-            _touch.AddBinding("<Gamepad>/buttonEast");
+            _touch.AddBinding("<Gamepad>/buttonWest");
 
             _focus = _map.AddAction("MomentumFocus", InputActionType.Button);
-            _focus.AddBinding("<Keyboard>/space");
             _focus.AddBinding("<Gamepad>/leftTrigger");
+
+            _dive = _map.AddAction("Dive", InputActionType.Button);
+            _dive.AddBinding("<Keyboard>/space");
+            _dive.AddBinding("<Gamepad>/buttonEast");
+
+            _sprint = _map.AddAction("Sprint", InputActionType.Button);
+            _sprint.AddBinding("<Keyboard>/leftShift");
+            _sprint.AddBinding("<Keyboard>/rightShift");
+            _sprint.AddBinding("<Gamepad>/leftShoulder");
 
             _appeal = _map.AddAction("Appeal", InputActionType.Button);
             _appeal.AddBinding("<Keyboard>/q");
+            _appeal.AddBinding("<Mouse>/rightButton").WithGroup("Mouse");
             _appeal.AddBinding("<Gamepad>/buttonNorth");
 
             _pause = _map.AddAction("Pause", InputActionType.Button);
@@ -156,7 +154,6 @@ namespace SquashGame
             if (!keyboard && pad != null) Device = "gamepad";
             else if (keyboard && devices != null && pad == null) Device = "keyboard";
             DeviceLabel = keyboard ? (pad != null && devices != null ? "keyboard + pad" : "keyboard") : PadLabel(pad);
-            _vx = 0; _vy = 0; _recentering = false;
         }
 
         static string PadLabel(Gamepad pad)
@@ -175,14 +172,11 @@ namespace SquashGame
 
         public void Dispose() { _map.Disable(); _map.Dispose(); }
 
-        /// <summary>The virtual stick eases back to neutral after a stroke (a real stick recentres itself).</summary>
-        public void BeginRecenter()
-        {
-            // M9: the stroke is over - the drag stick snaps back to the middle (unless a new stroke is already held).
-            if (!_strokeHeld) { _vx = 0; _vy = 0; _awaitRecentre = false; _recentering = false; }
-        }
+        /// <summary>After a stroke. The original reticle stays where you left it, so nothing to do.</summary>
+        public void BeginRecenter() { }
 
-        public void SetVirtualAim(float x, float y) { _vx = x; _vy = y; ClampVirtual(); _recentering = false; }
+        /// <summary>Put the reticle somewhere (tests, a new match).</summary>
+        public void SetReticle(float x, float y) { _rx = x; _ry = y; ClampReticle(); }
 
         static float MoveDeadzone(float v)
         {
@@ -191,11 +185,12 @@ namespace SquashGame
             return Mathf.Sign(v) * (a - MOVE_DEADZONE) / (1f - MOVE_DEADZONE);
         }
 
-        void ClampVirtual()
+        void ClampReticle()
         {
-            float max = (float)PhysicsConfig.Current.Aim.MaxBias;
-            float m = Mathf.Sqrt(_vx * _vx + _vy * _vy);
-            if (m > max) { _vx *= max / m; _vy *= max / m; }
+            // The original limits: a little way onto each side wall, from just over the tin to near the out line.
+            float maxX = (float)CourtDimensions.HALF_W + 3.25f;
+            _rx = Mathf.Clamp(_rx, -maxX, maxX);
+            _ry = Mathf.Clamp(_ry, 0.65f, (float)CourtDimensions.FRONT_WALL_OUT_H - 0.5f);
         }
 
         static bool FromMouse(InputAction a)
@@ -207,7 +202,6 @@ namespace SquashGame
         /// <summary>Sample devices once per rendered frame.</summary>
         public void Sample(float dt)
         {
-            var aimCfg = PhysicsConfig.Current.Aim;
             HasGamepad = OwnPad() != null;
 
             // ---- movement: court-relative, never camera-relative ----
@@ -232,49 +226,31 @@ namespace SquashGame
             // A keyboard player is never slowed for lacking an analog stick.
             Intent.MoveMagnitude = keyboardMoving ? 1.0 : Mathf.Min(1f, padMag);
 
-            // ---- aim: the drag stick ----
-            bool held = _hit.IsPressed() || _touch.IsPressed();
-            if (_hit.WasPressedThisFrame() || _touch.WasPressedThisFrame())
-            {
-                _vx = 0; _vy = 0; _awaitRecentre = false;           // every stroke starts aimed at the middle
-            }
-            if (MouseGameplayEnabled && held)
+            // ---- aim: the reticle, left where you put it ----
+            if (MouseGameplayEnabled)
             {
                 Vector2 d = _mouseDelta.ReadValue<Vector2>();
                 if (d.x != 0f || d.y != 0f)
                 {
-                    float s = 1f / DragRadiusPx;
-                    _vx += d.x * s;
-                    _vy += (InvertMouseY ? -d.y : d.y) * s;   // Input System delta is +y up: drag up = aim up
-                    ClampVirtual();
+                    float k = MetresPerPixel * MouseSensitivityScale;
+                    _rx += d.x * k;
+                    _ry += (InvertMouseY ? -d.y : d.y) * k;   // Input System delta is +y up: mouse up = aim up
                     Device = "keyboard";
                 }
             }
-            if (_strokeHeld && !held) { _awaitRecentre = true; _releasedAt = Time.unscaledTime; }
-            _strokeHeld = held;
-            // A release that never turned into a stroke: back to the middle anyway.
-            if (_awaitRecentre && Time.unscaledTime - _releasedAt > 1.2f) { _vx = 0; _vy = 0; _awaitRecentre = false; }
             Vector2 aimStick = _aimStick.ReadValue<Vector2>();
-            if (aimStick.sqrMagnitude > 0.05f * 0.05f) Device = "gamepad";
-
-            if (_recentering)
+            if (aimStick.sqrMagnitude > 0.15f * 0.15f)
             {
-                float k = Mathf.Exp(-(float)aimCfg.RecenterSpeed * dt);
-                _vx *= k; _vy *= k;
-                if (Mathf.Sqrt(_vx * _vx + _vy * _vy) < 0.01f) { _vx = 0; _vy = 0; _recentering = false; }
+                _rx += aimStick.x * StickReticleSpeed * dt;
+                _ry += aimStick.y * StickReticleSpeed * dt;
+                Device = "gamepad";
             }
-
-            double ax, ay;
-            if (Device == "gamepad" && HasGamepad)
-            {
-                ax = aimStick.x * aimCfg.StickSensitivity;
-                ay = aimStick.y * aimCfg.StickSensitivity;
-            }
-            else { ax = _vx; ay = _vy; }
-            double am = System.Math.Sqrt(ax * ax + ay * ay);
-            if (am > aimCfg.MaxBias) { ax *= aimCfg.MaxBias / am; ay *= aimCfg.MaxBias / am; }
-            Intent.AimRawX = ax;
-            Intent.AimRawY = ay;
+            ClampReticle();
+            Intent.HasAimPoint = true;
+            Intent.AimPointX = _rx;
+            Intent.AimPointY = _ry;
+            Intent.AimRawX = 0;
+            Intent.AimRawY = 0;
 
             // ---- strokes: edges accumulate until a fixed step consumes them ----
             SampleStroke(_hit, Intent.Hit, dt);
@@ -282,14 +258,15 @@ namespace SquashGame
             if (_hit.WasPressedThisFrame() || _touch.WasPressedThisFrame())
             {
                 if (!(FromMouse(_hit) || FromMouse(_touch))) Device = "gamepad";
-                _recentering = false;        // a new stroke press means aiming afresh
             }
 
+            Intent.Sprint = _sprint.IsPressed();
+            if (_dive.WasPressedThisFrame()) Intent.DivePressed = true;          // consumed by the next fixed step
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
-            if (_appeal.WasPressedThisFrame()) Intent.AppealPressed = true;   // consumed by the next fixed step
-            if (_appeal.WasPressedThisFrame() || ReadyKey()) _ready = true;
+            if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
+            if ((_appeal.WasPressedThisFrame() && !FromMouse(_appeal)) || ReadyKey()) _ready = true;
         }
 
         bool ReadyKey()

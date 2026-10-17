@@ -32,29 +32,34 @@ namespace SquashGame.Tests
             yield return null;
             Assert.That(aim.Shown, Is.True, "the target is always on in practice");
 
-            // The stick moves it: left vs right across the wall.
-            // (Batch-mode frames are ~1 ms: wait real time so the eased target can get there.)
+            // The right stick drives the reticle across the wall (a rate: hold it longer, it goes further).
+            // (Batch-mode frames are ~1 ms: wait real time.)
+            r.Input.SetReticle(0f, 1.8f);
             Set(pad.rightStick, new Vector2(-0.8f, 0f));
-            yield return WaitReal(0.6f);
+            yield return WaitReal(0.25f);
             float left = aim.WorldPoint.x;
             Set(pad.rightStick, new Vector2(0.8f, 0f));
-            yield return WaitReal(0.6f);
+            yield return WaitReal(0.5f);
+            Set(pad.rightStick, Vector2.zero);
+            yield return WaitReal(0.1f);
             float right = aim.WorldPoint.x;
             Debug.Log("[M6] target x: stick left " + left.ToString("0.00") + ", stick right " + right.ToString("0.00"));
             Assert.That(Mathf.Abs(right - left), Is.GreaterThan(1.0f), "the stick moves the target across the wall");
             Assert.That(aim.Wall, Is.EqualTo(0), "inside the front wall's width: a front-wall target");
 
-            // Full stick: past the edge of the front wall, the target moves onto that side wall (a boast).
+            // Held on: past the edge of the front wall, the target moves onto that side wall (a boast).
             Set(pad.rightStick, new Vector2(1f, 0f));
-            yield return WaitReal(0.6f);
+            yield return WaitReal(0.8f);
             Debug.Log("[M6] full stick right: wall " + aim.Wall + " at " + aim.WorldPoint);
-            Assert.That(aim.Wall, Is.Not.EqualTo(0), "full stick aims a boast off the side wall");
+            Assert.That(aim.Wall, Is.Not.EqualTo(0), "held right: a boast off the side wall");
             Set(pad.rightStick, new Vector2(-1f, 0f));
-            yield return WaitReal(0.6f);
+            yield return WaitReal(1.6f);
             Assert.That(aim.Wall, Is.Not.EqualTo(0), "and the other way");
+            Set(pad.rightStick, Vector2.zero);
 
-            // Swing at the feeds with a slight aim; compare the last contact-based preview with the real hit.
-            Set(pad.rightStick, new Vector2(0.25f, 0.1f));
+            // Swing at the feeds aiming a drive; compare the last contact-based preview with the real hit.
+            yield return null;
+            r.Input.SetReticle(0.6f, 2.0f);
             var errors = new List<float>();
             bool awaitingWall = false;
             Vector3 promised = Vector3.zero;

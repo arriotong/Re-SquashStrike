@@ -25,12 +25,14 @@ namespace SquashSim
         public readonly V3 WallTarget = new V3(0, 1.6, 0);
         /// <summary>0 = front wall; -1 / +1 = left / right side wall (a boast).</summary>
         public int TargetWall;
+        /// <summary>The target came from the reticle point (InputIntent.HasAimPoint), not the stick bias.</summary>
+        public bool FromPoint;
 
         public void CopyFrom(AimState o)
         {
             RawX = o.RawX; RawY = o.RawY; BiasX = o.BiasX; BiasY = o.BiasY;
             DesiredYaw = o.DesiredYaw; DesiredPitch = o.DesiredPitch; NeutralPitch = o.NeutralPitch;
-            HasWallTarget = o.HasWallTarget; WallTarget.CopyFrom(o.WallTarget); TargetWall = o.TargetWall;
+            HasWallTarget = o.HasWallTarget; WallTarget.CopyFrom(o.WallTarget); TargetWall = o.TargetWall; FromPoint = o.FromPoint;
         }
     }
 

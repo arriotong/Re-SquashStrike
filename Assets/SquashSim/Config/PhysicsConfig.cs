@@ -514,9 +514,13 @@ namespace SquashSim
         {
             Current.ArcadeHit = new ArcadeHitSection
             {
-                Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.6,
-                DriveSpeed = 24.0, ChargeBonus = 0.0, LobSpeed = 14.0, LobHeight = 3.2, TouchSpeed = 11.0,
-                MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4
+                Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.9,
+                DriveSpeed = 24.0, ChargeBonus = 0.6, LobSpeed = 14.0, LobHeight = 3.0, TouchSpeed = 11.0,
+                MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4,
+                // The original SquashStrike: shot type from aim height, dive, sprint.
+                LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
+                DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
+                DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3
             };
         }
 

@@ -1,6 +1,10 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Views/AimTargetView.cs
-// M6: the always-on aim target. A ring on the front wall where the
+// The original SquashStrike reticle: a small ring that sits exactly where
+// you aim (front wall, or a side wall for a boast), always on in play,
+// coloured by the shot its height plays: DRIVE green, DROP blue, LOB
+// orange, KILL red (a low aim, charged). Older notes, M6:
+// the always-on aim target. A ring on the front wall where the
 // local player's current aim would send the ball (ShotPreview: the swing's
 // own launch maths, flown through the real ball physics). The ring's size
 // is the expected spread: tight on a set, prepared stroke; wide when quick,
@@ -23,13 +27,21 @@ namespace SquashGame
         public SimRunnerBase Runner;
         public int Athlete;
         public Color Colour = new Color(1f, 0.78f, 0.22f);
-        /// <summary>M9: the circle on the front wall - small and soft. It only appears once you drag (hold Hit /
-        /// Touch and move off the middle), follows your aim, and fades out after the shot (the aim is back in
-        /// the middle).</summary>
         public bool DrawRing = true;
-        public const float CircleRadius = 0.16f;
-        /// <summary>0..1 how visible the circle is this frame (tests).</summary>
+        public const float CircleRadius = 0.12f;
+        /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
+        /// <summary>The shot the reticle would play now: drive / drop / lob / kill.</summary>
+        public string ShotType { get; private set; } = "drive";
+
+        public static readonly Color DriveColour = new Color(0.78f, 1f, 0.24f);
+        public static readonly Color DropColour = new Color(0.23f, 0.64f, 1f);
+        public static readonly Color LobColour = new Color(1f, 0.72f, 0.23f);
+        public static readonly Color KillColour = new Color(1f, 0.29f, 0.25f);
+        public static Color ColourFor(string shot)
+        {
+            switch (shot) { case "drop": return DropColour; case "lob": return LobColour; case "kill": return KillColour; default: return DriveColour; }
+        }
 
         /// <summary>The preview drawn this frame (tests and diagnostics).</summary>
         public readonly ShotPreview Preview = new ShotPreview();
@@ -70,29 +82,29 @@ namespace SquashGame
         {
             IntentSource src = Runner != null ? Runner.LocalSource(Athlete) : null;
             Shown = src != null && Visible();
-            // Only while dragging: the stroke held (or just released) with the aim off the middle.
-            bool dragging = src != null && (src.StrokeHeld || src.AwaitingHit) &&
-                            (src.StickX * src.StickX + src.StickY * src.StickY) > 0.05f * 0.05f;
-            Fade = Mathf.MoveTowards(Fade, Shown && dragging ? 1f : 0f, Time.unscaledDeltaTime / (dragging ? 0.08f : 0.2f));
+            Fade = Mathf.MoveTowards(Fade, Shown ? 1f : 0f, Time.unscaledDeltaTime / 0.15f);
             _ring.gameObject.SetActive(DrawRing && Fade > 0.01f);
-            _dot.gameObject.SetActive(false);
+            _dot.gameObject.SetActive(DrawRing && Fade > 0.01f);
             if (!Shown) { _hasPos = false; return; }
 
             var athletes = Runner.Athletes;
             Preview.Update(athletes[Athlete], src.Intent, Runner.Ball, Runner.Surfaces);
             if (!Preview.Valid) return;
 
+            // The reticle itself (not a prediction): exactly where the player aims, so it never lags the mouse.
+            var ctrl = athletes[Athlete];
+            var aim = new V3();
+            int wall = WallAim.TargetFromPoint(src.ReticleX, src.ReticleY, aim);
+            ShotType = ctrl.ArcadeHitEnabled ? ctrl.Arcade.ShotTypeFor(src.ReticleY) : "drive";
             // Just off the wall, toward the court, so it never z-fights the plaster.
-            int wall = Preview.TargetWall;
             Vector3 target = wall == 0
-                ? SimToWorld.Pos(Preview.FrontPoint.X, System.Math.Max(0.03, Preview.FrontPoint.Y), 0.012)
-                : SimToWorld.Pos(Preview.Target.X - wall * 0.012, System.Math.Max(0.03, Preview.Target.Y), Preview.Target.Z);
+                ? SimToWorld.Pos(aim.X, aim.Y, 0.012)
+                : SimToWorld.Pos(aim.X - wall * 0.012, aim.Y, aim.Z);
             if (wall != Wall) _hasPos = false;                // jump to the other wall, don't glide across the court
             Wall = wall;
             float radius = CircleRadius;
             float dt = Time.unscaledDeltaTime;
-            // The prediction refreshes every few steps: ease toward it so the target glides, not jitters.
-            float k = 1f - Mathf.Exp(-18f * dt);
+            float k = 1f - Mathf.Exp(-60f * dt);
             _pos = _hasPos ? Vector3.Lerp(_pos, target, k) : target;
             _radius = _hasPos ? Mathf.Lerp(_radius, radius, k) : radius;
             _hasPos = true;
@@ -104,25 +116,30 @@ namespace SquashGame
             _ring.rotation = face; _dot.rotation = face;
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
-            // Soft: the player's colour washed toward white, half see-through.
-            Color c = Color.Lerp(Colour, Color.white, 0.35f);
-            c.a = 0.55f * Fade;
+            // Coloured by the shot; brighter while charging. (In local 2P the second player's ring is tinted toward its colour.)
+            Color c = ColourFor(ShotType);
+            if (Athlete != 0 && Runner.LocalSource(0) != null) c = Color.Lerp(c, Colour, 0.35f);
+            bool charging = ctrl.ArcadeHitEnabled && (ctrl.Arcade.Charging || ctrl.Arcade.Waiting);
+            c.a = (charging ? 0.95f : 0.75f) * Fade;
             _mat.color = c;
+            if (charging) { float g = 1f + 0.25f * (float)ctrl.Arcade.ChargeRatio; _ring.localScale = new Vector3(_radius * g, _radius * g, 1f); }
         }
 
         void OnGUI()
         {
-            if (!Shown || Wall == 0 || !DrawRing || Fade < 0.05f) return;
+            if (!Shown || !DrawRing || Fade < 0.05f) return;
             var cam = Camera.main;
             if (cam == null) return;
             Vector3 sp = cam.WorldToScreenPoint(WorldPoint + Vector3.up * (_radius + 0.25f));
             if (sp.z <= 0) return;
             if (_tag == null) _tag = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            var r = new Rect(sp.x - 60, Screen.height - sp.y - 12, 120, 24);
-            _tag.normal.textColor = new Color(0, 0, 0, 0.7f);
-            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "BOAST", _tag);
-            _tag.normal.textColor = Colour;
-            GUI.Label(r, "BOAST", _tag);
+            var r = new Rect(sp.x - 70, Screen.height - sp.y - 12, 140, 24);
+            string text = (Wall != 0 ? "BOAST " : "") + ShotType.ToUpperInvariant();
+            _tag.normal.textColor = new Color(0, 0, 0, 0.7f * Fade);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, _tag);
+            Color tc = ColourFor(ShotType); tc.a = 0.9f * Fade;
+            _tag.normal.textColor = tc;
+            GUI.Label(r, text, _tag);
         }
     }
 }

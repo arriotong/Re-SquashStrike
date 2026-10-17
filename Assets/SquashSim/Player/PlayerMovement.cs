@@ -26,6 +26,7 @@ namespace SquashSim
 
             bool wantsMove = intent.MoveMagnitude > 0.01;
             player.Adjusting = adjusting;
+            if (player.SpeedScale != 1.0) maxSpeed *= player.SpeedScale;      // game only (sprint, dive recovery)
 
             // Match-only modifiers. All timers are zero in the lab, so this block
             // never runs there and the lab's arithmetic is exactly unchanged.

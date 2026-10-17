@@ -88,7 +88,8 @@ namespace SquashSim
             var p = ctrl.Player.Pos;
             _origin.X = p.X; _origin.Y = 1.0; _origin.Z = p.Z;
             AimController.Step(_aim, intent, _origin);
-            if (wallAim) { TargetWall = WallAim.TargetFor(_aim.BiasX, _aim.BiasY, _origin, Target); FrontPoint.CopyFrom(Target); }   // the point you picked
+            if (wallAim && intent.HasAimPoint) { TargetWall = WallAim.TargetFromPoint(intent.AimPointX, intent.AimPointY, Target); FrontPoint.CopyFrom(Target); }
+            else if (wallAim) { TargetWall = WallAim.TargetFor(_aim.BiasX, _aim.BiasY, _origin, Target); FrontPoint.CopyFrom(Target); }   // the point you picked
             else AimController.WallIntersection(FrontPoint, _origin, _aim.DesiredYaw, _aim.DesiredPitch);
             FromContact = false;
             Spread = 0.35;
