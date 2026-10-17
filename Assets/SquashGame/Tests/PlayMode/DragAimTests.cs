@@ -37,8 +37,8 @@ namespace SquashGame.Tests
             Set(mouse.delta, Vector2.zero);
             yield return null;
             Assert.That(Mathf.Abs(r.Input.StickX), Is.LessThan(0.01f), "the mouse alone does not aim");
-            Assert.That(ring.Shown, Is.True, "the circle is on the wall");
-            Assert.That(Mathf.Abs(ring.WorldPoint.x), Is.LessThan(0.2f), "resting in the middle of the front wall");
+            Assert.That(ring.Fade, Is.LessThan(0.01f), "no circle until you drag");
+            Assert.That(Mathf.Abs(ring.WorldPoint.x), Is.LessThan(0.2f), "the aim rests in the middle of the front wall");
 
             // Press: the stick starts in the middle and the widget shows; drag left: the aim goes left.
             Press(mouse.leftButton);
@@ -51,13 +51,15 @@ namespace SquashGame.Tests
             Debug.Log("[M9] after a 120 px drag left: stick x " + r.Input.StickX.ToString("0.00") + ", circle x " + ring.WorldPoint.x.ToString("0.00"));
             Assert.That(r.Input.StickX, Is.LessThan(-0.6f), "dragging left aims left");
             Assert.That(Mathf.Abs(ring.WorldPoint.x), Is.GreaterThan(1.0f), "the circle follows the drag across the wall");
+            Assert.That(ring.Fade, Is.GreaterThan(0.9f), "the circle shows while dragging");
 
             // Let go: once the stroke is over (or the 1.2 s fallback), the aim is back in the middle.
             Release(mouse.leftButton);
             yield return WaitReal(1.6f);
             Assert.That(Mathf.Abs(r.Input.StickX), Is.LessThan(0.01f), "back to the middle after the stroke");
             yield return WaitReal(0.3f);
-            Assert.That(Mathf.Abs(ring.WorldPoint.x), Is.LessThan(0.2f), "the circle is back in the middle");
+            Assert.That(Mathf.Abs(ring.WorldPoint.x), Is.LessThan(0.2f), "the aim is back in the middle");
+            Assert.That(ring.Fade, Is.LessThan(0.01f), "and the circle has faded out");
         }
     }
 }

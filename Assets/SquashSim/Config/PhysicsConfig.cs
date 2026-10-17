@@ -516,9 +516,7 @@ namespace SquashSim
             {
                 Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.6,
                 DriveSpeed = 24.0, ChargeBonus = 0.0, LobSpeed = 14.0, LobHeight = 3.2, TouchSpeed = 11.0,
-                MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4,
-                KillPace = 1.6, KillMaxHeight = 0.95, KillMargin = 0.16, KillSpread = 0.08,
-                DropSpeed = 8.5, DropHeight = 0.17, DropSpread = 0.05
+                MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4
             };
         }
 

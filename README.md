@@ -296,14 +296,15 @@ Playtest round (feedback before playing):
 Playtest round 2:
 - **Athletes:** drawn at 88% size (gameplay distances unchanged) and 12% quicker (top speed, acceleration, braking; AI too).
 - **Normal shots** are accurate: half the old aim error at a stretch, and gross misses at most 12% (at full stretch).
-- **A full charge** (held 0.6 s) gives a special shot: Hit = a very fast **kill** kept low over the tin; Touch = a pin-point **drop**. The aim ring turns gold when the charge is ready and shows where the special will go; the pop-ups say "Kill!" / "Drop!".
+- *(The charged kill / drop, added in this round, was removed again: a held aim for a lob kept turning into a kill.)*
 
 ## M9 — drag-to-aim (the Joy-Con stick)
 
 Plan: `RE_SQUASHSTRIKE_M9_DRAG_AIM_PLAN.md`.
 - **Every stroke starts aimed at the middle.**
 - **Mouse:** hold Hit / Touch and drag (about 120 px = full aim; setup panel: "Drag distance"), then let go to hit. After the stroke the aim snaps back to the middle. Moving the mouse without holding does nothing.
-- **The circle on the front wall** rests in the middle and follows your drag (or the pad's right stick) while you hold. It turns gold when a kill / drop is charged, sits on the side wall tagged BOAST in the boast zone, and goes back to the middle once the shot is struck. (The on-screen `AimStickWidget` exists but is not used.)
+- **No charge system:** how long you hold does not matter. High aim = lob, low aim = low drive, Touch = soft.
+- **The circle on the front wall** is small (16 cm) and soft. It appears only once you drag off the middle, follows your aim (on the side wall, tagged BOAST, in the boast zone), and fades out after the shot.
 - **Serve:** with no drag, it goes cross-court.
 
 ## Next: M7

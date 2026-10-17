@@ -23,9 +23,13 @@ namespace SquashGame
         public SimRunnerBase Runner;
         public int Athlete;
         public Color Colour = new Color(1f, 0.78f, 0.22f);
-        /// <summary>M9: the circle on the front wall. It rests in the middle; while you hold and drag it follows
-        /// your aim; after the shot it goes back to the middle.</summary>
+        /// <summary>M9: the circle on the front wall - small and soft. It only appears once you drag (hold Hit /
+        /// Touch and move off the middle), follows your aim, and fades out after the shot (the aim is back in
+        /// the middle).</summary>
         public bool DrawRing = true;
+        public const float CircleRadius = 0.16f;
+        /// <summary>0..1 how visible the circle is this frame (tests).</summary>
+        public float Fade { get; private set; }
 
         /// <summary>The preview drawn this frame (tests and diagnostics).</summary>
         public readonly ShotPreview Preview = new ShotPreview();
@@ -47,7 +51,7 @@ namespace SquashGame
             Runner = runner; Athlete = athlete; Colour = colour;
             _mat = palette.Clear(colour);
             // Unit ring (radius 1) scaled to the spread; a fixed-size centre dot.
-            _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.06f, 48, 6), _mat).transform;
+            _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.11f, 48, 6), _mat).transform;
             _dot = Greybox.MeshObject("Dot", transform, Greybox.Torus(0.045f, 0.045f, 12, 6), _mat).transform;
         }
 
@@ -66,8 +70,12 @@ namespace SquashGame
         {
             IntentSource src = Runner != null ? Runner.LocalSource(Athlete) : null;
             Shown = src != null && Visible();
-            _ring.gameObject.SetActive(Shown && DrawRing);
-            _dot.gameObject.SetActive(Shown && DrawRing);
+            // Only while dragging: the stroke held (or just released) with the aim off the middle.
+            bool dragging = src != null && (src.StrokeHeld || src.AwaitingHit) &&
+                            (src.StickX * src.StickX + src.StickY * src.StickY) > 0.05f * 0.05f;
+            Fade = Mathf.MoveTowards(Fade, Shown && dragging ? 1f : 0f, Time.unscaledDeltaTime / (dragging ? 0.08f : 0.2f));
+            _ring.gameObject.SetActive(DrawRing && Fade > 0.01f);
+            _dot.gameObject.SetActive(false);
             if (!Shown) { _hasPos = false; return; }
 
             var athletes = Runner.Athletes;
@@ -81,7 +89,7 @@ namespace SquashGame
                 : SimToWorld.Pos(Preview.Target.X - wall * 0.012, System.Math.Max(0.03, Preview.Target.Y), Preview.Target.Z);
             if (wall != Wall) _hasPos = false;                // jump to the other wall, don't glide across the court
             Wall = wall;
-            float radius = Mathf.Clamp((float)Preview.Spread, 0.2f, 0.9f);
+            float radius = CircleRadius;
             float dt = Time.unscaledDeltaTime;
             // The prediction refreshes every few steps: ease toward it so the target glides, not jitters.
             float k = 1f - Mathf.Exp(-18f * dt);
@@ -96,23 +104,15 @@ namespace SquashGame
             _ring.rotation = face; _dot.rotation = face;
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
-            Color c = Preview.Down ? new Color(0.95f, 0.25f, 0.2f) : Colour;
-            c.a = Preview.FromContact ? 0.9f : 0.45f;
-            // Fully charged: the special shot (kill / drop) is ready - the ring turns gold and pulses.
-            var ctrl = athletes[Athlete];
-            if (ctrl.ArcadeHitEnabled && (ctrl.Arcade.Charging || ctrl.Arcade.Waiting) && ctrl.Arcade.ChargeRatio >= 0.999)
-            {
-                float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 14f);
-                c = Color.Lerp(new Color(1f, 0.8f, 0.1f), Color.white, 0.3f * pulse);
-                c.a = 1f;
-                _ring.localScale = new Vector3(_radius * (1.05f + 0.1f * pulse), _radius * (1.05f + 0.1f * pulse), 1f);
-            }
+            // Soft: the player's colour washed toward white, half see-through.
+            Color c = Color.Lerp(Colour, Color.white, 0.35f);
+            c.a = 0.55f * Fade;
             _mat.color = c;
         }
 
         void OnGUI()
         {
-            if (!Shown || Wall == 0 || !DrawRing) return;
+            if (!Shown || Wall == 0 || !DrawRing || Fade < 0.05f) return;
             var cam = Camera.main;
             if (cam == null) return;
             Vector3 sp = cam.WorldToScreenPoint(WorldPoint + Vector3.up * (_radius + 0.25f));

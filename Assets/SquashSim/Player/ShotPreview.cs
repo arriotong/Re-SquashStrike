@@ -62,9 +62,8 @@ namespace SquashSim
                 else { AimController.Step(_aim, intent, _origin); TargetWall = 0; }
                 if (ctrl.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null && wallAim && TargetWall == 0)
                 {
-                    // The simple hitting system sends the ball to the target itself: show that (a charged special where it goes).
+                    // The simple hitting system sends the ball to the target itself: show that.
                     FrontPoint.CopyFrom(Target);
-                    ctrl.Arcade.SpecialTarget(FrontPoint);
                     FromContact = true;
                     Spread = 0.2;
                     Valid = true;

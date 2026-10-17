@@ -3,7 +3,7 @@
 // The simple hitting system (game profile; local human players only),
 // after the original SquashStrike (player.js attemptHit):
 //
-//   hold Hit / Touch   charge (power builds up to ChargeFull seconds)
+//   hold Hit / Touch   ready the stroke (how long you hold does not matter)
 //   release            if the ball is within REACH of you right now, it is
 //                      HIT - no racket arc to line up, no swing timing.
 //                      Released a little early (the ball will be in reach
@@ -14,10 +14,7 @@
 //                      LungeMax) - the Mario-style "get there" help.
 //   the shot           goes to your aim target on the wall, accurately; only
 //                      a stretched ball (past the sweet spot) drifts a little.
-//   a FULL charge      (squash is fast: only when you have the time) turns
-//                      the stroke into a special: Hit = a very fast KILL kept
-//                      low over the tin, Touch = a pin-point DROP just above
-//                      it.
+//                      High aim = a lob, low aim = a low drive, Touch = soft.
 //
 // The hit is a normal racket contact to everything downstream (the
 // referee, sounds, pop-ups, the timing note), and the swing still plays
@@ -42,8 +39,6 @@ namespace SquashSim
         public double GrossMissChance;  // at full stretch, the chance the shot goes badly wrong
         public double LungeMax, LungeSpeed;   // the "auto jump closer": a step toward the ball while the stroke is ready
         public double BackWallSafeHeight;     // a shot that would reach the back wall on the full above this is played softer
-        // A full charge: Hit = a kill (much faster, kept low, very accurate); Touch = a drop (soft, just above the tin).
-        public double KillPace, KillMaxHeight, KillMargin, KillSpread, DropSpeed, DropHeight, DropSpread;
     }
 
     public sealed class ArcadeStroke
@@ -67,14 +62,7 @@ namespace SquashSim
         /// <summary>"hit" or "touch": the stroke being held.</summary>
         public string Stroke { get { return _stroke; } }
 
-        /// <summary>Where a fully charged stroke would really go (kill: kept low; drop: just above the tin).</summary>
-        public void SpecialTarget(V3 target)
-        {
-            var c = PhysicsConfig.Current.ArcadeHit;
-            if (c == null || ChargeRatio < 0.999 || !(_charging || Waiting)) return;
-            if (_stroke == "touch") target.Y = CourtDimensions.TIN_H + c.DropHeight;
-            else target.Y = Clamp(target.Y, CourtDimensions.TIN_H + c.KillMargin, c.KillMaxHeight);
-        }
+
         public bool Waiting { get { return _pending > 0; } }
 
         public ArcadeStroke(uint seed) { _rng = seed * 2654435761u + 12345u; }
@@ -180,35 +168,18 @@ namespace SquashSim
                 if (System.Math.Abs(aim.BiasX) < 0.08) tx = ctrl.ServeDefaultX;    // no drag: the normal cross-court serve
             }
             bool touch = _stroke == "touch";
-            string special = charge >= 0.999 && !ctrl.ServeStroke ? (touch ? "drop" : "kill") : null;
-            double speed, spread;
-            if (special == "kill")
-            {
-                ty = Clamp(ty, CourtDimensions.TIN_H + c.KillMargin, c.KillMaxHeight);
-                speed = c.DriveSpeed * c.KillPace;
-                spread = c.KillSpread;
-            }
-            else if (special == "drop")
-            {
-                ty = CourtDimensions.TIN_H + c.DropHeight;
-                speed = c.DropSpeed;
-                spread = c.DropSpread;
-            }
-            else
-            {
-                speed = touch ? c.TouchSpeed : (ty >= c.LobHeight ? c.LobSpeed : c.DriveSpeed);
-                spread = missRatio * missRatio * c.MaxSpread;
-            }
+            double speed = touch ? c.TouchSpeed : (ty >= c.LobHeight ? c.LobSpeed : c.DriveSpeed);
+            double spread = missRatio * missRatio * c.MaxSpread;
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
             ty += ey;
-            if (special == null && missRatio > 0 && Rnd() < missRatio * c.GrossMissChance)
+            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance)
             {
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - 0.15;                                    // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (0.4 + missRatio * 0.6);                             // well off
             }
-            if (special == null) speed *= 1.0 - 0.15 * missRatio;
+            speed *= 1.0 - 0.15 * missRatio;
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             Solve(ball, surfaces, tx, ty, tz, wall, speed);
@@ -242,7 +213,7 @@ namespace SquashSim
                 Point = new V3(ball.Pos.X, ball.Pos.Y, ball.Pos.Z),
                 Stroke = _stroke,
                 Mode = sw.Mode,
-                Technique = special != null ? "charged " + special : (sw.Plan != null ? sw.Plan.Technique : null),
+                Technique = sw.Plan != null ? sw.Plan.Technique : null,
                 Side = player.SwingSide >= 0 ? 1 : -1,
                 HeadSpeed = speed * 0.8,
                 FaceNormal = new V3(_vel.X / speed, _vel.Y / speed, _vel.Z / speed),
