@@ -276,4 +276,12 @@ Step 1 (`PhysicsConfig.UseGameSwing`):
 - **No air swings:** a held stroke released with no ball in reach waits instead of swinging at air.
 - **Result:** presses that connect went from 47% to 87%, and whiffs from 48% to under 1%. The human-style player wins 36% of rallies against the easy AI (was 8%). The AI is unchanged; parity is 19/19.
 
+Simple hitting system (`ArcadeStroke`, local players; replaces the physical swing for them), after the original SquashStrike:
+- **Hold to charge, release to hit:** if the ball is within 1.5 m (and below 2.6 m) it's hit; released up to 0.22 s early, it still connects as the ball comes in.
+- **The shot:** goes to the aim ring, solved through the real ball flight. Distance from the 0.85 m sweet spot sets the accuracy (PERFECT / GOOD / STRETCH); a full charge adds pace.
+- **Auto step:** while the stroke is ready and the ball is about to arrive, the athlete steps up to 0.7 m toward it.
+- **Serve:** kept above the service line.
+- **AI:** keeps its physical swing.
+- **Press audit:** when the scripted human gets to the ball, about 95% of releases connect.
+
 ## Next: M7

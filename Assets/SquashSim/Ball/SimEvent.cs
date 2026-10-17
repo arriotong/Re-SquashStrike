@@ -62,5 +62,7 @@ namespace SquashSim
         public double TimingCorrection;
         /// <summary>Racket contact: how far through the swing (0..1) the ball was met; 0.5 = the ideal moment. -1 = n/a.</summary>
         public double SwingPhaseAtContact = -1;
+        /// <summary>Simple hitting system: how clean the hit was, 1 = in the sweet spot .. 0 = at full stretch. -1 = n/a.</summary>
+        public double ArcadeQuality = -1;
     }
 }

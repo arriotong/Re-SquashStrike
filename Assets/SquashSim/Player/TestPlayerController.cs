@@ -31,6 +31,13 @@ namespace SquashSim
         /// <summary>Game only: a local human player aims at a point on the front wall (WallAim).</summary>
         public bool WallAimEnabled;
         public readonly WallAim WallAimSolver = new WallAim();
+        /// <summary>Game only: a local human player uses the simple hitting system (ArcadeStroke).</summary>
+        public bool ArcadeHitEnabled;
+        /// <summary>Set by the match: the next stroke is the serve (the simple system keeps it above the service line).</summary>
+        public bool ServeStroke;
+        ArcadeStroke _arcade;
+        public ArcadeStroke Arcade { get { return _arcade ?? (_arcade = new ArcadeStroke((uint)(Index + 1))); } }
+        bool ArcadeOn { get { return ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null; } }
 
         /// <summary>When false the racket swings but cannot touch the ball (match: not this
         /// player's turn). Always true in the lab.</summary>
@@ -71,8 +78,11 @@ namespace SquashSim
             Interpretation = ShotInterpreter.Interpret(Aim, strokeForLabel, Prediction.IsVolley);
 
             bool wasSwinging = Swing.State == SwingStates.Swinging;
-            SquashSim.Swing.Step(Swing, intent, Aim, Player, Prediction,
-                new SwingCtx { Quality = Assist.Quality, ReachState = Assist.ReachState }, dt, IntentSolver);
+            SimEvent arcadeHit = null;
+            if (ArcadeOn) arcadeHit = Arcade.Step(this, intent, ball, surfaces, dt);    // the simple system: release + in reach = hit
+            else
+                SquashSim.Swing.Step(Swing, intent, Aim, Player, Prediction,
+                    new SwingCtx { Quality = Assist.Quality, ReachState = Assist.ReachState }, dt, IntentSolver);
             LungeStep.Step(Player, Swing, dt);              // game profile only: the visible lunge
 
             // Preparation improves control up to a cap; balance and reach set the ceiling.
@@ -82,7 +92,8 @@ namespace SquashSim
             RacketIntentSolver.Step(IntentSolver, Aim, Swing, controlQuality, dt);
 
             RacketPhysics.Step(Racket, Swing, IntentSolver, Aim, Player, ball, Prediction, dt);
-            SimEvent contact = ContactEnabled ? RacketPhysics.TryContact(Racket, ball, Swing, dt) : null;
+            if (arcadeHit != null) { Racket.HeadPos.CopyFrom(arcadeHit.Point); Racket.SweetSpot.CopyFrom(arcadeHit.Point); }
+            SimEvent contact = arcadeHit ?? (ContactEnabled && !ArcadeOn ? RacketPhysics.TryContact(Racket, ball, Swing, dt) : null);
             if (contact != null)
             {
                 contact.PlayerIndex = Index;

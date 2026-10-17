@@ -298,6 +298,7 @@ namespace SquashSim
             {
                 var c = Players[i];
                 c.ContactEnabled = CanStrike(i);
+                c.ServeStroke = Phase == MatchPhase.Rally && Referee.Shots == 0;
                 SimEvent contact = c.Step(Intents[i], Ball, Surfaces, dt);
                 if (contact != null)
                 {

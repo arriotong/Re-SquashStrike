@@ -73,11 +73,18 @@ namespace SquashGame.Tests
                 }
             };
             r.Stepped += onStep;
+            bool holdingHit = false; float nextPressAt = 0f;
             float t0 = Time.realtimeSinceStartup;
             bool captured = false;
             while (Time.realtimeSinceStartup - t0 < 20f && errors.Count < 10)
             {
-                if (((int)((Time.realtimeSinceStartup - t0) * 4f)) % 4 == 0) Press(pad.buttonSouth); else Release(pad.buttonSouth);
+                // Play like a person with the simple hitting system: hold Hit, let go as the ball comes in.
+                {
+                    var sp = r.Sim.Player.Player.Pos; var bp = r.Sim.Ball.Pos;
+                    double bd = System.Math.Sqrt((bp.X - sp.X) * (bp.X - sp.X) + (bp.Z - sp.Z) * (bp.Z - sp.Z));
+                    if (!holdingHit && Time.realtimeSinceStartup >= nextPressAt) { Press(pad.buttonSouth); holdingHit = true; }
+                    else if (holdingHit && bd < 1.3 && bp.Y < 2.4) { Release(pad.buttonSouth); holdingHit = false; nextPressAt = Time.realtimeSinceStartup + 0.35f; }
+                }
                 yield return null;
                 if (aim.Preview.FromContact && !awaitingWall)
                 {

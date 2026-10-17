@@ -118,6 +118,24 @@ namespace SquashSim
 
         /// <summary>Latch the stroke. Path = what the body shows NOW; the arc passes
         /// through the ball a quarter turn round from the path, on the hitting side.</summary>
+        static readonly Prediction _arcadePred = new Prediction();
+
+        /// <summary>
+        /// The simple hitting system (ArcadeStroke): the ball was hit at <paramref name="contact"/> - lay the swing
+        /// through that point and put it at its contact moment, so the stroke (and the drawn racket) plays through it.
+        /// </summary>
+        public static void ArcadeCommit(SwingController sw, TestPlayerController ctrl, V3 contact)
+        {
+            _arcadePred.Valid = true;
+            _arcadePred.Time = 0;
+            _arcadePred.Point.CopyFrom(contact);
+            var ctx = new SwingCtx { Quality = ctrl.Assist.Quality, ReachState = ctrl.Assist.ReachState };
+            Commit(sw, MakePlan(sw, ctrl.Aim, ctrl.Player, _arcadePred, ctx, false), ctrl.Player, _arcadePred, ctrl.IntentSolver);
+            sw.SwingTime = sw.Duration * 0.5;
+            sw.Phase = 0.5;
+            sw.HasContacted = true;
+        }
+
         static void Commit(SwingController sw, SwingPlan plan, TestPlayer player, Prediction pred, RacketIntent ri)
         {
             var cfg = PhysicsConfig.Current.Racket;

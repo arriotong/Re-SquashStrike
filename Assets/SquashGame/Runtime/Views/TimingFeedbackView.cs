@@ -67,6 +67,14 @@ namespace SquashGame
                 if (e.Type != SimEventType.RacketContact || e.SwingPhaseAtContact < 0) continue;
                 if (e.PlayerIndex != Athlete && !(e.PlayerIndex < 0 && Athlete == 0)) continue;
                 _contactThisSwing = true;
+                if (e.ArcadeQuality >= 0)
+                {
+                    // The simple hitting system: how close the ball was to the sweet spot.
+                    if (e.ArcadeQuality >= 0.8) Show("PERFECT", new Color(0.45f, 0.95f, 0.5f));
+                    else if (e.ArcadeQuality >= 0.4) Show("GOOD", new Color(0.75f, 0.95f, 0.45f));
+                    else Show("STRETCH", new Color(1f, 0.75f, 0.3f));
+                    continue;
+                }
                 string t = Judge(e.SwingPhaseAtContact, out Color c);
                 Show(t, c);
             }

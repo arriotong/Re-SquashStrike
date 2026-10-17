@@ -22,6 +22,10 @@ sealed class HumanStyle : IAthleteBrain
     uint _s;
     double _ax, _ay;
     public double ReactionTime = 0.25, PosError = 0.35, LeadMin = 0.15, LeadMax = 1.4, HoldChance = 0.3;
+    /// <summary>The simple hitting system: hold early, let go as the ball arrives (+- ReleaseJitter).</summary>
+    public bool Arcade;
+    public double ReleaseJitter = 0.15;
+    double _arrival, _releaseOffset = -1;
     double _oppContact = -9, _errX, _errZ, _pressAt = -1, _releaseAt = -1;
     long _turn = -1;
     bool _held;
@@ -70,15 +74,20 @@ sealed class HumanStyle : IAthleteBrain
         {
             double lead = LeadMin + R() * (LeadMax - LeadMin);
             _pressAt = t + Math.Max(0, _read.Time - lead);
+            _arrival = t + _read.Time;
             _ax = (R() * 2 - 1) * 0.5; _ay = -0.2 + R() * 0.6;
         }
         if (_pressAt > 0 && t >= _pressAt && !_held)
         {
             it.Hit.Pressed = true; it.Hit.Held = true; _held = true;
-            _releaseAt = t + (R() < HoldChance ? 0.2 + R() * 0.4 : 0.06);
+            if (Arcade) { _releaseAt = double.MaxValue; _releaseOffset = -0.12 + R() * 0.30; }   // let go as the ball arrives: 0.18 s early .. 0.12 s late
+            else _releaseAt = t + (R() < HoldChance ? 0.2 + R() * 0.4 : 0.06);
             _pressAt = double.MaxValue;
             if (m.Phase == MatchPhase.Rally && m.TurnShots > 0) Presses++;
         }
+        // Arcade: watch the ball come; let go when it is (about) there.
+        if (Arcade && _held && _releaseOffset > -1 && c.Prediction.Valid && c.Prediction.Time <= _releaseOffset + 1e-9) { _releaseAt = t; _releaseOffset = -1; }
+        if (Arcade && _held && _releaseOffset > -1 && t - _arrival > 1.0) { _releaseAt = t; _releaseOffset = -1; }
         if (_held) { if (t >= _releaseAt) { it.Hit.Released = true; it.Hit.Held = false; _held = false; } else it.Hit.Held = true; }
         it.AimRawX = _ax; it.AimRawY = _ay;
     }
@@ -95,11 +104,12 @@ static class PressAudit
             PhysicsConfig.ResetToDefaults();
             if (gameProfile) PhysicsConfig.UseGameProfile();
             var m = new MatchSimulation(0);
-            var h = new HumanStyle((uint)(500 + g));
+            var h = new HumanStyle((uint)(500 + g)) { Arcade = gameProfile };
             m.Bots[0] = h;
             m.Bots[1] = opponent == "wallbot" ? (IAthleteBrain)new WallBot((uint)(40 + g))
                                               : new OpponentBrain(AiProfile.ByName(opponent).WithDifficulty(difficulty), (uint)(40 + g));
             m.Players[0].WallAimEnabled = gameProfile;
+            m.Players[0].ArcadeHitEnabled = gameProfile;
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             var c = m.Players[0];
             string lastState = c.Swing.State;
