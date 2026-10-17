@@ -43,6 +43,37 @@ namespace SquashGame
         public float VirtualAimY { get { return _vy; } }
         public bool Recentering { get { return _recentering; } }
 
+        // ---- player settings (setup panel; saved per machine) ----
+        /// <summary>Mouse aim speed multiplier (1 = the config's MouseSensitivity).</summary>
+        public static float MouseSensitivityScale = 1f;
+        public static bool InvertMouseY;
+        /// <summary>Ease the mouse aim back to the middle after a stroke. Off: the target stays where you put it.</summary>
+        public static bool RecenterMouseAim;
+        public static readonly float[] SensitivitySteps = { 0.5f, 0.7f, 1f, 1.4f, 2f };
+
+        public static void LoadSettings()
+        {
+            try
+            {
+                MouseSensitivityScale = PlayerPrefs.GetFloat("aim.mouseSensitivity", 1f);
+                InvertMouseY = PlayerPrefs.GetInt("aim.invertY", 0) == 1;
+                RecenterMouseAim = PlayerPrefs.GetInt("aim.recenter", 0) == 1;
+            }
+            catch (System.Exception) { }
+        }
+
+        public static void SaveSettings()
+        {
+            try
+            {
+                PlayerPrefs.SetFloat("aim.mouseSensitivity", MouseSensitivityScale);
+                PlayerPrefs.SetInt("aim.invertY", InvertMouseY ? 1 : 0);
+                PlayerPrefs.SetInt("aim.recenter", RecenterMouseAim ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+            catch (System.Exception) { }
+        }
+
         /// <summary>When false, mouse buttons and mouse aim are ignored (e.g. cursor free for a debug panel).</summary>
         public bool MouseGameplayEnabled = true;
 
@@ -130,7 +161,7 @@ namespace SquashGame
         public void Dispose() { _map.Disable(); _map.Dispose(); }
 
         /// <summary>The virtual stick eases back to neutral after a stroke (a real stick recentres itself).</summary>
-        public void BeginRecenter() { _recentering = true; }
+        public void BeginRecenter() { if (RecenterMouseAim) _recentering = true; }
 
         public void SetVirtualAim(float x, float y) { _vx = x; _vy = y; ClampVirtual(); _recentering = false; }
 
@@ -188,9 +219,9 @@ namespace SquashGame
                 Vector2 d = _mouseDelta.ReadValue<Vector2>();
                 if (d.x != 0f || d.y != 0f)
                 {
-                    float s = (float)aimCfg.MouseSensitivity;
+                    float s = (float)aimCfg.MouseSensitivity * MouseSensitivityScale;
                     _vx += d.x * s;
-                    _vy += d.y * s;          // Input System delta is +y up: mouse up = aim up
+                    _vy += (InvertMouseY ? -d.y : d.y) * s;   // Input System delta is +y up: mouse up = aim up
                     ClampVirtual();
                     Device = "keyboard";
                 }

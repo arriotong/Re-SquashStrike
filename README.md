@@ -218,4 +218,28 @@ unity build . --target StandaloneWindows64 --execute-method SquashGame.Editor.Bu
 
 or the editor menu **re:SquashStrike > Build Windows Player**. It opens on the match setup panel. The panel has START, PRACTICE (the warm-up court; M / pad View returns) and QUIT. In a match, Esc / Start pauses; while paused, M / View quits to the menu. Alt+Enter toggles fullscreen.
 
-## Next: M6
+## M6 — controls, reach and athlete animation
+
+Plan and research data: `RE_SQUASHSTRIKE_M6_CONTROLS_PLAN.md`. Measured with `MatchBench --feel` (PSA tracking data as targets) and PlayMode `AthleteTests` / `AimTargetTests`.
+
+- **Always-on aim target** (`Views/AimTargetView`): a ring on the front wall where your aim would send the ball now.
+  - It uses `ShotPreview`: the swing's own launch maths (shared with the AI), flown through the real ball physics.
+  - The ring's size is the expected spread. It is dim before a contact is predicted, red when the shot would go down.
+  - Measured: a median 0.3–0.4 m from where the ball really hits the wall.
+- **Mouse:** the mouse moves the target and no longer snaps back after a stroke. Mouse aim speed and invert-Y are on the setup panel, saved per machine.
+- **Timing note** (`Views/TimingFeedbackView`): GOOD / EARLY / LATE / MISS by the target after every stroke, from the swing phase at contact.
+- **Animation** (`AthleteFigure`):
+  - The body turns at a human rate (≤ 540°/s) and favours the front wall instead of spinning to face the ball.
+  - Feet stay planted (0 mm slide) and take real steps; the lunge is a step.
+  - The pose keys on committed swings, not on the flickering reach prediction.
+  - Between swings the racket is a smoothed ready racket; from swing start it locks exactly onto the simulated racket (0 mm at every contact).
+- **Visible lunge** (`LungeStep`, game profile):
+  - Once a swing commits, the body steps toward the contact so that at contact the ball is at most an arm plus a racket (0.95 m) from the body.
+  - Total reach is a little less than before (1.45 m vs 1.55 m).
+  - The contact assist's pull on the ball is capped at 0.12 m (was 0.30 m).
+- **Movement:**
+  - The AI reads low balls (a double yellow often stays under knee height) and eases off inside braking distance. That brought mean movement speed to ~2.0 m/s (PSA: 1.88).
+  - The lab's acceleration and braking are kept: slower values cost the AI accuracy, and there's no published squash figure to justify them.
+- `PhysicsConfig.UseGameProfile()` = the match ball + the M6 reach. The lab and SimParity stay on `Defaults()`.
+
+## Next: M7

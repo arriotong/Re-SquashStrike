@@ -305,7 +305,14 @@ namespace SquashSim
             {
                 double dx = tx - p.Pos.X, dz = tz - p.Pos.Z;
                 double d = System.Math.Sqrt(dx * dx + dz * dz);
-                if (d > 0.10) { intent.Move.X = dx / d; intent.Move.Z = dz / d; intent.MoveMagnitude = 1; }
+                if (d > 0.10)
+                {
+                    // Arrive: ease off inside braking distance so the athlete stops ON the spot, not past it.
+                    var pc = PhysicsConfig.Current.Player;
+                    double arrive = System.Math.Sqrt(2 * pc.Braking * (d - 0.05)) / pc.MaxSpeed;
+                    intent.Move.X = dx / d; intent.Move.Z = dz / d;
+                    intent.MoveMagnitude = System.Math.Min(1.0, System.Math.Max(0.25, arrive));
+                }
             }
 
             // ---- serve ----
@@ -673,52 +680,10 @@ namespace SquashSim
             return score;
         }
 
-        /// <summary>
-        /// The ball velocity this plan would produce at an on-centre contact: the planned head
-        /// velocity along the swing path the body can commit to, the face the commitment solver
-        /// can reach, and the same string-bed impulse as RacketPhysics.TryContact. Returns false
-        /// when the strings would not meet the ball.
-        /// </summary>
+        /// <summary>The launch this plan would give (ShotPreview: shared with the aim target).</summary>
         bool PredictLaunch(TestPlayerController ctrl, V3 ballVel, SwingPlan plan, V3 output)
         {
-            var c = PhysicsConfig.Current.Commitment;
-            var rc = PhysicsConfig.Current.Racket;
-            double q = Clamp(ctrl.Assist.Quality, 0, 1);
-            double range = c.RangeQualityFloor + (1 - c.RangeQualityFloor) * q;
-            double pathYaw = Clamp(_aim.DesiredYaw, -c.MaxBodyYaw * range, c.MaxBodyYaw * range);
-            double faceYaw = Clamp(_aim.DesiredYaw, pathYaw - c.MaxFaceOffset * range, pathYaw + c.MaxFaceOffset * range);
-            double facePitch = Clamp(_aim.DesiredPitch + plan.FacePitch, rc.FacePitchMin, rc.FacePitchMax);
-
-            double cp = DMath.Cos(facePitch);
-            double nx = DMath.Sin(faceYaw) * cp, ny = DMath.Sin(facePitch), nz = -DMath.Cos(faceYaw) * cp;
-
-            // Head velocity at contact: speed along the path, plus the path's rise. A Prepared stroke
-            // meets the ball at the peak of its swing; an auto-timed Quick tap usually does not
-            // (measured with MatchBench --calibrate: ~75% of the planned peak).
-            double head = plan.HeadSpeed * (_planPrepared ? 1.0 : QuickHeadFactor);
-            double hvx = DMath.Sin(pathYaw) * head;
-            double hvy = plan.Duration > 0 ? plan.PathRise / plan.Duration : 0;
-            double hvz = -DMath.Cos(pathYaw) * head;
-
-            double ux = ballVel.X - hvx, uy = ballVel.Y - hvy, uz = ballVel.Z - hvz;
-            double un = ux * nx + uy * ny + uz * nz;
-            if (un >= 0) return false;
-
-            var cb = PhysicsConfig.Current.Ball;
-            double e = rc.Restitution, m = cb.Mass;
-            double ox = -e * un * nx, oy = -e * un * ny, oz = -e * un * nz;
-            double tx = ux - un * nx, ty = uy - un * ny, tz = uz - un * nz;
-            double ut = System.Math.Sqrt(tx * tx + ty * ty + tz * tz);
-            if (ut > 1e-6)
-            {
-                double jn = (1 + e) * m * System.Math.Abs(un);
-                double jStick = ut * m / (1 + 1 / cb.InertiaFactor);
-                double jt = System.Math.Min(jStick, rc.Friction * jn);
-                double after = ut - jt / m;
-                ox += after * tx / ut; oy += after * ty / ut; oz += after * tz / ut;
-            }
-            output.X = hvx + ox; output.Y = hvy + oy; output.Z = hvz + oz;
-            return true;
+            return ShotPreview.PredictLaunch(ctrl, ballVel, plan, _aim, _planPrepared, QuickHeadFactor, output);
         }
 
         /// <summary>Remember where the opponent's shots land (shades the T).</summary>

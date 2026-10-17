@@ -29,11 +29,12 @@ namespace SquashGame
         public override BallState Ball { get { return Sim.Ball; } }
         public override TestPlayerController[] Athletes { get { return _athletes; } }
         public override IReadOnlyList<SimEvent> StepEvents { get { return Sim.StepEvents; } }
+        public override List<Surface> Surfaces { get { return Sim.Surfaces; } }
 
         protected override void CreateSimulation()
         {
             PhysicsConfig.ResetToDefaults();
-            if (MatchBall) PhysicsConfig.UseMatchBall();
+            if (MatchBall) PhysicsConfig.UseGameProfile();
             Sim = new LabSimulation();
             _athletes = new[] { Sim.Player };
             CurrentPreset = TestPresets.Find(StartPreset).Id;

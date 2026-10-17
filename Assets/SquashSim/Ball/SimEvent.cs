@@ -60,5 +60,7 @@ namespace SquashSim
         public double Balance;
         public DeceptionRecord Deception;
         public double TimingCorrection;
+        /// <summary>Racket contact: how far through the swing (0..1) the ball was met; 0.5 = the ideal moment. -1 = n/a.</summary>
+        public double SwingPhaseAtContact = -1;
     }
 }

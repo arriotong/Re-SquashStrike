@@ -64,6 +64,8 @@ namespace SquashSim
         public int Side = 1;
         public double PathYaw;
         public bool HasContacted;
+        /// <summary>How far the body has lunged toward the contact in this swing (LungeStep, game only).</summary>
+        public double LungeUsed;
         public double Cooldown;
 
         public SwingSummary LastSwing;
@@ -124,6 +126,7 @@ namespace SquashSim
             sw.SwingTime = 0;
             sw.Phase = 0;
             sw.HasContacted = false;
+            sw.LungeUsed = 0;
             sw.Side = player.SwingSide >= 0 ? 1 : -1;
             sw.PathYaw = ri.BodyYaw;
 

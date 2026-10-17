@@ -43,7 +43,7 @@ namespace SquashSim.Tests
 
         [Test] public void DropReboundIsNearTheDoubleYellowSpec()
         {
-            PhysicsConfig.UseMatchBall();
+            PhysicsConfig.UseGameProfile();
             // WSF double yellow: 12-14% at 23 C, 26-33% at 45 C. A little lively when cold, a little
             // dead when hot is fine; it must never bounce like a single dot when hot.
             Assert.That(DropRebound(23), Is.InRange(0.11, 0.17));
@@ -53,7 +53,7 @@ namespace SquashSim.Tests
 
         [Test] public void AHotBallStillDiesWhenHitHard()
         {
-            PhysicsConfig.UseMatchBall();
+            PhysicsConfig.UseGameProfile();
             double cold = BallPhysics.EffectiveRestitution("frontWall", 23, 30);
             double hot = BallPhysics.EffectiveRestitution("frontWall", 45, 30);
             double hotSoft = BallPhysics.EffectiveRestitution("floor", 45, 7) / BallPhysics.EffectiveRestitution("floor", 23, 7);
@@ -67,7 +67,7 @@ namespace SquashSim.Tests
 
         [Test] public void HardDriveDiesAtTheBackOnAHotBall()
         {
-            PhysicsConfig.UseMatchBall();
+            PhysicsConfig.UseGameProfile();
             var surfaces = CourtSurfaces.Create();
             var evs = new List<SimEvent>();
             // A 40 m/s straight length drive from the back, 0.9 m up the front wall, hot ball.

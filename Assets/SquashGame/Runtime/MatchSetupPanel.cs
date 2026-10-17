@@ -32,9 +32,11 @@ namespace SquashGame
         public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };
         public static readonly string[] ScoringValues = { "par", "english" };
         public static readonly string[] WarmUpLabels = { "On", "Off" };
+        public static readonly string[] SensitivityLabels = { "Slow", "Calm", "Normal", "Quick", "Fast" };
+        public static readonly string[] InvertLabels = { "Off", "On" };
 
-        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4, RowStart = 5,
-                         RowPractice = 6, RowQuit = 7, Rows = 8;
+        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4,
+                         RowMouse = 5, RowInvert = 6, RowStart = 7, RowPractice = 8, RowQuit = 9, Rows = 10;
         public const string PracticeScene = "WarmUpCourt";
 
         // Current choice per row (indices into the label arrays).
@@ -69,6 +71,8 @@ namespace SquashGame
                 case RowLength: return LengthLabels.Length;
                 case RowScoring: return ScoringLabels.Length;
                 case RowWarmUp: return WarmUpLabels.Length;
+                case RowMouse: return SensitivityLabels.Length;
+                case RowInvert: return InvertLabels.Length;
                 default: return 1;
             }
         }
@@ -89,7 +93,27 @@ namespace SquashGame
                 case RowLength: Length = ((Length + d) % n + n) % n; break;
                 case RowScoring: Scoring = ((Scoring + d) % n + n) % n; break;
                 case RowWarmUp: WarmUp = ((WarmUp + d) % n + n) % n; break;
+                case RowMouse:
+                    IntentSource.MouseSensitivityScale = IntentSource.SensitivitySteps[(SensitivityIndex() + d + n) % n];
+                    IntentSource.SaveSettings();
+                    break;
+                case RowInvert:
+                    IntentSource.InvertMouseY = !IntentSource.InvertMouseY;
+                    IntentSource.SaveSettings();
+                    break;
             }
+        }
+
+        /// <summary>The sensitivity step closest to the saved multiplier.</summary>
+        static int SensitivityIndex()
+        {
+            int best = 2; float bestD = float.MaxValue;
+            for (int i = 0; i < IntentSource.SensitivitySteps.Length; i++)
+            {
+                float dd = Mathf.Abs(IntentSource.SensitivitySteps[i] - IntentSource.MouseSensitivityScale);
+                if (dd < bestD) { bestD = dd; best = i; }
+            }
+            return best;
         }
 
         public void Move(int d)
@@ -200,12 +224,13 @@ namespace SquashGame
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
 
-            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Knock-up" };
+            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Knock-up", "Mouse aim", "Invert mouse Y" };
             string[] values =
             {
                 OpponentLabels[Opponent] + (Opponent == 5 && !MatchRunner.CanPlayTwoPlayer ? " (connect a pad)" : ""),
                 RowEnabled(RowDifficulty) ? DifficultyLabels[Difficulty] : "-",
-                LengthLabels[Length], ScoringLabels[Scoring], WarmUpLabels[WarmUp]
+                LengthLabels[Length], ScoringLabels[Scoring], WarmUpLabels[WarmUp],
+                SensitivityLabels[SensitivityIndex()], InvertLabels[IntentSource.InvertMouseY ? 1 : 0]
             };
             float y = r.y + 84;
             for (int i = 0; i < names.Length; i++)

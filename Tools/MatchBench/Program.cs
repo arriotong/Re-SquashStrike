@@ -15,6 +15,7 @@
 //        [--lab-ball]        (the lab's ball instead of the game's double-yellow match ball)
 //        [--ballcheck]       (the ball vs the WSF double-yellow spec and PSA pace)
 //        [--drive S [--temp C] [--aim-height m]]  (trace one straight drive)
+//        [--feel]            (movement, reach and animation-input metrics vs the PSA data targets)
 // ===========================================================
 
 using System;
@@ -48,6 +49,7 @@ public static class Program
         if (Array.IndexOf(args, "--calibrate") >= 0) { Calibrate(games); return 0; }
         if (Array.IndexOf(args, "--notup") >= 0) { NotUpReport(games); return 0; }
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
+        if (Array.IndexOf(args, "--feel") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; FeelReport(games); return 0; }
         if (Array.IndexOf(args, "--drive") >= 0) { DriveTrace(double.Parse(Arg(args, "--drive")), double.Parse(Arg(args, "--temp") ?? "45"), double.Parse(Arg(args, "--aim-height") ?? "0.9"), Array.IndexOf(args, "--lab-ball") < 0); return 0; }
         if (Array.IndexOf(args, "--ballcheck") >= 0) { BallCheck(Array.IndexOf(args, "--lab-ball") < 0); return 0; }
 
@@ -142,11 +144,104 @@ public static class Program
 
     static string LastServeTemps = "";
 
+    /// <summary>
+    /// M6 feel bench: how the athletes move, reach and present, against real squash data
+    /// (RE_SQUASHSTRIKE_M6_CONTROLS_PLAN.md section 2). Every M6 step must move these toward target.
+    /// </summary>
+    static void FeelReport(int games)
+    {
+        var speed = new List<double>(); var gapShots = new List<double>(); var contactDist = new List<double>(); var assist = new List<double>();
+        var facingRate = new List<double>(); var idleHead = new List<double>(); var accel = new List<double>();
+        double rallyTime = 0, idleTime = 0; int reachFlipsIdle = 0, sideFlips = 0, shots = 0, rallies = 0;
+        int good = 0, early = 0, late = 0;
+        for (int g = 0; g < games; g++)
+        {
+            PhysicsConfig.ResetToDefaults();
+            if (MatchBall) PhysicsConfig.UseGameProfile();
+            var m = new MatchSimulation(0);
+            m.Bots[0] = Brain(P0, D0, (uint)(100 + g)); m.Bots[1] = Brain(P1, D1, (uint)(200 + g));
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            var lastReach = new string[2]; var lastSide = new int[2]; var lastFacing = new double[2]; var lastHead = new V3[2]; var lastVel = new V3[2];
+            for (int i = 0; i < 2; i++)
+            {
+                lastReach[i] = m.Players[i].Player.ReachState; lastSide[i] = m.Players[i].Player.SwingSide; lastFacing[i] = m.Players[i].Player.Facing;
+                lastHead[i] = m.Players[i].Racket.HeadPos.Clone(); lastVel[i] = m.Players[i].Player.Vel.Clone();
+            }
+            double lastShotTime = -1; int lastRallies = 0;
+            while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.Time < 1800)
+            {
+                m.Step(dt);
+                bool live = m.Phase == MatchPhase.Rally && m.Referee.Outcome == null;
+                if (m.History.Count != lastRallies) { lastRallies = m.History.Count; lastShotTime = -1; rallies++; }
+                foreach (var e in m.StepEvents)
+                    if (e.Type == SimEventType.RacketContact && m.Phase == MatchPhase.Rally)
+                    {
+                        shots++;
+                        double off = e.SwingPhaseAtContact - 0.5;
+                        if (e.SwingPhaseAtContact >= 0) { if (Math.Abs(off) <= 0.07) good++; else if (off > 0) early++; else late++; }
+                        if (lastShotTime >= 0 && m.Referee.Shots > 1) gapShots.Add(m.Time - lastShotTime);
+                        lastShotTime = m.Time;
+                        if (m.Referee.Shots > 1)
+                        {
+                            var p = m.Players[e.PlayerIndex].Player.Pos;
+                            contactDist.Add(Math.Sqrt((e.Point.X - p.X) * (e.Point.X - p.X) + (e.Point.Z - p.Z) * (e.Point.Z - p.Z)));
+                            assist.Add(e.AssistApplied);
+                        }
+                    }
+                for (int i = 0; i < 2; i++)
+                {
+                    var c = m.Players[i];
+                    if (live)
+                    {
+                        rallyTime += dt;
+                        speed.Add(Math.Sqrt(c.Player.Vel.X * c.Player.Vel.X + c.Player.Vel.Z * c.Player.Vel.Z));
+                        double ax = (c.Player.Vel.X - lastVel[i].X) / dt, az = (c.Player.Vel.Z - lastVel[i].Z) / dt;
+                        accel.Add(Math.Sqrt(ax * ax + az * az));
+                        double df = c.Player.Facing - lastFacing[i];
+                        while (df > Math.PI) df -= 2 * Math.PI;
+                        while (df < -Math.PI) df += 2 * Math.PI;
+                        facingRate.Add(Math.Abs(df) / dt * 57.29578);
+                        if (c.Swing.State == SwingStates.Idle)
+                        {
+                            idleTime += dt;
+                            if (c.Player.ReachState != lastReach[i]) reachFlipsIdle++;
+                            var h = c.Racket.HeadPos;
+                            double hx = h.X - lastHead[i].X, hy = h.Y - lastHead[i].Y, hz = h.Z - lastHead[i].Z;
+                            idleHead.Add(Math.Sqrt(hx * hx + hy * hy + hz * hz) / dt);
+                        }
+                        if (c.Player.SwingSide != lastSide[i]) sideFlips++;
+                    }
+                    lastReach[i] = c.Player.ReachState; lastSide[i] = c.Player.SwingSide; lastFacing[i] = c.Player.Facing;
+                    lastHead[i].CopyFrom(c.Racket.HeadPos); lastVel[i].CopyFrom(c.Player.Vel);
+                }
+            }
+        }
+        Func<List<double>, double, double> Q = (l, q) => { if (l.Count == 0) return 0; var a = l.OrderBy(x => x).ToList(); return a[(int)Math.Min(a.Count - 1, q * a.Count)]; };
+        Func<string, string, string, string> Row = (name, value, target) => "  " + name.PadRight(40) + value.PadRight(30) + target;
+        double rallyTimePerPlayer = rallyTime / 2;
+        Console.WriteLine("FEEL  " + Describe(P0, D0) + " vs " + Describe(P1, D1) + (MatchBall ? "  (game profile)" : "  (lab)") + "   " + games + " games, " + rallies + " rallies");
+        Console.WriteLine(Row("measure", "now", "target (real squash)"));
+        Console.WriteLine(Row("movement speed mean", speed.Average().ToString("0.00") + " m/s", "1.88 m/s (PSA)"));
+        Console.WriteLine(Row("time below 1 m/s", (100.0 * speed.Count(x => x < 1) / speed.Count).ToString("0") + " %", "31 %"));
+        Console.WriteLine(Row("speed 95th / max", Q(speed, .95).ToString("0.0") + " / " + Q(speed, 1).ToString("0.0") + " m/s", "~4.8 / ~5-6 m/s"));
+        Console.WriteLine(Row("acceleration 95th", Q(accel, .95).ToString("0") + " m/s2", "no published squash figure (lab kept)"));
+        Console.WriteLine(Row("time between shots median", Q(gapShots, .5).ToString("0.00") + " s", "1.1-1.6 s"));
+        Console.WriteLine(Row("shots per rally", (shots / (double)Math.Max(1, rallies)).ToString("0.0"), "~10-13 (PSA)"));
+        Console.WriteLine(Row("contact dist. from body med/95/max", Q(contactDist, .5).ToString("0.00") + " / " + Q(contactDist, .95).ToString("0.00") + " / " + Q(contactDist, 1).ToString("0.00") + " m", "max <= ~1.9 m with visible lunge"));
+        Console.WriteLine(Row("contact assist pull 90th / max", Q(assist, .9).ToString("0.00") + " / " + Q(assist, 1).ToString("0.00") + " m", "max ~0.12 m"));
+        Console.WriteLine(Row("reach-state flicker (not swinging)", (reachFlipsIdle / Math.Max(1, idleTime)).ToString("0.0") + " /s", "pose keyed on swings"));
+        Console.WriteLine(Row("forehand/backhand flips", (sideFlips / Math.Max(1, rallyTimePerPlayer)).ToString("0.0") + " /s per player", "drawn as switches"));
+        Console.WriteLine(Row("feet facing turn rate 50th / 95th", Q(facingRate, .5).ToString("0") + " / " + Q(facingRate, .95).ToString("0") + " deg/s", "sim; drawn <= 540 (AthleteTests)"));
+        int timed = Math.Max(1, good + early + late);
+        Console.WriteLine(Row("stroke timing good / early / late", (100 * good / timed) + " / " + (100 * early / timed) + " / " + (100 * late / timed) + " %", "readable feedback"));
+        Console.WriteLine(Row("idle racket head 95th / max", Q(idleHead, .95).ToString("0.0") + " / " + Q(idleHead, 1).ToString("0") + " m/s", "drawn racket smoothed"));
+    }
+
     /// <summary>One straight drive from the back at S m/s, aimed aimH up the front wall: every impact.</summary>
     static void DriveTrace(double S, double T, double aimH, bool matchBall)
     {
         PhysicsConfig.ResetToDefaults();
-        if (matchBall) PhysicsConfig.UseMatchBall();
+        if (matchBall) PhysicsConfig.UseGameProfile();
         var surfaces = CourtSurfaces.Create(); var evs = new List<SimEvent>();
         double z0 = 7.5, y0 = 0.6, t = z0 / S, vy = (aimH - y0) / t + 0.5 * 9.81 * t;
         var b = new BallState(); b.Reset(new V3(2.2, y0, z0), new V3(0, vy, -Math.Sqrt(S * S - vy * vy)), null, T); BallPhysics.Wake(b);
@@ -162,7 +257,7 @@ public static class Program
     static void BallCheck(bool matchBall)
     {
         PhysicsConfig.ResetToDefaults();
-        if (matchBall) PhysicsConfig.UseMatchBall();
+        if (matchBall) PhysicsConfig.UseGameProfile();
         var surfaces = CourtSurfaces.Create();
         double dt = PhysicsConfig.Current.Sim.FixedDt;
         var evs = new List<SimEvent>();
@@ -206,7 +301,7 @@ public static class Program
             }
         // In play: racket pace and the ball's temperature over a best of 5.
         PhysicsConfig.ResetToDefaults();
-        if (matchBall) PhysicsConfig.UseMatchBall();
+        if (matchBall) PhysicsConfig.UseGameProfile();
         PhysicsConfig.Current.Match.GamesToWin = 3; PhysicsConfig.Current.Match.WarmUpEnabled = true;
         var m = new MatchSimulation(0);
         m.Bots[0] = Brain("grinder", 0.85, 3); m.Bots[1] = Brain("retriever", 0.85, 4);
@@ -234,7 +329,7 @@ public static class Program
     static void KnockUpReport()
     {
         PhysicsConfig.ResetToDefaults();
-        if (MatchBall) PhysicsConfig.UseMatchBall();
+        if (MatchBall) PhysicsConfig.UseGameProfile();
         PhysicsConfig.Current.Match.WarmUpEnabled = true;
         var m = new MatchSimulation(0);
         m.Bots[0] = Brain(P0, D0, 7); m.Bots[1] = Brain(P1, D1, 8);
@@ -258,7 +353,7 @@ public static class Program
     static string PlayGame(uint seedA, uint seedB, string scoring, out MatchSimulation m, out bool finished)
     {
         PhysicsConfig.ResetToDefaults();
-        if (MatchBall) PhysicsConfig.UseMatchBall();
+        if (MatchBall) PhysicsConfig.UseGameProfile();
         PhysicsConfig.Current.Match.Scoring = scoring;
         PhysicsConfig.Current.Match.GamesToWin = GamesToWin;
         PhysicsConfig.Current.Match.WarmUpEnabled = WarmUp;

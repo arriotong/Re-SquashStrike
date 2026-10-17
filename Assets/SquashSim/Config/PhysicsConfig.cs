@@ -314,6 +314,8 @@ namespace SquashSim
         public PlayerContactSection PlayerContact;
         public MatchSection Match;
         public FatigueSection Fatigue;
+        /// <summary>Game only (null in the lab): the visible lunge step (LungeStep).</summary>
+        public LungeSection Lunge;
 
         /// <summary>The shipped defaults. Must equal lab/config/PhysicsConfig.js defaults()
         /// (SimParity checks this against every trace's config).</summary>
@@ -477,6 +479,42 @@ namespace SquashSim
         /// The game's match ball on top of the lab defaults (the lab itself stays on Defaults(),
         /// which SimParity holds bit-identical to the JS lab).
         /// </summary>
+        /// <summary>
+        /// Everything the game changes on top of the lab defaults: the match ball and the M6
+        /// controls/movement tuning. The lab itself stays on Defaults().
+        /// </summary>
+        public static void UseGameProfile()
+        {
+            UseMatchBall();
+            UseGameReach();
+            UseGameMovement();
+        }
+
+        /// <summary>
+        /// M6 movement. The lab's acceleration / braking (34 / 46 m/s2) are kept: the "instant" look came
+        /// from the animation (now planted steps and a rate-limited turn), and slower values cost the AI
+        /// its accuracy with no published squash figure to justify them (MatchBench --feel, 2026-10-17).
+        /// The movement changes are in how athletes move: the AI arrives (eases off inside braking
+        /// distance) and reads low balls (BallReader), which brings mean rally speed near PSA's 1.88 m/s.
+        /// </summary>
+        public static void UseGameMovement()
+        {
+        }
+
+        /// <summary>
+        /// M6 reach balance: the athlete visibly lunges to far balls instead of reaching them with an
+        /// impossibly long arm, the total reach is a little shorter, and the contact assist's pull on
+        /// the ball is small.
+        /// </summary>
+        public static void UseGameReach()
+        {
+            var c = Current;
+            c.Reach.Stretch = 1.45;                                   // lab 1.55 (from the body, at prediction time)
+            c.Lunge = new LungeSection { Enabled = true, ArmReach = 0.95, MaxStep = 0.55 };
+            c.Assist.Radius = 0.25;                                   // lab 0.42
+            c.Assist.MaxCorrection = 0.12;                            // lab 0.30
+        }
+
         public static void UseMatchBall()
         {
             var c = Current;

@@ -1,8 +1,11 @@
 // ===========================================================
 // Assets/SquashGame/Tests/PlayMode/AthleteTests.cs
 // M4 exit test, in the real warm-up court: the rendered racket sits on
-// the simulated racket (sweet spot and face normal), and the hand holds
-// it - measured over real feeds with a virtual gamepad swinging.
+// the simulated racket (sweet spot and face normal) whenever it is locked
+// to a swing and at every contact, and the hand holds it - measured over
+// real feeds with a virtual gamepad swinging.
+// M6 animation feel: the drawn facing turns at a human rate, planted feet
+// do not slide, the racket is locked at every contact.
 // Writes Captures/M4_*.png.
 // ===========================================================
 
@@ -36,6 +39,14 @@ namespace SquashGame.Tests
             var racketErr = new List<float>();
             var gripAtContact = new List<float>();
             var gripAll = new List<float>();
+            var yawRate = new List<float>();
+            var lockAtContact = new List<float>();
+            float footSlide = 0f;
+            Vector3 lastFwd = Vector3.zero;
+            var lastFeet = new Vector3[2];
+            var lastPlanted = new bool[2];
+            bool haveLast = false;
+            float yawWindow = 0f;
             int contacts = 0;
             bool capturedContact = false;
             r.Stepped += evs => { foreach (var e in evs) if (e.Type == SimEventType.RacketContact) contacts++; };
@@ -48,25 +59,48 @@ namespace SquashGame.Tests
                 if (((int)((Time.realtimeSinceStartup - t0) * 4f)) % 4 == 0) Press(pad.buttonSouth); else Release(pad.buttonSouth);
                 yield return null;
 
-                // The rendered racket vs the simulated racket it was posed from.
+                // The rendered racket vs the simulated racket it was posed from, whenever it is locked to a swing.
                 AthleteSnapshot v = fig.Posed;
                 Transform racket = fig.Rig.Racket;
-                Vector3 sweet = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
-                racketErr.Add(Vector3.Distance(sweet, v.RacketHead));
-                Vector3 drawnNormal = racket.right;
-                Assert.That(Mathf.Abs(Vector3.Dot(drawnNormal, v.RacketFaceNormal.normalized)), Is.GreaterThan(0.999f), "string normal");
+                if (fig.RacketLock >= 1f)
+                {
+                    Vector3 sweet = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
+                    racketErr.Add(Vector3.Distance(sweet, v.RacketHead));
+                    Vector3 drawnNormal = racket.right;
+                    Assert.That(Mathf.Abs(Vector3.Dot(drawnNormal, v.RacketFaceNormal.normalized)), Is.GreaterThan(0.999f), "string normal");
+                }
                 gripAll.Add(fig.GripGap);
+
+                // Animation feel: facing turn rate, planted feet that stay planted.
+                // (Rates over >= 20 ms windows: batch-mode frames can be microseconds long.)
+                yawWindow += Time.unscaledDeltaTime;
+                if (!haveLast) { lastFwd = fig.DrawnForward; haveLast = true; yawWindow = 0f; }
+                else if (yawWindow >= 0.02f)
+                {
+                    yawRate.Add(Vector3.Angle(lastFwd, fig.DrawnForward) / yawWindow);
+                    lastFwd = fig.DrawnForward; yawWindow = 0f;
+                }
+                for (int f = 0; f < 2; f++)
+                    if (lastPlanted[f] && fig.FootPlanted[f])
+                        footSlide = Mathf.Max(footSlide, Vector3.Distance(lastFeet[f], fig.Feet[f]));
+                for (int f = 0; f < 2; f++) { lastFeet[f] = fig.Feet[f]; lastPlanted[f] = fig.FootPlanted[f]; }
                 if (contacts != lastContacts)
                 {
                     lastContacts = contacts;
                     gripAtContact.Add(fig.GripGap);
+                    lockAtContact.Add(fig.RacketLock);
                     if (!capturedContact) { capturedContact = true; Capture("M4_Contact_TV.png", null); }
                 }
             }
             Release(pad.buttonSouth);
 
-            racketErr.Sort(); gripAll.Sort(); gripAtContact.Sort();
+            racketErr.Sort(); gripAll.Sort(); gripAtContact.Sort(); yawRate.Sort(); lockAtContact.Sort();
+            Assert.That(racketErr.Count, Is.GreaterThan(0), "the racket never locked to a swing");
             float worstRacket = racketErr[racketErr.Count - 1];
+            float yaw95 = yawRate[(int)(yawRate.Count * 0.95f)], yawMax = yawRate[yawRate.Count - 1];
+            Debug.Log("[M6] drawn facing turn rate 95th " + yaw95.ToString("0") + " deg/s, max " + yawMax.ToString("0") +
+                      " deg/s; planted foot slide worst " + (footSlide * 1000).ToString("0.0") + " mm; racket lock at contact min " +
+                      (lockAtContact.Count > 0 ? lockAtContact[0].ToString("0.00") : "-"));
             float medianGrip = gripAll[gripAll.Count / 2];
             Debug.Log("[M4] frames " + racketErr.Count + ", racket sweet-spot error worst " + (worstRacket * 1000).ToString("0.00") + " mm; " +
                       "grip gap median " + (medianGrip * 1000).ToString("0.0") + " mm, 95th " + (gripAll[(int)(gripAll.Count * 0.95f)] * 1000).ToString("0.0") +
@@ -75,6 +109,9 @@ namespace SquashGame.Tests
             Assert.That(worstRacket, Is.LessThan(0.01f), "rendered racket must sit on the simulated racket (< 1 cm)");
             Assert.That(contacts, Is.GreaterThan(0), "no racket contacts in 12 s of feeds");
             Assert.That(medianGrip, Is.LessThan(0.03f), "the hand should hold the racket");
+            Assert.That(yawMax, Is.LessThan(600f), "the drawn body turns at a human rate (cap 540 deg/s; 20 ms windows add a little)");
+            Assert.That(footSlide, Is.LessThan(0.002f), "a planted foot does not slide");
+            if (lockAtContact.Count > 0) Assert.That(lockAtContact[0], Is.EqualTo(1f), "the racket is exactly on the sim racket at every contact");
 
             // Close-up from the side, for review.
             var cam = Camera.main;

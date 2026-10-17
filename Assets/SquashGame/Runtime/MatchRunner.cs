@@ -70,6 +70,7 @@ namespace SquashGame
         public override BallState Ball { get { return Sim.Ball; } }
         public override TestPlayerController[] Athletes { get { return Sim.Players; } }
         public override IReadOnlyList<SimEvent> StepEvents { get { return Sim.StepEvents; } }
+        public override List<Surface> Surfaces { get { return Sim.Surfaces; } }
 
         protected override void CreateSimulation()
         {
@@ -81,7 +82,7 @@ namespace SquashGame
         void ApplyConfig(MatchSettings s)
         {
             PhysicsConfig.ResetToDefaults();
-            PhysicsConfig.UseMatchBall();          // the game's double yellow at PSA pace
+            PhysicsConfig.UseGameProfile();          // the game's double yellow at PSA pace
             var m = PhysicsConfig.Current.Match;
             m.Scoring = s.Scoring;
             m.GamesToWin = Mathf.Max(1, s.GamesToWin);

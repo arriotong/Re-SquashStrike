@@ -20,6 +20,25 @@ using UnityEngine;
 
 namespace SquashGame
 {
+    /// <summary>The swing controller's state as a small number the views can key poses on.</summary>
+    public static class SwingPhase
+    {
+        public const int Idle = 0, Armed = 1, Preparing = 2, Scheduled = 3, Swinging = 4, Recovering = 5;
+
+        public static int Of(string state)
+        {
+            switch (state)
+            {
+                case SwingStates.Armed: return Armed;
+                case SwingStates.Preparing: return Preparing;
+                case SwingStates.Scheduled: return Scheduled;
+                case SwingStates.Swinging: return Swinging;
+                case SwingStates.Recovering: return Recovering;
+                default: return Idle;
+            }
+        }
+    }
+
     /// <summary>One athlete as drawn (world space).</summary>
     public struct AthleteSnapshot
     {
@@ -34,6 +53,7 @@ namespace SquashGame
         public int Reach;                   // 0 normal, 1 lunge, 2 deep lunge, 3 stretch
         public int SwingSide;               // +1 forehand, -1 backhand
         public bool Swinging;
+        public int Swing;                   // SwingPhase
 
         public static AthleteSnapshot Capture(TestPlayerController c)
         {
@@ -49,7 +69,8 @@ namespace SquashGame
                 Velocity = SimToWorld.Dir(c.Player.Vel),
                 Reach = ReachIndex(c.Player.ReachState),
                 SwingSide = c.Player.SwingSide >= 0 ? 1 : -1,
-                Swinging = c.Swing.State == SwingStates.Swinging
+                Swinging = c.Swing.State == SwingStates.Swinging,
+                Swing = SwingPhase.Of(c.Swing.State)
             };
         }
 
@@ -76,7 +97,7 @@ namespace SquashGame
                 RacketFaceNormal = Vector3.Slerp(a.RacketFaceNormal, b.RacketFaceNormal, t),
                 Stamina = Mathf.LerpUnclamped(a.Stamina, b.Stamina, t),
                 Velocity = Vector3.LerpUnclamped(a.Velocity, b.Velocity, t),
-                Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging
+                Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging, Swing = b.Swing
             };
         }
     }
@@ -125,6 +146,7 @@ namespace SquashGame
         public abstract BallState Ball { get; }
         public abstract TestPlayerController[] Athletes { get; }
         public abstract IReadOnlyList<SimEvent> StepEvents { get; }
+        public abstract List<Surface> Surfaces { get; }
         /// <summary>Index of the athlete the local player controls (aim recentring, HUD).</summary>
         public virtual int HumanIndex { get { return 0; } }
 
@@ -142,6 +164,8 @@ namespace SquashGame
 
         /// <summary>Raised after every fixed step with that step's events (audio, VFX, debug).</summary>
         public event System.Action<IReadOnlyList<SimEvent>> Stepped;
+        /// <summary>Raised when an athlete's swing ends: (athlete, did it touch the ball).</summary>
+        public event System.Action<int, bool> StrokeEnded;
 
         RenderSnapshot _prev, _curr;
 
@@ -193,10 +217,14 @@ namespace SquashGame
 
         /// <summary>The input source steering athlete i, or null when it is not a local player.</summary>
         protected virtual IntentSource SourceFor(int i) { return i == HumanIndex ? Input : null; }
+
+        /// <summary>The local input steering athlete i (null for the AI).</summary>
+        public IntentSource LocalSource(int i) { return SourceFor(i); }
         protected abstract void SimStep(double dt);
 
         protected virtual void Awake()
         {
+            IntentSource.LoadSettings();
             Input = new IntentSource();
             Clock = new SimulationClock(OnFixedStep);
             CreateSimulation();
@@ -240,6 +268,8 @@ namespace SquashGame
                 if (!athletes[a].StrokeFinished) continue;
                 IntentSource src = SourceFor(a);
                 if (src != null) src.BeginRecenter();
+                var ended = StrokeEnded;
+                if (ended != null) ended(a, athletes[a].Swing.HasContacted);
             }
 
             if ((Clock.TotalSteps & 1) == 0)

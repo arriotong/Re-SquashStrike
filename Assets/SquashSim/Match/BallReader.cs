@@ -18,7 +18,8 @@ namespace SquashSim
 {
     public sealed class BallReader
     {
-        public double Horizon = 2.2, MinHeight = 0.35, MaxHeight = 1.4, Step = 1.0 / 120, MinZ = 1.2;
+        // MinHeight 0.12: a double yellow on a tight drive often never rises above knee height (M6; was 0.35).
+        public double Horizon = 2.2, MinHeight = 0.12, MaxHeight = 1.4, Step = 1.0 / 120, MinZ = 1.2;
         public int RefreshSteps = 8;
 
         public bool Valid { get; private set; }
@@ -40,6 +41,15 @@ namespace SquashSim
         /// Without a player: the first playable point. With one: the first playable point that
         /// player can get to in time (an INTERCEPT); if none is reachable, the one they come
         /// closest to reaching.</summary>
+        /// <summary>Time to cover d from standing: accelerate, then run at top speed.</summary>
+        public static double TravelTime(double d, double vmax, double accel)
+        {
+            if (d <= 0) return 0;
+            if (accel <= 0) return d / vmax;
+            double dAccel = vmax * vmax / (2 * accel);
+            return d <= dAccel ? System.Math.Sqrt(2 * d / accel) : d / vmax + vmax / (2 * accel);
+        }
+
         public bool Read(BallState ball, List<Surface> surfaces, bool force = false)
         {
             return Read(ball, surfaces, null, force);
@@ -59,6 +69,7 @@ namespace SquashSim
             _scratch.FloorBounces = 0; _scratch.ImpactHistory.Clear();
 
             double speed = PhysicsConfig.Current.Player.MaxSpeed;
+            double accel = PhysicsConfig.Current.Player.Acceleration;
             double reach = PhysicsConfig.Current.Reach.Normal;
             double bestShort = double.PositiveInfinity;
             int bounces = ball.FloorSinceFrontWall;
@@ -79,7 +90,7 @@ namespace SquashSim
                     break;
                 }
                 double dx = _scratch.Pos.X - player.Pos.X, dz = _scratch.Pos.Z - player.Pos.Z;
-                double need = System.Math.Max(0, System.Math.Sqrt(dx * dx + dz * dz) - reach) / speed;
+                double need = TravelTime(System.Math.Max(0, System.Math.Sqrt(dx * dx + dz * dz) - reach), speed, accel);
                 double shortBy = need - t;
                 if (shortBy <= 0)
                 {

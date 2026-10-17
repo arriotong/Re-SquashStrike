@@ -69,6 +69,7 @@ namespace SquashSim
             bool wasSwinging = Swing.State == SwingStates.Swinging;
             SquashSim.Swing.Step(Swing, intent, Aim, Player, Prediction,
                 new SwingCtx { Quality = Assist.Quality, ReachState = Assist.ReachState }, dt, IntentSolver);
+            LungeStep.Step(Player, Swing, dt);              // game profile only: the visible lunge
 
             // Preparation improves control up to a cap; balance and reach set the ceiling.
             bool strokeLive = Swing.State != SwingStates.Idle && Swing.State != SwingStates.Recovering;
@@ -87,6 +88,7 @@ namespace SquashSim
                 contact.Balance = Assist.Balance;
                 contact.Deception = RacketIntentSolver.RecordDeception(IntentSolver, Aim);
                 contact.TimingCorrection = Swing.TimingCorrection;
+                contact.SwingPhaseAtContact = Swing.Phase;
                 LastContact = contact;
             }
 

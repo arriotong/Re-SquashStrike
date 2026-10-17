@@ -51,7 +51,7 @@ namespace SquashGame.Tests
 
             // D-pad up to the opponent row, left once: wraps to "Player 2 (local)".
             double simTimeAtSetup = r.Sim.Time;
-            for (int i = 0; i < 5; i++) yield return Tap(pad1.dpad.up);
+            while (panel.Selected != MatchSetupPanel.RowOpponent) yield return Tap(pad1.dpad.up);
             Assert.That(panel.Selected, Is.EqualTo(MatchSetupPanel.RowOpponent));
             yield return Tap(pad1.dpad.left);
             Assert.That(panel.TwoPlayer, Is.True);
@@ -124,7 +124,7 @@ namespace SquashGame.Tests
             Assert.That(r.InSetup, Is.True);
             Assert.That(MatchRunner.CanPlayTwoPlayer, Is.False);
             // With no pad, the opponent row skips "Player 2".
-            for (int i = 0; i < 5; i++) yield return Tap(kb.upArrowKey);
+            while (panel.Selected != MatchSetupPanel.RowOpponent) yield return Tap(kb.upArrowKey);
             yield return Tap(kb.leftArrowKey);
             Assert.That(panel.TwoPlayer, Is.False, "Local 2P needs a pad");
             yield return Tap(kb.enterKey);

@@ -125,6 +125,12 @@ namespace SquashSim
             return "crossover";
         }
 
+        /// <summary>Keep the athlete inside the walls (after a lunge step).</summary>
+        public static void ClampToCourt(TestPlayer player)
+        {
+            ResolveCourtBounds(player, PhysicsConfig.Current.Player.Radius);
+        }
+
         /// <summary>Per-axis bounds; only the blocked axis is zeroed, so walls slide.</summary>
         static void ResolveCourtBounds(TestPlayer player, double r)
         {

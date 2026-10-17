@@ -44,6 +44,11 @@ namespace SquashGame
             overlay.transform.SetParent(transform, false);
             overlay.Build(Runner, Palette);
 
+            var aim = new GameObject("AimTarget0").AddComponent<AimTargetView>();
+            aim.transform.SetParent(transform, false);
+            aim.Build(Runner, 0, Palette, new Color(1f, 0.78f, 0.22f));
+            aim.gameObject.AddComponent<TimingFeedbackView>().Build(Runner, aim, 0);
+
             var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
             audio.transform.SetParent(transform, false);
             audio.Build(Runner);

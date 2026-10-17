@@ -48,6 +48,17 @@ namespace SquashGame
             hud.transform.SetParent(transform, false);
             hud.Runner = Runner;
 
+            // M6: an always-on aim target per local player (athlete 1 shows one only in local 2P).
+            Color[] aimColours = { new Color(1f, 0.78f, 0.22f), new Color(0.35f, 0.85f, 1f) };
+            for (int i = 0; i < 2; i++)
+            {
+                var aim = new GameObject("AimTarget" + i).AddComponent<AimTargetView>();
+                aim.transform.SetParent(transform, false);
+                aim.Build(Runner, i, Palette, aimColours[i]);
+                var timing = aim.gameObject.AddComponent<TimingFeedbackView>();
+                timing.Build(Runner, aim, i);
+            }
+
             var setup = new GameObject("MatchSetupPanel").AddComponent<MatchSetupPanel>();
             setup.transform.SetParent(transform, false);
             setup.Runner = Runner;
