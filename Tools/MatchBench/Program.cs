@@ -16,6 +16,8 @@
 //        [--ballcheck]       (the ball vs the WSF double-yellow spec and PSA pace)
 //        [--drive S [--temp C] [--aim-height m]]  (trace one straight drive)
 //        [--feel]            (movement, reach and animation-input metrics vs the PSA data targets)
+//        [--hitself]         (every HitSelf: the stroke, planned vs real contact, body, ball path)
+//        [--interference [--track] [--only text]]  (every let / stroke: the obstructor's situation)
 // ===========================================================
 
 using System;
@@ -48,6 +50,8 @@ public static class Program
         if (Array.IndexOf(args, "--trace") >= 0) { TraceRallies(int.Parse(Arg(args, "--trace-rallies") ?? "4")); return 0; }
         if (Array.IndexOf(args, "--calibrate") >= 0) { Calibrate(games); return 0; }
         if (Array.IndexOf(args, "--notup") >= 0) { NotUpReport(games); return 0; }
+        if (Array.IndexOf(args, "--hitself") >= 0) { HitSelfReport(games); return 0; }
+        if (Array.IndexOf(args, "--interference") >= 0) { InterferenceReport(games); return 0; }
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
         if (Array.IndexOf(args, "--feel") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; FeelReport(games); return 0; }
         if (Array.IndexOf(args, "--drive") >= 0) { DriveTrace(double.Parse(Arg(args, "--drive")), double.Parse(Arg(args, "--temp") ?? "45"), double.Parse(Arg(args, "--aim-height") ?? "0.9"), Array.IndexOf(args, "--lab-ball") < 0); return 0; }
@@ -76,6 +80,9 @@ public static class Program
             {
                 rallies++;
                 string k = o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.Out || o.Kind == RallyEnd.Let || o.Kind == RallyEnd.Stroke || o.Kind == RallyEnd.NoLet ? o.Reason : o.Kind.ToString();
+                if (o.Kind == RallyEnd.Down) k = "Down - " + (o.Reason.StartsWith("Down - ") ? o.Reason.Substring(7) : o.Reason.Replace("P1", "P").Replace("P2", "P"));
+                if (o.Kind == RallyEnd.HitSelf)
+                    k += o.Reason.StartsWith("Ball hit the striker") ? " - own shot on its way to the front wall" : " - incoming ball before playing it";
                 kinds[k] = kinds.TryGetValue(k, out int n) ? n + 1 : 1;
             }
             stats.AddRange(m.Stats);
@@ -384,7 +391,7 @@ public static class Program
         var rows = new List<(double pred, double actual, string tech, double contactY, bool volley)>();
         for (int g = 0; g < games; g++)
         {
-            PhysicsConfig.ResetToDefaults();
+            PhysicsConfig.ResetToDefaults(); if (MatchBall) PhysicsConfig.UseGameProfile();
             var m = new MatchSimulation(0);
             m.Bots[0] = Brain(P0, D0, (uint)(1000 + g * 2));
             m.Bots[1] = Brain(P1, D1, (uint)(1001 + g * 2));
@@ -439,7 +446,7 @@ public static class Program
         var req = new List<double>();
         for (int g = 0; g < games; g++)
         {
-            PhysicsConfig.ResetToDefaults();
+            PhysicsConfig.ResetToDefaults(); if (MatchBall) PhysicsConfig.UseGameProfile();
             var m = new MatchSimulation(0);
             m.Bots[0] = Brain(P0, D0, (uint)(1000 + g * 2));
             m.Bots[1] = Brain(P1, D1, (uint)(1001 + g * 2));
@@ -479,7 +486,7 @@ public static class Program
                     req.Add(best);
                     if (best <= 3.5) easy++; else if (best <= 5.5) hard++; else impossible++;
                     if (!swung) neverPressed++; else whiffed++;
-                    if (!swung && shown < 2 && g == 0) { shown++; Console.WriteLine("--- never pressed: " + m.LastOutcome); foreach (var l in log) Console.WriteLine(l); }
+                    if (shown < 3 && g == 0) { shown++; Console.WriteLine("--- " + (swung ? "swung: " : "never pressed: ") + m.LastOutcome); foreach (var l in log) Console.WriteLine(l); }
                 }
             }
         }
@@ -488,10 +495,121 @@ public static class Program
         Console.WriteLine("  failing player never started a swing: " + neverPressed + "   swung and missed / too late: " + whiffed);
     }
 
+    /// <summary>
+    /// For every HitSelf (and stroke/let ending): the stroke that led to it - where it was struck from,
+    /// what the ball touched on the way, how long after contact, and what the striker was doing.
+    /// </summary>
+    static void HitSelfReport(int games)
+    {
+        int total = 0;
+        var walls = new Dictionary<string, int>();
+        var dts = new List<double>();
+        for (int g = 0; g < games; g++)
+        {
+            PhysicsConfig.ResetToDefaults();
+            if (MatchBall) PhysicsConfig.UseGameProfile();
+            var m = new MatchSimulation(0);
+            m.Bots[0] = Brain(P0, D0, (uint)(1000 + g * 2));
+            m.Bots[1] = Brain(P1, D1, (uint)(1001 + g * 2));
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            double contactT = 0; V3 contactAt = new V3(), strikerAt = new V3(); int hitter = -1; string path = ""; string tech = "", choice = "";
+            while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.StepCount < 240L * 1800)
+            {
+                m.Step(dt);
+                foreach (var e in m.StepEvents)
+                {
+                    if (e.Type == SimEventType.RacketContact)
+                    {
+                        contactT = m.Time; contactAt.CopyFrom(e.Point); hitter = e.PlayerIndex; path = ""; tech = e.Technique;
+                        strikerAt.CopyFrom(m.Players[hitter].Player.Pos);
+                        choice = m.Bots[hitter] is OpponentBrain ob ? ob.LastChoice + " planned contact " + ob.LastPredPoint + " body " + ob.LastPredBody : "";
+                    }
+                    else if (e.Type == SimEventType.Impact && !e.Resting) path += " " + e.SurfaceClass;
+                }
+                if (m.Phase == MatchPhase.RallyOver && m.PhaseTime <= dt * 1.5 && m.LastOutcome.Kind == RallyEnd.HitSelf && hitter >= 0)
+                {
+                    total++;
+                    var p = m.Players[hitter].Player;
+                    string key = path.Trim().Length == 0 ? "(direct)" : path.Trim();
+                    walls[key] = walls.TryGetValue(key, out int n) ? n + 1 : 1;
+                    dts.Add(m.Time - contactT);
+                    if (total <= 12)
+                        Console.WriteLine("  +" + (m.Time - contactT).ToString("0.00") + " s  " + tech + " " + choice + " from " + contactAt + " striker was at " + strikerAt
+                            + " now " + p.Pos + " vel (" + p.Vel.X.ToString("0.0") + "," + p.Vel.Z.ToString("0.0") + ")  path:" + key);
+                }
+            }
+        }
+        Console.WriteLine("HitSelf: " + total + "   median time after contact " + Median(dts).ToString("0.00") + " s");
+        foreach (var kv in walls.OrderByDescending(k => k.Value)) Console.WriteLine("  via " + kv.Key.PadRight(40) + kv.Value);
+    }
+
+    /// <summary>
+    /// For every let / stroke on an appeal: the obstructor's situation - how long since their own stroke,
+    /// where they struck from, where they stand vs the striker's hitting point, how fast they were clearing.
+    /// </summary>
+    static void InterferenceReport(int games)
+    {
+        var rows = new List<(string reason, double since, double dist, double fromContact, double speed, double tToBall)>();
+        int shown = 0;
+        for (int g = 0; g < games; g++)
+        {
+            PhysicsConfig.ResetToDefaults();
+            if (MatchBall) PhysicsConfig.UseGameProfile();
+            var m = new MatchSimulation(0);
+            m.Bots[0] = Brain(P0, D0, (uint)(1000 + g * 2));
+            m.Bots[1] = Brain(P1, D1, (uint)(1001 + g * 2));
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            double contactT = 0; var contactBody = new V3(); var contactPt = new V3(); int hitter = -1; int seen = 0;
+            var track = new Queue<string>();
+            double obsAt = -1; var obsO = new V3(); var obsS = new V3(); double obsTx = 0, obsTz = 0; string obsKind = "";
+            while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.StepCount < 240L * 1800)
+            {
+                m.Step(dt);
+                foreach (var e in m.StepEvents)
+                    if (e.Type == SimEventType.RacketContact)
+                    { contactT = m.Time; hitter = e.PlayerIndex; contactBody.CopyFrom(m.Players[hitter].Player.Pos); contactPt.CopyFrom(e.Point); obsAt = -1; track.Clear(); }
+                var it = m.Interference;
+                if (m.Phase == MatchPhase.Rally && it.Striker >= 0 && (m.StepCount % 12) == 0)
+                {
+                    var op = m.Players[1 - it.Striker].Player; var sp = m.Players[it.Striker].Player;
+                    track.Enqueue("    +" + (m.Time - contactT).ToString("0.00") + " obstructor " + op.Pos + " v(" + op.Vel.X.ToString("0.0") + "," + op.Vel.Z.ToString("0.0") + ") swing " + m.Players[1 - it.Striker].Swing.State
+                        + "  striker " + sp.Pos + "  target (" + it.TargetX.ToString("0.0") + "," + it.TargetZ.ToString("0.0") + ") " + it.Current);
+                    while (track.Count > 14) track.Dequeue();
+                }
+                if (m.Phase == MatchPhase.Rally && it.Current != ObstructionKind.None && obsAt < 0 && it.Striker >= 0)
+                {
+                    obsAt = m.Time; obsO.CopyFrom(m.Players[1 - it.Striker].Player.Pos); obsS.CopyFrom(m.Players[it.Striker].Player.Pos);
+                    obsTx = it.TargetX; obsTz = it.TargetZ; obsKind = it.Current.ToString();
+                }
+                if (m.History.Count != seen)
+                {
+                    seen = m.History.Count;
+                    var o = m.LastOutcome;
+                    string only = Arg(Environment.GetCommandLineArgs(), "--only");
+                    if ((o.Kind == RallyEnd.Let || o.Kind == RallyEnd.Stroke) && obsAt >= 0 && hitter >= 0 && (only == null || o.Reason.Contains(only)))
+                    {
+                        var ob = m.Players[hitter].Player;
+                        double dist = Math.Sqrt((obsO.X - obsTx) * (obsO.X - obsTx) + (obsO.Z - obsTz) * (obsO.Z - obsTz));
+                        double moved = Math.Sqrt((obsO.X - contactBody.X) * (obsO.X - contactBody.X) + (obsO.Z - contactBody.Z) * (obsO.Z - contactBody.Z));
+                        rows.Add((o.Reason, obsAt - contactT, dist, moved, 0, 0));
+                        if (shown++ < 15)
+                            Console.WriteLine("  " + o.Reason.PadRight(48) + " first " + obsKind.PadRight(7) + " +" + (obsAt - contactT).ToString("0.00") + " s after own stroke from " + contactPt
+                                + "  obstructor " + obsO + " (moved " + moved.ToString("0.0") + ")  striker " + obsS + "  hitting pt (" + obsTx.ToString("0.0") + "," + obsTz.ToString("0.0") + ")");
+                        if (shown <= 4 && Array.IndexOf(Environment.GetCommandLineArgs(), "--track") >= 0) foreach (var l in track) Console.WriteLine(l);
+                    }
+                }
+            }
+        }
+        Console.WriteLine("lets/strokes: " + rows.Count + "   first obstruction median " + Median(rows.Select(r => r.since)).ToString("0.00")
+            + " s after the obstructor's stroke; obstructor had moved median " + Median(rows.Select(r => r.fromContact)).ToString("0.00") + " m from where they struck");
+        foreach (var grp in rows.GroupBy(r => r.since < 0.5 ? "< 0.5 s" : r.since < 1.0 ? "0.5-1 s" : ">= 1 s"))
+            Console.WriteLine("  first obstructed " + grp.Key.PadRight(8) + grp.Count());
+    }
+
     /// <summary>Print every event of the first few rallies of one game.</summary>
     static void TraceRallies(int count)
     {
-        PhysicsConfig.ResetToDefaults();
+        PhysicsConfig.ResetToDefaults(); if (MatchBall) PhysicsConfig.UseGameProfile();
         var m = new MatchSimulation(0);
         m.Bots[0] = Brain(P0, D0, 1000);
         m.Bots[1] = Brain(P1, D1, 1001);

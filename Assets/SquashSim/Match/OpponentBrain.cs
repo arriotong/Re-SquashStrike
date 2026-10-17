@@ -128,8 +128,10 @@ namespace SquashSim
         public double TriggerLead = 0.42;      // press for a Quick stroke at this lead (s)
         public double DeceptionSwitchLead = 0.16;
         public int ReplanEverySteps = 12;      // keep re-planning on the latest prediction until committed
-        public double TinMarginScale = 0.45, TinMarginVolley = 0.8, OutMarginScale = 0.4;
+        public double TinMarginScale = 0.45, TinMarginVolley = 1.2, OutMarginScale = 0.4;
         public double QuickHeadFactor = 0.75;
+        public double RiskWeight = 3.0;      // score lost per unit of tin / out risk, times (1 - RiskAppetite)
+        public double LowBias = 0.25, LowBiasVolley = 0.5;   // MatchBench --calibrate: actual front-wall height minus predicted
         public double TossDelay = 0.9;
         public double ServeStrikeDelay = 0.26;  // after the toss: strike near its top
         public double ServeAimX = 0.55, ServeAimY = 0.85;
@@ -138,19 +140,27 @@ namespace SquashSim
         static readonly double[] TouchY = { 0.0, 0.3, 0.6 };
         const double RolloutStep = 1.0 / 60;
         const double RolloutHorizon = 2.6;
+        public double SelfCheckTime = 0.25;    // own-body check for the start of the flight (s)
+        public double SelfMargin = 0.2, SelfMarginVolley = 0.45;   // beyond the body capsule: contact and body drift from the plan
+        public double BodyPenalty = 3.0;       // score lost as the ball's path closes on my body inside that margin
+        public double StrokePenalty = 2.5, LetPenalty = 1.0, EarlyPenalty = 0.2;   // shot score lost for crowding the opponent's ball
+        // Room given while the opponent plays: beyond the referee's own tests, since their hitting point
+        // moves as the ball comes and leaving a zone takes time (MatchBench --interference).
+        public double ShadowAccessMargin = 0.5, ShadowSwingMargin = 0.6, ShadowLineMargin = 0.8;
+        public double ClearDelay = 0.3, ClearSpeed = 2.0, ClearLook = 0.3;   // my recovery model for that check
 
         // ---- state ----
         uint _seed;
         int _lastShots = -1, _lastRally = -1;
         double _oppContactTime = -1e9;
         double _tgtX, _tgtZ;
-        bool _decided, _pressed, _holding, _releaseNext, _appealed;
+        bool _decided, _pressed, _holding, _releaseNext, _appealed, _swungThisTurn;
         double _choiceX, _choiceY, _decoyX;
         bool _choiceTouch, _choicePrepared, _useDecoy;
         double _pressLead;
         double _stickX, _stickY, _stickTX, _stickTY;
         double _splitAt = -1;
-        double _obstructedFor;
+        double _obstructedFor, _lastObstructed = -1e9;
         double _holdFor;
         bool _notedLanding;
         MatchPhase _lastPhase = MatchPhase.MatchOver;
@@ -165,6 +175,7 @@ namespace SquashSim
         readonly List<SimEvent> _events = new List<SimEvent>();
         readonly AimState _aim = new AimState();
         readonly V3 _launch = new V3();
+        readonly V3 _selfAtContact = new V3();
         bool _planPrepared;
         readonly InputIntent _probe = new InputIntent();
 
@@ -179,7 +190,7 @@ namespace SquashSim
         public double LastPredFrontH { get; private set; }
         public double LastPredSpeed { get; private set; }
         double _rollFrontH, _rollSpeed;
-        public readonly V3 LastPredIncoming = new V3(), LastPredLaunch = new V3(), LastPredPoint = new V3();
+        public readonly V3 LastPredIncoming = new V3(), LastPredLaunch = new V3(), LastPredPoint = new V3(), LastPredBody = new V3();
 
         public OpponentBrain(AiProfile profile, uint seed)
         {
@@ -358,6 +369,13 @@ namespace SquashSim
                     _useDecoy = _choicePrepared && Uniform() < Profile.DeceptionChance;
                     _decoyX = Clamp(-_choiceX, -1, 1);
                 }
+                // An air shot does not end the turn: once that swing is over and the ball is still
+                // playable, set up and swing again (it used to stand and watch the second bounce).
+                if (_pressed && ctrl.Swing.State != SwingStates.Idle) _swungThisTurn = true;
+                else if (_pressed && _swungThisTurn && !_holding && !_releaseNext && ctrl.Swing.State == SwingStates.Idle)
+                {
+                    _decided = false; _pressed = false; _swungThisTurn = false;
+                }
                 bool committed = ctrl.Swing.State == SwingStates.Swinging || ctrl.Swing.State == SwingStates.Scheduled ||
                                  ctrl.Swing.State == SwingStates.Recovering || (_pressed && !_choicePrepared);
                 if (_decided && !committed && pred.Valid && ++_replanAge >= ReplanEverySteps)
@@ -392,14 +410,16 @@ namespace SquashSim
 
             // ---- appeal: only when obstructed AND it expects the decision ----
             // A player knows the rules: they ask when they would get a let or a stroke, and
-            // otherwise play on. Their read of the situation is imperfect (Misjudge).
+            // otherwise play on. Their read of the situation is imperfect (Misjudge). They ask
+            // about the obstruction that is hampering them now (or just did), not a brush early
+            // in the turn they have since moved past.
             if (!warmUp && myTurn && m.TurnShots > 0 && !_appealed && m.Interference.Striker == me &&
                 m.Interference.ThisTurn != ObstructionKind.None)
             {
-                _obstructedFor += dt;
                 var kind = m.Interference.Current;
+                if (kind != ObstructionKind.None) { _obstructedFor += dt; _lastObstructed = t; }
                 bool aboutToStrike = canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Time < 0.45;
-                bool cannotPlay = !ctrl.Prediction.Valid && _read.Valid && _read.Time < 0.6;
+                bool cannotPlay = !ctrl.Prediction.Valid && _read.Valid && _read.Time < 0.6 && t - _lastObstructed < 0.8;
                 bool hampered = _obstructedFor > 0.25 &&
                     ((kind != ObstructionKind.None && kind != ObstructionKind.Access && aboutToStrike) || cannotPlay);
                 if (hampered)
@@ -427,7 +447,7 @@ namespace SquashSim
 
         void ResetTurn()
         {
-            _decided = false; _pressed = false; _appealed = false; _useDecoy = false;
+            _decided = false; _pressed = false; _appealed = false; _useDecoy = false; _swungThisTurn = false;
             _obstructedFor = 0;
             _notedLanding = false;
             _serveAimSet = false;
@@ -477,7 +497,7 @@ namespace SquashSim
             if (it.Striker != 1 - me || it.TargetZ <= 0) return;
             var s = m.Players[1 - me].Player.Pos;
             double bx = it.TargetX, bz = it.TargetZ;
-            double clear = 2 * PhysicsConfig.Current.Player.Radius + it.AccessClearance + 0.25;
+            double clear = 2 * PhysicsConfig.Current.Player.Radius + it.AccessClearance + ShadowAccessMargin;
 
             for (int iter = 0; iter < 3; iter++)
             {
@@ -494,14 +514,14 @@ namespace SquashSim
                 }
                 // 2. Swing space around the hitting point.
                 double sx = tx - bx, sz = tz - bz, sd = System.Math.Sqrt(sx * sx + sz * sz);
-                double swing = it.SwingClearance + 0.2;
+                double swing = it.SwingClearance + ShadowSwingMargin;
                 if (sd < swing)
                 {
                     if (sd < 1e-6) { sx = 0; sz = 1; sd = 1; }
                     tx = bx + sx / sd * swing; tz = bz + sz / sd * swing;
                 }
                 // 3. The line from the hitting point to the front wall.
-                double lineHalf = it.LineHalfWidth + PhysicsConfig.Current.Player.Radius + 0.2;
+                double lineHalf = it.LineHalfWidth + PhysicsConfig.Current.Player.Radius + ShadowLineMargin;
                 if (tz < bz && System.Math.Abs(tx - bx) < lineHalf)
                     tx = bx + (tx >= bx ? 1 : -1) * lineHalf;
                 tx = Clamp(tx, -HALF_W + 0.35, HALF_W - 0.35);
@@ -568,7 +588,7 @@ namespace SquashSim
             LastChoice = (bt ? "TOUCH " : "HIT ") + bx.ToString("0.00") + "," + by.ToString("0.00");
             Rollout(m, ctrl, o, _choiceX, _choiceY, bt);
             LastPredFrontH = _rollFrontH; LastPredSpeed = _rollSpeed;
-            LastPredIncoming.CopyFrom(ctrl.Prediction.Vel); LastPredLaunch.CopyFrom(_launch); LastPredPoint.CopyFrom(ctrl.Prediction.Point);
+            LastPredIncoming.CopyFrom(ctrl.Prediction.Vel); LastPredLaunch.CopyFrom(_launch); LastPredPoint.CopyFrom(ctrl.Prediction.Point); LastPredBody.CopyFrom(_selfAtContact);
         }
 
         double Score(MatchSimulation m, TestPlayerController ctrl, TestPlayer opp, double ax, double ay, bool touch)
@@ -616,15 +636,42 @@ namespace SquashSim
             double x2 = origin.X, z2 = origin.Z;
             double bestReq = double.PositiveInfinity;    // the opponent's easiest required speed
             double tFront = 0;
+            double bodyGap = double.PositiveInfinity;      // closest the ball passes my body capsule
+            double wallMargin = double.PositiveInfinity;   // closest the ball comes to a side / back wall out line
+            // Where the opponent will take it: the first playable point they can reach in time
+            // (BallReader's intercept), else the one they come closest to.
+            bool icptFound = false;
+            double icX = 0, icZ = 0, icT = -1;
+            var pc = PhysicsConfig.Current.Player;
             int steps = (int)(RolloutHorizon / RolloutStep);
+            // My body at contact: where I stand, plus the lunge step toward a far contact (LungeStep).
+            var self = _selfAtContact;
+            self.CopyFrom(ctrl.Player.Pos);
+            var lunge = PhysicsConfig.Current.Lunge;
+            if (lunge != null && lunge.Enabled)
+            {
+                double ldx = origin.X - self.X, ldz = origin.Z - self.Z, ld = System.Math.Sqrt(ldx * ldx + ldz * ldz);
+                double step = System.Math.Min(ld - lunge.ArmReach, lunge.MaxStep);
+                if (step > 0 && ld > 1e-6) { self.X += ldx / ld * step; self.Z += ldz / ld * step; }
+            }
             for (int i = 1; i <= steps; i++)
             {
+                double px = _scratch.Pos.X, py = _scratch.Pos.Y, pz = _scratch.Pos.Z;
                 _events.Clear();
                 BallPhysics.Step(_scratch, m.Surfaces, RolloutStep, _events);
                 double t = i * RolloutStep;
+                // Own body: a shot played across (or from behind) the body hits the striker (HitSelf).
+                if (toFront && t <= SelfCheckTime)
+                {
+                    double gap = BodyGap(px, py, pz, _scratch.Pos, self);
+                    if (gap <= 0) return FAIL - 1;
+                    if (gap < bodyGap) bodyGap = gap;
+                }
                 foreach (var e in _events)
                 {
                     if (RallyReferee.OutReason(e) != null) return FAIL;
+                    if (e.SurfaceClass == "sideWall") wallMargin = System.Math.Min(wallMargin, SideWallOutHeight(e.Point.Z) - e.Point.Y);
+                    else if (e.SurfaceClass == "backWall") wallMargin = System.Math.Min(wallMargin, BACK_WALL_OUT_H - e.Point.Y);
                     if (toFront)
                     {
                         if (e.SurfaceClass == "tin" || e.SurfaceClass == "floor") return FAIL;
@@ -644,7 +691,12 @@ namespace SquashSim
                     double dx = _scratch.Pos.X - opp.Pos.X, dz = _scratch.Pos.Z - opp.Pos.Z;
                     double gap = System.Math.Sqrt(dx * dx + dz * dz) - 0.9;
                     double req = gap <= 0 ? 0 : gap / t;
-                    if (req < bestReq) bestReq = req;
+                    if (req < bestReq) { bestReq = req; if (!icptFound) { icX = _scratch.Pos.X; icZ = _scratch.Pos.Z; icT = t; } }
+                    if (!icptFound && _scratch.Pos.Z > 1.2 && _scratch.Vel.Y <= 0.5 &&
+                        BallReader.TravelTime(gap, pc.MaxSpeed, pc.Acceleration) + Profile.ReactionTime <= t)
+                    {
+                        icptFound = true; icX = _scratch.Pos.X; icZ = _scratch.Pos.Z; icT = t;
+                    }
                 }
                 x2 = _scratch.Pos.X; z2 = _scratch.Pos.Z;
             }
@@ -659,9 +711,12 @@ namespace SquashSim
 
             // Tin and out margins against the model's own accuracy (see below).
             double tinScale = pred.IsVolley ? TinMarginVolley : TinMarginScale;
-            double tinMargin = frontH - TIN_H;
+            // The model flies a centred contact; real ones land lower on average (off-centre, late), so
+            // the margin is measured from where the ball tends to go, not where the rollout says.
+            double tinMargin = frontH - TIN_H - (pred.IsVolley ? LowBiasVolley : LowBias);
             double outMargin = FRONT_WALL_OUT_H - PhysicsConfig.Current.Match.LineWidth - frontH;
             double risk = DMath.Exp(-tinMargin / tinScale) + DMath.Exp(-outMargin / OutMarginScale);
+            if (!double.IsPositiveInfinity(wallMargin)) risk += DMath.Exp(-wallMargin / OutMarginScale);
 
             // Knock-up: easy to reach again (low "pressure" on yourself), a good length, safe.
             if (_knockUp)
@@ -676,8 +731,66 @@ namespace SquashSim
             // Margins: how close to the tin and the out line this aim flies, measured against
             // the model's own accuracy (MatchBench --calibrate: about +-0.5 m, worse on volleys,
             // where the real contact point drifts most from the predicted one).
-            score -= (1 - Profile.RiskAppetite) * 2.0 * risk;
+            score -= (1 - Profile.RiskAppetite) * RiskWeight * risk;
+
+            // Room: a ball that comes back to where I will be is a let at best, a stroke at worst.
+            // Real players hit away from themselves (length and width) so they can clear to the T.
+            if (icT > 0) score -= Crowding(m, self, opp, icX, icZ, icT);
+
+            // Close to my own body: the real contact and body drift from the plan (most on volleys).
+            double selfMargin = pred.IsVolley ? SelfMarginVolley : SelfMargin;
+            if (bodyGap < selfMargin) score -= BodyPenalty * (1 - bodyGap / selfMargin);
             return score;
+        }
+
+        /// <summary>Penalty for being in the opponent's way when they play this ball: my body from
+        /// the stroke, recovering toward the T, checked with the referee's own geometry.</summary>
+        double Crowding(MatchSimulation m, V3 self, TestPlayer opp, double bx, double bz, double t)
+        {
+            double ox = opp.Pos.X, oz = opp.Pos.Z;
+            // The referee keeps the worst obstruction of the turn, from the moment I strike; an appeal
+            // comes when the striker is still hampered as they arrive. So: where I stand at my contact,
+            // then recovering toward the T as they arrive and as they play it.
+            var k0 = CrowdingAt(m, self, ox, oz, bx, bz, 0);
+            var kArrive = CrowdingAt(m, self, ox, oz, bx, bz, t - ClearLook);
+            var kPlay = CrowdingAt(m, self, ox, oz, bx, bz, t);
+            int late = System.Math.Max(Severity(kArrive), Severity(kPlay));
+            if (late == 0) return Severity(k0) > 0 ? EarlyPenalty : 0;
+            int worst = System.Math.Max(late, Severity(k0));
+            return worst >= 2 ? StrokePenalty : LetPenalty;
+        }
+
+        ObstructionKind CrowdingAt(MatchSimulation m, V3 self, double ox, double oz, double bx, double bz, double at)
+        {
+            var cfg = PhysicsConfig.Current.Match;
+            double move = System.Math.Max(0, at - ClearDelay) * ClearSpeed;
+            double dx = cfg.TX - self.X, dz = cfg.TZ - self.Z, d = System.Math.Sqrt(dx * dx + dz * dz);
+            double f = d < 1e-6 ? 0 : System.Math.Min(1, move / d);
+            return m.Interference.Detect(ox, oz, self.X + dx * f, self.Z + dz * f, bx, bz);
+        }
+
+        static int Severity(ObstructionKind k)
+        {
+            return k == ObstructionKind.Line || k == ObstructionKind.Swing ? 2 : (k == ObstructionKind.Access ? 1 : 0);
+        }
+
+        /// <summary>How far outside the striker's body capsule (BodyCollision's shape) the ball's path
+        /// passes this rollout step; &lt;= 0 means it hits.</summary>
+        double BodyGap(double x0, double y0, double z0, V3 p1, V3 body)
+        {
+            double R = PhysicsConfig.Current.Player.Radius, H = PhysicsConfig.Current.Player.Height;
+            double reach = R + PhysicsConfig.Current.Ball.Radius;
+            double best = double.PositiveInfinity;
+            for (int k = 1; k <= 8; k++)
+            {
+                double f = k / 8.0;
+                double x = x0 + (p1.X - x0) * f, y = y0 + (p1.Y - y0) * f, z = z0 + (p1.Z - z0) * f;
+                double cy = Clamp(y, R, H - R);
+                double dx = x - body.X, dy = y - cy, dz = z - body.Z;
+                double d = System.Math.Sqrt(dx * dx + dy * dy + dz * dz) - reach;
+                if (d < best) best = d;
+            }
+            return best;
         }
 
         /// <summary>The launch this plan would give (ShotPreview: shared with the aim target).</summary>
