@@ -32,7 +32,8 @@ namespace SquashGame
         public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };
         public static readonly string[] ScoringValues = { "par", "english" };
         public static readonly string[] WarmUpLabels = { "On", "Off" };
-        public static readonly string[] SensitivityLabels = { "Slow", "Calm", "Normal", "Quick", "Fast" };
+        // MouseSensitivityScale steps 0.5 .. 2: a longer .. shorter drag for full aim.
+        public static readonly string[] SensitivityLabels = { "Longest", "Long", "Normal", "Short", "Shortest" };
         public static readonly string[] InvertLabels = { "Off", "On" };
         public static readonly string[] OnOffLabels = { "On", "Off" };
 
@@ -228,7 +229,7 @@ namespace SquashGame
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
 
-            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Mouse aim", "Invert mouse Y", "Arcade pop-ups" };
+            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Drag distance", "Invert mouse Y", "Arcade pop-ups" };
             string[] values =
             {
                 OpponentLabels[Opponent] + (Opponent == 5 && !MatchRunner.CanPlayTwoPlayer ? " (connect a pad)" : ""),

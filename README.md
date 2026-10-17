@@ -298,4 +298,12 @@ Playtest round 2:
 - **Normal shots** are accurate: half the old aim error at a stretch, and gross misses at most 12% (at full stretch).
 - **A full charge** (held 0.6 s) gives a special shot: Hit = a very fast **kill** kept low over the tin; Touch = a pin-point **drop**. The aim ring turns gold when the charge is ready and shows where the special will go; the pop-ups say "Kill!" / "Drop!".
 
+## M9 — drag-to-aim (the Joy-Con stick)
+
+Plan: `RE_SQUASHSTRIKE_M9_DRAG_AIM_PLAN.md`.
+- **The aim ring is gone;** every stroke starts aimed at the middle.
+- **Mouse:** hold Hit / Touch and drag (about 120 px = full aim; setup panel: "Drag distance"), then let go to hit. After the stroke the aim snaps back to the middle. Moving the mouse without holding does nothing.
+- **Widget (`AimStickWidget`):** a thumbstick in the middle of the screen while held. The knob follows the drag (or the pad's right stick), goes gold when a kill / drop is charged, and the rim shows BOAST in the boast zone.
+- **Serve:** with no drag, it goes cross-court.
+
 ## Next: M7

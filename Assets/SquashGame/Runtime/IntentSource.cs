@@ -4,9 +4,12 @@
 // of lab/core/InputIntent.js. The only class that touches devices.
 //
 //   Move   WASD / arrows (always full speed) or left stick (analog)
-//   Aim    right stick, or the mouse as a RELATIVE virtual stick
-//          (never screen position). Deadzone/curves are NOT applied
-//          here - AimController applies them once for both devices.
+//   Aim    right stick, or the mouse as a DRAG STICK (M9): press Hit /
+//          Touch and the stick starts in the middle; drag while holding
+//          to push it (about DragRadiusPx for full deflection); let go to
+//          hit. After the stroke the stick snaps back to the middle.
+//          Moving the mouse without holding does nothing. Deadzone/curves
+//          are NOT applied here - AimController applies them once.
 //   Hit    LMB / pad South      Touch  RMB / pad East
 //   Focus  Space / LT: split-step, timed to the opponent's contact
 //   Appeal Q / pad Y: "Let, please"
@@ -44,8 +47,10 @@ namespace SquashGame
         public bool Recentering { get { return _recentering; } }
 
         // ---- player settings (setup panel; saved per machine) ----
-        /// <summary>Mouse aim speed multiplier (1 = the config's MouseSensitivity).</summary>
+        /// <summary>Drag length multiplier: 1 = a 120 px drag for full deflection; higher = a shorter drag.</summary>
         public static float MouseSensitivityScale = 1f;
+        /// <summary>Mouse drag (pixels) for full stick deflection.</summary>
+        public static float DragRadiusPx { get { return 120f / Mathf.Max(0.2f, MouseSensitivityScale); } }
         public static bool InvertMouseY;
         /// <summary>Ease the mouse aim back to the middle after a stroke. Off: the target stays where you put it.</summary>
         public static bool RecenterMouseAim;
@@ -85,6 +90,16 @@ namespace SquashGame
         float _vx, _vy;
         bool _recentering;
         bool _ready;
+        bool _strokeHeld, _awaitRecentre;
+        float _releasedAt;
+
+        /// <summary>Hit or Touch is held right now (the drag stick is live; the widget shows).</summary>
+        public bool StrokeHeld { get { return _strokeHeld; } }
+        /// <summary>Released, the stroke not yet over: the aim is still the one you dragged.</summary>
+        public bool AwaitingHit { get { return _awaitRecentre; } }
+        /// <summary>The stick as aimed (-1..1 each axis; +x = right, +y = up).</summary>
+        public float StickX { get { return (float)Intent.AimRawX; } }
+        public float StickY { get { return (float)Intent.AimRawY; } }
 
         public IntentSource(InputDevice[] devices = null)
         {
@@ -161,7 +176,11 @@ namespace SquashGame
         public void Dispose() { _map.Disable(); _map.Dispose(); }
 
         /// <summary>The virtual stick eases back to neutral after a stroke (a real stick recentres itself).</summary>
-        public void BeginRecenter() { if (RecenterMouseAim) _recentering = true; }
+        public void BeginRecenter()
+        {
+            // M9: the stroke is over - the drag stick snaps back to the middle (unless a new stroke is already held).
+            if (!_strokeHeld) { _vx = 0; _vy = 0; _awaitRecentre = false; _recentering = false; }
+        }
 
         public void SetVirtualAim(float x, float y) { _vx = x; _vy = y; ClampVirtual(); _recentering = false; }
 
@@ -213,19 +232,28 @@ namespace SquashGame
             // A keyboard player is never slowed for lacking an analog stick.
             Intent.MoveMagnitude = keyboardMoving ? 1.0 : Mathf.Min(1f, padMag);
 
-            // ---- aim ----
-            if (MouseGameplayEnabled)
+            // ---- aim: the drag stick ----
+            bool held = _hit.IsPressed() || _touch.IsPressed();
+            if (_hit.WasPressedThisFrame() || _touch.WasPressedThisFrame())
+            {
+                _vx = 0; _vy = 0; _awaitRecentre = false;           // every stroke starts aimed at the middle
+            }
+            if (MouseGameplayEnabled && held)
             {
                 Vector2 d = _mouseDelta.ReadValue<Vector2>();
                 if (d.x != 0f || d.y != 0f)
                 {
-                    float s = (float)aimCfg.MouseSensitivity * MouseSensitivityScale;
+                    float s = 1f / DragRadiusPx;
                     _vx += d.x * s;
-                    _vy += (InvertMouseY ? -d.y : d.y) * s;   // Input System delta is +y up: mouse up = aim up
+                    _vy += (InvertMouseY ? -d.y : d.y) * s;   // Input System delta is +y up: drag up = aim up
                     ClampVirtual();
                     Device = "keyboard";
                 }
             }
+            if (_strokeHeld && !held) { _awaitRecentre = true; _releasedAt = Time.unscaledTime; }
+            _strokeHeld = held;
+            // A release that never turned into a stroke: back to the middle anyway.
+            if (_awaitRecentre && Time.unscaledTime - _releasedAt > 1.2f) { _vx = 0; _vy = 0; _awaitRecentre = false; }
             Vector2 aimStick = _aimStick.ReadValue<Vector2>();
             if (aimStick.sqrMagnitude > 0.05f * 0.05f) Device = "gamepad";
 

@@ -270,6 +270,7 @@ namespace SquashSim
                     {
                         // The simple system serves in ONE click: no toss to time, the ball is struck from the hand.
                         server.ServeStroke = true;
+                        server.ServeDefaultX = -Score.ServeSide * 0.9;   // a centred stick serves cross-court
                         SimEvent serve = server.Arcade.ServeNow(server, Ball, Surfaces);
                         serve.PlayerIndex = Score.Server;
                         serve.Time = Time;

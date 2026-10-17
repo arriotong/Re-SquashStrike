@@ -35,6 +35,8 @@ namespace SquashSim
         public bool ArcadeHitEnabled;
         /// <summary>Set by the match: the next stroke is the serve (the simple system keeps it above the service line).</summary>
         public bool ServeStroke;
+        /// <summary>Set by the match: where an un-aimed (centred) serve goes across the front wall (sim x).</summary>
+        public double ServeDefaultX;
         ArcadeStroke _arcade;
         public ArcadeStroke Arcade { get { return _arcade ?? (_arcade = new ArcadeStroke((uint)(Index + 1))); } }
         bool ArcadeOn { get { return ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null; } }

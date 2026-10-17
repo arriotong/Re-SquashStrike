@@ -23,6 +23,8 @@ namespace SquashGame
         public SimRunnerBase Runner;
         public int Athlete;
         public Color Colour = new Color(1f, 0.78f, 0.22f);
+        /// <summary>M9: the ring is not drawn any more (drag-to-aim); the preview is still computed (tests, notes).</summary>
+        public bool DrawRing = false;
 
         /// <summary>The preview drawn this frame (tests and diagnostics).</summary>
         public readonly ShotPreview Preview = new ShotPreview();
@@ -63,8 +65,8 @@ namespace SquashGame
         {
             IntentSource src = Runner != null ? Runner.LocalSource(Athlete) : null;
             Shown = src != null && Visible();
-            _ring.gameObject.SetActive(Shown);
-            _dot.gameObject.SetActive(Shown);
+            _ring.gameObject.SetActive(Shown && DrawRing);
+            _dot.gameObject.SetActive(Shown && DrawRing);
             if (!Shown) { _hasPos = false; return; }
 
             var athletes = Runner.Athletes;
@@ -109,7 +111,7 @@ namespace SquashGame
 
         void OnGUI()
         {
-            if (!Shown || Wall == 0) return;
+            if (!Shown || Wall == 0 || !DrawRing) return;
             var cam = Camera.main;
             if (cam == null) return;
             Vector3 sp = cam.WorldToScreenPoint(WorldPoint + Vector3.up * (_radius + 0.25f));

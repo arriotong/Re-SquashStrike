@@ -174,7 +174,11 @@ namespace SquashSim
             if (aim.HasWallTarget) { tx = aim.WallTarget.X; ty = aim.WallTarget.Y; tz = aim.WallTarget.Z; }
             else { tx = aim.IntendedPoint.X; ty = aim.IntendedPoint.Y; tz = 0; }
             // The serve must go above the service line (the original game did the same).
-            if (ctrl.ServeStroke && wall == 0) ty = System.Math.Max(ty, CourtDimensions.SERVICE_LINE_H + 0.3);
+            if (ctrl.ServeStroke && wall == 0)
+            {
+                ty = System.Math.Max(ty, CourtDimensions.SERVICE_LINE_H + 0.3);
+                if (System.Math.Abs(aim.BiasX) < 0.08) tx = ctrl.ServeDefaultX;    // no drag: the normal cross-court serve
+            }
             bool touch = _stroke == "touch";
             string special = charge >= 0.999 && !ctrl.ServeStroke ? (touch ? "drop" : "kill") : null;
             double speed, spread;
