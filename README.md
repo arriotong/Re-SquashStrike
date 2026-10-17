@@ -267,4 +267,13 @@ Steps 2–3 (in the game), `AthleteFigure`:
 - **Racket:** always in the hand. As the simulated racket closes on the ball (within 0.75 m) it blends onto it; it is exact within 0.3 m and at contact (0 mm). The body moves by the arm's exact shortfall.
 - **Head:** level, turning to the ball at most 45° sideways and 25° up/down.
 
+## M8 (in progress) — swing registration and controls
+
+Plan: `RE_SQUASHSTRIKE_M8_CONTROLS_PLAN.md`. The tool is `MatchBench --press-audit`: a human-style player's Hit presses, each followed to what it led to.
+
+Step 1 (`PhysicsConfig.UseGameSwing`):
+- **Re-timing:** a scheduled swing keeps re-timing to the latest prediction until it starts. Before, it aimed at a contact point that moved as the athlete ran on, and fired early.
+- **No air swings:** a held stroke released with no ball in reach waits instead of swinging at air.
+- **Result:** presses that connect went from 47% to 87%, and whiffs from 48% to under 1%. The human-style player wins 36% of rallies against the easy AI (was 8%). The AI is unchanged; parity is 19/19.
+
 ## Next: M7

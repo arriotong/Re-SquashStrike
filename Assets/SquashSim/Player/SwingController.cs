@@ -228,6 +228,10 @@ namespace SquashSim
 
                 case SwingStates.Scheduled:
                     sw.StartIn -= dt;
+                    // Game: stay on the LATEST prediction until the swing starts - the athlete is usually still
+                    // moving, and the contact (the ball's closest approach to them) moves with them.
+                    if (timing.RetimeScheduled && pred != null && pred.Valid)
+                        sw.StartIn = pred.Time - (sw.Plan != null ? sw.Plan.Duration : 0) * 0.5;
                     sw.ExpectedStartIn = sw.StartIn;
                     if (sw.StartIn <= 0)
                     {
@@ -282,7 +286,13 @@ namespace SquashSim
 
                     if (releasedNow)
                     {
-                        if (!idealStart.HasValue)
+                        if (!idealStart.HasValue && timing.NoAirSwings)
+                        {
+                            // Game: no ball in reach yet - keep the prepared stroke ready; it swings when the ball comes.
+                            sw.State = SwingStates.Armed;
+                            sw.ArmedAge = 0;
+                        }
+                        else if (!idealStart.HasValue)
                         {
                             sw.Rushed = false;
                             Commit(sw, MakePlan(sw, aim, player, pred, ctx, false), player, pred, ri);

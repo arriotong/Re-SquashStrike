@@ -16,6 +16,7 @@
 //        [--ballcheck]       (the ball vs the WSF double-yellow spec and PSA pace)
 //        [--drive S [--temp C] [--aim-height m]]  (trace one straight drive)
 //        [--feel]            (movement, reach and animation-input metrics vs the PSA data targets)
+//        [--press-audit]     (a human-style player's Hit presses, followed to what they led to)
 //        [--hitself]         (every HitSelf: the stroke, planned vs real contact, body, ball path)
 //        [--interference [--track] [--only text]]  (every let / stroke: the obstructor's situation)
 // ===========================================================
@@ -53,6 +54,11 @@ public static class Program
         if (Array.IndexOf(args, "--hitself") >= 0) { HitSelfReport(games); return 0; }
         if (Array.IndexOf(args, "--interference") >= 0) { InterferenceReport(games); return 0; }
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
+        if (Array.IndexOf(args, "--press-audit") >= 0)
+        {
+            PressAudit.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--p1") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.3"), Array.IndexOf(args, "--lab-ball") < 0);
+            return 0;
+        }
         if (Array.IndexOf(args, "--feel") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; FeelReport(games); return 0; }
         if (Array.IndexOf(args, "--drive") >= 0) { DriveTrace(double.Parse(Arg(args, "--drive")), double.Parse(Arg(args, "--temp") ?? "45"), double.Parse(Arg(args, "--aim-height") ?? "0.9"), Array.IndexOf(args, "--lab-ball") < 0); return 0; }
         if (Array.IndexOf(args, "--ballcheck") >= 0) { BallCheck(Array.IndexOf(args, "--lab-ball") < 0); return 0; }

@@ -197,6 +197,12 @@ namespace SquashSim
     public sealed class InputTimingSection
     {
         public double BufferSeconds, MaxLeadSeconds, LateToleranceSeconds, PreparedTimingAssist;
+        /// <summary>Game only (false in the lab): a scheduled swing keeps re-timing to the latest prediction
+        /// until it starts, so running on toward the ball does not leave the swing early.</summary>
+        public bool RetimeScheduled;
+        /// <summary>Game only (false in the lab): a held stroke released with no contact predicted waits
+        /// for the ball (it is armed) instead of swinging at air.</summary>
+        public bool NoAirSwings;
     }
 
     public sealed class AssistSection
@@ -491,6 +497,17 @@ namespace SquashSim
             UseGameReach();
             UseGameMovement();
             UseGameAim();
+            UseGameSwing();
+        }
+
+        /// <summary>
+        /// M8 swing registration (press audit, 2026-10-17): the swing follows the ball as you move, and a
+        /// stroke never fires at thin air. Human-style presses that connect: 47% -> ~81%.
+        /// </summary>
+        public static void UseGameSwing()
+        {
+            Current.InputTiming.RetimeScheduled = true;
+            Current.InputTiming.NoAirSwings = true;
         }
 
         /// <summary>
