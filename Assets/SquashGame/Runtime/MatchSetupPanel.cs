@@ -34,9 +34,10 @@ namespace SquashGame
         public static readonly string[] WarmUpLabels = { "On", "Off" };
         public static readonly string[] SensitivityLabels = { "Slow", "Calm", "Normal", "Quick", "Fast" };
         public static readonly string[] InvertLabels = { "Off", "On" };
+        public static readonly string[] OnOffLabels = { "On", "Off" };
 
         public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4,
-                         RowMouse = 5, RowInvert = 6, RowStart = 7, RowPractice = 8, RowQuit = 9, Rows = 10;
+                         RowMouse = 5, RowInvert = 6, RowPopups = 7, RowStart = 8, RowPractice = 9, RowQuit = 10, Rows = 11;
         public const string PracticeScene = "WarmUpCourt";
 
         // Current choice per row (indices into the label arrays).
@@ -73,6 +74,7 @@ namespace SquashGame
                 case RowWarmUp: return WarmUpLabels.Length;
                 case RowMouse: return SensitivityLabels.Length;
                 case RowInvert: return InvertLabels.Length;
+                case RowPopups: return OnOffLabels.Length;
                 default: return 1;
             }
         }
@@ -100,6 +102,10 @@ namespace SquashGame
                 case RowInvert:
                     IntentSource.InvertMouseY = !IntentSource.InvertMouseY;
                     IntentSource.SaveSettings();
+                    break;
+                case RowPopups:
+                    ArcadePopups.Enabled = !ArcadePopups.Enabled;
+                    ArcadePopups.SaveSettings();
                     break;
             }
         }
@@ -224,13 +230,14 @@ namespace SquashGame
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
 
-            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Knock-up", "Mouse aim", "Invert mouse Y" };
+            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Knock-up", "Mouse aim", "Invert mouse Y", "Arcade pop-ups" };
             string[] values =
             {
                 OpponentLabels[Opponent] + (Opponent == 5 && !MatchRunner.CanPlayTwoPlayer ? " (connect a pad)" : ""),
                 RowEnabled(RowDifficulty) ? DifficultyLabels[Difficulty] : "-",
                 LengthLabels[Length], ScoringLabels[Scoring], WarmUpLabels[WarmUp],
-                SensitivityLabels[SensitivityIndex()], InvertLabels[IntentSource.InvertMouseY ? 1 : 0]
+                SensitivityLabels[SensitivityIndex()], InvertLabels[IntentSource.InvertMouseY ? 1 : 0],
+                OnOffLabels[ArcadePopups.Enabled ? 0 : 1]
             };
             float y = r.y + 84;
             for (int i = 0; i < names.Length; i++)

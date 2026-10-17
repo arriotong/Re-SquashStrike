@@ -65,7 +65,7 @@ namespace SquashGame.Tests
             r.Stepped += onStep;
             float t0 = Time.realtimeSinceStartup;
             bool captured = false;
-            while (Time.realtimeSinceStartup - t0 < 14f && errors.Count < 6)
+            while (Time.realtimeSinceStartup - t0 < 20f && errors.Count < 10)
             {
                 if (((int)((Time.realtimeSinceStartup - t0) * 4f)) % 4 == 0) Press(pad.buttonSouth); else Release(pad.buttonSouth);
                 yield return null;
@@ -86,6 +86,9 @@ namespace SquashGame.Tests
             var timing = aim.GetComponent<TimingFeedbackView>();
             Debug.Log("[M6] timing notes shown " + timing.Count + ", last " + timing.Last);
             Assert.That(timing.Count, Is.GreaterThan(0), "every stroke gets a timing note");
+            var pops = Object.FindFirstObjectByType<ArcadePopups>();
+            Debug.Log("[Pop] practice shown: " + string.Join(" ", pops.Shown));
+            Assert.That(pops.Shown.Exists(w => w == "HIT!" || w == "VOLLEY!" || w == "SMASH!" || w == "TOUCH!"), Is.True, "strokes pop up");
             Assert.That(errors.Count, Is.GreaterThanOrEqualTo(3), "not enough shots reached the front wall");
             Assert.That(errors[errors.Count / 2], Is.LessThan(0.6f), "the target should show where the ball goes");
         }

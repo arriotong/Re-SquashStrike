@@ -59,6 +59,10 @@ namespace SquashGame
                 timing.Build(Runner, aim, i);
             }
 
+            var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();
+            popups.transform.SetParent(transform, false);
+            popups.Build(Runner);
+
             var setup = new GameObject("MatchSetupPanel").AddComponent<MatchSetupPanel>();
             setup.transform.SetParent(transform, false);
             setup.Runner = Runner;

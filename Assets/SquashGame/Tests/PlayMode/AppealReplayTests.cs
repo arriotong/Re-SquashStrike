@@ -55,6 +55,10 @@ namespace SquashGame.Tests
             RallyOutcome o = m.LastOutcome;
             Assert.That(o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet, o.ToString());
             Debug.Log("[M3] appeal ruled: " + o);
+            var pops = Object.FindFirstObjectByType<ArcadePopups>();
+            Debug.Log("[Pop] shown: " + string.Join(" ", pops.Shown));
+            Assert.That(pops.Shown, Does.Contain("LET, PLEASE?"), "the appeal pops up");
+            Assert.That(pops.Shown, Does.Contain(o.Kind == RallyEnd.Let ? "LET!" : "NO LET!"), "the decision pops up");
 
             // The call is reviewed automatically on the referee camera.
             yield return null; yield return null;

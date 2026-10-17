@@ -51,6 +51,8 @@ namespace SquashGame.Athlete
         public Vector3 DrawnRacketHead { get; private set; }
         /// <summary>The drawn facing (world, flat).</summary>
         public Vector3 DrawnForward { get; private set; }
+        /// <summary>How fast the drawn body turned in the last pose, degrees per second.</summary>
+        public float TurnRate { get; private set; }
         /// <summary>World positions of the soles this frame (R, L) and whether each is planted.</summary>
         public readonly Vector3[] Feet = new Vector3[2];
         public readonly bool[] FootPlanted = { true, true };
@@ -116,7 +118,9 @@ namespace SquashGame.Athlete
             if (!_hasYaw) { _yaw = want; _hasYaw = true; }
             float rate = (inStroke ? TurnRateSwing : TurnRateIdle) * dt;
             float diff = Mathf.DeltaAngle(_yaw, want);
-            _yaw += Mathf.Clamp(diff * (1f - Mathf.Exp(-10f * dt)) * 1.6f, -rate, rate);
+            float turn = Mathf.Clamp(diff * (1f - Mathf.Exp(-10f * dt)) * 1.6f, -rate, rate);
+            _yaw += turn;
+            TurnRate = dt > 1e-5f ? Mathf.Abs(turn) / dt : 0f;
             Vector3 fwd = Quaternion.AngleAxis(_yaw, up) * front;
             Vector3 right = Vector3.Cross(up, fwd);           // athlete's right in world
             DrawnForward = fwd;

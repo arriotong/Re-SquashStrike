@@ -49,6 +49,10 @@ namespace SquashGame
             aim.Build(Runner, 0, Palette, new Color(1f, 0.78f, 0.22f));
             aim.gameObject.AddComponent<TimingFeedbackView>().Build(Runner, aim, 0);
 
+            var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();
+            popups.transform.SetParent(transform, false);
+            popups.Build(Runner);
+
             var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
             audio.transform.SetParent(transform, false);
             audio.Build(Runner);

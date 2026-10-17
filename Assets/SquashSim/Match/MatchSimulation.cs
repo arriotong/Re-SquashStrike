@@ -67,6 +67,8 @@ namespace SquashSim
 
         /// <summary>Raised when a rally ends (after scoring is applied).</summary>
         public event System.Action<RallyOutcome> RallyEnded;
+        /// <summary>A player asked for a let (presentation: "Let, please?"). Raised before the decision.</summary>
+        public event System.Action<int> Appealed;
 
         double _rallyStart;
         readonly double[] _run = new double[2];
@@ -278,6 +280,8 @@ namespace SquashSim
                 for (int i = 0; i < 2; i++)
                 {
                     if (!Intents[i].AppealPressed) continue;
+                    var ap = Appealed;
+                    if (ap != null) ap(i);
                     InterferenceDecision d = Interference.Striker == i
                         ? Interference.Decide()
                         : new InterferenceDecision { Call = InterferenceCall.NoLet, Reason = "No let - opponent was clear" };
