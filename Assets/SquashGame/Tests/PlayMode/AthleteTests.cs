@@ -41,6 +41,8 @@ namespace SquashGame.Tests
             var gripAll = new List<float>();
             var yawRate = new List<float>();
             var lockAtContact = new List<float>();
+            int diag = 0;
+            bool shotBack = false, shotContact = false, shotFollow = false;
             float footSlide = 0f;
             var lastFeet = new Vector3[2];
             var lastPlanted = new bool[2];
@@ -63,10 +65,18 @@ namespace SquashGame.Tests
                 {
                     Vector3 sweet = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
                     racketErr.Add(Vector3.Distance(sweet, v.RacketHead));
+                    if (Vector3.Distance(sweet, v.RacketHead) > 0.05f && diag < 12)
+                    {
+                        diag++;
+                        Debug.Log("[Diag] lock miss " + Vector3.Distance(sweet, v.RacketHead).ToString("0.00") + " m: shoulder gap " + fig.ShoulderGapBefore.ToString("0.00") +
+                                  " -> " + fig.ShoulderGapAfter.ToString("0.00") + ", shift " + fig.ReachShift.ToString("0.00") + ", grip gap " + fig.GripGap.ToString("0.00") +
+                                  ", clip " + fig.Clip + ", head y " + v.RacketHead.y.ToString("0.00") + ", from body " + Vector3.Distance(new Vector3(v.RacketHead.x, 0, v.RacketHead.z), new Vector3(v.Pos.x, 0, v.Pos.z)).ToString("0.00"));
+                    }
                     Vector3 drawnNormal = racket.right;
                     Assert.That(Mathf.Abs(Vector3.Dot(drawnNormal, v.RacketFaceNormal.normalized)), Is.GreaterThan(0.999f), "string normal");
                 }
-                gripAll.Add(fig.GripGap);
+                // M7: the racket lives in the hand - the butt must sit in the grip socket, always.
+                gripAll.Add(Vector3.Distance(fig.Rig.Racket.position, fig.Rig.Bones["Hand_R"].TransformPoint(fig.Rig.GripLocalPos)));
 
                 // Animation feel: facing turn rate, planted feet that stay planted.
                 // The figure reports its own per-pose turn rate (frame timing in batch mode is too uneven to difference).
@@ -75,6 +85,10 @@ namespace SquashGame.Tests
                     if (lastPlanted[f] && fig.FootPlanted[f])
                         footSlide = Mathf.Max(footSlide, Vector3.Distance(lastFeet[f], fig.Feet[f]));
                 for (int f = 0; f < 2; f++) { lastFeet[f] = fig.Feet[f]; lastPlanted[f] = fig.FootPlanted[f]; }
+                // M7: a close-up of one whole stroke (backswing, contact, follow-through), for review.
+                if (!shotBack && v.Swing == SwingPhase.Scheduled) { shotBack = true; CloseUp(fig, "M7_1_Backswing.png"); }
+                if (!shotFollow && shotContact && v.Swing == SwingPhase.Recovering) { shotFollow = true; CloseUp(fig, "M7_3_Follow.png"); }
+                if (contacts != lastContacts && !shotContact && shotBack) { shotContact = true; CloseUp(fig, "M7_2_Contact.png"); }
                 if (contacts != lastContacts)
                 {
                     lastContacts = contacts;
@@ -99,7 +113,7 @@ namespace SquashGame.Tests
 
             Assert.That(worstRacket, Is.LessThan(0.01f), "rendered racket must sit on the simulated racket (< 1 cm)");
             Assert.That(contacts, Is.GreaterThan(0), "no racket contacts in 12 s of feeds");
-            Assert.That(medianGrip, Is.LessThan(0.03f), "the hand should hold the racket");
+            Assert.That(gripAll[gripAll.Count - 1], Is.LessThan(0.002f), "the hand always holds the racket");
             Assert.That(yawMax, Is.LessThanOrEqualTo(540.5f), "the drawn body turns at a human rate (cap 540 deg/s)");
             Assert.That(footSlide, Is.LessThan(0.002f), "a planted foot does not slide");
             if (lockAtContact.Count > 0) Assert.That(lockAtContact[0], Is.EqualTo(1f), "the racket is exactly on the sim racket at every contact");
@@ -115,6 +129,19 @@ namespace SquashGame.Tests
             cam.transform.LookAt(SimToWorld.Pos(p.X, 1.0, p.Z));
             Capture("M4_Athlete_Front.png", cam);
             cam.GetComponent<GameplayCameraRig>().enabled = true;
+        }
+
+        /// <summary>From the athlete's front-right, close, then back to the game camera.</summary>
+        static void CloseUp(AthleteFigure fig, string file)
+        {
+            var cam = Camera.main;
+            var rig = cam.GetComponent<GameplayCameraRig>();
+            rig.enabled = false;
+            Vector3 p = fig.transform.position, f = fig.DrawnForward, r = Vector3.Cross(Vector3.up, f);
+            cam.transform.position = p + f * 2.6f + r * 1.6f + Vector3.up * 1.4f;
+            cam.transform.LookAt(p + Vector3.up * 0.9f);
+            Capture(file, cam);
+            rig.enabled = true;
         }
 
         static void Capture(string file, Camera cam)

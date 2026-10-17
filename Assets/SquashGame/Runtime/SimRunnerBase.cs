@@ -54,6 +54,10 @@ namespace SquashGame
         public int SwingSide;               // +1 forehand, -1 backhand
         public bool Swinging;
         public int Swing;                   // SwingPhase
+        public float SwingT;                // 0..1 through the swing (contact at 0.5) while Swinging
+        public bool Touch;                  // the stroke is a touch (soft) stroke
+        public bool HasPred;                // a contact is predicted
+        public Vector3 PredContact;         // where (world)
 
         public static AthleteSnapshot Capture(TestPlayerController c)
         {
@@ -70,7 +74,11 @@ namespace SquashGame
                 Reach = ReachIndex(c.Player.ReachState),
                 SwingSide = c.Player.SwingSide >= 0 ? 1 : -1,
                 Swinging = c.Swing.State == SwingStates.Swinging,
-                Swing = SwingPhase.Of(c.Swing.State)
+                Swing = SwingPhase.Of(c.Swing.State),
+                SwingT = (float)c.Swing.Phase,
+                Touch = c.Swing.Stroke == "touch",
+                HasPred = c.Prediction.Valid,
+                PredContact = c.Prediction.Valid ? SimToWorld.Pos(c.Prediction.Point) : Vector3.zero
             };
         }
 
@@ -97,7 +105,10 @@ namespace SquashGame
                 RacketFaceNormal = Vector3.Slerp(a.RacketFaceNormal, b.RacketFaceNormal, t),
                 Stamina = Mathf.LerpUnclamped(a.Stamina, b.Stamina, t),
                 Velocity = Vector3.LerpUnclamped(a.Velocity, b.Velocity, t),
-                Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging, Swing = b.Swing
+                Reach = b.Reach, SwingSide = b.SwingSide, Swinging = b.Swinging, Swing = b.Swing,
+                SwingT = a.Swing == b.Swing ? Mathf.LerpUnclamped(a.SwingT, b.SwingT, t) : b.SwingT,
+                Touch = b.Touch, HasPred = b.HasPred,
+                PredContact = a.HasPred && b.HasPred ? Vector3.LerpUnclamped(a.PredContact, b.PredContact, t) : b.PredContact
             };
         }
     }

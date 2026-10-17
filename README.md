@@ -261,4 +261,10 @@ Step 1 (pose tooling):
 - **Pose Lab** (`re:SquashStrike > Pose Lab`): edit poses live and save.
 - **Pose sheet:** `unity run . -- -executeMethod SquashGame.Editor.PoseSheet.CaptureFromCommandLine`, then `python Tools/PoseSheet/compose.py` → `Captures/PoseSheet.png`.
 
+Steps 2–3 (in the game), `AthleteFigure`:
+- **Locomotion layer:** ready / shuffle / back-pedal / run poses, blended by velocity in the athlete's frame, with planted stepping feet.
+- **Stroke layer:** backswing → contact → follow-through, chosen when the swing commits (side, contact height, reach, touch) and played on the sim's swing phase.
+- **Racket:** always in the hand. As the simulated racket closes on the ball (within 0.75 m) it blends onto it; it is exact within 0.3 m and at contact (0 mm). The body moves by the arm's exact shortfall.
+- **Head:** level, turning to the ball at most 45° sideways and 25° up/down.
+
 ## Next: M7

@@ -115,6 +115,12 @@ namespace SquashGame.Athlete
         /// </summary>
         public static float SolveRacketArm(AthleteRig rig, Vector3 sweet, Vector3 dir, Vector3 normal, Vector3 elbowOffset)
         {
+            return SolveRacketArm(rig, sweet, dir, normal, elbowOffset, out _);
+        }
+
+        /// <summary>As above; also returns the wrist position the racket needs.</summary>
+        public static float SolveRacketArm(AthleteRig rig, Vector3 sweet, Vector3 dir, Vector3 normal, Vector3 elbowOffset, out Vector3 wristTarget)
+        {
             dir = dir.normalized;
             normal = (normal - Vector3.Dot(normal, dir) * dir).normalized;
             if (normal.sqrMagnitude < 1e-6f) normal = Vector3.Cross(dir, Vector3.up).normalized;
@@ -123,6 +129,7 @@ namespace SquashGame.Athlete
             Vector3 butt = sweet - dir * GateA.SweetSpotFromButt;
             Quaternion handRot = racketRot * Quaternion.Inverse(rig.GripLocalRot);
             Vector3 wrist = butt - handRot * rig.GripLocalPos;
+            wristTarget = wrist;
             Transform shoulder = rig.Bones["UpperArm_R"];
             float err = TwoBoneIK.Solve(shoulder, rig.Bones["Forearm_R"], rig.Bones["Hand_R"], wrist, shoulder.position + elbowOffset);
             rig.Bones["Hand_R"].rotation = handRot;
