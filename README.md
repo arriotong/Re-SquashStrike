@@ -245,6 +245,8 @@ Plan and research data: `RE_SQUASHSTRIKE_M6_CONTROLS_PLAN.md`. Measured with `Ma
   - Yaw and pitch are solved through the launch model and real ball flight so the ball goes there.
   - The lowest point is kept above the tin.
   - Scripted human-style play: 94% of strokes reach the front wall (63% before), 0.7% go down (7% before).
+  - **Boasts:** push the aim past the edge of the front wall (the outer 15% of left/right travel). The target moves onto that side wall, between you and the front; further = nearer the front. The ring sits there tagged BOAST, and the shot is solved to strike the side wall first.
+    - Scripted play: 93% hit the chosen side wall first, 91% go on to the front wall, 3% go down.
   - The AI keeps the lab aim.
 - `PhysicsConfig.UseGameProfile()` = the match ball + the M6 reach + the wall aim. The lab and SimParity stay on `Defaults()`.
 

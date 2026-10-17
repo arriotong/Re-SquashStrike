@@ -42,6 +42,16 @@ namespace SquashGame.Tests
             float right = aim.WorldPoint.x;
             Debug.Log("[M6] target x: stick left " + left.ToString("0.00") + ", stick right " + right.ToString("0.00"));
             Assert.That(Mathf.Abs(right - left), Is.GreaterThan(1.0f), "the stick moves the target across the wall");
+            Assert.That(aim.Wall, Is.EqualTo(0), "inside the front wall's width: a front-wall target");
+
+            // Full stick: past the edge of the front wall, the target moves onto that side wall (a boast).
+            Set(pad.rightStick, new Vector2(1f, 0f));
+            yield return WaitReal(0.6f);
+            Debug.Log("[M6] full stick right: wall " + aim.Wall + " at " + aim.WorldPoint);
+            Assert.That(aim.Wall, Is.Not.EqualTo(0), "full stick aims a boast off the side wall");
+            Set(pad.rightStick, new Vector2(-1f, 0f));
+            yield return WaitReal(0.6f);
+            Assert.That(aim.Wall, Is.Not.EqualTo(0), "and the other way");
 
             // Swing at the feeds with a slight aim; compare the last contact-based preview with the real hit.
             Set(pad.rightStick, new Vector2(0.25f, 0.1f));

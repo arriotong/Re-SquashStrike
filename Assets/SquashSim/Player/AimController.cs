@@ -23,12 +23,14 @@ namespace SquashSim
         /// <summary>Front-wall target aim (WallAim, game only): the point the stick picked on the front wall.</summary>
         public bool HasWallTarget;
         public readonly V3 WallTarget = new V3(0, 1.6, 0);
+        /// <summary>0 = front wall; -1 / +1 = left / right side wall (a boast).</summary>
+        public int TargetWall;
 
         public void CopyFrom(AimState o)
         {
             RawX = o.RawX; RawY = o.RawY; BiasX = o.BiasX; BiasY = o.BiasY;
             DesiredYaw = o.DesiredYaw; DesiredPitch = o.DesiredPitch; NeutralPitch = o.NeutralPitch;
-            HasWallTarget = o.HasWallTarget; WallTarget.CopyFrom(o.WallTarget);
+            HasWallTarget = o.HasWallTarget; WallTarget.CopyFrom(o.WallTarget); TargetWall = o.TargetWall;
         }
     }
 

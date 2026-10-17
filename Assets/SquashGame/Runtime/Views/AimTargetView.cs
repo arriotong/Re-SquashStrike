@@ -6,7 +6,9 @@
 // is the expected spread: tight on a set, prepared stroke; wide when quick,
 // stretched or volleyed. Dim when no contact is predicted yet (the ball
 // is on its way to the opponent): then it is the aim's straight line.
-// Red when the shot would go down (tin / floor).
+// Red when the shot would go down (tin / floor). For a boast (aim pushed
+// past the edge of the front wall) the ring sits on that side wall, at the
+// point the shot is solved to strike first, tagged BOAST.
 //
 // One per local player (two colours in local 2P). Presentation only.
 // ===========================================================
@@ -27,6 +29,9 @@ namespace SquashGame
         public bool Shown { get; private set; }
         /// <summary>The smoothed world position of the target centre.</summary>
         public Vector3 WorldPoint { get; private set; }
+        /// <summary>0 = aiming at the front wall; -1 / +1 = a boast off the left / right side wall.</summary>
+        public int Wall { get; private set; }
+        GUIStyle _tag;
 
         Transform _ring, _dot;
         Material _mat;
@@ -67,7 +72,12 @@ namespace SquashGame
             if (!Preview.Valid) return;
 
             // Just off the wall, toward the court, so it never z-fights the plaster.
-            Vector3 target = SimToWorld.Pos(Preview.FrontPoint.X, System.Math.Max(0.03, Preview.FrontPoint.Y), 0.012);
+            int wall = Preview.TargetWall;
+            Vector3 target = wall == 0
+                ? SimToWorld.Pos(Preview.FrontPoint.X, System.Math.Max(0.03, Preview.FrontPoint.Y), 0.012)
+                : SimToWorld.Pos(Preview.Target.X - wall * 0.012, System.Math.Max(0.03, Preview.Target.Y), Preview.Target.Z);
+            if (wall != Wall) _hasPos = false;                // jump to the other wall, don't glide across the court
+            Wall = wall;
             float radius = Mathf.Clamp((float)Preview.Spread, 0.2f, 0.9f);
             float dt = Time.unscaledDeltaTime;
             // The prediction refreshes every few steps: ease toward it so the target glides, not jitters.
@@ -78,12 +88,29 @@ namespace SquashGame
             WorldPoint = _pos;
 
             _ring.position = _pos; _dot.position = _pos;
-            _ring.rotation = Quaternion.identity; _dot.rotation = Quaternion.identity;   // the wall is the world XY plane
+            // The front wall is the world XY plane; a side wall is the YZ plane.
+            Quaternion face = wall == 0 ? Quaternion.identity : Quaternion.Euler(0f, 90f, 0f);
+            _ring.rotation = face; _dot.rotation = face;
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
             Color c = Preview.Down ? new Color(0.95f, 0.25f, 0.2f) : Colour;
             c.a = Preview.FromContact ? 0.9f : 0.45f;
             _mat.color = c;
+        }
+
+        void OnGUI()
+        {
+            if (!Shown || Wall == 0) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+            Vector3 sp = cam.WorldToScreenPoint(WorldPoint + Vector3.up * (_radius + 0.25f));
+            if (sp.z <= 0) return;
+            if (_tag == null) _tag = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            var r = new Rect(sp.x - 60, Screen.height - sp.y - 12, 120, 24);
+            _tag.normal.textColor = new Color(0, 0, 0, 0.7f);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "BOAST", _tag);
+            _tag.normal.textColor = Colour;
+            GUI.Label(r, "BOAST", _tag);
         }
     }
 }

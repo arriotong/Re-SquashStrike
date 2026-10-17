@@ -503,7 +503,8 @@ namespace SquashSim
             Current.WallAim = new WallAimSection
             {
                 HalfWidth = 2.75, NeutralHeight = 1.7, MinHeight = 0.85, MaxHeight = 4.0,
-                RefreshSteps = 4, Iterations = 3
+                RefreshSteps = 4, Iterations = 3,
+                BoastZone = 0.15, BoastHeightLow = 1.1, BoastHeightHigh = 2.4
             };
         }
 

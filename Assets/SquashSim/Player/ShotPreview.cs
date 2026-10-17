@@ -29,6 +29,9 @@ namespace SquashSim
         public bool ViaSideWall;
         /// <summary>Expected spread of the real hit around FrontPoint, metres (radius).</summary>
         public double Spread;
+        /// <summary>Front-wall target aim: the point picked (front or side wall) and which wall (0 front, -1/+1 side).</summary>
+        public readonly V3 Target = new V3();
+        public int TargetWall;
 
         readonly AimState _aim = new AimState();
         readonly BallState _ball = new BallState();
@@ -55,7 +58,8 @@ namespace SquashSim
             {
                 _origin.CopyFrom(pred.Point);
                 // Front-wall aim: exactly the aim the athlete will swing with (solved on its last step).
-                if (wallAim) _aim.CopyFrom(ctrl.Aim); else AimController.Step(_aim, intent, _origin);
+                if (wallAim) { _aim.CopyFrom(ctrl.Aim); Target.CopyFrom(_aim.WallTarget); TargetWall = _aim.TargetWall; }
+                else { AimController.Step(_aim, intent, _origin); TargetWall = 0; }
                 var plan = SwingPlanner.Plan(touch ? "touch" : "hit", _aim, ctrl.Player.SwingSide >= 0 ? 1 : -1, new SwingContext
                 {
                     Mode = prepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
@@ -75,7 +79,7 @@ namespace SquashSim
             var p = ctrl.Player.Pos;
             _origin.X = p.X; _origin.Y = 1.0; _origin.Z = p.Z;
             AimController.Step(_aim, intent, _origin);
-            if (wallAim) WallAim.TargetFor(_aim.BiasX, _aim.BiasY, FrontPoint);       // the point you picked
+            if (wallAim) { TargetWall = WallAim.TargetFor(_aim.BiasX, _aim.BiasY, _origin, Target); FrontPoint.CopyFrom(Target); }   // the point you picked
             else AimController.WallIntersection(FrontPoint, _origin, _aim.DesiredYaw, _aim.DesiredPitch);
             FromContact = false;
             Spread = 0.35;
