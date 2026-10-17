@@ -1,8 +1,9 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/LabSimRunner.cs
 // The warm-up court: SquashSim's LabSimulation (one athlete, the feed
-// launcher, the lab presets) on the shared frame loop. Bit-identical to
-// the HTML lab at any frame rate (see ClockTests).
+// launcher, the lab presets) on the shared frame loop, with the game's
+// match ball so practice feels like the match. With MatchBall off it is
+// bit-identical to the HTML lab at any frame rate (see ClockTests).
 // ===========================================================
 
 using System.Collections.Generic;
@@ -18,6 +19,8 @@ namespace SquashGame
         public string StartPreset = "free";
         [Tooltip("Start with the repeat feed running.")]
         public bool StartWithRepeatFeed = true;
+        [Tooltip("Practise with the game's match ball (double yellow at PSA pace). Off = the HTML lab's ball.")]
+        public bool MatchBall = true;
 
         public LabSimulation Sim { get; private set; }
         public string CurrentPreset { get; private set; }
@@ -29,6 +32,8 @@ namespace SquashGame
 
         protected override void CreateSimulation()
         {
+            PhysicsConfig.ResetToDefaults();
+            if (MatchBall) PhysicsConfig.UseMatchBall();
             Sim = new LabSimulation();
             _athletes = new[] { Sim.Player };
             CurrentPreset = TestPresets.Find(StartPreset).Id;

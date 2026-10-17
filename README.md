@@ -200,7 +200,7 @@ stands at 1.800 m on the floor, the racket is within the WSF length, and the IK.
 
 ## Match ball — double yellow at PSA pace
 
-`PhysicsConfig.UseMatchBall()` is the game's ball, layered on the lab defaults. The lab itself, and SimParity, stay on `Defaults()`. The Match scene and MatchBench use it (`--lab-ball` for the lab's ball).
+`PhysicsConfig.UseMatchBall()` is the game's ball, layered on the lab defaults. The lab itself, and SimParity, stay on `Defaults()`. The Match scene, the warm-up court (`LabSimRunner.MatchBall`, on by default) and MatchBench all use it (`--lab-ball` for the lab's ball).
 
 - **Bounce height follows the WSF double yellow:** from a 100 in drop, 15% at 23 °C and 25% at 45 °C (spec 12–14% / 26–33%). A warm ball gives players a little more height and time.
 - **Hard hits still die:** at high impact speed the temperature effect fades (`Temperature.HotSpeedFade`) and restitution falls further. Hot or cold, a hard ball comes off the front wall at nearly the same pace (about 6% apart at 40 m/s), and a 40 m/s length drive dies in the back corner.
