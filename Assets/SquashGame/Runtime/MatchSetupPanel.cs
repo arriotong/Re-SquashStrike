@@ -7,6 +7,8 @@
 //   Navigate  W/S, arrows, D-pad or left stick (any pad)
 //   Change    A/D, arrows, D-pad left/right
 //   Start     Enter / Space / pad A / pad Start
+//   Practice  the warm-up court (one athlete, the feed machine)
+//   Quit      leave the game
 //
 // IMGUI is a stand-in for the Phase 2 UI Toolkit front end. Reads and
 // writes MatchSettings only; MatchRunner.BeginMatch starts the match.
@@ -14,6 +16,7 @@
 
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace SquashGame
 {
@@ -30,7 +33,9 @@ namespace SquashGame
         public static readonly string[] ScoringValues = { "par", "english" };
         public static readonly string[] WarmUpLabels = { "On", "Off" };
 
-        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4, RowStart = 5, Rows = 6;
+        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4, RowStart = 5,
+                         RowPractice = 6, RowQuit = 7, Rows = 8;
+        public const string PracticeScene = "WarmUpCourt";
 
         // Current choice per row (indices into the label arrays).
         public int Opponent, Difficulty = 1, Length = 2, Scoring, WarmUp;
@@ -98,6 +103,25 @@ namespace SquashGame
 
         public void StartMatch() { Runner.BeginMatch(CurrentSettings()); }
 
+        public void Practice() { SceneManager.LoadScene(PracticeScene); }
+
+        public static void Quit()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        /// <summary>Enter / A on the selected row: the three action rows act, a setting row starts the match.</summary>
+        public void Activate()
+        {
+            if (Selected == RowPractice) Practice();
+            else if (Selected == RowQuit) Quit();
+            else StartMatch();
+        }
+
         // ---------------- input (any keyboard, any pad) ----------------
 
         void Update()
@@ -137,8 +161,8 @@ namespace SquashGame
             _heldDir = stickDir;
 
             if (v != 0) Move(v);
-            if (h != 0 && Selected != RowStart) Change(Selected, h);
-            if (confirm) StartMatch();
+            if (h != 0 && Selected < RowStart) Change(Selected, h);
+            if (confirm) Activate();
         }
 
         // ---------------- drawing ----------------
@@ -171,7 +195,7 @@ namespace SquashGame
         {
             if (Runner == null || !Runner.InSetup) return;
             EnsureStyles();
-            float w = 560, rowH = 42, h = 120 + rowH * (Rows - 1) + 60 + 70;
+            float w = 560, rowH = 42, h = 120 + rowH * RowStart + 60 + 46 + 70;
             var r = new Rect(Screen.width / 2f - w / 2, Screen.height / 2f - h / 2, w, h);
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
@@ -196,7 +220,11 @@ namespace SquashGame
             }
             y += 10;
             if (GUI.Button(new Rect(r.x + 120, y, w - 240, 50), "START", Selected == RowStart ? _startSel : _start)) StartMatch();
-            y += 62;
+            y += 58;
+            float half = (w - 240 - 10) / 2;
+            if (GUI.Button(new Rect(r.x + 120, y, half, 38), "PRACTICE", Selected == RowPractice ? _startSel : _start)) Practice();
+            if (GUI.Button(new Rect(r.x + 130 + half, y, half, 38), "QUIT", Selected == RowQuit ? _startSel : _start)) Quit();
+            y += 50;
 
             string who;
             if (TwoPlayer)

@@ -234,6 +234,14 @@ namespace SquashGame
             if (InSetup) return;          // the panel is up: nothing moves (the views keep the last frame)
 
             WatchDevices();
+
+            // Paused: M / pad View leaves the match for the setup panel.
+            if (Clock.Paused && DeviceLost == null)
+            {
+                bool menu = Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame;
+                foreach (var pad in Gamepad.all) menu |= pad.selectButton.wasPressedThisFrame;
+                if (menu) { Clock.Resume(); ReturnToSetup(); return; }
+            }
             if (_replayRequested && !ReplayActive)
             {
                 _replayRequested = false;

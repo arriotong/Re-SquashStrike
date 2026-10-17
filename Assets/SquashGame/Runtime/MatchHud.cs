@@ -56,6 +56,13 @@ namespace SquashGame
             MatchScore s = m.Score;
             bool twoPlayer = Runner.Settings.TwoPlayer;
 
+            if (Runner.Clock.Paused && Runner.DeviceLost == null && !Runner.ReplayActive)
+            {
+                GUI.Label(new Rect(Screen.width / 2f - 260, Screen.height / 2f - 60, 520, 64), "PAUSED", _banner);
+                GUI.Label(new Rect(Screen.width / 2f - 260, Screen.height / 2f + 10, 520, 30),
+                    "Esc / Start: resume      M / View: quit to the menu", _prompt);
+            }
+
             if (Runner.DeviceLost != null)
                 GUI.Label(new Rect(Screen.width / 2f - 330, Screen.height / 2f - 30, 660, 60), Runner.DeviceLost, _banner);
 

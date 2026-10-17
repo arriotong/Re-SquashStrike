@@ -208,4 +208,14 @@ stands at 1.800 m on the floor, the racket is within the WSF length, and the IK.
 - **Temperature:** heating is slowed so a rally ball runs at ~44 °C (median) instead of sitting on the 48 °C cap. It cools to ~33 °C over a break and warms up again in play.
 - `MatchBench --ballcheck` measures all of this; `--drive 40 --temp 45` traces one drive.
 
+## Windows build
+
+`Builds/Windows/reSquashStrike.exe` (git-ignored; copy the whole `Builds/Windows` folder to move it).
+
+```
+unity build . --target StandaloneWindows64 --execute-method SquashGame.Editor.BuildPlayer.BuildWindows -o Builds/Windows/reSquashStrike.exe
+```
+
+or the editor menu **re:SquashStrike > Build Windows Player**. It opens on the match setup panel. The panel has START, PRACTICE (the warm-up court; M / pad View returns) and QUIT. In a match, Esc / Start pauses; while paused, M / View quits to the menu. Alt+Enter toggles fullscreen.
+
 ## Next: M6

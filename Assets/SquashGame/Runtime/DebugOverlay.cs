@@ -122,7 +122,8 @@ namespace SquashGame
         void UpdateCursor()
         {
             var mouse = Mouse.current;
-            bool wantFree = PanelVisible || Runner.Clock.Paused;
+            var match = Runner as MatchRunner;
+            bool wantFree = PanelVisible || Runner.Clock.Paused || (match != null && match.InSetup);
             if (wantFree)
             {
                 if (Cursor.lockState != CursorLockMode.None) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }

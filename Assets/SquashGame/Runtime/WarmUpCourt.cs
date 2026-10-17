@@ -8,6 +8,8 @@
 // ===========================================================
 
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace SquashGame
 {
@@ -55,6 +57,29 @@ namespace SquashGame
                 GameplayCamera.backgroundColor = Greybox.Hex(0x161a20);
                 GameplayCamera.clearFlags = CameraClearFlags.SolidColor;
             }
+        }
+
+        /// <summary>The match scene (with its setup panel) is the game's menu.</summary>
+        public const string MenuScene = "Match";
+
+        void Update()
+        {
+            var kb = Keyboard.current;
+            bool menu = kb != null && kb.mKey.wasPressedThisFrame;
+            foreach (var pad in Gamepad.all) menu |= pad.selectButton.wasPressedThisFrame;
+            if (menu) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; SceneManager.LoadScene(MenuScene); }
+        }
+
+        GUIStyle _hint;
+
+        void OnGUI()
+        {
+            if (_hint == null)
+            {
+                _hint = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleRight };
+                _hint.normal.textColor = new Color(0.80f, 0.83f, 0.88f);
+            }
+            GUI.Label(new Rect(Screen.width - 420, 10, 408, 22), "PRACTICE   M / pad View: back to the menu", _hint);
         }
     }
 }
