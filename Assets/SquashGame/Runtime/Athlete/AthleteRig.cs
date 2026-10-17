@@ -23,6 +23,10 @@ namespace SquashGame.Athlete
         readonly List<(Transform bone, GameObject blend)> _blends = new List<(Transform, GameObject)>();
 
         public Transform Racket { get; private set; }
+        /// <summary>The racket's pose in the hand (HoldRacketInHand): hand-local position and rotation.</summary>
+        public Vector3 GripLocalPos { get; private set; }
+        public Quaternion GripLocalRot { get; private set; } = Quaternion.identity;
+        public bool RacketInHand { get; private set; }
         public int FormCount { get; private set; }
         public const float BlendThresholdDeg = 13f;      // lab: 0.22 rad
 
@@ -86,6 +90,33 @@ namespace SquashGame.Athlete
             var r = go.AddComponent<MeshRenderer>();
             r.sharedMaterial = mat;
             r.shadowCastingMode = shadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>
+        /// M7: put the racket in the right hand (parented to Hand_R, butt in the Gate A grip socket).
+        /// The shaft points out of the fist, forward and a little up; the strings face the palm side.
+        /// </summary>
+        public void HoldRacketInHand(float cockDeg = 25f)
+        {
+            Transform hand = Bones["Hand_R"];
+            Racket.SetParent(hand, false);
+            Vector3 grip = ToUnity(RigContract.RacketGrip("R")) - ToUnity(RigBoneRest("Hand_R"));
+            Racket.localPosition = grip;
+            // Hand local at rest: fingers along -Y, the athlete faces -Z. Shaft forward (-Z), cocked up.
+            Vector3 tip = Quaternion.AngleAxis(-cockDeg, Vector3.right) * new Vector3(0, 0, -1);
+            Vector3 normal = Vector3.right;                       // strings face +X (the palm side of a right hand)
+            Vector3 y = -tip.normalized;                          // racket local -Y = butt -> tip
+            Vector3 x = (normal - Vector3.Dot(normal, y) * y).normalized;
+            Racket.localRotation = Quaternion.LookRotation(Vector3.Cross(x, y), y);
+            GripLocalPos = Racket.localPosition;
+            GripLocalRot = Racket.localRotation;
+            RacketInHand = true;
+        }
+
+        static Vector3 RigBoneRest(string name)
+        {
+            foreach (RigBone b in RigContract.Bones) if (b.Name == name) return b.Pos;
+            return Vector3.zero;
         }
 
         /// <summary>Back to the rest pose (identity rotations, contract positions).</summary>

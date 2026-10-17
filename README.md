@@ -250,4 +250,15 @@ Plan and research data: `RE_SQUASHSTRIKE_M6_CONTROLS_PLAN.md`. Measured with `Ma
   - The AI keeps the lab aim.
 - `PhysicsConfig.UseGameProfile()` = the match ball + the M6 reach + the wall aim. The lab and SimParity stay on `Defaults()`.
 
+## M7 (in progress) — a stable, Mario Tennis-style athlete
+
+Plan: `RE_SQUASHSTRIKE_M7_ANIMATION_PLAN.md`.
+
+Step 1 (pose tooling):
+- **Authored key poses:** `Athlete/Poses`, with `DefaultPoses` in code and an optional `Resources/PoseLibrary.asset`.
+  - Feet are grounded by IK and the head is kept level.
+  - The racket arm is posed by target: sweet spot, shaft direction, string facing. That's the same handle the game will use to put the racket on the ball at contact.
+- **Pose Lab** (`re:SquashStrike > Pose Lab`): edit poses live and save.
+- **Pose sheet:** `unity run . -- -executeMethod SquashGame.Editor.PoseSheet.CaptureFromCommandLine`, then `python Tools/PoseSheet/compose.py` → `Captures/PoseSheet.png`.
+
 ## Next: M7
