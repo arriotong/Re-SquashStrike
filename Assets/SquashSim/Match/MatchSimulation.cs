@@ -265,6 +265,17 @@ namespace SquashSim
                     // The toss press is consumed: it must not also start a swing.
                     si.Hit.Pressed = false; si.Touch.Pressed = false;
                     Toss();
+                    var server = Players[Score.Server];
+                    if (server.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null)
+                    {
+                        // The simple system serves in ONE click: no toss to time, the ball is struck from the hand.
+                        server.ServeStroke = true;
+                        SimEvent serve = server.Arcade.ServeNow(server, Ball, Surfaces);
+                        serve.PlayerIndex = Score.Server;
+                        serve.Time = Time;
+                        StepEvents.Add(serve);
+                        OnRacketContact(Score.Server, serve);
+                    }
                 }
             }
             else if (Phase == MatchPhase.RallyOver && PhaseTime >= PhysicsConfig.Current.Match.BetweenRallySeconds)

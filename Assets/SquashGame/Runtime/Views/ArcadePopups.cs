@@ -87,7 +87,7 @@ namespace SquashGame
             // Don't let world pops pile up on each other: nudge a new one above a fresh neighbour.
             if (world)
                 foreach (var p in _pops)
-                    if (p.World && p.Age < 0.35f && (p.Anchor - anchor).sqrMagnitude < 0.36f) anchor += Vector3.up * 0.45f;
+                    if (p.World && p.Age < 0.35f && (p.Anchor - anchor).sqrMagnitude < 0.16f) anchor += Vector3.up * 0.25f;
             _pops.Add(new Pop
             {
                 Text = text, Sub = sub, Colour = c, World = world, Anchor = anchor,
@@ -107,15 +107,16 @@ namespace SquashGame
                     string label = string.IsNullOrEmpty(e.Label) ? null : e.Label;
                     string tech = (e.Technique ?? "").ToLowerInvariant();
                     bool serve = _sim != null && _sim.Phase == MatchPhase.Rally && _sim.Referee.Shots == 1;
-                    if (serve) Spawn("SERVE!", label, Cyan, true, at, 1.0f);
-                    else if (e.Stroke == "touch") Spawn("TOUCH!", label, Cyan, true, at, 0.95f);
-                    else if (e.BallSpeedOut >= 42) Spawn("SMASH!", label, Orange, true, at, 1.25f);
-                    else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("VOLLEY!", label, Green, true, at, 1.05f);
-                    else Spawn("HIT!", label, Yellow, true, at, 1.0f);
+                    // Small and quick: a little "Hit!" by the ball, no shot name.
+                    if (serve) Spawn("Serve!", null, Cyan, true, at, 0.42f, 0.7f);
+                    else if (e.Stroke == "touch") Spawn("Touch!", null, Cyan, true, at, 0.42f, 0.7f);
+                    else if (e.BallSpeedOut >= 42) Spawn("Smash!", null, Orange, true, at, 0.5f, 0.75f);
+                    else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("Volley!", null, Green, true, at, 0.42f, 0.7f);
+                    else Spawn("Hit!", null, Yellow, true, at, 0.42f, 0.7f);
                 }
                 else if (e.Type == SimEventType.Impact && e.Nick)
                 {
-                    Spawn("NICK!", null, Magenta, true, at, 1.35f, 1.3f);
+                    Spawn("NICK!", null, Magenta, true, at, 0.7f, 1.1f);
                 }
             }
         }
@@ -138,7 +139,7 @@ namespace SquashGame
         {
             if (Runner == null || i >= Runner.View.Count) return;
             Vector3 head = Runner.View.Athlete(i).Pos + Vector3.up * 2.15f;
-            Spawn("LET, PLEASE?", null, White, true, head, 0.8f, 1.2f);
+            Spawn("Let, please?", null, White, true, head, 0.5f, 1.1f);
         }
 
         void OnRallyEnded(RallyOutcome o)
@@ -151,15 +152,15 @@ namespace SquashGame
             string reason = o.Reason ?? "";
             switch (o.Kind)
             {
-                case RallyEnd.Let: Spawn("LET!", "play it again", Yellow, false, centre, 1.6f, 1.5f); break;
-                case RallyEnd.NoLet: Spawn("NO LET!", point, Red, false, centre, 1.6f, 1.5f); break;
-                case RallyEnd.Stroke: Spawn("STROKE!", point, Gold, false, centre, 1.7f, 1.5f); break;
-                case RallyEnd.Down: Spawn(reason.ToLowerInvariant().Contains("tin") ? "TIN!" : "DOWN!", point, Red, true, where, 1.3f, 1.3f); break;
-                case RallyEnd.Out: Spawn("OUT!", point, Red, true, where, 1.3f, 1.3f); break;
-                case RallyEnd.NotUp: Spawn("NOT UP!", point, Orange, true, where, 1.25f, 1.3f); break;
-                case RallyEnd.Fault: Spawn("FAULT!", point, Orange, false, centre, 1.4f, 1.3f); break;
-                case RallyEnd.FootFault: Spawn("FOOT FAULT!", point, Orange, false, centre, 1.3f, 1.3f); break;
-                case RallyEnd.HitSelf: Spawn("OUCH!", point, Orange, true, where, 1.2f, 1.2f); break;
+                case RallyEnd.Let: Spawn("LET!", null, Yellow, false, centre, 0.85f, 1.3f); break;
+                case RallyEnd.NoLet: Spawn("NO LET!", point, Red, false, centre, 0.85f, 1.3f); break;
+                case RallyEnd.Stroke: Spawn("STROKE!", point, Gold, false, centre, 0.9f, 1.3f); break;
+                case RallyEnd.Down: Spawn(reason.ToLowerInvariant().Contains("tin") ? "TIN!" : "DOWN!", null, Red, true, where, 0.65f, 1.1f); break;
+                case RallyEnd.Out: Spawn("OUT!", null, Red, true, where, 0.65f, 1.1f); break;
+                case RallyEnd.NotUp: Spawn("NOT UP!", null, Orange, true, where, 0.62f, 1.1f); break;
+                case RallyEnd.Fault: Spawn("FAULT!", null, Orange, false, centre, 0.75f, 1.1f); break;
+                case RallyEnd.FootFault: Spawn("FOOT FAULT!", null, Orange, false, centre, 0.7f, 1.1f); break;
+                case RallyEnd.HitSelf: Spawn("OUCH!", null, Orange, true, where, 0.6f, 1.0f); break;
             }
         }
 
@@ -176,7 +177,7 @@ namespace SquashGame
                 {
                     var s = _sim.Score;
                     int w = ph == MatchPhase.MatchOver && s.GamesToWin > 1 ? s.MatchWinner : s.GameWinner;
-                    Spawn(ph == MatchPhase.MatchOver ? "MATCH!" : "GAME!", NameOf(w) + " wins", Gold, false, new Vector3(0.5f, 0.3f, 0f), 2.0f, 2.2f);
+                    Spawn(ph == MatchPhase.MatchOver ? "MATCH!" : "GAME!", NameOf(w) + " wins", Gold, false, new Vector3(0.5f, 0.3f, 0f), 1.1f, 2.0f);
                 }
                 _lastPhase = ph;
             }
@@ -230,7 +231,7 @@ namespace SquashGame
 
                 // Punch in (overshoot), hold, fade out.
                 float a = p.Age < 0.08f ? p.Age / 0.08f : 1f;
-                float punch = p.Age < 0.18f ? Mathf.Lerp(1.7f, 1f, p.Age / 0.18f) + Mathf.Sin(p.Age / 0.18f * Mathf.PI) * 0.15f : 1f;
+                float punch = p.Age < 0.15f ? Mathf.Lerp(1.3f, 1f, p.Age / 0.15f) + Mathf.Sin(p.Age / 0.15f * Mathf.PI) * 0.08f : 1f;
                 float alpha = Mathf.Clamp01(a) * Mathf.Clamp01((1f - u) / 0.3f);
                 float scale = p.Size * punch * Mathf.Clamp(Screen.height / 900f, 0.7f, 1.6f);
 

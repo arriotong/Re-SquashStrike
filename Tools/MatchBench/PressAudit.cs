@@ -24,6 +24,8 @@ sealed class HumanStyle : IAthleteBrain
     public double ReactionTime = 0.25, PosError = 0.35, LeadMin = 0.15, LeadMax = 1.4, HoldChance = 0.3;
     /// <summary>The simple hitting system: hold early, let go as the ball arrives (+- ReleaseJitter).</summary>
     public bool Arcade;
+    /// <summary>Aim high (lobs and high drives) instead of around the middle.</summary>
+    public bool AimHigh;
     public double ReleaseJitter = 0.15;
     double _arrival, _releaseOffset = -1;
     double _oppContact = -9, _errX, _errZ, _pressAt = -1, _releaseAt = -1;
@@ -75,7 +77,7 @@ sealed class HumanStyle : IAthleteBrain
             double lead = LeadMin + R() * (LeadMax - LeadMin);
             _pressAt = t + Math.Max(0, _read.Time - lead);
             _arrival = t + _read.Time;
-            _ax = (R() * 2 - 1) * 0.5; _ay = -0.2 + R() * 0.6;
+            _ax = (R() * 2 - 1) * 0.5; _ay = AimHigh ? 0.45 + R() * 0.55 : -0.2 + R() * 0.6;
         }
         if (_pressAt > 0 && t >= _pressAt && !_held)
         {
@@ -95,8 +97,11 @@ sealed class HumanStyle : IAthleteBrain
 
 static class PressAudit
 {
+    public static bool AimHigh;
+
     public static void Run(int games, string opponent, double difficulty, bool gameProfile)
     {
+        int outBack = 0, ownEnds = 0;
         var outcome = new Dictionary<string, int>(); var whyWhiff = new Dictionary<string, int>(); var commitErr = new List<double>();
         int presses = 0, contacts = 0, rallies = 0, won = 0;
         for (int g = 0; g < games; g++)
@@ -104,7 +109,7 @@ static class PressAudit
             PhysicsConfig.ResetToDefaults();
             if (gameProfile) PhysicsConfig.UseGameProfile();
             var m = new MatchSimulation(0);
-            var h = new HumanStyle((uint)(500 + g)) { Arcade = gameProfile };
+            var h = new HumanStyle((uint)(500 + g)) { Arcade = gameProfile, AimHigh = AimHigh };
             m.Bots[0] = h;
             m.Bots[1] = opponent == "wallbot" ? (IAthleteBrain)new WallBot((uint)(40 + g))
                                               : new OpponentBrain(AiProfile.ByName(opponent).WithDifficulty(difficulty), (uint)(40 + g));
@@ -164,12 +169,17 @@ static class PressAudit
                     if (pending && m.History.Count != hist) { pending = false; Add(outcome, "rally ended first"); }
                 }
                 lastState = sw.State;
-                if (m.History.Count != hist) { hist = m.History.Count; rallies++; if (m.LastOutcome.Winner == 0) won++; }
+                if (m.History.Count != hist)
+                {
+                    hist = m.History.Count; rallies++; if (m.LastOutcome.Winner == 0) won++;
+                    if (m.LastOutcome.Loser == 0) { ownEnds++; if ((m.LastOutcome.Reason ?? "").Contains("back wall")) outBack++; }
+                }
             }
         }
         Console.WriteLine("PRESS AUDIT  human-style vs " + opponent + " (" + difficulty.ToString("0.0") + ")" + (gameProfile ? "  game profile" : "  lab") +
                           ":  " + presses + " rally presses, " + (100.0 * contacts / Math.Max(1, presses)).ToString("0") + "% connect, rallies won " + won + "/" + rallies +
                           " (" + (100.0 * won / Math.Max(1, rallies)).ToString("0") + "%)");
+        Console.WriteLine("  rallies lost by the human: " + ownEnds + ", of them out off the back wall: " + outBack + " (" + (100.0 * outBack / Math.Max(1, ownEnds)).ToString("0") + "%)");
         foreach (var kv in outcome.OrderByDescending(k => k.Value))
             Console.WriteLine("  " + kv.Key.PadRight(36) + (100.0 * kv.Value / Math.Max(1, presses)).ToString("0.0").PadLeft(6) + " %");
         int ws = whyWhiff.Values.Sum();

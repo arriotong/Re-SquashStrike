@@ -2,10 +2,10 @@
 // Assets/SquashGame/Tests/PlayMode/LocalMatchTests.cs
 // M5 in the real Match scene, with virtual devices only:
 //   - the setup panel, driven by a pad, starts a Local 2P match;
-//     each pad steers only its own athlete; the knock-up starts with a
-//     cold ball and player 2's Y skips it; only the server can toss
+//     each pad steers only its own athlete; the match starts at the
+//     serve (no knock-up); only the server can serve, in one click
 //   - the audio director plays the event sounds (no errors)
-//   - vs AI with the keyboard: knock-up, Enter skips, serve setup
+//   - vs AI with the keyboard: straight to the serve; Enter serves
 // Writes Captures/M5_*.png.
 // ===========================================================
 
@@ -67,11 +67,8 @@ namespace SquashGame.Tests
             Assert.That(r.Input2, Is.Not.Null);
             Assert.That(r.Input2.Devices, Is.EquivalentTo(new InputDevice[] { pad2 }), "player 2 has pad 2 only");
             Assert.That(System.Array.IndexOf(r.Input.Devices, pad1), Is.GreaterThanOrEqualTo(0), "player 1 has pad 1");
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.WarmUp), "the knock-up comes first");
-            Assert.That(m.Ball.Temperature, Is.LessThan(PhysicsConfig.Current.Match.StartTemperature), "with a cold ball");
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "no knock-up: straight to the serve");
 
-            yield return Tap(pad2.buttonNorth);                     // player 2: ready - skip the knock-up
-            yield return Wait(0.1f, () => m.Phase != MatchPhase.WarmUp);
             Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss));
             Assert.That(m.Score.Server, Is.EqualTo(0));
 
@@ -132,19 +129,15 @@ namespace SquashGame.Tests
             MatchSimulation m = r.Sim;
             Assert.That(r.InSetup, Is.False);
             Assert.That(m.Bots[1], Is.Not.Null, "the AI plays");
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.WarmUp));
-            Assert.That(m.WarmUpOwner, Is.EqualTo(0), "you knock up first");
-
-            // Let the knock-up run a moment: the feed comes and the ball is in play.
-            float t0 = Time.realtimeSinceStartup;
-            while (Time.realtimeSinceStartup - t0 < 1.5f) yield return null;
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.WarmUp));
-            Assert.That(m.Ball.Asleep, Is.False, "fed ball in play");
-
-            yield return Tap(kb.enterKey);
-            yield return Wait(0.1f, () => m.Phase != MatchPhase.WarmUp);
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "Enter skips the knock-up");
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "no knock-up: straight to the serve");
             Assert.That(m.Score.Points[0] + m.Score.Points[1], Is.EqualTo(0));
+
+            // One click serves: the mouse's Hit, and the ball is in play at once (no toss to time).
+            var mouse = Mouse.current;
+            yield return Tap(mouse.leftButton);
+            yield return Wait(0.3f, () => m.Phase != MatchPhase.AwaitToss);
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.Rally), "one click serves");
+            Assert.That(m.Referee.Shots, Is.EqualTo(1), "the serve is already struck");
         }
 
         static void Capture(string file)

@@ -221,6 +221,12 @@ namespace SquashGame
             return true;
         }
 
+        /// <summary>
+        /// The whole simulation runs at this fraction of real time: every flight, bounce and distance is
+        /// exactly the same (the fixed step is unchanged), there is just more time to get there.
+        /// </summary>
+        public const double GameSpeed = 0.85;
+
         protected abstract void CreateSimulation();
 
         /// <summary>Sample any further local players before the clock runs. Returns true if one pressed pause.</summary>
@@ -239,6 +245,7 @@ namespace SquashGame
             Input = new IntentSource();
             Clock = new SimulationClock(OnFixedStep);
             CreateSimulation();
+            Clock.TimeScale = GameSpeed;
             SnapViews();
         }
 

@@ -7,6 +7,8 @@
 // gameplay camera, centred exactly on the physics position. Colour
 // shows temperature (presentation only). Spin is integrated from the
 // real angular velocity, so what you see spinning really is spinning.
+// A short fading trail follows the drawn ball (presentation only) so it is
+// easy to pick up in flight.
 // ===========================================================
 
 using SquashSim;
@@ -22,6 +24,8 @@ namespace SquashGame
         SimRunnerBase _runner;
         Transform _ball, _shadow;
         Material _ballMat, _shadowMat;
+        TrailRenderer _trail;
+        Vector3 _lastPos;
 
         public void Build(SimRunnerBase runner, GreyboxPalette palette)
         {
@@ -33,6 +37,17 @@ namespace SquashGame
             var shadow = Greybox.MeshObject("BallShadow", transform, Greybox.Disc(0.5f, 20), _shadowMat);
             _shadow = shadow.transform;
             _shadow.rotation = Quaternion.Euler(-90f, 0f, 0f);   // disc (+Z facing) turned to face up
+
+            _trail = _ball.gameObject.AddComponent<TrailRenderer>();
+            _trail.sharedMaterial = palette.Clear(new Color(1f, 1f, 1f, 1f));
+            _trail.time = 0.16f;
+            _trail.minVertexDistance = 0.03f;
+            _trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _trail.receiveShadows = false;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f), new GradientColorKey(new Color(1f, 0.95f, 0.8f), 1f) },
+                      new[] { new GradientAlphaKey(0.45f, 0f), new GradientAlphaKey(0f, 1f) });
+            _trail.colorGradient = g;
         }
 
         void LateUpdate()
@@ -45,6 +60,10 @@ namespace SquashGame
             Vector3 p = _runner.View.BallPos;
             _ball.position = p;
             _ball.localScale = Vector3.one * (visualRadius * 2f);   // Unity sphere primitive has radius 0.5
+            if ((p - _lastPos).sqrMagnitude > 4f) _trail.Clear();     // a reset / new feed: no streak across the court
+            _lastPos = p;
+            _trail.startWidth = visualRadius * 1.6f;
+            _trail.endWidth = 0f;
 
             // Visual spin, only while the sim is actually running.
             double w = V3.Length(ball.Omega);

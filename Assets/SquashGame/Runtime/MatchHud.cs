@@ -116,7 +116,7 @@ namespace SquashGame
                 string who = twoPlayer ? Names[s.Server] + " to serve" : "Your serve";
                 string hit = twoPlayer && s.Server == 1 ? "Hit (A)" : "Hit (LMB / A)";
                 GUI.Label(new Rect(Screen.width / 2f - 300, Screen.height - 120, 600, 54),
-                    who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box.  " + hit + " to toss, Hit again to strike.\n" +
+                    who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box.  " + hit + " to serve (one click).\n" +
                     "Aim up and across: above the service line, landing in the opposite back quarter.", _prompt);
             }
 

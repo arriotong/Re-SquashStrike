@@ -501,6 +501,8 @@ namespace SquashSim
             UseGameAim();
             UseGameSwing();
             UseArcadeHit();
+            // Presentation only: the drawn ball is bigger than the real one (physics radius unchanged).
+            Current.Render.BallVisualScale = 2.2;                    // lab 1.45
         }
 
         /// <summary>
@@ -514,7 +516,7 @@ namespace SquashSim
             {
                 Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.8,
                 DriveSpeed = 24.0, ChargeBonus = 0.55, LobSpeed = 14.0, LobHeight = 3.2, TouchSpeed = 11.0,
-                MaxSpread = 1.4, GrossMissChance = 0.3, LungeMax = 0.7, LungeSpeed = 4.0
+                MaxSpread = 1.4, GrossMissChance = 0.3, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4
             };
         }
 

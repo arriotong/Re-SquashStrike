@@ -132,13 +132,10 @@ namespace SquashGame
             }
             if (Cursor.lockState != CursorLockMode.Locked)
             {
-                Runner.Input.MouseGameplayEnabled = false;
-                if (mouse != null && mouse.leftButton.wasPressedThisFrame)
-                {
-                    Cursor.lockState = CursorLockMode.Locked;
-                    Cursor.visible = false;
-                }
-                return;
+                // In play the mouse is captured straight away, so the first click is already a stroke
+                // (the one-click serve). The panel, pause and the setup screen free it again.
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
             }
             Runner.Input.MouseGameplayEnabled = true;
         }
@@ -230,8 +227,6 @@ namespace SquashGame
                 where, _fps, clock.TimeScale, clock.Paused ? " PAUSED" : "");
             GUI.Label(new Rect(12, Screen.height - 26, Screen.width - 24, 22), status, _small);
 
-            if (Cursor.lockState != CursorLockMode.Locked && !PanelVisible && !clock.Paused)
-                GUI.Label(new Rect(12, Screen.height - 48, 600, 22), "<b>Click the court to capture the mouse (aim is a relative virtual stick).</b>", _small);
 
             if (DebugView && PhysicsConfig.Current.Aim.ShowDebugLabel)
             {

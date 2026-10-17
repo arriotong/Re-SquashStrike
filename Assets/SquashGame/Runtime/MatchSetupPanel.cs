@@ -36,12 +36,12 @@ namespace SquashGame
         public static readonly string[] InvertLabels = { "Off", "On" };
         public static readonly string[] OnOffLabels = { "On", "Off" };
 
-        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowWarmUp = 4,
-                         RowMouse = 5, RowInvert = 6, RowPopups = 7, RowStart = 8, RowPractice = 9, RowQuit = 10, Rows = 11;
+        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3,
+                         RowMouse = 4, RowInvert = 5, RowPopups = 6, RowStart = 7, RowPractice = 8, RowQuit = 9, Rows = 10;
         public const string PracticeScene = "WarmUpCourt";
 
         // Current choice per row (indices into the label arrays).
-        public int Opponent, Difficulty = 1, Length = 2, Scoring, WarmUp;
+        public int Opponent, Difficulty = 1, Length = 2, Scoring;
         public int Selected { get; private set; } = RowStart;
 
         GUIStyle _title, _row, _rowSel, _value, _hint, _panel, _start, _startSel;
@@ -59,7 +59,7 @@ namespace SquashGame
                 Difficulty = DifficultyValues[Difficulty],
                 GamesToWin = LengthGames[Length],
                 Scoring = ScoringValues[Scoring],
-                WarmUp = WarmUp == 0
+                WarmUp = false
             };
         }
 
@@ -71,7 +71,6 @@ namespace SquashGame
                 case RowDifficulty: return DifficultyLabels.Length;
                 case RowLength: return LengthLabels.Length;
                 case RowScoring: return ScoringLabels.Length;
-                case RowWarmUp: return WarmUpLabels.Length;
                 case RowMouse: return SensitivityLabels.Length;
                 case RowInvert: return InvertLabels.Length;
                 case RowPopups: return OnOffLabels.Length;
@@ -94,7 +93,6 @@ namespace SquashGame
                 case RowDifficulty: Difficulty = ((Difficulty + d) % n + n) % n; break;
                 case RowLength: Length = ((Length + d) % n + n) % n; break;
                 case RowScoring: Scoring = ((Scoring + d) % n + n) % n; break;
-                case RowWarmUp: WarmUp = ((WarmUp + d) % n + n) % n; break;
                 case RowMouse:
                     IntentSource.MouseSensitivityScale = IntentSource.SensitivitySteps[(SensitivityIndex() + d + n) % n];
                     IntentSource.SaveSettings();
@@ -230,12 +228,12 @@ namespace SquashGame
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
 
-            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Knock-up", "Mouse aim", "Invert mouse Y", "Arcade pop-ups" };
+            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Mouse aim", "Invert mouse Y", "Arcade pop-ups" };
             string[] values =
             {
                 OpponentLabels[Opponent] + (Opponent == 5 && !MatchRunner.CanPlayTwoPlayer ? " (connect a pad)" : ""),
                 RowEnabled(RowDifficulty) ? DifficultyLabels[Difficulty] : "-",
-                LengthLabels[Length], ScoringLabels[Scoring], WarmUpLabels[WarmUp],
+                LengthLabels[Length], ScoringLabels[Scoring],
                 SensitivityLabels[SensitivityIndex()], InvertLabels[IntentSource.InvertMouseY ? 1 : 0],
                 OnOffLabels[ArcadePopups.Enabled ? 0 : 1]
             };
@@ -268,7 +266,7 @@ namespace SquashGame
             else who = "You: keyboard + mouse or any pad";
             GUI.Label(new Rect(r.x + 16, y, w - 32, 22), who, _hint);
             GUI.Label(new Rect(r.x + 16, y + 22, w - 32, 40),
-                "Up/Down choose   Left/Right change   Enter / A start.   In the match: Enter / Y skips the knock-up or a break.", _hint);
+                "Up/Down choose   Left/Right change   Enter / A start.   In the match: Enter / Y skips a break.", _hint);
         }
     }
 }

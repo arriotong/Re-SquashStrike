@@ -31,7 +31,7 @@ namespace SquashGame
         [Range(0, 1)] public float Difficulty = 0.5f;
         public int GamesToWin = 3;
         public string Scoring = "par";
-        public bool WarmUp = true;
+        public bool WarmUp = false;              // the knock-up is gone from the game (kept in the sim for tests)
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -163,6 +163,7 @@ namespace SquashGame
             InSetup = false;
             DeviceLost = null;
             Clock.Resume();
+            Clock.TimeScale = GameSpeed;
             Clock.Flush();
             SnapViews();
         }

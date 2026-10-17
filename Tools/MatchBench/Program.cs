@@ -56,6 +56,7 @@ public static class Program
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {
+            PressAudit.AimHigh = Array.IndexOf(args, "--aim-high") >= 0;
             PressAudit.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--p1") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.3"), Array.IndexOf(args, "--lab-ball") < 0);
             return 0;
         }

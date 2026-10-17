@@ -284,4 +284,13 @@ Simple hitting system (`ArcadeStroke`, local players; replaces the physical swin
 - **AI:** keeps its physical swing.
 - **Press audit:** when the scripted human gets to the ball, about 95% of releases connect.
 
+Playtest round (feedback before playing):
+- **Pop-ups:** smaller; a hit is a little "Hit!".
+- **Serve:** one click, struck from the hand (no toss).
+- **Knock-up:** removed from the game.
+- **Speed:** the game runs at 85% speed (`SimRunnerBase.GameSpeed`). Every flight and distance is unchanged, there's just more time.
+- **High shots:** they are played softer when they would reach the back wall on the full above 1.4 m. High-aim play: out off the back wall went from 4% of lost rallies to 0%.
+- **Ball:** drawn 2.2× its real size (physics unchanged) with a short trail.
+- **Mouse:** captured as soon as play starts, so the first click is already a stroke.
+
 ## Next: M7

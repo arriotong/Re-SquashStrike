@@ -39,6 +39,7 @@ namespace SquashSim
         public double MaxSpread;        // aim error at full stretch (m, on the wall)
         public double GrossMissChance;  // at full stretch, the chance the shot goes badly wrong
         public double LungeMax, LungeSpeed;   // the "auto jump closer": a step toward the ball while the stroke is ready
+        public double BackWallSafeHeight;     // a shot that would reach the back wall on the full above this is played softer
     }
 
     public sealed class ArcadeStroke
@@ -139,6 +140,13 @@ namespace SquashSim
             return null;
         }
 
+        /// <summary>The one-click serve: struck straight from the hand toward the aim target (above the service line).</summary>
+        public SimEvent ServeNow(TestPlayerController ctrl, BallState ball, List<Surface> surfaces)
+        {
+            _stroke = "hit"; _charging = false; _pending = -1;
+            return Hit(ctrl, ball, surfaces, 0, 0, PhysicsConfig.Current.ArcadeHit);
+        }
+
         SimEvent Hit(TestPlayerController ctrl, BallState ball, List<Surface> surfaces, double dist, double charge, ArcadeHitSection c)
         {
             var player = ctrl.Player;
@@ -169,6 +177,12 @@ namespace SquashSim
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             Solve(ball, surfaces, tx, ty, tz, wall, speed);
+            // High shots: soft enough to come down before the back wall's out line (playable, not long).
+            for (int k = 0; k < 8 && BackWallHeight(ball, surfaces) > c.BackWallSafeHeight; k++)
+            {
+                speed *= 0.9;
+                Solve(ball, surfaces, tx, ty, tz, wall, speed);
+            }
 
             double before = V3.Length(ball.Vel);
             ball.Vel.CopyFrom(_vel);
@@ -247,6 +261,26 @@ namespace SquashSim
             double dx2 = _aimPoint.X - ball.Pos.X, dy2 = _aimPoint.Y - ball.Pos.Y, dz2 = _aimPoint.Z - ball.Pos.Z;
             double d2 = System.Math.Max(1e-6, System.Math.Sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2));
             _vel.X = dx2 / d2 * speed; _vel.Y = dy2 / d2 * speed; _vel.Z = dz2 / d2 * speed;
+        }
+
+        /// <summary>How high the solved launch meets the back wall on the full (before it bounces twice), or -1.</summary>
+        double BackWallHeight(BallState ball, List<Surface> surfaces)
+        {
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            int floors = 0;
+            bool front = false;
+            for (int i = 0; i < 400; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceClass == "frontWall") front = true;
+                    else if (e.SurfaceClass == "floor" && front) { if (++floors >= 1) return -1; }
+                    else if (front && (e.SurfaceClass == "backWall" || e.SurfaceClass == "outBackstop" || e.SurfaceClass == "ceiling")) return e.SurfaceClass == "backWall" ? e.Point.Y : 9.0;
+                }
+            }
+            return -1;
         }
 
         /// <summary>Where this launch first reaches the target wall: front wall (x, height) or side wall (z, height).</summary>
