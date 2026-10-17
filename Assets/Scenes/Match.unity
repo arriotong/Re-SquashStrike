@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &146686191
+--- !u!1 &305034496
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,10 +127,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 146686195}
-  - component: {fileID: 146686192}
-  - component: {fileID: 146686194}
-  - component: {fileID: 146686193}
+  - component: {fileID: 305034500}
+  - component: {fileID: 305034497}
+  - component: {fileID: 305034499}
+  - component: {fileID: 305034498}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -138,13 +138,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!20 &146686192
+--- !u!20 &305034497
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 146686191}
+  m_GameObject: {fileID: 305034496}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -189,34 +189,34 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &146686193
+--- !u!114 &305034498
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 146686191}
+  m_GameObject: {fileID: 305034496}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fdca4103803b83c4ca6be6e03b449bee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SquashGame::SquashGame.GameplayCameraRig
   Runner: {fileID: 0}
---- !u!81 &146686194
+--- !u!81 &305034499
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 146686191}
+  m_GameObject: {fileID: 305034496}
   m_Enabled: 1
---- !u!4 &146686195
+--- !u!4 &305034500
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 146686191}
+  m_GameObject: {fileID: 305034496}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.99592924, z: -0.09013881, w: 0}
   m_LocalPosition: {x: 0, y: 3.95, z: 16.35}
@@ -225,7 +225,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &841411797
+--- !u!1 &1564469614
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -233,8 +233,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 841411799}
-  - component: {fileID: 841411798}
+  - component: {fileID: 1564469616}
+  - component: {fileID: 1564469615}
   m_Layer: 0
   m_Name: MatchCourt
   m_TagString: Untagged
@@ -242,27 +242,27 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &841411798
+--- !u!114 &1564469615
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 841411797}
+  m_GameObject: {fileID: 1564469614}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04321970754bbe94398960be0d41ab88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SquashGame::SquashGame.MatchCourt
   Palette: {fileID: 11400000, guid: 57ca7ad84fffdd743999b8ba8b84ba21, type: 2}
-  GameplayCamera: {fileID: 146686192}
---- !u!4 &841411799
+  GameplayCamera: {fileID: 305034497}
+--- !u!4 &1564469616
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 841411797}
+  m_GameObject: {fileID: 1564469614}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -275,5 +275,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 146686195}
-  - {fileID: 841411799}
+  - {fileID: 305034500}
+  - {fileID: 1564469616}

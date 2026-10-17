@@ -23,8 +23,9 @@ namespace SquashGame
         public SimRunnerBase Runner;
         public int Athlete;
         public Color Colour = new Color(1f, 0.78f, 0.22f);
-        /// <summary>M9: the ring is not drawn any more (drag-to-aim); the preview is still computed (tests, notes).</summary>
-        public bool DrawRing = false;
+        /// <summary>M9: the circle on the front wall. It rests in the middle; while you hold and drag it follows
+        /// your aim; after the shot it goes back to the middle.</summary>
+        public bool DrawRing = true;
 
         /// <summary>The preview drawn this frame (tests and diagnostics).</summary>
         public readonly ShotPreview Preview = new ShotPreview();

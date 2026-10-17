@@ -301,9 +301,9 @@ Playtest round 2:
 ## M9 — drag-to-aim (the Joy-Con stick)
 
 Plan: `RE_SQUASHSTRIKE_M9_DRAG_AIM_PLAN.md`.
-- **The aim ring is gone;** every stroke starts aimed at the middle.
+- **Every stroke starts aimed at the middle.**
 - **Mouse:** hold Hit / Touch and drag (about 120 px = full aim; setup panel: "Drag distance"), then let go to hit. After the stroke the aim snaps back to the middle. Moving the mouse without holding does nothing.
-- **Widget (`AimStickWidget`):** a thumbstick in the middle of the screen while held. The knob follows the drag (or the pad's right stick), goes gold when a kill / drop is charged, and the rim shows BOAST in the boast zone.
+- **The circle on the front wall** rests in the middle and follows your drag (or the pad's right stick) while you hold. It turns gold when a kill / drop is charged, sits on the side wall tagged BOAST in the boast zone, and goes back to the middle once the shot is struck. (The on-screen `AimStickWidget` exists but is not used.)
 - **Serve:** with no drag, it goes cross-court.
 
 ## Next: M7

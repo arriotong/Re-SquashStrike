@@ -57,7 +57,6 @@ namespace SquashGame
                 aim.Build(Runner, i, Palette, aimColours[i]);
                 var timing = aim.gameObject.AddComponent<TimingFeedbackView>();
                 timing.Build(Runner, aim, i);
-                aim.gameObject.AddComponent<AimStickWidget>().Build(Runner, i, aimColours[i]);
             }
 
             var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();

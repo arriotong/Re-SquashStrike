@@ -48,7 +48,6 @@ namespace SquashGame
             aim.transform.SetParent(transform, false);
             aim.Build(Runner, 0, Palette, new Color(1f, 0.78f, 0.22f));
             aim.gameObject.AddComponent<TimingFeedbackView>().Build(Runner, aim, 0);
-            aim.gameObject.AddComponent<AimStickWidget>().Build(Runner, 0, new Color(1f, 0.78f, 0.22f));
 
             var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();
             popups.transform.SetParent(transform, false);
