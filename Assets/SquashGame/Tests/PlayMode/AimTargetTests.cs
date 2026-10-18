@@ -112,7 +112,8 @@ namespace SquashGame.Tests
             Assert.That(timing.Count, Is.GreaterThan(0), "every stroke gets a timing note");
             var pops = Object.FindFirstObjectByType<ArcadePopups>();
             Debug.Log("[Pop] practice shown: " + string.Join(" ", pops.Shown));
-            Assert.That(pops.Shown.Exists(w => w == "Hit!" || w == "Volley!" || w == "Smash!" || w == "Touch!"), Is.True, "strokes pop up");
+            Assert.That(pops.Shown.Exists(w => w == "Hit!"), Is.True, "strokes pop up");
+            Assert.That(pops.Shown.TrueForAll(w => w == "Hit!"), Is.True, "and only a plain Hit!");
             Assert.That(errors.Count, Is.GreaterThanOrEqualTo(3), "not enough shots reached the front wall");
             Assert.That(errors[errors.Count / 2], Is.LessThan(0.6f), "the target should show where the ball goes");
         }

@@ -1,6 +1,8 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Views/ArcadePopups.cs
-// Arcade-style pop-up words: big, coloured, punchy, gone in a second.
+// Pop-ups: plain mode (playtest 2026-10-18) shows only a small white "Hit!"
+// (about 1.5x the drawn ball tall) where the ball is struck. The older
+// arcade words below are no longer spawned:
 //
 //   strokes     HIT! / VOLLEY! / TOUCH! / SMASH! / SERVE!  (with the shot's
 //               name underneath), where the ball was struck
@@ -92,44 +94,36 @@ namespace SquashGame
             _pops.Add(new Pop
             {
                 Text = text, Sub = sub, Colour = c, World = world, Anchor = anchor,
-                Life = life, Size = size, Tilt = Random.Range(-7f, 7f)
+                Life = life, Size = size, Tilt = 0f
             });
             if (_pops.Count > 12) _pops.RemoveAt(0);
         }
 
         void OnStepped(IReadOnlyList<SimEvent> events)
         {
+            // Just a small, plain "Hit!" where the ball is struck (playtest 2026-10-18: no colours, no other words).
             for (int i = 0; i < events.Count; i++)
             {
                 SimEvent e = events[i];
-                Vector3 at = SimToWorld.Pos(e.Point) + Vector3.up * 0.35f;
-                if (e.Type == SimEventType.RacketContact)
-                {
-                    string label = string.IsNullOrEmpty(e.Label) ? null : e.Label;
-                    string tech = (e.Technique ?? "").ToLowerInvariant();
-                    bool serve = _sim != null && _sim.Phase == MatchPhase.Rally && _sim.Referee.Shots == 1;
-                    // Small and quick: a little "Hit!" by the ball, no shot name.
-                    if (serve) Spawn(tech == "hard serve" ? "Hard serve!" : tech == "lob serve" ? "Lob serve!" : "Serve!", null, tech == "hard serve" ? Orange : Cyan, true, at, 0.42f, 0.7f);
-                    else if (e.Stroke == "touch") Spawn("Touch!", null, Cyan, true, at, 0.42f, 0.7f);
-                    else if (e.BallSpeedOut >= 42) Spawn("Smash!", null, Orange, true, at, 0.5f, 0.75f);
-                    else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("Volley!", null, Green, true, at, 0.42f, 0.7f);
-                    else if (tech == "boast") Spawn("Boast!", null, Magenta, true, at, 0.42f, 0.7f);
-                    else if (tech == "kill") Spawn("Kill!", null, Red, true, at, 0.45f, 0.7f);
-                    else if (tech == "drop") Spawn("Drop!", null, Cyan, true, at, 0.42f, 0.7f);
-                    else if (tech == "lob") Spawn("Lob!", null, Gold, true, at, 0.42f, 0.7f);
-                    else Spawn("Hit!", null, Yellow, true, at, 0.42f, 0.7f);
-                }
-                else if (e.Type == SimEventType.Impact && e.Nick)
-                {
-                    Spawn("NICK!", null, Magenta, true, at, 0.7f, 1.1f);
-                }
+                if (e.Type != SimEventType.RacketContact) continue;
+                Spawn("Hit!", null, White, true, SimToWorld.Pos(e.Point) + Vector3.up * 0.12f, WorldHeight, 0.6f);
+            }
+        }
+
+        /// <summary>A pop-up's height in the world: about 1.5x the drawn ball.</summary>
+        static float WorldHeight
+        {
+            get
+            {
+                var cfg = PhysicsConfig.Current;
+                return 1.5f * 2f * (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale);
             }
         }
 
         void OnDived(int i)
         {
             if (Runner == null || i >= Runner.View.Count) return;
-            Spawn("Dive!", null, Orange, true, Runner.View.Athlete(i).Pos + Vector3.up * 1.9f, 0.5f, 0.8f);
+            // (plain mode: no word for a dive)
         }
 
         void Watch(MatchSimulation sim)
@@ -150,29 +144,12 @@ namespace SquashGame
         {
             if (Runner == null || i >= Runner.View.Count) return;
             Vector3 head = Runner.View.Athlete(i).Pos + Vector3.up * 2.15f;
-            Spawn("Let, please?", null, White, true, head, 0.5f, 1.1f);
+            // (plain mode: no word for an appeal)
         }
 
         void OnRallyEnded(RallyOutcome o)
         {
-            string point = o.Winner >= 0 ? "point " + NameOf(o.Winner) : null;
-            Vector3 centre = new Vector3(0.5f, 0.36f, 0f);
-            bool hasPoint = o.Point != null && (o.Point.X != 0 || o.Point.Y != 0 || o.Point.Z != 0);
-            Vector3 where = hasPoint ? SimToWorld.Pos(o.Point) + Vector3.up * 0.4f
-                          : (Runner != null ? Runner.View.BallPos + Vector3.up * 0.4f : Vector3.up);
-            string reason = o.Reason ?? "";
-            switch (o.Kind)
-            {
-                case RallyEnd.Let: Spawn("LET!", null, Yellow, false, centre, 0.85f, 1.3f); break;
-                case RallyEnd.NoLet: Spawn("NO LET!", point, Red, false, centre, 0.85f, 1.3f); break;
-                case RallyEnd.Stroke: Spawn("STROKE!", point, Gold, false, centre, 0.9f, 1.3f); break;
-                case RallyEnd.Down: Spawn(reason.ToLowerInvariant().Contains("tin") ? "TIN!" : "DOWN!", null, Red, true, where, 0.65f, 1.1f); break;
-                case RallyEnd.Out: Spawn("OUT!", null, Red, true, where, 0.65f, 1.1f); break;
-                case RallyEnd.NotUp: Spawn("NOT UP!", null, Orange, true, where, 0.62f, 1.1f); break;
-                case RallyEnd.Fault: Spawn("FAULT!", null, Orange, false, centre, 0.75f, 1.1f); break;
-                case RallyEnd.FootFault: Spawn("FOOT FAULT!", null, Orange, false, centre, 0.7f, 1.1f); break;
-                case RallyEnd.HitSelf: Spawn("OUCH!", null, Orange, true, where, 0.6f, 1.0f); break;
-            }
+            // (plain mode: no rally-end words; the HUD shows the call)
         }
 
         // ---------------- per frame ----------------
@@ -188,7 +165,7 @@ namespace SquashGame
                 {
                     var s = _sim.Score;
                     int w = ph == MatchPhase.MatchOver && s.GamesToWin > 1 ? s.MatchWinner : s.GameWinner;
-                    Spawn(ph == MatchPhase.MatchOver ? "MATCH!" : "GAME!", NameOf(w) + " wins", Gold, false, new Vector3(0.5f, 0.3f, 0f), 1.1f, 2.0f);
+                    // (plain mode: no GAME / MATCH word; the HUD shows the result)
                 }
                 _lastPhase = ph;
             }
@@ -234,7 +211,7 @@ namespace SquashGame
                 Vector2 c;
                 if (p.World)
                 {
-                    Vector3 sp = cam.WorldToScreenPoint(p.Anchor + Vector3.up * (0.5f * u));
+                    Vector3 sp = cam.WorldToScreenPoint(p.Anchor + Vector3.up * (0.25f * u));
                     if (sp.z <= 0) continue;
                     c = new Vector2(sp.x, Screen.height - sp.y);
                 }
@@ -245,6 +222,13 @@ namespace SquashGame
                 float punch = p.Age < 0.15f ? Mathf.Lerp(1.3f, 1f, p.Age / 0.15f) + Mathf.Sin(p.Age / 0.15f * Mathf.PI) * 0.08f : 1f;
                 float alpha = Mathf.Clamp01(a) * Mathf.Clamp01((1f - u) / 0.3f);
                 float scale = p.Size * punch * Mathf.Clamp(Screen.height / 900f, 0.7f, 1.6f);
+                if (p.World)
+                {
+                    // Size is metres tall: how many pixels that is at the anchor, over the label's 48 px.
+                    Vector3 top = cam.WorldToScreenPoint(p.Anchor + Vector3.up * (0.5f * u) + Vector3.up * p.Size);
+                    Vector3 bottom = cam.WorldToScreenPoint(p.Anchor + Vector3.up * (0.5f * u));
+                    scale = Mathf.Abs(top.y - bottom.y) / 34f * punch;
+                }
 
                 GUI.matrix = saved * Matrix4x4.TRS(new Vector3(c.x, c.y, 0), Quaternion.Euler(0, 0, p.Tilt), new Vector3(scale, scale, 1));
                 Outlined(new Rect(-200, -24, 400, 48), p.Text, _main, p.Colour, alpha);

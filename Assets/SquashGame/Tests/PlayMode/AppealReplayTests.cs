@@ -58,8 +58,7 @@ namespace SquashGame.Tests
             Debug.Log("[M3] appeal ruled: " + o);
             var pops = Object.FindFirstObjectByType<ArcadePopups>();
             Debug.Log("[Pop] shown: " + string.Join(" ", pops.Shown));
-            Assert.That(pops.Shown, Does.Contain("Let, please?"), "the appeal pops up");
-            Assert.That(pops.Shown, Does.Contain(o.Kind == RallyEnd.Let ? "LET!" : "NO LET!"), "the decision pops up");
+            Assert.That(pops.Shown.TrueForAll(w => w == "Hit!"), Is.True, "plain pop-ups: only Hit! (the HUD shows the call)");
 
             // The call is reviewed automatically on the referee camera.
             yield return null; yield return null;

@@ -28,7 +28,20 @@ namespace SquashGame
         public int Athlete;
         public Color Colour = new Color(1f, 0.78f, 0.22f);
         public bool DrawRing = true;
-        public const float CircleRadius = 0.12f;
+        /// <summary>Words by the ring (shot type, BOAST, FAULT). Off: a plain ring (playtest 2026-10-18).</summary>
+        public static bool ShowWords = false;
+        /// <summary>The plain ring is about 1.5x the drawn ball across (playtest 2026-10-18).</summary>
+        public static float CircleRadius
+        {
+            get
+            {
+                var cfg = PhysicsConfig.Current;
+                float ballDiameter = 2f * (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale);
+                return 0.75f * ballDiameter;
+            }
+        }
+        /// <summary>Plain white, a little see-through (in local 2P the second player's ring is a soft grey-blue).</summary>
+        public static readonly Color Plain = new Color(1f, 1f, 1f, 0.85f);
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
         /// <summary>Boast armed: the shot goes off <see cref="SideWall"/> (-1 / +1) near <see cref="SideMarker"/> (world).</summary>
@@ -95,9 +108,9 @@ namespace SquashGame
             Runner = runner; Athlete = athlete; Colour = colour;
             _mat = palette.Clear(colour);
             // Unit ring (radius 1) scaled to the spread; a fixed-size centre dot.
-            _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.11f, 48, 6), _mat).transform;
+            _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.16f, 48, 6), _mat).transform;
             _dot = Greybox.MeshObject("Dot", transform, Greybox.Torus(0.045f, 0.045f, 12, 6), _mat).transform;
-            _side = Greybox.MeshObject("BoastMark", transform, Greybox.Torus(0.09f, 0.03f, 24, 6), _mat).transform;
+            _side = Greybox.MeshObject("BoastMark", transform, Greybox.Torus(1f, 0.16f, 32, 6), _mat).transform;
             _side.gameObject.SetActive(false);
         }
 
@@ -118,7 +131,7 @@ namespace SquashGame
             Shown = src != null && Visible();
             Fade = Mathf.MoveTowards(Fade, Shown ? 1f : 0f, Time.unscaledDeltaTime / 0.15f);
             _ring.gameObject.SetActive(DrawRing && Fade > 0.01f);
-            _dot.gameObject.SetActive(DrawRing && Fade > 0.01f);
+            _dot.gameObject.SetActive(false);                      // plain: no centre dot
             Boasting = Shown && Runner.Athletes[Athlete].ArcadeHitEnabled && Runner.Athletes[Athlete].Arcade.BoastArmed;
             _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
             if (!Shown) { _hasPos = false; return; }
@@ -157,6 +170,7 @@ namespace SquashGame
                 SideMarker = SimToWorld.Pos(wx - side * 0.02, System.Math.Max(0.2, sy), sz);
                 _side.position = SideMarker;
                 _side.rotation = Quaternion.Euler(0f, 90f, 0f);
+                _side.localScale = new Vector3(CircleRadius * 0.8f, CircleRadius * 0.8f, 1f);
             }
             if (wall != Wall) _hasPos = false;                // jump to the other wall, don't glide across the court
             Wall = wall;
@@ -174,18 +188,16 @@ namespace SquashGame
             _ring.rotation = face; _dot.rotation = face;
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
-            // Coloured by the shot; brighter while charging. (In local 2P the second player's ring is tinted toward its colour.)
-            Color c = ColourFor(ShotType);
-            if (Athlete != 0 && Runner.LocalSource(0) != null) c = Color.Lerp(c, Colour, 0.35f);
-            bool charging = ctrl.ArcadeHitEnabled && (ctrl.Arcade.Charging || ctrl.Arcade.Waiting);
-            c.a = (charging ? 0.95f : 0.75f) * Fade;
+            // Plain: one colour, no words (the shot type is still worked out for tests / later UI).
+            Color c = Plain;
+            if (Athlete != 0 && Runner.LocalSource(0) != null) c = new Color(0.75f, 0.85f, 1f, 0.85f);
+            c.a *= Fade;
             _mat.color = c;
-            if (charging) { float g = 1f + 0.25f * (float)ctrl.Arcade.ChargeRatio; _ring.localScale = new Vector3(_radius * g, _radius * g, 1f); }
         }
 
         void OnGUI()
         {
-            if (!Shown || !DrawRing || Fade < 0.05f) return;
+            if (!Shown || !DrawRing || Fade < 0.05f || !ShowWords) return;
             var cam = Camera.main;
             if (cam == null) return;
             Vector3 sp = cam.WorldToScreenPoint(WorldPoint + Vector3.up * (_radius + 0.25f));
