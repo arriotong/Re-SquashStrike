@@ -79,7 +79,7 @@ namespace SquashGame.Tests
             yield return Wait(0.6f, () => false);
             var vig = Vignettes.Active;
             Assert.That(vig, Is.Not.Null);
-            Assert.That(vig.Count, Is.EqualTo(2), "two live pictures on the CARDS page");
+            Assert.That(vig.Showing, Is.EqualTo(2), "two live pictures on the CARDS page");
             int drawn = vig.Rendered;
             yield return Wait(0.5f, () => false);
             Assert.That(vig.Rendered, Is.GreaterThan(drawn), "they keep being drawn");
@@ -127,7 +127,7 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>(), "B: back");
             Assert.That(Sounds.Last, Is.EqualTo("back"));
             yield return null; yield return null;
-            Assert.That(vig.Count, Is.EqualTo(0), "the pictures are freed with their cards");
+            Assert.That(vig.Showing, Is.EqualTo(1), "back on the hub: only its PLAY page picture (the gallery's are freed)");
         }
     }
 }

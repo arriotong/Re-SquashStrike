@@ -201,3 +201,80 @@
 .fe-in-right { translate: 60px 0; opacity: 0; }
 .fe-in-left { translate: -60px 0; opacity: 0; }
 .fe-in-fade { opacity: 0; scale: 0.96 0.96; }
+
+/* ================= U2: the hub, versus, pause, full time ================= */
+
+/* ---------- action rows ---------- */
+.k-action {
+    flex-direction: row; align-items: center; justify-content: space-between; height: 58px; padding: 0 22px; margin-bottom: 10px;
+    border-radius: 10px; background-color: rgba(255, 255, 255, 0.05); border-width: 1px; border-color: rgba(255, 255, 255, 0.09);
+    transition-property: background-color, translate; transition-duration: 0.12s;
+}
+.k-action.fe-item--focused { background-color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); translate: 6px 0; }
+.k-action-label { font-size: 24px; letter-spacing: 1px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-action.fe-item--focused .k-action-label, .k-action.fe-item--focused .k-action-glyph { color: rgb(14, 15, 18); }
+.k-action-glyph { font-size: 14px; color: rgba(255, 255, 255, 0.5); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-action--danger .k-action-label { color: rgb(255, 74, 64); }
+.k-action--danger.fe-item--focused { background-color: rgb(255, 74, 64); border-color: rgb(255, 74, 64); }
+.k-action--danger.fe-item--focused .k-action-label { color: rgb(14, 15, 18); }
+/* the settings chip in the hub's top bar */
+.k-action--chip { height: 44px; margin: 0 16px 0 auto; padding: 0 16px; border-radius: 22px; background-color: rgba(16, 18, 22, 0.88); }
+.k-action--chip .k-action-label { font-size: 18px; margin-right: 10px; }
+.k-action--chip .k-action-glyph { padding: 1px 7px; border-radius: 10px; background-color: rgb(255, 207, 58); color: rgb(14, 15, 18); }
+
+/* ---------- versus ---------- */
+.k-versus { flex-direction: row; flex-grow: 1; align-items: stretch; justify-content: space-between; }
+.k-vs-side { width: 460px; align-items: flex-start; }
+.k-vs-pic {
+    width: 460px; height: 560px; border-radius: 16px; margin-bottom: 14px; overflow: hidden;
+    border-width: 2px; border-color: rgba(255, 255, 255, 0.10); -unity-background-scale-mode: scale-and-crop; background-color: rgb(21, 23, 28);
+}
+.k-vs-kicker { font-size: 12px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-vs-name { font-size: 54px; margin-top: -6px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-vs-meta { font-size: 13px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-vs-lines { font-size: 13px; margin-top: 10px; color: rgba(255, 255, 255, 0.7); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-vs-mid { width: 680px; justify-content: center; }
+.k-vs-vs {
+    font-size: 110px; align-self: center; margin-bottom: 20px; color: rgb(200, 255, 61);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 0 30px rgba(200, 255, 61, 0.6);
+}
+.k-vs-mid .k-sel-label { width: 140px; }
+
+/* ---------- pause: a side panel ---------- */
+.k-side {
+    position: absolute; left: auto; right: 0; top: 0; bottom: 0; width: 600px;
+    padding: 72px 64px 48px 64px; background-color: rgba(12, 13, 16, 0.96); border-left-width: 4px; border-left-color: rgb(200, 255, 61);
+}
+.k-side .fe-title { font-size: 56px; margin-bottom: 18px; }
+.k-side-score { margin-bottom: 10px; padding: 10px 14px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); }
+.k-side-row { flex-direction: row; align-items: center; height: 40px; }
+.k-side-serve { width: 20px; font-size: 12px; color: rgb(200, 255, 61); }
+.k-side-name { flex-grow: 1; font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-side-games { width: 36px; font-size: 18px; color: rgba(255, 255, 255, 0.6); -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-side-points { width: 54px; font-size: 30px; color: rgb(200, 255, 61); -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-side-stats { font-size: 12px; color: rgba(255, 255, 255, 0.6); margin-bottom: 26px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-prompts--side { left: 64px; bottom: 40px; }
+
+/* ---------- full time ---------- */
+.k-fulltime { position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: auto; padding: 56px 96px 120px 96px; align-items: center; }
+.k-fulltime .fe-kicker { font-size: 15px; letter-spacing: 6px; -unity-text-align: middle-center; }
+.k-fulltime .fe-title {
+    font-size: 96px; margin: -10px 0 0 0; color: rgb(200, 255, 61); -unity-text-align: middle-center;
+    text-shadow: 0 0 30px rgba(200, 255, 61, 0.5);
+}
+.k-fulltime > VisualElement { align-self: stretch; }
+.k-ft-head { flex-direction: row; justify-content: center; align-items: center; margin-top: -4px; }
+.k-ft-name { width: 420px; font-size: 26px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ft-games { font-size: 54px; margin: 0 30px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ft-chips { flex-direction: row; justify-content: center; margin: 8px 0 22px 0; }
+.k-ft-chip { margin: 0 6px; padding: 3px 12px; border-radius: 14px; font-size: 14px; color: rgba(255, 255, 255, 0.7); background-color: rgba(255, 255, 255, 0.07); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ft-chip--won { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-ft-cols { flex-direction: row; justify-content: center; }
+.k-ft-cols > .k-panel { width: 760px; }
+.k-ft-right { width: 760px; }
+.k-ft-highs { flex-direction: row; justify-content: space-around; }
+.k-ft-high { align-items: center; }
+.k-ft-high-v { font-size: 52px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ft-high-n { font-size: 11px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.6); margin-top: -6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ft-more { position: absolute; left: 96px; bottom: 40px; flex-direction: row; }
+.k-ft-more > .k-action { width: 280px; margin-right: 16px; margin-bottom: 0; }

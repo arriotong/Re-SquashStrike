@@ -176,11 +176,19 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P2M1_UI_1_Title.png");
             yield return Tap(kb.enterKey);
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
+            // U2: every tab of the hub, for review
+            foreach (var tab in new[] { "CAREER", "ACADEMY", "LOCKER" })
+            {
+                yield return Tap(kb.eKey);
+                yield return Wait(0.4f, () => false);
+                yield return CaptureUI(fe, "U2_Hub_" + tab + ".png");
+            }
+            for (int i = 0; i < 3; i++) yield return Tap(kb.qKey);
             yield return Tap(kb.enterKey);
             yield return CaptureUI(fe, "P2M1_UI_3_QuickMatch.png");
             yield return Tap(kb.escapeKey);
-            while (fe.Top.Focused.Name != "Settings") yield return Tap(kb.downArrowKey);
-            yield return Tap(kb.enterKey);
+            yield return Tap(kb.rKey);                                  // Y / R: settings
+            Assert.That(fe.Top, Is.InstanceOf<SettingsScreen>());
             yield return Tap(kb.enterKey);
             yield return CaptureUI(fe, "P2M1_UI_4_Controls.png");
             fe.StartMatch(MatchSettings.QuickGame());

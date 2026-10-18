@@ -160,7 +160,17 @@ namespace SquashGame.UI
             foreach (var a in r.Achieved) Toast("ACHIEVEMENT  ·  " + a.Tier.ToString().ToUpperInvariant(), a.Name);
         }
 
+        readonly Queue<(string kicker, string text)> _toastQueue = new Queue<(string, string)>();
+        public const int MaxToasts = 3;
+
         public void Toast(string kicker, string text)
+        {
+            ToastLog.Add(text);
+            if (_toasts.Count >= MaxToasts) { _toastQueue.Enqueue((kicker, text)); return; }     // three at a time; the rest wait
+            ShowToast(kicker, text);
+        }
+
+        void ShowToast(string kicker, string text)
         {
             if (_toastBox == null)
             {
@@ -170,7 +180,6 @@ namespace SquashGame.UI
             var l = new Label(kicker + "\n" + text); l.AddToClassList("toast");
             _toastBox.Add(l);
             _toasts.Add((l, 0f));
-            ToastLog.Add(text);
         }
 
         void TickToasts(float dt)
@@ -183,6 +192,7 @@ namespace SquashGame.UI
                 if (age > 5f) { l.RemoveFromHierarchy(); _toasts.RemoveAt(i); }
                 else _toasts[i] = (l, age);
             }
+            while (_toasts.Count < MaxToasts && _toastQueue.Count > 0) { var (k, t) = _toastQueue.Dequeue(); ShowToast(k, t); }
         }
 
         public void Push(MenuScreen s)
@@ -197,7 +207,12 @@ namespace SquashGame.UI
         }
 
         /// <summary>Screens slide in from the way you went (or fade, when centred). Off in batch runs (captures).</summary>
-        public static bool AnimateScreens = !Application.isBatchMode;
+        public static bool AnimateScreens
+        {
+            get { if (_animate == null) _animate = !Application.isBatchMode; return _animate.Value; }
+            set { _animate = value; }
+        }
+        static bool? _animate;
 
         static void Enter(MenuScreen s, int dir)
         {

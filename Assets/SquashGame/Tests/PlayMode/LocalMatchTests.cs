@@ -67,13 +67,14 @@ namespace SquashGame.Tests
 
             yield return Tap(pad1.buttonSouth);                     // title -> main menu
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Quick Match"));
-            yield return Tap(pad1.dpad.down);
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Local Versus"));
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("QUICK MATCH"));
+            yield return Tap(pad1.dpad.right);
+            yield return Tap(pad1.dpad.right);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("LOCAL VERSUS"));
             yield return Tap(pad1.buttonSouth);
             Assert.That(fe.Top, Is.InstanceOf<LocalVersusScreen>());
             Capture("P2M1_LocalVersus.png");
-            while (fe.Top.Focused.Name != "START") yield return Tap(pad1.dpad.down);
+            yield return HubNav.ToPrimary(fe, pad1.dpad.down, pad1.dpad.right, Tap);
             yield return Tap(pad1.buttonSouth);                     // start
             Assert.That(fe.Top, Is.Null, "the menus close");
             Assert.That(r.Demo, Is.False);
@@ -141,12 +142,12 @@ namespace SquashGame.Tests
             yield return Tap(kb.enterKey);                          // title -> main menu
             var menu = fe.Top;
             Assert.That(menu, Is.InstanceOf<MainMenuScreen>());
-            Assert.That(menu.Find("Local Versus").IsEnabled, Is.True, "the row is there (its START needs a pad)");
+            Assert.That(menu.Find("LOCAL VERSUS"), Is.Not.Null, "the card is there (its START needs a pad)");
             yield return Tap(kb.enterKey);                          // Quick Match
             Assert.That(fe.Top, Is.InstanceOf<QuickMatchScreen>());
             Capture("P2M1_QuickMatch.png");
-            yield return Tap(kb.upArrowKey);                        // wraps to START
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("START"));
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Play"));
             yield return Tap(kb.enterKey);
 
             MatchSimulation m = r.Sim;

@@ -87,11 +87,7 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
 
-            yield return FocusRow(kb, fe, "Career");
-            yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<CareerStartScreen>());
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("New career"));
-            yield return Tap(kb.enterKey);
+            yield return HubNav.Open(fe, kb, Tap, "CAREER", "START A CAREER");
             Assert.That(fe.Top, Is.InstanceOf<CreatePlayerScreen>());
 
             // the name: typing is the field's job; the test sets it

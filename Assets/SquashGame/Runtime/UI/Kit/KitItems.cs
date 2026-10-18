@@ -30,6 +30,8 @@ namespace SquashGame.UI
         public Func<bool> Locked = () => false;
         public Func<string> LockLine;
         public Func<bool> IsNew = () => false;
+        /// <summary>Shown at all (a card that only makes sense sometimes: Continue career / Start a career).</summary>
+        public Func<bool> Visible;
 
         public override bool WantsSlant { get { return false; } }
 
@@ -73,6 +75,7 @@ namespace SquashGame.UI
         {
             base.Refresh();
             bool locked = IsLocked;
+            if (Visible != null) Root.style.display = Visible() ? DisplayStyle.Flex : DisplayStyle.None;
             Root.EnableInClassList("k-card--locked", locked);
             _line.text = _lineText != null ? _lineText() : "";
             _line.style.display = string.IsNullOrEmpty(_line.text) ? DisplayStyle.None : DisplayStyle.Flex;
@@ -134,6 +137,30 @@ namespace SquashGame.UI
             _caption.text = cap ?? "";
             _caption.style.display = string.IsNullOrEmpty(cap) ? DisplayStyle.None : DisplayStyle.Flex;
         }
+    }
+
+    /// <summary>A plain action as a wide row (pause, full time, confirm): a label, an optional glyph; lime when focused.</summary>
+    public sealed class ActionItem : MenuItem
+    {
+        readonly Action _run;
+        public override bool WantsSlant { get { return false; } }
+        public ActionItem(string label, Action run, string glyph = null) : base(label)
+        {
+            _run = run;
+            Root.RemoveFromClassList("fe-item");
+            Root.AddToClassList("k-action");
+            LabelEl.RemoveFromClassList("fe-item__label");
+            LabelEl.AddToClassList("k-action-label");
+            if (glyph != null) { var g = new Label(glyph); g.AddToClassList("k-action-glyph"); g.pickingMode = PickingMode.Ignore; Root.Add(g); }
+            if (label.StartsWith("Quit")) Root.AddToClassList("k-action--danger");
+        }
+        /// <summary>A chip with a button glyph that follows the device in use (Y on a pad, R on the keyboard).</summary>
+        public ActionItem(string label, Action run, PromptBar.Btn button) : this(label, run, PromptBar.Glyph(button, MenuInput.UsingPad))
+        {
+            var g = Root.Q<Label>(className: "k-action-glyph");
+            g.schedule.Execute(() => g.text = PromptBar.Glyph(button, MenuInput.UsingPad)).Every(150);
+        }
+        public override void Submit() { if (IsEnabled && _run != null) _run(); }
     }
 
     /// <summary>The screen's one primary action: the big lime button at the bottom right.</summary>

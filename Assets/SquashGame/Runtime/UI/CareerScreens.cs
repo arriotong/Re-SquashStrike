@@ -155,7 +155,8 @@ namespace SquashGame.UI
         {
             CareerStore.New(NameValue, Roster.Nations[_nat], _length + 1, _scoring == 1);
             Fe.Pop();                                             // this screen
-            Fe.Replace(new CareerHubScreen());                     // the start screen
+            if (Fe.Top is CareerStartScreen) Fe.Replace(new CareerHubScreen());     // from the start screen
+            else Fe.Push(new CareerHubScreen());                                    // from the hub: back goes to the hub
         }
     }
 

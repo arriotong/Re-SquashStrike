@@ -55,7 +55,8 @@ namespace SquashGame.Tests
             r.StepOnce();                                                     // one fixed step per frame from here
             yield return null; yield return null;
             dressed.Clear();
-            dressed.AddRange(Object.FindObjectsByType<Athlete.AthleteFigure>(FindObjectsSortMode.InstanceID));
+            dressed.AddRange(Object.FindObjectsByType<Athlete.AthleteFigure>(FindObjectsSortMode.None));
+            dressed.Sort((x, y) => x.Index.CompareTo(y.Index));                 // you first
             int guard = 0;
             while (hashes.Count < Steps && guard++ < Steps * 4)
             {

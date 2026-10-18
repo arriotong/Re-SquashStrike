@@ -86,7 +86,7 @@ namespace SquashGame.Tests
             fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>(), "only once");
-            Assert.That(fe.Top.Find("Academy").IsEnabled, Is.True, "the Academy row is open");
+            Assert.That(fe.Top.Find("ACADEMY"), Is.Not.Null, "the Academy card is on the hub");
         }
 
         /// <summary>Hold the WASD keys that walk the player towards (x, z) - D is +x, W is towards the front wall.</summary>
@@ -112,9 +112,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Loaded("Match");
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            while (fe.Top.Focused.Name != "Academy") yield return Tap(kb.downArrowKey);
-            Assert.That(((ButtonItem)fe.Top.Focused).Name, Is.EqualTo("Academy"));
-            yield return Tap(kb.enterKey);
+            yield return HubNav.Open(fe, kb, Tap, "ACADEMY", "ALL LESSONS");
             Assert.That(fe.Top, Is.InstanceOf<AcademyScreen>());
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Continue: Move"));
             yield return Tap(kb.enterKey);

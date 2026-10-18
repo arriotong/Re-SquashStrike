@@ -26,8 +26,10 @@ namespace SquashGame.UI
         readonly List<Entry> _live = new List<Entry>();
         float _since;
 
-        /// <summary>How many pictures are being drawn now (tests).</summary>
+        /// <summary>How many pictures exist (tests).</summary>
         public int Count { get { return _live.Count; } }
+        /// <summary>How many are on screen now - the ones being drawn (tests).</summary>
+        public int Showing { get { int n = 0; foreach (var e in _live) if (Shown(e.Owner)) n++; return n; } }
         /// <summary>Frames rendered so far (tests).</summary>
         public int Rendered { get; private set; }
 
@@ -99,6 +101,8 @@ namespace SquashGame.UI
             {
                 case "you":
                     pos = you + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.25f, -2.2f); look = you + new Vector3(0, 0.85f, 0); fov = 40; break;
+                case "them":
+                    pos = them + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.25f, -2.2f); look = them + new Vector3(0, 0.85f, 0); fov = 40; break;
                 case "racket":
                     pos = you + new Vector3(0.7f, 1.15f, -1.0f); look = you + new Vector3(-0.3f, 1.0f, 0); fov = 36; break;
                 case "front":

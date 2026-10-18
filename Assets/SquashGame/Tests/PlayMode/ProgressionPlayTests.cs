@@ -86,8 +86,7 @@ namespace SquashGame.Tests
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
 
-            yield return FocusRow(kb, fe, "Locker Room");
-            yield return Tap(kb.enterKey);
+            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "YOUR KIT");
             Assert.That(fe.Top, Is.InstanceOf<LockerRoomScreen>());
             yield return Wait(1.5f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_1_LockerRoom.png");

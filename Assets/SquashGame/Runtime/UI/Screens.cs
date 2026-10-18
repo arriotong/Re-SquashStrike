@@ -2,13 +2,12 @@
 // Assets/SquashGame/Runtime/UI/Screens.cs
 // P2-M1: the front end's screens.
 //
-//   Title, Main menu, Quick Match, Local Versus, Settings (Controls,
-//   Video, Audio, Accessibility, Gameplay), Controls reference,
-//   Pause, Practice pause, Confirm, Post-match.
+//   Title, Settings (Controls, Video, Audio, Accessibility, Gameplay),
+//   Controls reference, Practice pause, Confirm.
 //
-// Replays is on the main menu as a "coming soon" row (P2-M6). Target
-// Arcade (P2-M2), the Academy (P2-M3), the Career (P2-M4) and the
-// Locker Room (P2-M5) have their own screen files.
+// The main menu hub, the versus screens, the match pause and full time
+// are in HubScreens.cs (UI redesign U2); Target Arcade, the Academy,
+// the Career and the Locker Room have their own screen files.
 // ===========================================================
 
 using System;
@@ -41,91 +40,6 @@ namespace SquashGame.UI
         public override void Back() { }                                   // nowhere to go back to
     }
 
-    // ---------------- main menu ----------------
-
-    /// <summary>The old SquashStrike's home: the brand, a column of slanted buttons and, on the right, a glowing
-    /// preview of the one in focus over the slow-motion rally (MenuCinematics picks the camera angles).</summary>
-    public sealed class MainMenuScreen : MenuScreen
-    {
-        protected override string Title { get { return ""; } }
-        protected override string RootClass { get { return "fe-screen--home"; } }
-        static string Soon() { return "coming soon"; }
-
-        static readonly System.Collections.Generic.Dictionary<string, string> Blurbs = new System.Collections.Generic.Dictionary<string, string>
-        {
-            { "Quick Match", "Jump straight onto the glass court. Pick your opponent, the difficulty and the length, and play." },
-            { "Local Versus", "Two players, one screen: pad and keyboard, or two pads." },
-            { "Career", "Climb the world tour, from club events to the World Finals." },
-            { "Target Arcade", "Just you, the feeder and the targets. Chase high scores and three stars on every level." },
-            { "Practice Court", "Free hitting off the feed machine, and drills for length, drops and boasts." },
-            { "Academy", "The controls, then the rules of squash - one short lesson at a time." },
-            { "Locker Room", "Kit, rackets and celebrations, earned by playing." },
-            { "Replays", "Your best rallies again, slowed down, from any angle." },
-            { "Settings", "Controls, video, audio and accessibility." },
-            { "Quit", "Leave re:SquashStrike." },
-        };
-
-        readonly VisualElement _preview = new VisualElement();
-        readonly Label _previewTitle = new Label(), _previewDesc = new Label();
-        MenuItem _shown;
-
-        /// <summary>The preview's heading (tests).</summary>
-        public string PreviewTitle { get { return _previewTitle.text; } }
-
-        protected override void Build()
-        {
-            var brand = new VisualElement(); brand.AddToClassList("fe-brand");
-            foreach (var (text, cls) in new[] { ("re:", "fe-brand-re"), ("SQUASH", "fe-brand-squash"), ("STRIKE", "fe-brand-strike") })
-            { var l = new Label(text); l.AddToClassList(cls); brand.Add(l); }
-            Content.Add(brand);
-
-            Add(new ButtonItem("Quick Match", () => Fe.Push(new QuickMatchScreen()), true));
-            Add(new ButtonItem("Local Versus", () => Fe.Push(new LocalVersusScreen()), false,
-                () => MatchRunner.CanPlayTwoPlayer ? "" : "connect a pad"));
-            Add(new ButtonItem("Career", () => Fe.Push(new CareerStartScreen()), false,
-                () => SquashGame.Profile.CareerStore.Exists ? "season " + SquashGame.Profile.CareerStore.Current.S.Season : ""));
-            Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
-            Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
-            Add(new ButtonItem("Academy", () => Fe.Push(new AcademyScreen()), false, AcademyScreen.Summary));
-            Add(new ButtonItem("Locker Room", () => Fe.Push(new LockerRoomScreen()), false,
-                () => "level " + Progression.Rewards.LevelOf(SquashGame.Profile.ProfileStore.Current.Progress.Xp)));
-            Add(new ButtonItem("Replays", null, false, Soon)).Enabled = () => false;
-            Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
-            Add(new ButtonItem("Quit", () => Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame))));
-
-            _preview.AddToClassList("home-preview");
-            _preview.pickingMode = PickingMode.Ignore;
-            _previewTitle.AddToClassList("home-preview-title");
-            _previewDesc.AddToClassList("home-preview-desc");
-            _preview.Add(_previewTitle); _preview.Add(_previewDesc);
-            Root.Add(_preview);
-        }
-
-        void ShowPreview()
-        {
-            var f = Focused;
-            if (f == _shown) return;
-            _shown = f;
-            _previewTitle.text = f != null ? f.Name.ToUpperInvariant() : "";
-            _previewDesc.text = f != null && Blurbs.TryGetValue(f.Name, out var d) ? d : "";
-            MenuCinematics.Scene = f != null ? Items.IndexOf(f) : 0;
-        }
-
-        public override void OnShow() { base.OnShow(); _shown = null; ShowPreview(); }
-        public override void Back() { }
-
-        /// <summary>P2-M3: a new player is pointed to the Academy, once.</summary>
-        public override void Tick(float dt)
-        {
-            ShowPreview();
-            var a = ProfileStore.Current.Academy;
-            if (a.Suggested) return;
-            a.Suggested = true;
-            ProfileStore.Save();
-            if (a.Done.Count == 0) Fe.Push(new AcademySuggestScreen());
-        }
-    }
-
     // ---------------- match setup ----------------
 
     public static class MatchChoices
@@ -139,87 +53,6 @@ namespace SquashGame.UI
         public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };
         public static readonly string[] ScoringValues = { "par", "english" };
         public static readonly string[] ControlLabels = { "Non-assisted", "Assisted" };
-    }
-
-    public sealed class QuickMatchScreen : MenuScreen
-    {
-        protected override string Kicker { get { return "PLAY"; } }
-        protected override string Title { get { return "Quick Match"; } }
-        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
-        static GameSettings S { get { return ProfileStore.Current.Settings; } }
-
-        protected override void Build()
-        {
-            Add(new OptionItem("Opponent", () => MatchChoices.OpponentLabels[C.Opponent],
-                d => C.Opponent = OptionItem.Step(C.Opponent, d, MatchChoices.OpponentLabels.Length)));
-            Add(new OptionItem("Difficulty", () => C.Opponent == 4 ? "-" : MatchChoices.DifficultyLabels[C.Difficulty],
-                d => C.Difficulty = OptionItem.Step(C.Difficulty, d, MatchChoices.DifficultyLabels.Length))).Enabled = () => C.Opponent != 4;
-            Add(new OptionItem("Match", () => MatchChoices.LengthLabels[C.Length],
-                d => C.Length = OptionItem.Step(C.Length, d, MatchChoices.LengthLabels.Length)));
-            Add(new OptionItem("Scoring", () => MatchChoices.ScoringLabels[C.Scoring],
-                d => C.Scoring = OptionItem.Step(C.Scoring, d, MatchChoices.ScoringLabels.Length)));
-            Add(new OptionItem("Controls", () => MatchChoices.ControlLabels[S.Assisted ? 1 : 0],
-                d => { S.Assisted = !S.Assisted; ProfileStore.Apply(S, false); }));
-            Add(new ButtonItem("START", Start, true));
-        }
-
-        void Start()
-        {
-            ProfileStore.Save();
-            Fe.StartMatch(new MatchSettings
-            {
-                TwoPlayer = false,
-                Opponent = MatchRunner.Opponents[C.Opponent],
-                Difficulty = MatchChoices.DifficultyValues[C.Difficulty],
-                GamesToWin = MatchChoices.LengthGames[C.Length],
-                Scoring = MatchChoices.ScoringValues[C.Scoring],
-                WarmUp = false
-            });
-        }
-
-        public override void OnHide() { ProfileStore.Save(); }
-    }
-
-    public sealed class LocalVersusScreen : MenuScreen
-    {
-        protected override string Kicker { get { return "PLAY"; } }
-        protected override string Title { get { return "Local Versus"; } }
-        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
-        Label _devices;
-
-        protected override void Build()
-        {
-            _devices = Text("");
-            Add(new OptionItem("Match", () => MatchChoices.LengthLabels[C.VsLength],
-                d => C.VsLength = OptionItem.Step(C.VsLength, d, MatchChoices.LengthLabels.Length)));
-            Add(new OptionItem("Scoring", () => MatchChoices.ScoringLabels[C.VsScoring],
-                d => C.VsScoring = OptionItem.Step(C.VsScoring, d, MatchChoices.ScoringLabels.Length)));
-            var start = Add(new ButtonItem("START", Start, true, () => MatchRunner.CanPlayTwoPlayer ? "" : "connect a pad"));
-            start.Enabled = () => MatchRunner.CanPlayTwoPlayer;
-        }
-
-        public override void Tick(float dt)
-        {
-            int pads = UnityEngine.InputSystem.Gamepad.all.Count;
-            string t = pads >= 2 ? "Player 1: keyboard & mouse or pad 1     Player 2: pad 2"
-                     : pads == 1 ? "Player 1: keyboard & mouse     Player 2: the pad"
-                     : "Player 2 needs a pad - connect one to play.";
-            if (_devices.text != t) { _devices.text = t; foreach (var i in Items) i.Refresh(); }
-        }
-
-        void Start()
-        {
-            ProfileStore.Save();
-            Fe.StartMatch(new MatchSettings
-            {
-                TwoPlayer = true,
-                GamesToWin = MatchChoices.LengthGames[C.VsLength],
-                Scoring = MatchChoices.ScoringValues[C.VsScoring],
-                WarmUp = false
-            });
-        }
-
-        public override void OnHide() { ProfileStore.Save(); }
     }
 
     // ---------------- settings ----------------
@@ -390,27 +223,7 @@ namespace SquashGame.UI
         }
     }
 
-    // ---------------- pause ----------------
-
-    public sealed class PauseScreen : MenuScreen
-    {
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
-        public override bool EscapeIsGame { get { return true; } }        // Esc / Start resume the game itself
-        protected override string Kicker { get { return "MATCH"; } }
-        protected override string Title { get { return "Paused"; } }
-        protected override void Build()
-        {
-            bool career = Fe.Match.Settings.Career;
-            Add(new ButtonItem("Resume", () => Fe.Resume(), true));
-            if (!career) Add(new ButtonItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
-            Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
-            Add(new ButtonItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
-            if (career) Add(new ButtonItem("Quit: retire from the match", () => Fe.Push(new RetireScreen())));
-            else Add(new ButtonItem("Quit to menu", () => Fe.Push(new ConfirmScreen("Leave the match?", () => Fe.QuitToMenu()))));
-        }
-        public override void Back() { Fe.Resume(); }
-    }
+    // ---------------- pause (the practice court; the match: HubScreens.cs) ----------------
 
     public sealed class PracticePauseScreen : MenuScreen
     {
@@ -444,88 +257,6 @@ namespace SquashGame.UI
         {
             Add(new ButtonItem("No", () => Fe.Pop()));
             Add(new ButtonItem("Yes", () => { Fe.Pop(); _yes(); }, true));
-        }
-    }
-
-    // ---------------- post-match ----------------
-
-    public sealed class PostMatchScreen : MenuScreen
-    {
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
-        protected override string Kicker { get { return "MATCH OVER"; } }
-        protected override string Title { get { return Winner(); } }
-
-        string Winner()
-        {
-            var m = Fe.Match;
-            int w = m.Sim.Score.MatchWinner;
-            if (w < 0) w = m.Sim.Score.GameWinner;
-            return w < 0 ? "Match over" : (m.Settings.TwoPlayer ? m.Names[w] + " wins" : (w == m.HumanIndex ? "You win" : m.Names[w] + " wins"));
-        }
-
-        public Progression.RewardResult Reward { get; private set; }
-
-        protected override void Build()
-        {
-            var m = Fe.Match;
-            var st = Fe.Stats;
-            // P2-M5: XP, lifetime stats, the match achievements (once, when the screen is made)
-            double tier = 0;
-            var career = SquashGame.Profile.CareerStore.Current;
-            if (m.Settings.Career && career != null && career.S.Current != null) tier = Progression.Rewards.TierFactor[career.S.Current.Tier];
-            Reward = Progression.Rewards.Match(st.Facts(m), tier);
-            var games = new List<string>();
-            foreach (var g in st.Games) games.Add(g[0] + "-" + g[1]);
-            var score = new Label(m.Names[0] + "  " + m.Sim.Score.Games[0] + " - " + m.Sim.Score.Games[1] + "  " + m.Names[1] +
-                                  (games.Count > 0 ? "      (" + string.Join(", ", games) + ")" : ""));
-            score.AddToClassList("pm-score");
-            Content.Add(score);
-
-            var box = new VisualElement(); box.AddToClassList("pm-stats");
-            Row(box, "", m.Names[0], m.Names[1]);
-            Row(box, "Rallies won", st.Players[0].Rallies.ToString(), st.Players[1].Rallies.ToString());
-            Row(box, "Winners", st.Players[0].Winners.ToString(), st.Players[1].Winners.ToString());
-            Row(box, "Errors", st.Players[0].Errors.ToString(), st.Players[1].Errors.ToString());
-            Row(box, "Great hits", st.Players[0].GreatHits.ToString(), st.Players[1].GreatHits.ToString());
-            Row(box, "Top pace", Kmh(st.Players[0].TopPace), Kmh(st.Players[1].TopPace));
-            Row(box, "Longest rally", st.LongestRally + " shots", "");
-            Content.Add(box);
-            Content.Add(new RewardStrip(Reward));
-            Fe.ToastAchievements(Reward);
-
-            if (m.Settings.Career)
-            {
-                bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
-                Add(new ButtonItem("Continue", () => Career.Record(Fe, won, false), true));
-                return;
-            }
-            Add(new ButtonItem("Rematch", () => Fe.Restart(), true));
-            Add(new ButtonItem("Change settings", () =>
-            {
-                bool two = m.Settings.TwoPlayer;
-                Fe.QuitToMenu();
-                Fe.Push(two ? (MenuScreen)new LocalVersusScreen() : new QuickMatchScreen());
-            }));
-            Add(new ButtonItem("Main menu", () => Fe.QuitToMenu()));
-        }
-
-        static string Kmh(double ms) { return ms > 0 ? (ms * 3.6).ToString("0") + " km/h" : "-"; }
-
-        static void Row(VisualElement box, string name, string a, string b)
-        {
-            var row = new VisualElement(); row.AddToClassList("pm-stat");
-            var n = new Label(name); n.AddToClassList("pm-stat__name"); n.style.flexGrow = 1;
-            var va = new Label(a); va.AddToClassList("pm-stat__val");
-            var vb = new Label(b); vb.AddToClassList("pm-stat__val");
-            row.Add(n); row.Add(va); row.Add(vb);
-            box.Add(row);
-        }
-
-        public override void Back()
-        {
-            if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
-            else Fe.QuitToMenu();
         }
     }
 }

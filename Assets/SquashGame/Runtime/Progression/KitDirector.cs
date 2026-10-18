@@ -21,6 +21,9 @@ namespace SquashGame.Progression
 
         public static Loadout You() { return Preview ?? ProfileStore.Current.Progress.Loadout; }
 
+        /// <summary>The opponent's kit shown instead (the versus screen's pick, on the menus' demo athlete); null = theirs.</summary>
+        public static Loadout OpponentPreview;
+
         static readonly Loadout PlayerTwo = new Loadout { Shirt = "shirt_sky", Shorts = "shorts_navy", Socks = "socks_navy", Shoes = "shoes_white", Skin = "skin_2", Frame = "frame_royal", Grip = "grip_white" };
 
         static MatchSettings _for;
@@ -43,6 +46,7 @@ namespace SquashGame.Progression
         {
             var s = r != null ? r.Settings : null;
             var me = You();
+            if (OpponentPreview != null) return Cosmetics.AvoidClash(me, OpponentPreview);
             string mine = me.Shirt;
             if (_theirs != null && ReferenceEquals(s, _for) && mine == _mine) return _theirs;
             Loadout raw = s == null ? Cosmetics.Signature("attacker")

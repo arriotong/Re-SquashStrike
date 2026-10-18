@@ -44,7 +44,8 @@ namespace SquashGame.Tests
             Assert.That(menu, Is.Not.Null);
             Assert.That(fe.Match.Demo, Is.True);
             Assert.That(fe.Match.Clock.TimeScale, Is.EqualTo(MatchRunner.DemoSpeed).Within(1e-9), "the demo rally is in slow motion");
-            Assert.That(menu.PreviewTitle, Is.EqualTo("QUICK MATCH"));
+            Assert.That(menu.Focused.Name, Is.EqualTo("QUICK MATCH"));
+            Assert.That(menu.CardsInView, Is.LessThanOrEqualTo(4), "at most 4 cards in view");
 
             var cam = Camera.main.transform;
             Vector3 a = cam.position;
@@ -52,10 +53,17 @@ namespace SquashGame.Tests
             Vector3 b = cam.position;
             Assert.That(Vector3.Distance(a, b), Is.GreaterThan(1.0f), "the camera cut to another angle");
 
-            yield return Tap(kb.downArrowKey);                                    // Local Versus
-            Assert.That(menu.PreviewTitle, Is.EqualTo("LOCAL VERSUS"));
+            yield return Tap(kb.rightArrowKey);                                   // Target Arcade
+            Assert.That(menu.Focused.Name, Is.EqualTo("TARGET ARCADE"));
+            Assert.That(MenuCinematics.Scene, Is.EqualTo(3), "its own set of angles");
             yield return null; yield return null;
-            Assert.That(Vector3.Distance(cam.position, b), Is.GreaterThan(1.0f), "a new row, a new set of angles");
+            Assert.That(Vector3.Distance(cam.position, b), Is.GreaterThan(1.0f), "a new card, a new set of angles");
+            foreach (var tab in new[] { "CAREER", "ACADEMY", "LOCKER" })
+            {
+                yield return Tap(kb.eKey);
+                Assert.That(menu.Tabs.Current, Is.EqualTo(tab));
+                Assert.That(menu.CardsInView, Is.InRange(1, 4), tab + ": at most 4 cards in view");
+            }
 
             fe.StartMatch(MatchSettings.QuickGame());
             yield return null; yield return null;
