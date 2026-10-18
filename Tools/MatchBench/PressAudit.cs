@@ -103,10 +103,13 @@ static class PressAudit
     public static bool Quiet;
 
     /// <summary>The share of rallies the human-style player wins against each AI at each setup-panel difficulty.</summary>
+    /// <summary>The setup panel's Easy / Medium / Hard (MatchSetupPanel.DifficultyValues).</summary>
+    public static double[] Levels = { 0.0, 0.58, 0.78 };
+
     public static void Balance(int games)
     {
         Quiet = true;
-        double[] levels = { 0.2, 0.5, 0.85 };
+        double[] levels = Levels;
         string[] names = { "retriever", "attacker", "shotmaker", "grinder" };
         var mean = new double[levels.Length];
         Console.WriteLine("BALANCE  human-style rallies won (targets: easy 60%, medium 45%, hard 30%)");

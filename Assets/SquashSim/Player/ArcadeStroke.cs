@@ -323,11 +323,12 @@ namespace SquashSim
             if (boast) shot = "boast";
             else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, System.Math.Min(ty, c.LobWallMax));   // any higher and it cannot stay in
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
-            // High shots: soft enough to come down before the back wall's out line (playable, not long).
+            // Floor before the back wall: a drive, kill, serve or boast that would reach the back wall on the full
+            // is struck just soft enough to bounce first (a length drive dies at the back). Lobs keep their own rule.
             _good.CopyFrom(_vel);
-            for (int k = 0; k < 8 && BackWallHeight(ball, surfaces) > c.BackWallSafeHeight; k++)
+            for (int k = 0; k < 14 && BackWallHeight(ball, surfaces) >= 0; k++)
             {
-                speed *= 0.9;
+                speed *= 0.93;
                 if (boast)
                 {
                     if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
@@ -456,7 +457,7 @@ namespace SquashSim
                         front = true;
                     }
                     else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return -1; }
-                    else if (e.SurfaceClass == "backWall") { if (e.Point.Y > c.BackWallSafeHeight) return -1; }
+                    else if (e.SurfaceClass == "backWall") return -1;                      // floor first, like every other shot
                     else if (e.SurfaceClass == "outBackstop" || e.SurfaceClass == "ceiling") return -1;
                     else if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.1) return -1;
                     else if (e.SurfaceClass == "floor") return e.Point.Z;

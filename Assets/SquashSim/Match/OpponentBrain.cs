@@ -53,15 +53,16 @@ namespace SquashSim
         /// <summary>Execution quality from 0 (beginner) to 1 (strong club player).</summary>
         // Difficulty knobs (balanced 2026-10-18 with MatchBench --balance against the slower game athletes and
         // the deader front wall). Pace is the strong one: softer shots are the ones a human gets back.
-        public static double DiffReaction0 = 0.36, DiffReactionSpan = 0.20, DiffNoise0 = 0.26, DiffNoiseSpan = 0.14,
-                             DiffMove0 = 0.75, DiffPace0 = 0.62, DiffPaceSpan = 0.27;
+        // Re-balanced after the front wall went to 0.50: Easy leans on mistakes (aim noise, late reactions), Hard on pace.
+        public static double DiffReaction0 = 0.50, DiffReactionSpan = 0.36, DiffNoise0 = 0.60, DiffNoiseSpan = 0.44,
+                             DiffMove0 = 0.60, DiffPace0 = 0.40, DiffPaceSpan = 0.40;
 
         public AiProfile WithDifficulty(double d)
         {
             d = d < 0 ? 0 : (d > 1 ? 1 : d);
             var p = Clone();
             // Tuned (MatchBench --balance) so a human-style player wins about 60% / 45% / 30% of rallies
-            // at Easy (0.2) / Medium (0.5) / Hard (0.85).
+            // at Easy (0.0) / Medium (0.58) / Hard (0.78) - the setup panel's values.
             p.ReactionTime = DiffReaction0 - DiffReactionSpan * d;
             p.AimNoise = DiffNoise0 - DiffNoiseSpan * d;
             p.MoveSpeed = DiffMove0 + (1 - DiffMove0) * d;
@@ -146,6 +147,7 @@ namespace SquashSim
         public double TossDelay = 0.9;
         public double ServeStrikeDelay = 0.26;  // after the toss: strike near its top
         public double ServeAimX = 0.55, ServeAimY = 0.85;
+        public static double ServePace = 0.85;
         static readonly double[] CandX = { -0.85, -0.55, -0.25, 0.0, 0.25, 0.55, 0.85 };
         static readonly double[] CandY = { -0.5, -0.2, 0.1, 0.4, 0.7 };
         static readonly double[] TouchY = { 0.0, 0.3, 0.6 };
@@ -231,7 +233,9 @@ namespace SquashSim
         {
             var ctrl = m.Players[me];
             var p = ctrl.Player;
-            p.PaceScale = Profile.Pace;                 // its difficulty: how hard it hits
+            // Its difficulty: how hard it hits in the rally. The serve has its own pace at every level (not short, not out).
+            bool serving = m.Score.Server == me && (m.Phase == MatchPhase.AwaitToss || (m.Phase == MatchPhase.Rally && m.Referee.Shots == 0));
+            p.PaceScale = serving ? ServePace : Profile.Pace;
             var r = m.Referee;
             int opp = 1 - me;
             double t = m.Time;

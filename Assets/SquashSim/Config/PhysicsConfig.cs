@@ -587,8 +587,9 @@ namespace SquashSim
             c.Assist.MaxCorrection = 0.12;                            // lab 0.30
         }
 
-        public const double GameFrontWallRestitution = 0.62;
+        public const double GameFrontWallRestitution = 0.50;   // playtest 2026-10-18: 0.62 still sent drives onto the back wall
         public const double GamePaceScale = 1.15;
+        public static double GameLiftScale = 1.25;
 
         public static void UseMatchBall()
         {
@@ -597,7 +598,10 @@ namespace SquashSim
             // Hit ~15% harder than that (playtest 2026-10-18) to keep the depth off the deader front wall below.
             c.Racket.Swing.Neutral.HeadSpeed = 24.0 * GamePaceScale;
             c.Racket.Swing.Attack.HeadSpeed = 37.0 * GamePaceScale;
-            // A deader front wall: the ball comes off it ~15% slower (playtest 2026-10-18; lab 0.74).
+            // Lift (the AI's lobs and serves) a little firmer too, or its serves die short of the short line off the
+            // deader wall (the lab's 12 m/s).
+            c.Racket.Swing.Lift.HeadSpeed = 12.0 * GameLiftScale;
+            // A deader front wall: the ball comes off it ~20% slower than the lab's (playtest 2026-10-18; lab 0.74).
             c.Surfaces.FrontWall.Restitution = GameFrontWallRestitution;
             // (Lift - lobs and serves - keeps the lab's soft pace.)
             // A double yellow is dead at pace: restitution falls off further at high impact speed...
