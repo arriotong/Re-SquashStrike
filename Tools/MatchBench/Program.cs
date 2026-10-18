@@ -19,6 +19,7 @@
 //        [--press-audit]     (a human-style player's Hit presses, followed to what they led to)
 //        [--hitself]         (every HitSelf: the stroke, planned vs real contact, body, ball path)
 //        [--interference [--track] [--only text]]  (every let / stroke: the obstructor's situation)
+//        [--career-calibrate]  (P2-M4: AI vs AI across strength gaps -> RallyModel's K and matchups)
 // ===========================================================
 
 using System;
@@ -72,6 +73,7 @@ public static class Program
         }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
+        if (Array.IndexOf(args, "--career-calibrate") >= 0) { CareerBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
         if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {
