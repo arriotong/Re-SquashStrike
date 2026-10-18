@@ -147,7 +147,7 @@ namespace SquashSim
         public double TossDelay = 0.9;
         public double ServeStrikeDelay = 0.26;  // after the toss: strike near its top
         public double ServeAimX = 0.55, ServeAimY = 0.85;
-        public static double ServePace = 0.85;
+        public static double ServePace = 0.85 / PhysicsConfig.GameBallPace;   // the serve keeps its tuned pace (0.8-0.9 of the old lift)
         static readonly double[] CandX = { -0.85, -0.55, -0.25, 0.0, 0.25, 0.55, 0.85 };
         static readonly double[] CandY = { -0.5, -0.2, 0.1, 0.4, 0.7 };
         static readonly double[] TouchY = { 0.0, 0.3, 0.6 };

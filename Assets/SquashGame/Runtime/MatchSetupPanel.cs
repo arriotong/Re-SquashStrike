@@ -36,9 +36,10 @@ namespace SquashGame
         public static readonly string[] SensitivityLabels = { "Slowest", "Slow", "Normal", "Fast", "Fastest" };
         public static readonly string[] InvertLabels = { "Off", "On" };
         public static readonly string[] OnOffLabels = { "On", "Off" };
+        public static readonly string[] ControlLabels = { "Non-assisted", "Assisted" };
 
-        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3,
-                         RowMouse = 4, RowInvert = 5, RowPopups = 6, RowStart = 7, RowPractice = 8, RowQuit = 9, Rows = 10;
+        public const int RowOpponent = 0, RowDifficulty = 1, RowLength = 2, RowScoring = 3, RowControls = 4,
+                         RowMouse = 5, RowInvert = 6, RowPopups = 7, RowStart = 8, RowPractice = 9, RowQuit = 10, Rows = 11;
         public const string PracticeScene = "WarmUpCourt";
 
         // Current choice per row (indices into the label arrays).
@@ -72,6 +73,7 @@ namespace SquashGame
                 case RowDifficulty: return DifficultyLabels.Length;
                 case RowLength: return LengthLabels.Length;
                 case RowScoring: return ScoringLabels.Length;
+                case RowControls: return ControlLabels.Length;
                 case RowMouse: return SensitivityLabels.Length;
                 case RowInvert: return InvertLabels.Length;
                 case RowPopups: return OnOffLabels.Length;
@@ -94,6 +96,10 @@ namespace SquashGame
                 case RowDifficulty: Difficulty = ((Difficulty + d) % n + n) % n; break;
                 case RowLength: Length = ((Length + d) % n + n) % n; break;
                 case RowScoring: Scoring = ((Scoring + d) % n + n) % n; break;
+                case RowControls:
+                    IntentSource.Assisted = !IntentSource.Assisted;
+                    IntentSource.SaveSettings();
+                    break;
                 case RowMouse:
                     IntentSource.MouseSensitivityScale = IntentSource.SensitivitySteps[(SensitivityIndex() + d + n) % n];
                     IntentSource.SaveSettings();
@@ -229,12 +235,13 @@ namespace SquashGame
             GUI.Box(r, GUIContent.none, _panel);
             GUI.Label(new Rect(r.x, r.y + 18, w, 44), "re:SquashStrike - MATCH", _title);
 
-            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Aim speed", "Invert mouse Y", "Arcade pop-ups" };
+            string[] names = { "Opponent", "Difficulty", "Match", "Scoring", "Controls", "Aim speed", "Invert mouse Y", "Arcade pop-ups" };
             string[] values =
             {
                 OpponentLabels[Opponent] + (Opponent == 5 && !MatchRunner.CanPlayTwoPlayer ? " (connect a pad)" : ""),
                 RowEnabled(RowDifficulty) ? DifficultyLabels[Difficulty] : "-",
                 LengthLabels[Length], ScoringLabels[Scoring],
+                ControlLabels[IntentSource.Assisted ? 1 : 0],
                 SensitivityLabels[SensitivityIndex()], InvertLabels[IntentSource.InvertMouseY ? 1 : 0],
                 OnOffLabels[ArcadePopups.Enabled ? 0 : 1]
             };

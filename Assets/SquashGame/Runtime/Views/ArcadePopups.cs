@@ -109,7 +109,7 @@ namespace SquashGame
                     string tech = (e.Technique ?? "").ToLowerInvariant();
                     bool serve = _sim != null && _sim.Phase == MatchPhase.Rally && _sim.Referee.Shots == 1;
                     // Small and quick: a little "Hit!" by the ball, no shot name.
-                    if (serve) Spawn("Serve!", null, Cyan, true, at, 0.42f, 0.7f);
+                    if (serve) Spawn(tech == "hard serve" ? "Hard serve!" : tech == "lob serve" ? "Lob serve!" : "Serve!", null, tech == "hard serve" ? Orange : Cyan, true, at, 0.42f, 0.7f);
                     else if (e.Stroke == "touch") Spawn("Touch!", null, Cyan, true, at, 0.42f, 0.7f);
                     else if (e.BallSpeedOut >= 42) Spawn("Smash!", null, Orange, true, at, 0.5f, 0.75f);
                     else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("Volley!", null, Green, true, at, 0.42f, 0.7f);

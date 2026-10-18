@@ -84,6 +84,107 @@ namespace SquashSim.Tests
             Assert.That(low.Kind, Is.EqualTo(RallyEnd.Fault), "aimed under the service line: a fault");
         }
 
+        /// <summary>Serve from P1's box: aim, hold Hit for <paramref name="holdSteps"/> fixed steps, let go. Returns the serve contact.</summary>
+        static SimEvent ServeHeld(double x, double y, int holdSteps, bool assisted, out ArcadeStroke arcade)
+        {
+            var m = NewMatch();
+            m.Players[0].Arcade.Assisted = assisted;
+            arcade = m.Players[0].Arcade;
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            var it = m.Intents[0];
+            for (int s = 0; s < 24; s++) { Aim(it, x, y); m.Step(dt); }
+            it.Hit.Pressed = true; it.Hit.Held = holdSteps > 0;
+            for (int s = 0; s < holdSteps + 4; s++)
+            {
+                Aim(it, x, y);
+                if (s >= holdSteps) it.Hit.Held = false;
+                m.Step(dt);
+                foreach (var e in m.StepEvents) if (e.Type == SimEventType.RacketContact) return e;
+            }
+            return null;
+        }
+
+        [Test] public void TapIsALobServeHoldIsAHardServe()
+        {
+            SimEvent tap = ServeHeld(0.4, 2.6, 0, false, out _);
+            SimEvent hard = ServeHeld(0.4, 2.6, 216, false, out _);       // ~0.9 s: a full charge
+            UnityEngine.Debug.Log("[Serve] tap: " + tap.Technique + " " + tap.BallSpeedOut.ToString("0.0") + " m/s (up " + tap.OutVel.Y.ToString("0.0") +
+                                  "), hold: " + hard.Technique + " " + hard.BallSpeedOut.ToString("0.0") + " m/s (up " + hard.OutVel.Y.ToString("0.0") + ")");
+            Assert.That(tap.Technique, Is.EqualTo("lob serve"));
+            Assert.That(hard.Technique, Is.EqualTo("hard serve"));
+            Assert.That(hard.BallSpeedOut, Is.GreaterThan(tap.BallSpeedOut * 1.2), "the hard serve is clearly faster");
+            Assert.That(hard.OutVel.Y / hard.BallSpeedOut, Is.LessThan(tap.OutVel.Y / tap.BallSpeedOut), "and flatter (a lower launch angle)");
+        }
+
+        [Test] public void AssistedServesLandDeepAndLegalWhereverYouAim()
+        {
+            int legal = 0, n = 0;
+            foreach (var a in new[] { new[] { -0.9, 2.4 }, new[] { -1.6, 2.2 }, new[] { -2.4, 2.6 }, new[] { 0.4, 2.8 }, new[] { 2.0, 3.0 } })
+                foreach (int hold in new[] { 0, 216 })
+                {
+                    ServeHeld(a[0], a[1], hold, true, out ArcadeStroke arc);
+                    n++; if (arc.LastServeLegal) legal++;
+                }
+            UnityEngine.Debug.Log("[Serve] assisted: " + legal + "/" + n + " land deep and legal");
+            Assert.That(legal, Is.EqualTo(n));
+        }
+
+        [Test] public void AssistedStraightDrivesStayOffTheSideWall()
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var surfaces = CourtSurfaces.Create();
+            int n = 0, clipOff = 0, clipOn = 0;
+            foreach (double side in new[] { 1.0, -1.0 })
+                foreach (double bz in new[] { 4.0, 6.0, 8.0 })
+                    foreach (double tx in new[] { 2.6, 3.0 })
+                    {
+                        var ball = new BallState(); ball.Reset(new V3(side * 2.6, 0.8, bz), new V3(0, 0, 0), null, 42);
+                        var s = new ArcadeStroke(3);
+                        n++;
+                        s.Solve(ball, surfaces, side * tx, 1.6, 0, 0, c.DriveSpeed);
+                        if (s.ClipsSide(ball, surfaces, (int)side)) clipOff++;
+                        double x = s.StraightAssist(ball, surfaces, side * tx, 1.6, c.DriveSpeed);
+                        s.Solve(ball, surfaces, x, 1.6, 0, 0, c.DriveSpeed);
+                        if (s.ClipsSide(ball, surfaces, (int)side)) clipOn++;
+                    }
+            UnityEngine.Debug.Log("[Assist] straight drives clipping the side wall: non-assisted " + clipOff + "/" + n + ", assisted " + clipOn + "/" + n);
+            Assert.That(clipOn, Is.EqualTo(0));
+            Assert.That(clipOff, Is.GreaterThan(0), "the test should include drives that clip without help");
+        }
+
+        [Test] public void LobsLandDeepAndStayIn()
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var surfaces = CourtSurfaces.Create();
+            int n = 0, outs = 0; double sum = 0;
+            foreach (double bx in new[] { -2.2, 0.0, 2.2 })
+                foreach (double bz in new[] { 2.5, 5.0, 7.5, 8.8 })
+                    foreach (double lx in new[] { -2.0, -0.5, 0.5, 2.0 })
+                    {
+                        var ball = new BallState(); ball.Reset(new V3(bx, 0.6, bz), new V3(0, 0, 0), null, 42);
+                        var s = new ArcadeStroke(3);
+                        s.SolveLob(ball, surfaces, lx, c.LobHeight);
+                        var b = new BallState(); b.Reset(ball.Pos, s.LaunchVelocity.Clone(), null, 42); BallPhysics.Wake(b);
+                        var evs = new List<SimEvent>(); bool front = false, done = false;
+                        n++;
+                        for (int i = 0; i < 240 * 5 && !done; i++)
+                        {
+                            evs.Clear(); BallPhysics.Step(b, surfaces, PhysicsConfig.Current.Sim.FixedDt, evs);
+                            foreach (var e in evs)
+                            {
+                                if (e.Type != SimEventType.Impact || done) continue;
+                                if (RallyReferee.OutReason(e) != null) { outs++; done = true; }
+                                else if (e.SurfaceClass == "frontWall") front = true;
+                                else if (front && e.SurfaceClass == "floor") { sum += e.Point.Z; done = true; }
+                            }
+                        }
+                    }
+            double mean = sum / System.Math.Max(1, n - outs);
+            UnityEngine.Debug.Log("[Lob] " + n + " lobs: out " + outs + ", mean first bounce " + mean.ToString("0.0") + " m deep");
+            Assert.That(outs, Is.EqualTo(0), "lobs stay in");
+            Assert.That(mean, Is.GreaterThan(7.0), "and land deep");
+        }
+
         [Test] public void ALocalPlayerIsNeverCappedNearTheBall()
         {
             var me = new TestPlayerController();

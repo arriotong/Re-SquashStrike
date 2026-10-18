@@ -37,10 +37,16 @@ sealed class HumanStyle : IAthleteBrain
     public HumanStyle(uint seed) { _s = seed; }
     double R() { _s = unchecked(_s * 1664525u + 1013904223u); return _s / 4294967296.0; }
 
+    double _serveR = 0.5;
+
     public void Fill(InputIntent it, MatchSimulation m, int me, double dt)
     {
         var c = m.Players[me]; var p = c.Player; double t = m.Time;
         it.Move.X = 0; it.Move.Z = 0; it.MoveMagnitude = 0; it.Hit.Pressed = false; it.Hit.Released = false;
+        // The simple system's serve is aimed with the reticle, like a person: a tap lob serve just on the server's side
+        // of the middle, high (legal and deep from either box). Rally shots keep the stick-bias aim.
+        it.HasAimPoint = Arcade && m.Phase == MatchPhase.AwaitToss && m.Score.Server == me;
+        if (it.HasAimPoint) { it.AimPointX = m.Score.ServeSide * (0.3 + 0.3 * _serveR); it.AimPointY = 2.6 + 0.4 * _serveR; }
         long turn = m.History.Count * 1000L + m.TurnShots;
         if (turn != _turn)
         {
@@ -56,6 +62,7 @@ sealed class HumanStyle : IAthleteBrain
         {
             _ax = -m.Score.ServeSide * 0.55; _ay = 0.85;
             it.Hit.Pressed = true; it.Hit.Held = true; _held = true; _releaseAt = t + 0.05;
+            _serveR = R();
         }
         // movement: after reacting, toward where the ball will be (with an error)
         if (m.BallLive && !serving)
@@ -131,6 +138,7 @@ static class PressAudit
     public static void Run(int games, string opponent, double difficulty, bool gameProfile)
     {
         int outBack = 0, ownEnds = 0;
+        var lossWhy = new Dictionary<string, int>();
         var outcome = new Dictionary<string, int>(); var whyWhiff = new Dictionary<string, int>(); var commitErr = new List<double>();
         int presses = 0, contacts = 0, rallies = 0, won = 0;
         for (int g = 0; g < games; g++)
@@ -201,6 +209,11 @@ static class PressAudit
                 if (m.History.Count != hist)
                 {
                     hist = m.History.Count; rallies++; if (m.LastOutcome.Winner == 0) won++;
+                    if (m.LastOutcome.Winner == 1)
+                    {
+                        string k = (m.LastOutcome.Loser == 0 ? "own error: " : "lost: ") + (m.Referee.Shots <= 1 ? "[serve] " : "") + m.LastOutcome.Reason;
+                        lossWhy[k] = lossWhy.TryGetValue(k, out int v) ? v + 1 : 1;
+                    }
                     if (m.LastOutcome.Loser == 0) { ownEnds++; if ((m.LastOutcome.Reason ?? "").Contains("back wall")) outBack++; }
                 }
             }
@@ -210,6 +223,7 @@ static class PressAudit
         Console.WriteLine("PRESS AUDIT  human-style vs " + opponent + " (" + difficulty.ToString("0.0") + ")" + (gameProfile ? "  game profile" : "  lab") +
                           ":  " + presses + " rally presses, " + (100.0 * contacts / Math.Max(1, presses)).ToString("0") + "% connect, rallies won " + won + "/" + rallies +
                           " (" + (100.0 * won / Math.Max(1, rallies)).ToString("0") + "%)");
+        foreach (var kv in lossWhy.OrderByDescending(k => k.Value).Take(8)) Console.WriteLine("    rally lost - " + kv.Key + ": " + kv.Value);
         Console.WriteLine("  rallies lost by the human: " + ownEnds + ", of them out off the back wall: " + outBack + " (" + (100.0 * outBack / Math.Max(1, ownEnds)).ToString("0") + "%)");
         foreach (var kv in outcome.OrderByDescending(k => k.Value))
             Console.WriteLine("  " + kv.Key.PadRight(36) + (100.0 * kv.Value / Math.Max(1, presses)).ToString("0.0").PadLeft(6) + " %");

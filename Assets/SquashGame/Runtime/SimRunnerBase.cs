@@ -303,6 +303,9 @@ namespace SquashGame
             if (AdvanceReplay(rawDt)) return;
 
             WatchDives(rawDt);
+            var ath = Athletes;
+            for (int i = 0; ath != null && i < ath.Length; i++)
+                if (SourceFor(i) != null && ath[i].ArcadeHitEnabled) ath[i].Arcade.Assisted = IntentSource.Assisted;   // the control mode
             Clock.Advance(rawDt);
 
             float alpha = Interpolate ? (float)Clock.Alpha : 1f;

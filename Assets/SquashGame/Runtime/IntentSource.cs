@@ -55,6 +55,9 @@ namespace SquashGame
         /// <summary>Right-stick reticle speed (m/s at full deflection).</summary>
         public const float StickReticleSpeed = 9f;
         public static bool InvertMouseY;
+        /// <summary>Control mode: false = Non-assisted (every shot exactly where you aim), true = Assisted (straight drives kept
+        /// off the side wall, serves nudged onto a deep, legal line).</summary>
+        public static bool Assisted;
         /// <summary>How close to a front-wall corner the reticle may go: the ring (AimTargetView.CircleRadius) stays fully on the wall.</summary>
         public const float EdgeMargin = 0.15f;
         public static readonly float[] SensitivitySteps = { 0.5f, 0.7f, 1f, 1.4f, 2f };
@@ -65,6 +68,7 @@ namespace SquashGame
             {
                 MouseSensitivityScale = PlayerPrefs.GetFloat("aim.mouseSensitivity", 1f);
                 InvertMouseY = PlayerPrefs.GetInt("aim.invertY", 0) == 1;
+                Assisted = PlayerPrefs.GetInt("controls.assisted", 0) == 1;
             }
             catch (System.Exception) { }
         }
@@ -75,6 +79,7 @@ namespace SquashGame
             {
                 PlayerPrefs.SetFloat("aim.mouseSensitivity", MouseSensitivityScale);
                 PlayerPrefs.SetInt("aim.invertY", InvertMouseY ? 1 : 0);
+                PlayerPrefs.SetInt("controls.assisted", Assisted ? 1 : 0);
                 PlayerPrefs.Save();
             }
             catch (System.Exception) { }

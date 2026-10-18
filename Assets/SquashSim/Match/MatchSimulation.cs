@@ -260,23 +260,37 @@ namespace SquashSim
                 // The ball rides in the server's hand until the toss.
                 Ball.Pos.CopyFrom(HandPosition());
                 var si = Intents[Score.Server];
-                if (si.Hit.Pressed || si.Touch.Pressed)
+                var srv = Players[Score.Server];
+                bool arcadeServe = srv.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null;
+                if (arcadeServe)
+                {
+                    // The simple system: press = start the serve; hold to charge a hard serve; let go = struck from the hand.
+                    if (si.Hit.Pressed || si.Touch.Pressed)
+                    {
+                        si.Hit.Pressed = false; si.Touch.Pressed = false;      // consumed: it must not also start a swing
+                        srv.Arcade.BeginServeCharge();
+                    }
+                    if (srv.Arcade.ServeCharging)
+                    {
+                        if (si.Hit.Held || si.Touch.Held) srv.Arcade.ChargeServe(dt);
+                        else
+                        {
+                            Toss();
+                            srv.ServeStroke = true;
+                            srv.ServeDefaultX = -Score.ServeSide * 0.9;
+                            SimEvent serve = srv.Arcade.ServeNow(srv, Ball, Surfaces);
+                            serve.PlayerIndex = Score.Server;
+                            serve.Time = Time;
+                            StepEvents.Add(serve);
+                            OnRacketContact(Score.Server, serve);
+                        }
+                    }
+                }
+                else if (si.Hit.Pressed || si.Touch.Pressed)
                 {
                     // The toss press is consumed: it must not also start a swing.
                     si.Hit.Pressed = false; si.Touch.Pressed = false;
-                    Toss();
-                    var server = Players[Score.Server];
-                    if (server.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null)
-                    {
-                        // The simple system serves in ONE click: no toss to time, the ball is struck from the hand.
-                        server.ServeStroke = true;
-                        server.ServeDefaultX = -Score.ServeSide * 0.9;   // a centred stick serves cross-court
-                        SimEvent serve = server.Arcade.ServeNow(server, Ball, Surfaces);
-                        serve.PlayerIndex = Score.Server;
-                        serve.Time = Time;
-                        StepEvents.Add(serve);
-                        OnRacketContact(Score.Server, serve);
-                    }
+                    Toss();                                    // the physical game: toss, then time the swing
                 }
             }
             else if (Phase == MatchPhase.RallyOver && PhaseTime >= PhysicsConfig.Current.Match.BetweenRallySeconds)

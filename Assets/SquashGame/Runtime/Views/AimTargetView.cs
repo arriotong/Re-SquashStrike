@@ -45,7 +45,34 @@ namespace SquashGame
         public static readonly Color KillColour = new Color(1f, 0.29f, 0.25f);
         public static Color ColourFor(string shot)
         {
-            switch (shot) { case "drop": return DropColour; case "lob": return LobColour; case "kill": return KillColour; default: return DriveColour; }
+            switch (shot)
+            {
+                case "drop": return DropColour; case "lob": case "lob serve": return LobColour;
+                case "kill": case "hard serve": return KillColour; default: return DriveColour;
+            }
+        }
+
+        /// <summary>Your serve, previewed: would it land legally in the receiver's back quarter? (Shown as FAULT when not.)</summary>
+        public bool ServeLegal { get; private set; } = true;
+        public bool Serving { get; private set; }
+        readonly ArcadeStroke _servePreview = new ArcadeStroke(1);
+        float _lastPreviewX = float.NaN, _lastPreviewY, _previewAt;
+        bool _lastHard, _lastAssisted;
+
+        void PreviewServe(TestPlayerController ctrl, MatchRunner mr, float x, float y)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double charge = ctrl.Arcade.ServeCharging ? ctrl.Arcade.ChargeRatio : 0;
+            bool hard = c != null && charge >= c.ServeHardCharge;
+            ShotType = hard ? "hard serve" : "lob serve";
+            // Assisted fixes the serve's line itself (and that search is the expensive one): nothing to warn about.
+            if (c == null || IntentSource.Assisted) { ServeLegal = true; return; }
+            bool same = Mathf.Abs(x - _lastPreviewX) < 0.02f && Mathf.Abs(y - _lastPreviewY) < 0.02f && hard == _lastHard && IntentSource.Assisted == _lastAssisted;
+            if (same || Time.unscaledTime - _previewAt < 0.15f) return;          // a few times a second at most
+            _lastPreviewX = x; _lastPreviewY = y; _lastHard = hard; _lastAssisted = IntentSource.Assisted; _previewAt = Time.unscaledTime;
+            _servePreview.Assisted = IntentSource.Assisted;
+            ServeLegal = _servePreview.PreviewServe(mr.Sim.Ball.Pos, mr.Sim.Ball.Temperature, mr.Sim.Surfaces, x, y,
+                                                    hard ? System.Math.Max(charge, c.ServeHardCharge) : 0, mr.Sim.Score.ServeSide);
         }
 
         /// <summary>The preview drawn this frame (tests and diagnostics).</summary>
@@ -105,6 +132,10 @@ namespace SquashGame
             var aim = new V3();
             int wall = WallAim.TargetFromPoint(src.ReticleX, src.ReticleY, aim);
             ShotType = ctrl.ArcadeHitEnabled ? ctrl.Arcade.ShotTypeFor(src.ReticleY) : "drive";
+            var mrun = Runner as MatchRunner;
+            Serving = ctrl.ArcadeHitEnabled && mrun != null && mrun.Sim != null && mrun.Sim.Phase == MatchPhase.AwaitToss && mrun.Sim.Score.Server == Athlete;
+            if (Serving) PreviewServe(ctrl, mrun, src.ReticleX, src.ReticleY);
+            else ServeLegal = true;
             // Just off the wall, toward the court, so it never z-fights the plaster.
             Vector3 target = wall == 0
                 ? SimToWorld.Pos(aim.X, aim.Y, 0.02)
@@ -161,10 +192,10 @@ namespace SquashGame
             if (sp.z <= 0) return;
             if (_tag == null) _tag = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             var r = new Rect(sp.x - 70, Screen.height - sp.y - 12, 140, 24);
-            string text = (Wall != 0 || Boasting ? "BOAST " : "") + ShotType.ToUpperInvariant();
+            string text = (Wall != 0 || Boasting ? "BOAST " : "") + ShotType.ToUpperInvariant() + (Serving && !ServeLegal ? " - FAULT" : "");
             _tag.normal.textColor = new Color(0, 0, 0, 0.7f * Fade);
             GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, _tag);
-            Color tc = ColourFor(ShotType); tc.a = 0.9f * Fade;
+            Color tc = Serving && !ServeLegal ? new Color(1f, 0.25f, 0.2f) : ColourFor(ShotType); tc.a = 0.9f * Fade;
             _tag.normal.textColor = tc;
             GUI.Label(r, text, _tag);
         }

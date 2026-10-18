@@ -57,7 +57,7 @@ namespace SquashSim
         public double DiveSeconds, DiveSpeedScale, DiveRecovery, DiveRecoverySpeed, DiveReachScale, DiveStamina, DiveMinStamina;
         public double SprintScale, SprintDrain, WindedStamina;
         public double BoastPaceScale, BoastMaxHeight, BoastMinHeight, BoastCross;
-        public double ServeSpeed;
+        public double ServeSpeed, ServeHardCharge, ServeChargeBonus, ServeDepth;
         public double LobRise, LobMaxSpeed, LobDepth, LobWallMax;
         public double EarlyFull, EarlySpreadCut, EarlyMishitCut, EarlyNear;
         public double DropFlightTime, DropSpeedMin, DropSpeedMax;
@@ -85,11 +85,20 @@ namespace SquashSim
         readonly V3 _vel = new V3();
         readonly V3 _aimPoint = new V3();
         readonly V3 _good = new V3();
+        readonly V3 _scratchVel = new V3();
+        readonly V3 _best = new V3();
         static readonly Prediction _fakePred = new Prediction();
 
         /// <summary>0..1 how charged the stroke being held is (presentation).</summary>
         public double ChargeRatio { get { var c = PhysicsConfig.Current.ArcadeHit; return c == null ? 0 : System.Math.Min(1, _charge / c.ChargeFull); } }
-        public bool Charging { get { return _charging; } }
+        public bool Charging { get { return _charging || _serveCharging; } }
+
+        // ---- the serve: tap = a lob serve (high, deep), hold = charge a hard serve ----
+        bool _serveCharging;
+        /// <summary>The server is holding Hit: the serve is charging (the ball stays in the hand).</summary>
+        public bool ServeCharging { get { return _serveCharging; } }
+        public void BeginServeCharge() { _serveCharging = true; _charge = 0; }
+        public void ChargeServe(double dt) { if (_serveCharging) _charge += dt; }
 
         // ---- dive ----
         double _diveT = -1, _diveRecover, _diveX, _diveZ;
@@ -250,8 +259,12 @@ namespace SquashSim
         /// <summary>The one-click serve: struck straight from the hand toward the aim target (above the service line).</summary>
         public SimEvent ServeNow(TestPlayerController ctrl, BallState ball, List<Surface> surfaces)
         {
-            _stroke = "hit"; _charging = false; _pending = -1; _boast = false;
-            return Hit(ctrl, ball, surfaces, 0, 0, PhysicsConfig.Current.ArcadeHit);
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double charge = _serveCharging ? System.Math.Min(1, _charge / c.ChargeFull) : 0;
+            _stroke = "hit"; _charging = false; _serveCharging = false; _pending = -1; _boast = false;
+            var ev = Hit(ctrl, ball, surfaces, 0, charge, c);
+            _charge = 0;
+            return ev;
         }
 
         SimEvent Hit(TestPlayerController ctrl, BallState ball, List<Surface> surfaces, double dist, double charge, ArcadeHitSection c)
@@ -277,10 +290,19 @@ namespace SquashSim
                 ty = System.Math.Max(ty, CourtDimensions.SERVICE_LINE_H + 0.3);
                 if (System.Math.Abs(aim.BiasX) < 0.08) tx = ctrl.ServeDefaultX;    // no drag: the normal cross-court serve
             }
+            string shot;
+            double speed;
+            if (ctrl.ServeStroke && wall == 0 && aim.FromPoint)
+            {
+                // A local player's serve: tap = lob serve, hold = hard serve (struck from the hand: no spread).
+                _boast = false;
+                shot = ServeLaunch(ball, surfaces, tx, ty, charge, ctrl.ServeDefaultX > 0 ? -1 : 1, out speed);
+            }
+            else
+            {
             bool touch = _stroke == "touch";
             // The shot type from the aim height (the original SquashStrike); charge adds pace to drives and kills.
-            string shot = ctrl.ServeStroke ? (ty > c.LobHeight ? "lob" : "serve") : ShotTypeFor(ty);
-            double speed;
+            shot = ctrl.ServeStroke ? (ty > c.LobHeight ? "lob" : "serve") : ShotTypeFor(ty);    // bots serve the old way
             switch (shot)
             {
                 case "lob": speed = c.LobSpeed; break;
@@ -318,10 +340,13 @@ namespace SquashSim
             }
             speed *= 1.0 - 0.15 * missRatio;
 
+            // Assisted controls: a straight drive is kept off its side wall.
+            if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill")) tx = StraightAssist(ball, surfaces, tx, ty, speed);
+
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
             if (boast) shot = "boast";
-            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, System.Math.Min(ty, c.LobWallMax));   // any higher and it cannot stay in
+            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, c.LobHeight);
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // Floor before the back wall: a drive, kill, serve or boast that would reach the back wall on the full
             // is struck just soft enough to bounce first (a length drive dies at the back). Lobs keep their own rule.
@@ -334,8 +359,9 @@ namespace SquashSim
                     if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
                     _good.CopyFrom(_vel);
                 }
-                else if (shot == "lob" && wall == 0 && !touch) break;            // the lob search already kept it in court
+                else if (shot == "lob" && wall == 0 && !touch) break;   // the arc search already kept it in court
                 else Solve(ball, surfaces, tx, ty, tz, wall, speed);
+            }
             }
 
             double before = V3.Length(ball.Vel);
@@ -405,17 +431,134 @@ namespace SquashSim
         /// out, no back-wall hit on the full above the safe height). Returns the pace; the launch is left in the
         /// stroke velocity.
         /// </summary>
-        public double SolveLob(BallState ball, List<Surface> surfaces, double tx, double ty)
+        /// <summary>Assisted controls (the game's setting for local players): straight drives kept off the side wall,
+        /// serves nudged onto a line that lands deep and legal. Off = the shot goes exactly where you aim.</summary>
+        public bool Assisted;
+
+        /// <summary>The last serve launched (or previewed) lands legally in the receiver's back quarter.</summary>
+        public bool LastServeLegal { get; private set; }
+        /// <summary>Where the last serve met the front wall, x (Assisted may have moved it off the ring).</summary>
+        public double LastServeLineX { get; private set; }
+
+        /// <summary>
+        /// A local player's serve, launched into the stroke velocity: under ServeHardCharge a lob serve (onto the ring, the
+        /// arc that lands deepest and legal), above it a hard serve (straight at the ring, up to +ServeChargeBonus pace,
+        /// softened until it bounces before the back wall and stays in). With Assisted on, the line (front-wall x) is
+        /// nudged to the nearest one that lands deep and legal. Returns "lob serve" / "hard serve".
+        /// </summary>
+        public string ServeLaunch(BallState ball, List<Surface> surfaces, double tx, double ty, double charge, int serveSide, out double speed)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            bool hard = charge >= c.ServeHardCharge;
+            double pace = hard ? c.ServeSpeed * (1 + c.ServeChargeBonus * (charge - c.ServeHardCharge) / (1 - c.ServeHardCharge)) : c.ServeSpeed;
+            if (Assisted)
+            {
+                // The ring first; if that is not a deep, legal serve, every line across the wall (0.2 m apart), the
+                // nearest good one winning.
+                ServeAt(ball, surfaces, tx, ty, hard, pace, serveSide, out _);
+                double bestScore = ServeScore(ball, surfaces, serveSide), bestX = tx;
+                if (bestScore >= 1.5)
+                {
+                    double lim = CourtDimensions.HALF_W - 0.3;
+                    for (double x = -lim; x <= lim + 1e-9; x += 0.2)
+                    {
+                        ServeAt(ball, surfaces, x, ty, hard, pace, serveSide, out _);
+                        double score = ServeScore(ball, surfaces, serveSide) + 1.0 * System.Math.Abs(x - tx);
+                        if (score < bestScore) { bestScore = score; bestX = x; }
+                    }
+                }
+                tx = bestX;
+            }
+            ServeAt(ball, surfaces, tx, ty, hard, pace, serveSide, out speed);
+            LastServeLegal = ServeScore(ball, surfaces, serveSide) < 100;
+            LastServeLineX = tx;
+            return hard ? "hard serve" : "lob serve";
+        }
+
+        void ServeAt(BallState ball, List<Surface> surfaces, double tx, double ty, bool hard, double pace, int serveSide, out double speed)
+        {
+            if (!hard) { speed = SolveLobServe(ball, surfaces, tx, ty, serveSide); return; }
+            // A hard serve keeps its pace: if it would go out or reach the back wall on the full from the ring's height,
+            // it is struck lower (down to just over the service line); only then, softer.
+            speed = pace;
+            double floorY = CourtDimensions.SERVICE_LINE_H + 0.25, y = ty;
+            for (; ; y -= 0.15)
+            {
+                if (y < floorY) y = System.Math.Min(ty, floorY);
+                Solve(ball, surfaces, tx, y, 0, 0, speed);
+                if ((BackWallHeight(ball, surfaces) < 0 && !GoesOut(ball, surfaces)) || y <= floorY || y <= ty - 1.6) break;
+            }
+            for (int k = 0; k < 14 && (BackWallHeight(ball, surfaces) >= 0 || GoesOut(ball, surfaces)); k++)
+            {
+                speed *= 0.93;
+                Solve(ball, surfaces, tx, y, 0, 0, speed);
+            }
+        }
+
+        /// <summary>Preview a serve without touching any athlete or ball (the ring's FAULT warning). Leaves LastServeLegal.</summary>
+        public bool PreviewServe(V3 from, double temperature, List<Surface> surfaces, double tx, double ty, double charge, int serveSide)
+        {
+            _preview.Reset(from, null, null, temperature);
+            ServeLaunch(_preview, surfaces, tx, ty, charge, serveSide, out _);
+            return LastServeLegal;
+        }
+        readonly BallState _preview = new BallState();
+
+        /// <summary>
+        /// Assisted: a straight drive (ball and aim on the same side) that would touch its side wall before the first bounce
+        /// is aimed a little further in, step by step (up to 1.2 m), until it runs clean down the wall.
+        /// </summary>
+        public double StraightAssist(BallState ball, List<Surface> surfaces, double tx, double ty, double speed)
+        {
+            int side = ball.Pos.X > 0 ? 1 : -1;
+            if (System.Math.Abs(ball.Pos.X) < 0.6 || tx * side < 0.6) return tx;          // not a straight shot
+            double x = tx;
+            for (int k = 0; k <= 12; k++)
+            {
+                x = tx - side * 0.1 * k;
+                if (x * side < 0.5) break;
+                Solve(ball, surfaces, x, ty, 0, 0, speed);
+                if (!ClipsSide(ball, surfaces, side)) return x;
+            }
+            return x;
+        }
+
+        /// <summary>Does this launch touch side wall <paramref name="side"/> before its first bounce after the front wall?</summary>
+        public bool ClipsSide(BallState ball, List<Surface> surfaces, int side)
+        {
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            string id = side > 0 ? "sideWallRight" : "sideWallLeft";
+            bool front = false;
+            for (int i = 0; i < 480; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceId == id) return true;
+                    if (e.SurfaceClass == "frontWall") front = true;
+                    else if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return false;
+                    else if (front && e.SurfaceClass == "backWall") return false;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The lob serve: exactly onto the ring (tx, ty) on the front wall, on the arc that carries it deepest into the
+        /// receiver's back quarter while staying in. Returns the pace.
+        /// </summary>
+        public double SolveLobServe(BallState ball, List<Surface> surfaces, double tx, double ty, int serveSide)
         {
             var c = PhysicsConfig.Current.ArcadeHit;
             double g = PhysicsConfig.Current.World.Gravity;
             double dx = tx - ball.Pos.X, dz = ball.Pos.Z, d = System.Math.Max(0.5, System.Math.Sqrt(dx * dx + dz * dz));
             double dy = ty - ball.Pos.Y;
-            double best = double.MaxValue, bestSpeed = c.LobSpeed;
+            double best = double.MaxValue, bestSpeed = c.ServeSpeed;
             bool any = false;
-            for (int k = 0; k < 6; k++)
+            for (int k = 0; k < 9; k++)
             {
-                double up = 1.0 + k * c.LobRise;                     // rising this fast at the wall
+                double up = 0.5 + k * c.LobRise;
                 double t = (-up + System.Math.Sqrt(System.Math.Max(0, up * up + 2 * g * dy))) / g;
                 if (t < 0.12) t = 0.12;
                 double h = d / t, vy = up + g * t;
@@ -423,12 +566,134 @@ namespace SquashSim
                 _lift = vy / h * d - dy;
                 Solve(ball, surfaces, tx, ty, 0, 0, speed);
                 _lift = 0;
-                double land = LobLanding(ball, surfaces);
-                double score = land < 0 ? 1e6 : System.Math.Abs(land - c.LobDepth);
+                double score = ServeScore(ball, surfaces, serveSide);
                 if (score < best) { best = score; bestSpeed = speed; _good.CopyFrom(_vel); any = true; }
             }
             if (any) _vel.CopyFrom(_good);
             return bestSpeed;
+        }
+
+        /// <summary>
+        /// How good this serve launch is (lower = better): a legal landing in the receiver's back quarter first (anything
+        /// else costs 100+), then as deep as ServeDepth and toward the side wall. Out of court or the back wall first: 1000.
+        /// </summary>
+        double ServeScore(BallState ball, List<Surface> surfaces, int serveSide)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            bool front = false;
+            for (int i = 0; i < 600; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                if (_scratch.Pos.Y > CourtDimensions.CEILING_H - 0.3) return 1000;
+                foreach (var e in _events)
+                {
+                    if (RallyReferee.OutReason(e) != null) return 1000;
+                    if (e.SurfaceClass == "frontWall")
+                    {
+                        if (e.Point.Y > CourtDimensions.FRONT_WALL_OUT_H - 0.25) return 1000;
+                        front = true;
+                    }
+                    else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return 1000; }
+                    else if (e.SurfaceClass == "backWall") return 1000;
+                    else if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.25) return 1000;
+                    else if (e.SurfaceClass == "floor")
+                    {
+                        double want = -serveSide * 1.8;
+                        // Legal with a margin (the real flight runs at a finer step than this check).
+                        bool legal = e.Point.X * serveSide < -0.45 && e.Point.Z > CourtDimensions.SHORT_LINE_Z + 0.5;
+                        return (legal ? 0 : 100) + System.Math.Abs(e.Point.Z - c.ServeDepth) + 0.4 * System.Math.Abs(e.Point.X - want);
+                    }
+                }
+            }
+            return 1000;
+        }
+
+        /// <summary>Would this launch go out of court (lines, ceiling) before its first bounce after the front wall?</summary>
+        bool GoesOut(BallState ball, List<Surface> surfaces)
+        {
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            bool front = false;
+            for (int i = 0; i < 480; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (RallyReferee.OutReason(e) != null) return true;
+                    if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.2) return true;   // with a margin
+                    if (e.SurfaceClass == "frontWall") front = true;
+                    else if (front && e.SurfaceClass == "floor") return false;
+                }
+            }
+            return false;
+        }
+
+        public double SolveLob(BallState ball, List<Surface> surfaces, double tx, double ty)
+        {
+            return SolveArc(ball, surfaces, tx, ty, PhysicsConfig.Current.ArcadeHit.LobDepth);
+        }
+
+        /// <summary>
+        /// A high arc (lob, lob serve) through front-wall x = tx, landing near <paramref name="depth"/>: tries wall heights from
+        /// <paramref name="minWallY"/> up to LobWallMax and, at each, the arcs from barely rising to steeply; keeps the one landing
+        /// nearest the depth that stays in court with a margin (never an out lob - with no arc in, the lowest, softest one).
+        /// </summary>
+        public double SolveArc(BallState ball, List<Surface> surfaces, double tx, double minWallY, double depth)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double lo = System.Math.Min(minWallY, c.LobWallMax), bestScore = double.MaxValue, bestSpeed = 0;
+            bool any = false;
+            for (int i = 0; i < 4; i++)
+            {
+                double wallY = lo + (c.LobWallMax - lo) * i / 3.0;
+                double speed = BestLobArc(ball, surfaces, tx, wallY, depth, out bool found, out double score);
+                if (found && score < bestScore - 0.05) { bestScore = score; bestSpeed = speed; _best.CopyFrom(_vel); any = true; }
+            }
+            if (any) { _vel.CopyFrom(_best); return bestSpeed; }
+            for (int drop = 1; drop <= 4; drop++)
+            {
+                double wallY = System.Math.Max(CourtDimensions.SERVICE_LINE_H + 0.4, lo - 0.3 * drop);
+                double speed = BestLobArc(ball, surfaces, tx, wallY, depth, out bool found, out _);
+                if (found) return speed;
+            }
+            return BestLobArc(ball, surfaces, tx, CourtDimensions.SERVICE_LINE_H + 0.4, depth, out _, out _);
+        }
+
+        /// <summary>
+        /// The arcs for a lob (or lob serve) to (tx, wallY) on the front wall, from barely rising at the wall to steeply:
+        /// keeps the one whose first bounce lands nearest <paramref name="depth"/> while staying in court. found = false
+        /// when none stays in (the launch left is then the softest arc).
+        /// </summary>
+        double BestLobArc(BallState ball, List<Surface> surfaces, double tx, double wallY, double depth, out bool found, out double bestScore)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double g = PhysicsConfig.Current.World.Gravity;
+            double dx = tx - ball.Pos.X, dz = ball.Pos.Z, d = System.Math.Max(0.5, System.Math.Sqrt(dx * dx + dz * dz));
+            double dy = wallY - ball.Pos.Y;
+            double best = double.MaxValue, bestSpeed = 0, softest = 0;
+            found = false;
+            for (int k = 0; k < 9; k++)
+            {
+                double up = 0.5 + k * c.LobRise;                     // rising this fast at the wall
+                double t = (-up + System.Math.Sqrt(System.Math.Max(0, up * up + 2 * g * dy))) / g;
+                if (t < 0.12) t = 0.12;
+                double h = d / t, vy = up + g * t;
+                double speed = System.Math.Min(c.LobMaxSpeed, System.Math.Sqrt(h * h + vy * vy) * 1.08);
+                _lift = vy / h * d - dy;
+                Solve(ball, surfaces, tx, wallY, 0, 0, speed);
+                _lift = 0;
+                if (k == 0) { softest = speed; _scratchVel.CopyFrom(_vel); }
+                double land = LobLanding(ball, surfaces);
+                if (land < 0) continue;
+                double score = System.Math.Abs(land - depth);
+                if (score < best) { best = score; bestSpeed = speed; _good.CopyFrom(_vel); found = true; }
+            }
+            bestScore = best;
+            if (found) { _vel.CopyFrom(_good); return bestSpeed; }
+            _vel.CopyFrom(_scratchVel);
+            return softest;
         }
 
         /// <summary>Where this launch first bounces after the front wall (z), or -1 if it would go out / hit the ceiling / the back wall high on the full.</summary>
@@ -453,20 +718,20 @@ namespace SquashSim
                 {
                     if (e.SurfaceClass == "frontWall")
                     {
-                        if (e.Point.Y > CourtDimensions.FRONT_WALL_OUT_H - 0.1) return -1;
+                        if (e.Point.Y > CourtDimensions.FRONT_WALL_OUT_H - 0.25) return -1;
                         front = true;
                     }
                     else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return -1; }
                     else if (e.SurfaceClass == "backWall") return -1;                      // floor first, like every other shot
                     else if (e.SurfaceClass == "outBackstop" || e.SurfaceClass == "ceiling") return -1;
-                    else if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.1) return -1;
+                    else if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.25) return -1;   // a safe margin under the line
                     else if (e.SurfaceClass == "floor") return e.Point.Z;
                 }
             }
             return -1;
         }
 
-        void Solve(BallState ball, List<Surface> surfaces, double tx, double ty, double tz, int wall, double speed)
+        public void Solve(BallState ball, List<Surface> surfaces, double tx, double ty, double tz, int wall, double speed)
         {
             _aimPoint.X = tx; _aimPoint.Y = ty + _lift; _aimPoint.Z = tz;
             for (int it = 0; it < 4; it++)

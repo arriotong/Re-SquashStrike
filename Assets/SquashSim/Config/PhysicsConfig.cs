@@ -523,13 +523,20 @@ namespace SquashSim
                 LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
                 DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
                 DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3,
-                ServeSpeed = 24.0, LobRise = 1.5, LobMaxSpeed = 26.0, LobDepth = 8.0, LobWallMax = 3.3,
+                // The serve: a tap is a lob serve (onto the ring, high and deep); held past ServeHardCharge it is a hard serve
+                // (up to +60% pace with a full charge).
+                ServeSpeed = 24.0, ServeHardCharge = 0.3, ServeChargeBonus = 0.6, ServeDepth = 8.4,
+                LobRise = 1.1, LobMaxSpeed = 28.0, LobDepth = 8.7, LobWallMax = 3.8,
                 BoastPaceScale = 0.9, BoastMaxHeight = 1.8, BoastMinHeight = 0.8, BoastCross = 0.3,
                 // Set early (in position before the ball arrives): up to 75% less spread, 85% fewer mishits.
                 EarlyFull = 0.45, EarlySpreadCut = 0.75, EarlyMishitCut = 0.85, EarlyNear = 0.35,
                 // The drop: about 0.45 s to the front wall (firm from the back, gentle from the front).
                 DropFlightTime = 0.45, DropSpeedMin = 10.0, DropSpeedMax = 17.0
             };
+            // Playtest 2026-10-18: every shot a touch quicker (+5%).
+            var h = Current.ArcadeHit;
+            h.DriveSpeed *= GameBallPace; h.TouchSpeed *= GameBallPace; h.ServeSpeed *= GameBallPace; h.LobSpeed *= GameBallPace;
+            h.LobMaxSpeed *= GameBallPace; h.DropSpeedMin *= GameBallPace; h.DropSpeedMax *= GameBallPace;
         }
 
         /// <summary>
@@ -589,6 +596,8 @@ namespace SquashSim
 
         public const double GameFrontWallRestitution = 0.50;   // playtest 2026-10-18: 0.62 still sent drives onto the back wall
         public const double GamePaceScale = 1.15;
+        /// <summary>Every shot's pace in the game, human and AI (playtest 2026-10-18: +5%).</summary>
+        public const double GameBallPace = 1.05;
         public static double GameLiftScale = 1.25;
 
         public static void UseMatchBall()
@@ -596,11 +605,11 @@ namespace SquashSim
             var c = Current;
             // PSA pace: a hard drive leaves the racket at ~40-50 m/s (the lab swings were club pace).
             // Hit ~15% harder than that (playtest 2026-10-18) to keep the depth off the deader front wall below.
-            c.Racket.Swing.Neutral.HeadSpeed = 24.0 * GamePaceScale;
-            c.Racket.Swing.Attack.HeadSpeed = 37.0 * GamePaceScale;
+            c.Racket.Swing.Neutral.HeadSpeed = 24.0 * GamePaceScale * GameBallPace;
+            c.Racket.Swing.Attack.HeadSpeed = 37.0 * GamePaceScale * GameBallPace;
             // Lift (the AI's lobs and serves) a little firmer too, or its serves die short of the short line off the
             // deader wall (the lab's 12 m/s).
-            c.Racket.Swing.Lift.HeadSpeed = 12.0 * GameLiftScale;
+            c.Racket.Swing.Lift.HeadSpeed = 12.0 * GameLiftScale * GameBallPace;
             // A deader front wall: the ball comes off it ~20% slower than the lab's (playtest 2026-10-18; lab 0.74).
             c.Surfaces.FrontWall.Restitution = GameFrontWallRestitution;
             // (Lift - lobs and serves - keeps the lab's soft pace.)
