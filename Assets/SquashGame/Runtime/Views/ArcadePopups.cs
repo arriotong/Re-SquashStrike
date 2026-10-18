@@ -113,6 +113,7 @@ namespace SquashGame
                     else if (e.Stroke == "touch") Spawn("Touch!", null, Cyan, true, at, 0.42f, 0.7f);
                     else if (e.BallSpeedOut >= 42) Spawn("Smash!", null, Orange, true, at, 0.5f, 0.75f);
                     else if (tech.Contains("volley") || (label != null && label.Contains("VOLLEY"))) Spawn("Volley!", null, Green, true, at, 0.42f, 0.7f);
+                    else if (tech == "boast") Spawn("Boast!", null, Magenta, true, at, 0.42f, 0.7f);
                     else if (tech == "kill") Spawn("Kill!", null, Red, true, at, 0.45f, 0.7f);
                     else if (tech == "drop") Spawn("Drop!", null, Cyan, true, at, 0.42f, 0.7f);
                     else if (tech == "lob") Spawn("Lob!", null, Gold, true, at, 0.42f, 0.7f);

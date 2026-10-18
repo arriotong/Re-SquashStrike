@@ -520,7 +520,8 @@ namespace SquashSim
                 // The original SquashStrike: shot type from aim height, dive, sprint.
                 LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
                 DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
-                DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3
+                DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3,
+                BoastPaceScale = 0.95, BoastMaxHeight = 2.6
             };
         }
 

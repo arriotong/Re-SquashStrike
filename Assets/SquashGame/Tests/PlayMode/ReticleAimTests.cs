@@ -2,8 +2,8 @@
 // Assets/SquashGame/Tests/PlayMode/ReticleAimTests.cs
 // The original SquashStrike controls, with a virtual mouse + keyboard in
 // the practice court: the mouse moves the reticle without any button and
-// it stays where you leave it (also after a stroke); past the edge of the
-// front wall it is on the side wall (a boast); its height picks the shot
+// it stays where you leave it (also after a stroke); it glides into the
+// front-wall corners and stops there; E arms a boast; its height picks the shot
 // (lob / drive / drop); Space dives (a brief slow-mo, the dive pose).
 // ===========================================================
 
@@ -51,10 +51,39 @@ namespace SquashGame.Tests
             Release(mouse.leftButton); yield return WaitReal(1.5f);
             Assert.That(r.Input.ReticleX, Is.EqualTo(before).Within(0.01f), "the reticle stays where you left it");
 
-            // Past the edge of the front wall: a boast off the side wall.
-            r.Input.SetReticle(-(float)CourtDimensions.HALF_W - 1.2f, 1.8f);
+            // Sweep hard right: it glides all the way into the corner without a stall, and stays on the front wall.
+            float edge = (float)CourtDimensions.HALF_W - IntentSource.EdgeMargin;
+            r.Input.SetReticle(0f, 1.8f);
+            float last = r.Input.ReticleX; int stalls = 0;
+            for (int i = 0; i < 60; i++)
+            {
+                Set(mouse.delta, new Vector2(8f, 0f)); yield return null;
+                float x = Mathf.Abs(r.Input.ReticleX), prev = Mathf.Abs(last);
+                if (x < edge - 1e-3f && x <= prev + 1e-4f) stalls++;
+                last = r.Input.ReticleX;
+                if (ring.Wall != 0) stalls += 100;
+            }
+            Set(mouse.delta, Vector2.zero);
+            yield return WaitReal(0.2f);
+            Debug.Log("[Reticle] hard right: reticle x " + r.Input.ReticleX.ToString("0.00") + " (edge " + edge.ToString("0.00") + "), wall " + ring.Wall + ", stalled frames " + stalls);
+            Assert.That(Mathf.Abs(r.Input.ReticleX), Is.EqualTo(edge).Within(1e-3f), "right up to the corner");
+            Assert.That(ring.Wall, Is.EqualTo(0), "never onto the side wall");
+            Assert.That(stalls, Is.LessThanOrEqualTo(2), "no stops on the way (a frame of input latency allowed)");
+            float atEdge = r.Input.ReticleX;
+            Set(mouse.delta, new Vector2(-10f, 0f)); yield return null; Set(mouse.delta, new Vector2(-10f, 0f)); yield return null;
+            Set(mouse.delta, Vector2.zero); yield return null;
+            Assert.That(Mathf.Abs(r.Input.ReticleX), Is.LessThan(Mathf.Abs(atEdge) - 0.1f), "coming back responds at once");
+
+            // Hold E: a boast - tagged, with a marker on a side wall.
+            Press(kb.eKey);
             yield return WaitReal(0.1f);
-            Assert.That(ring.Wall, Is.EqualTo(-1), "past the left edge: the left side wall");
+            Debug.Log("[Reticle] boast held: boasting " + ring.Boasting + ", side wall " + ring.SideWall + " marker " + ring.SideMarker);
+            Assert.That(ring.Boasting, Is.True, "E arms a boast");
+            Assert.That(ring.SideWall, Is.Not.EqualTo(0));
+            Assert.That(Mathf.Abs(Mathf.Abs(ring.SideMarker.x) - (float)CourtDimensions.HALF_W), Is.LessThan(0.1f), "the marker is on a side wall");
+            Release(kb.eKey);
+            yield return WaitReal(0.1f);
+            Assert.That(ring.Boasting, Is.False);
 
             // Height picks the shot.
             r.Input.SetReticle(0f, 3.6f); yield return WaitReal(0.05f);

@@ -6,9 +6,11 @@
 //   Move   WASD / arrows (always full speed) or left stick (analog)
 //   Aim    the original SquashStrike RETICLE: a point on the front wall
 //          that stays where you leave it. The mouse moves it (no button
-//          needed); the right stick drives it. Past the edge of the front
-//          wall it runs onto that side wall (a boast). Its height picks
-//          the shot: high = lob, low = drop (or a kill when charged).
+//          needed); the right stick drives it. It glides right up to the
+//          front-wall corners and stops there. Its height picks the shot:
+//          high = lob, low = drop (or a kill when charged).
+//   Boast  hold E / pad RB while you hit: the ball goes off the side wall
+//          and lands on the reticle.
 //   Hit    LMB / pad South: hold to charge, let go as the ball arrives
 //   Dive   Space / pad East     Sprint  Shift / pad LB
 //   Let    RMB / Q / pad Y: "Let, please"   Touch  pad West
@@ -53,6 +55,8 @@ namespace SquashGame
         /// <summary>Right-stick reticle speed (m/s at full deflection).</summary>
         public const float StickReticleSpeed = 9f;
         public static bool InvertMouseY;
+        /// <summary>How close to a front-wall corner the reticle may go: the ring (AimTargetView.CircleRadius) stays fully on the wall.</summary>
+        public const float EdgeMargin = 0.15f;
         public static readonly float[] SensitivitySteps = { 0.5f, 0.7f, 1f, 1.4f, 2f };
 
         public static void LoadSettings()
@@ -82,7 +86,7 @@ namespace SquashGame
         const float MOVE_DEADZONE = 0.18f;
 
         readonly InputActionMap _map;
-        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint;
+        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint, _boast;
 
         public const float ReticleStartX = 0f, ReticleStartY = 1.8f;
         float _rx = ReticleStartX, _ry = ReticleStartY;
@@ -125,6 +129,10 @@ namespace SquashGame
             _sprint.AddBinding("<Keyboard>/leftShift");
             _sprint.AddBinding("<Keyboard>/rightShift");
             _sprint.AddBinding("<Gamepad>/leftShoulder");
+
+            _boast = _map.AddAction("Boast", InputActionType.Button);
+            _boast.AddBinding("<Keyboard>/e");
+            _boast.AddBinding("<Gamepad>/rightShoulder");
 
             _appeal = _map.AddAction("Appeal", InputActionType.Button);
             _appeal.AddBinding("<Keyboard>/q");
@@ -187,8 +195,8 @@ namespace SquashGame
 
         void ClampReticle()
         {
-            // The original limits: a little way onto each side wall, from just over the tin to near the out line.
-            float maxX = (float)CourtDimensions.HALF_W + 3.25f;
+            // Right up to the front-wall corners (boasts have their own button), from just over the tin to near the out line.
+            float maxX = (float)CourtDimensions.HALF_W - EdgeMargin;
             _rx = Mathf.Clamp(_rx, -maxX, maxX);
             _ry = Mathf.Clamp(_ry, 0.65f, (float)CourtDimensions.FRONT_WALL_OUT_H - 0.5f);
         }
@@ -261,6 +269,7 @@ namespace SquashGame
             }
 
             Intent.Sprint = _sprint.IsPressed();
+            Intent.Boast = _boast.IsPressed();
             if (_dive.WasPressedThisFrame()) Intent.DivePressed = true;          // consumed by the next fixed step
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step

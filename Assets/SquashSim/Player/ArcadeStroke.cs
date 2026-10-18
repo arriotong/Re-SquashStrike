@@ -21,6 +21,9 @@
 //   dive               (Space / pad B) a lunge in the move direction: 1.5x
 //                      reach (less accurate), then a slow recovery.
 //   sprint             (Shift / pad LB) faster, at a stamina cost.
+//   boast              hold E / pad RB while you hit: off the side wall
+//                      nearer the ball, landing on the aim point (aimed
+//                      like a drive; the side-wall bounce is solved).
 //
 // The hit is a normal racket contact to everything downstream (the
 // referee, sounds, pop-ups, the timing note), and the swing still plays
@@ -49,6 +52,7 @@ namespace SquashSim
         public double LowHeight, KillCharge, KillHeightAboveTin, DropHeightAboveTin, DropSpeed;
         public double DiveSeconds, DiveSpeedScale, DiveRecovery, DiveRecoverySpeed, DiveReachScale, DiveStamina, DiveMinStamina;
         public double SprintScale, SprintDrain, WindedStamina;
+        public double BoastPaceScale, BoastMaxHeight;
     }
 
     public sealed class ArcadeStroke
@@ -58,6 +62,9 @@ namespace SquashSim
         string _stroke = "hit";
         double _pending = -1;          // grace time left for a released stroke waiting for the ball
         double _pendingCharge, _lunged;
+        bool _boast;
+        /// <summary>This stroke will be played as a boast (Boast held since the press).</summary>
+        public bool BoastArmed { get { return _boast; } }
         uint _rng;
         readonly InputIntent _idle = new InputIntent();
         readonly BallState _scratch = new BallState();
@@ -164,7 +171,7 @@ namespace SquashSim
             string pressed = intent.Hit.Pressed ? "hit" : (intent.Touch.Pressed ? "touch" : null);
             if (pressed != null)
             {
-                _charging = true; _charge = 0; _stroke = pressed; _pending = -1; _lunged = 0;
+                _charging = true; _charge = 0; _stroke = pressed; _pending = -1; _lunged = 0; _boast = false;
                 if (sw.State == SwingStates.Idle) { sw.State = SwingStates.Preparing; sw.Stroke = pressed; sw.Mode = "prepared"; sw.HoldSeconds = 0; }
             }
             if (_charging)
@@ -178,6 +185,10 @@ namespace SquashSim
                     _pendingCharge = System.Math.Min(1, _charge / c.ChargeFull);
                 }
             }
+
+            // Boast held at any time between the press and the contact: the stroke is a boast.
+            if (_charging || _pending > 0) _boast |= intent.Boast;
+            else if (sw.State == SwingStates.Idle) _boast = false;
 
             // Auto step toward the ball while the stroke is ready and the ball is nearly there.
             var pred = ctrl.Prediction;
@@ -217,7 +228,7 @@ namespace SquashSim
         /// <summary>The one-click serve: struck straight from the hand toward the aim target (above the service line).</summary>
         public SimEvent ServeNow(TestPlayerController ctrl, BallState ball, List<Surface> surfaces)
         {
-            _stroke = "hit"; _charging = false; _pending = -1;
+            _stroke = "hit"; _charging = false; _pending = -1; _boast = false;
             return Hit(ctrl, ball, surfaces, 0, 0, PhysicsConfig.Current.ArcadeHit);
         }
 
@@ -252,6 +263,12 @@ namespace SquashSim
                 default: speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
             }
             if (touch && shot != "drop") speed = c.TouchSpeed;
+            bool boast = _boast && !ctrl.ServeStroke && wall == 0;
+            if (boast)
+            {
+                ty = System.Math.Min(ty, c.BoastMaxHeight);
+                if (shot != "drop" && !touch) speed *= c.BoastPaceScale;
+            }
             double spread = missRatio * missRatio * c.MaxSpread * (charge > 0.8 ? 0.6 : 1.0);
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
@@ -265,12 +282,16 @@ namespace SquashSim
             speed *= 1.0 - 0.15 * missRatio;
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
-            Solve(ball, surfaces, tx, ty, tz, wall, speed);
+            int side = boast ? BoastSide(ball.Pos.X, tx) : 0;
+            if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
+            if (boast) shot = "boast";
+            else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // High shots: soft enough to come down before the back wall's out line (playable, not long).
             for (int k = 0; k < 8 && BackWallHeight(ball, surfaces) > c.BackWallSafeHeight; k++)
             {
                 speed *= 0.9;
-                Solve(ball, surfaces, tx, ty, tz, wall, speed);
+                if (boast) SolveBoastAt(ball, surfaces, tx, ty, side, speed);
+                else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             }
 
             double before = V3.Length(ball.Vel);
@@ -350,6 +371,96 @@ namespace SquashSim
             double dx2 = _aimPoint.X - ball.Pos.X, dy2 = _aimPoint.Y - ball.Pos.Y, dz2 = _aimPoint.Z - ball.Pos.Z;
             double d2 = System.Math.Max(1e-6, System.Math.Sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2));
             _vel.X = dx2 / d2 * speed; _vel.Y = dy2 / d2 * speed; _vel.Z = dz2 / d2 * speed;
+        }
+
+        /// <summary>
+        /// The side wall a boast is played off (+1 right, -1 left): the one nearer the ball; from the middle,
+        /// the one away from the target so the ball comes across.
+        /// </summary>
+        public static int BoastSide(double ballX, double targetX)
+        {
+            if (System.Math.Abs(ballX) >= 0.4) return ballX > 0 ? 1 : -1;
+            return targetX > 0 ? -1 : 1;
+        }
+
+        /// <summary>
+        /// A boast: off side wall <paramref name="side"/>, then onto the front wall at (tx, ty). Aims at the target's
+        /// mirror image across that side wall, then corrects on the real flight. False when the ball would not
+        /// reach the side wall first (then play it as a drive). The launch is left in the stroke's velocity.
+        /// </summary>
+        public bool SolveBoast(BallState ball, List<Surface> surfaces, double tx, double ty, int side, ref double speed)
+        {
+            // The side wall takes a lot of pace off: too soft to get round from here, play it a little firmer.
+            for (int k = 0; k < 5; k++)
+            {
+                if (SolveBoastAt(ball, surfaces, tx, ty, side, speed)) return true;
+                speed *= 1.2;
+            }
+            return false;
+        }
+
+        /// <summary>The boast at exactly this pace: true when it goes off the side wall and lands within 0.2 m of the aim.</summary>
+        public bool SolveBoastAt(BallState ball, List<Surface> surfaces, double tx, double ty, int side, double speed)
+        {
+            // Work in the court unfolded across the side wall: there the boast is a straight shot at the mirror image.
+            double wx = side * CourtDimensions.HALF_W, want = 2 * wx - tx;
+            _aimPoint.X = want; _aimPoint.Y = ty; _aimPoint.Z = 0;
+            for (int it = 0; it < 8; it++)
+            {
+                AimAt(ball, speed);
+                int r = FlyBoast(ball, surfaces, side, out double hu, out double hv);
+                if (r < 0) break;
+                double eu = want - hu, ev = ty - hv;
+                _aimPoint.X += eu;
+                _aimPoint.Y += ev;
+                if (r == 2 && eu * eu + ev * ev < 0.03 * 0.03) break;
+            }
+            AimAt(ball, speed);
+            if (FlyBoast(ball, surfaces, side, out double fu, out double fv) != 2) return false;
+            return (want - fu) * (want - fu) + (ty - fv) * (ty - fv) < 0.2 * 0.2;
+        }
+
+        /// <summary>The boast's launch (in the stroke velocity) for tests and tools.</summary>
+        public V3 LaunchVelocity { get { return _vel; } }
+
+        void AimAt(BallState ball, double speed)
+        {
+            double dx = _aimPoint.X - ball.Pos.X, dy = _aimPoint.Y - ball.Pos.Y, dz = _aimPoint.Z - ball.Pos.Z;
+            double d = System.Math.Max(1e-6, System.Math.Sqrt(dx * dx + dy * dy + dz * dz));
+            _vel.X = dx / d * speed; _vel.Y = dy / d * speed; _vel.Z = dz / d * speed;
+        }
+
+        /// <summary>
+        /// Fly a boast. 2 = off side wall <paramref name="side"/> and then onto the front wall; 1 = it came up short
+        /// (floor / tin) or reached the front wall without the side wall; -1 = something else. (u, v) is where it
+        /// got to in the unfolded court (x mirrored once it has come off the side wall; v = 0 for the floor).
+        /// </summary>
+        int FlyBoast(BallState ball, List<Surface> surfaces, int side, out double u, out double v)
+        {
+            u = 0; v = 0;
+            double wx = side * CourtDimensions.HALF_W;
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            string sideId = side > 0 ? "sideWallRight" : "sideWallLeft";
+            bool offSide = false;
+            for (int i = 0; i < 240; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceId == sideId) { offSide = true; continue; }
+                    double ux = offSide ? 2 * wx - e.Point.X : e.Point.X;
+                    if (e.SurfaceClass == "frontWall") { u = ux; v = e.Point.Y; return offSide ? 2 : 1; }
+                    if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin")
+                    {
+                        // Short: as if it had reached the front wall at floor level (aim higher), along the same line.
+                        u = ux; v = e.SurfaceClass == "tin" ? e.Point.Y - 0.3 : -0.3 - 0.1 * e.Point.Z;
+                        return 1;
+                    }
+                    if (e.SurfaceClass == "sideWall" || e.SurfaceClass == "backWall") return -1;
+                }
+            }
+            return -1;
         }
 
         /// <summary>How high the solved launch meets the back wall on the full (before it bounces twice), or -1.</summary>

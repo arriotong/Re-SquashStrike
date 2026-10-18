@@ -47,6 +47,8 @@ namespace SquashSim
         public bool DivePressed;
         /// <summary>Sprint held (Shift / pad LB).</summary>
         public bool Sprint;
+        /// <summary>Boast held (E / pad RB): the stroke goes off the side wall to land on the aim point.</summary>
+        public bool Boast;
 
         public void ClearEdges()
         {

@@ -31,6 +31,11 @@ namespace SquashGame
         public const float CircleRadius = 0.12f;
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
+        /// <summary>Boast held: the shot goes off <see cref="SideWall"/> (-1 / +1) near <see cref="SideMarker"/> (world).</summary>
+        public bool Boasting { get; private set; }
+        public int SideWall { get; private set; }
+        public Vector3 SideMarker { get; private set; }
+        Transform _side;
         /// <summary>The shot the reticle would play now: drive / drop / lob / kill.</summary>
         public string ShotType { get; private set; } = "drive";
 
@@ -65,6 +70,8 @@ namespace SquashGame
             // Unit ring (radius 1) scaled to the spread; a fixed-size centre dot.
             _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.11f, 48, 6), _mat).transform;
             _dot = Greybox.MeshObject("Dot", transform, Greybox.Torus(0.045f, 0.045f, 12, 6), _mat).transform;
+            _side = Greybox.MeshObject("BoastMark", transform, Greybox.Torus(0.09f, 0.03f, 24, 6), _mat).transform;
+            _side.gameObject.SetActive(false);
         }
 
         bool Visible()
@@ -85,6 +92,8 @@ namespace SquashGame
             Fade = Mathf.MoveTowards(Fade, Shown ? 1f : 0f, Time.unscaledDeltaTime / 0.15f);
             _ring.gameObject.SetActive(DrawRing && Fade > 0.01f);
             _dot.gameObject.SetActive(DrawRing && Fade > 0.01f);
+            Boasting = Shown && src.Intent.Boast;
+            _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
             if (!Shown) { _hasPos = false; return; }
 
             var athletes = Runner.Athletes;
@@ -98,8 +107,23 @@ namespace SquashGame
             ShotType = ctrl.ArcadeHitEnabled ? ctrl.Arcade.ShotTypeFor(src.ReticleY) : "drive";
             // Just off the wall, toward the court, so it never z-fights the plaster.
             Vector3 target = wall == 0
-                ? SimToWorld.Pos(aim.X, aim.Y, 0.012)
-                : SimToWorld.Pos(aim.X - wall * 0.012, aim.Y, aim.Z);
+                ? SimToWorld.Pos(aim.X, aim.Y, 0.02)
+                : SimToWorld.Pos(aim.X - wall * 0.02, aim.Y, aim.Z);
+            if (Boasting)
+            {
+                // Where it strikes the side wall: the straight line from the contact to the target's mirror image.
+                var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
+                int side = ArcadeStroke.BoastSide(from.X, aim.X);
+                double wx = side * CourtDimensions.HALF_W, mx = 2 * wx - aim.X;
+                double fy = ctrl.Prediction.Valid ? from.Y : 0.9;
+                double t = System.Math.Abs(mx - from.X) > 1e-6 ? (wx - from.X) / (mx - from.X) : 0;
+                t = System.Math.Max(0, System.Math.Min(1, t));
+                double sz = from.Z * (1 - t), sy = fy + (aim.Y - fy) * t;
+                SideWall = side;
+                SideMarker = SimToWorld.Pos(wx - side * 0.02, System.Math.Max(0.2, sy), sz);
+                _side.position = SideMarker;
+                _side.rotation = Quaternion.Euler(0f, 90f, 0f);
+            }
             if (wall != Wall) _hasPos = false;                // jump to the other wall, don't glide across the court
             Wall = wall;
             float radius = CircleRadius;
@@ -134,7 +158,7 @@ namespace SquashGame
             if (sp.z <= 0) return;
             if (_tag == null) _tag = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             var r = new Rect(sp.x - 70, Screen.height - sp.y - 12, 140, 24);
-            string text = (Wall != 0 ? "BOAST " : "") + ShotType.ToUpperInvariant();
+            string text = (Wall != 0 || Boasting ? "BOAST " : "") + ShotType.ToUpperInvariant();
             _tag.normal.textColor = new Color(0, 0, 0, 0.7f * Fade);
             GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, _tag);
             Color tc = ColourFor(ShotType); tc.a = 0.9f * Fade;

@@ -47,14 +47,16 @@ namespace SquashGame.Tests
             Assert.That(Mathf.Abs(right - left), Is.GreaterThan(1.0f), "the stick moves the target across the wall");
             Assert.That(aim.Wall, Is.EqualTo(0), "inside the front wall's width: a front-wall target");
 
-            // Held on: past the edge of the front wall, the target moves onto that side wall (a boast).
+            // Held on: it runs into the corner and stops there, still on the front wall (boasts are E / RB).
             Set(pad.rightStick, new Vector2(1f, 0f));
             yield return WaitReal(0.8f);
             Debug.Log("[M6] full stick right: wall " + aim.Wall + " at " + aim.WorldPoint);
-            Assert.That(aim.Wall, Is.Not.EqualTo(0), "held right: a boast off the side wall");
+            Assert.That(aim.Wall, Is.EqualTo(0), "held right: it stops at the front-wall edge");
+            Assert.That(Mathf.Abs(aim.WorldPoint.x), Is.GreaterThan((float)CourtDimensions.HALF_W - 0.3f), "right in the corner");
             Set(pad.rightStick, new Vector2(-1f, 0f));
             yield return WaitReal(1.6f);
-            Assert.That(aim.Wall, Is.Not.EqualTo(0), "and the other way");
+            Assert.That(aim.Wall, Is.EqualTo(0), "and the other way");
+            Assert.That(Mathf.Abs(aim.WorldPoint.x), Is.GreaterThan((float)CourtDimensions.HALF_W - 0.3f));
             Set(pad.rightStick, Vector2.zero);
 
             // Swing at the feeds aiming a drive; compare the last contact-based preview with the real hit.
