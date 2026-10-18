@@ -136,4 +136,27 @@ namespace SquashGame.UI
         /// <summary>Step an index through n values (wrapping).</summary>
         public static int Step(int i, int d, int n) { return n <= 0 ? 0 : ((i + d) % n + n) % n; }
     }
+
+    /// <summary>P2-M4: a text row (the career player's name): confirm (or a click) starts typing,
+    /// Enter / Esc stops. While typing, the menu's keys (WASD, Space, Backspace) are the field's.</summary>
+    public sealed class TextItem : MenuItem
+    {
+        public readonly TextField Field = new TextField();
+        public bool Typing { get; private set; }
+
+        public TextItem(string label, string value, int maxLength) : base(label)
+        {
+            Field.value = value;
+            Field.maxLength = maxLength;
+            Field.isDelayed = false;
+            Field.AddToClassList("fe-text");
+            Field.RegisterCallback<FocusInEvent>(e => Typing = true);
+            Field.RegisterCallback<FocusOutEvent>(e => Typing = false);
+            Root.Add(Field);
+        }
+
+        public string Value { get { return Field.value ?? ""; } }
+        public override void Submit() { if (IsEnabled) Field.Focus(); }
+        public void StopTyping() { Field.Blur(); Typing = false; }
+    }
 }

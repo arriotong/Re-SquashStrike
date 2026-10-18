@@ -272,3 +272,60 @@
 .ls-keys { font-size: 14px; color: rgb(200, 255, 61); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .ls-progress { font-size: 16px; color: rgba(255, 255, 255, 0.80); margin-top: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .ls-progress--done { color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- text entry ---------- */
+.fe-text { width: 250px; margin: 0; }
+.fe-text .unity-base-text-field__input {
+    background-color: rgba(0, 0, 0, 0.55); border-width: 1px; border-color: rgba(200, 255, 61, 0.6); border-radius: 4px;
+    color: rgb(255, 255, 255); font-size: 20px; padding: 2px 8px;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+}
+
+/* ---------- Career (P2-M4) ---------- */
+.cr-panel { position: absolute; left: 860px; width: 900px; top: 150px; }
+.cr-label { font-size: 12px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); margin-bottom: 4px; }
+.cr-big {
+    font-size: 110px; color: rgb(200, 255, 61); margin: -18px 0 -14px 0;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 0 26px rgba(200, 255, 61, 0.7);
+    -unity-text-outline-width: 1px; -unity-text-outline-color: rgba(0, 0, 0, 0.6);
+}
+.cr-sub { font-size: 16px; color: rgba(255, 255, 255, 0.9); margin-bottom: 18px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.cr-stats { width: 640px; padding: 12px 20px; background-color: rgba(14, 15, 18, 0.8); border-radius: 10px; border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.cr-stats .pm-stat__val { width: 420px; }
+.cr-note, .cr-line {
+    font-size: 15px; color: rgba(255, 255, 255, 0.92); white-space: normal; width: 640px; margin-top: 10px;
+    padding: 8px 14px; background-color: rgba(14, 15, 18, 0.7); border-radius: 8px;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
+}
+.cr-line { margin-top: 6px; }
+.cr-rival {
+    align-self: flex-start; font-size: 14px; letter-spacing: 3px; color: rgb(14, 15, 18); background-color: rgb(255, 74, 64);
+    padding: 2px 10px; border-radius: 4px; margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+
+/* the wide cards: the draw, the rankings, the calendar */
+.cr-wide { width: 1640px; top: 6%; padding: 28px 36px 26px 36px; }
+.cr-wide .fe-item { width: 320px; align-self: center; }
+.cr-draw { flex-direction: row; justify-content: center; margin-bottom: 18px; }
+.cr-draw-col { width: 250px; margin: 0 6px; justify-content: space-around; }
+.cr-draw-col > .cr-label { margin-bottom: 6px; }
+.cr-draw-match {
+    flex-direction: row; align-items: center; height: 40px; padding: 0 8px; margin: 2px 0;
+    border-left-width: 2px; border-left-color: rgba(255, 255, 255, 0.15); background-color: rgba(255, 255, 255, 0.03);
+}
+.cr-draw-name { height: 17px; padding: 0; margin: 0; font-size: 12px; -unity-text-align: middle-left; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); overflow: hidden; white-space: nowrap; }
+.cr-draw-name--won { color: rgba(255, 255, 255, 0.95); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.cr-draw-name--you { color: rgb(200, 255, 61); }
+.cr-draw-score { padding: 0; margin: 0 0 0 6px; font-size: 10px; -unity-text-align: middle-right; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.cr-rank-col { width: 500px; margin: 0 12px; }
+.cr-rank-row { flex-direction: row; align-items: center; height: 25px; padding: 0 8px; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.05); }
+.cr-rank-row--you { background-color: rgba(200, 255, 61, 0.18); border-radius: 4px; }
+.cr-rank-n { width: 44px; font-size: 13px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.cr-rank-name { flex-grow: 1; font-size: 15px; overflow: hidden; white-space: nowrap; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.cr-rank-nat { width: 44px; font-size: 12px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.cr-rank-pts { width: 70px; font-size: 13px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.cr-cal { width: 1300px; align-self: center; margin-bottom: 18px; }
+.cr-cal .cr-rank-row { height: 40px; }
+.cr-cal .cr-rank-name { font-size: 19px; }
+.cr-cal-mine { width: 360px; font-size: 13px; color: rgb(200, 255, 61); -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

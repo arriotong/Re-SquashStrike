@@ -6,9 +6,9 @@
 //   Video, Audio, Accessibility, Gameplay), Controls reference,
 //   Pause, Practice pause, Confirm, Post-match.
 //
-// Career, Locker Room and Replays are on the main menu as "coming
-// soon" rows (P2-M4 .. M6). Target Arcade (P2-M2) and the Academy
-// (P2-M3) have their own screen files.
+// Locker Room and Replays are on the main menu as "coming soon" rows
+// (P2-M5, M6). Target Arcade (P2-M2), the Academy (P2-M3) and the
+// Career (P2-M4) have their own screen files.
 // ===========================================================
 
 using System;
@@ -82,7 +82,8 @@ namespace SquashGame.UI
             Add(new ButtonItem("Quick Match", () => Fe.Push(new QuickMatchScreen()), true));
             Add(new ButtonItem("Local Versus", () => Fe.Push(new LocalVersusScreen()), false,
                 () => MatchRunner.CanPlayTwoPlayer ? "" : "connect a pad"));
-            Add(new ButtonItem("Career", null, false, Soon)).Enabled = () => false;
+            Add(new ButtonItem("Career", () => Fe.Push(new CareerStartScreen()), false,
+                () => SquashGame.Profile.CareerStore.Exists ? "season " + SquashGame.Profile.CareerStore.Current.S.Season : ""));
             Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
             Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
             Add(new ButtonItem("Academy", () => Fe.Push(new AcademyScreen()), false, AcademyScreen.Summary));
@@ -399,11 +400,13 @@ namespace SquashGame.UI
         protected override string Title { get { return "Paused"; } }
         protected override void Build()
         {
+            bool career = Fe.Match.Settings.Career;
             Add(new ButtonItem("Resume", () => Fe.Resume(), true));
-            Add(new ButtonItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
+            if (!career) Add(new ButtonItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
             Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ButtonItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
-            Add(new ButtonItem("Quit to menu", () => Fe.Push(new ConfirmScreen("Leave the match?", () => Fe.QuitToMenu()))));
+            if (career) Add(new ButtonItem("Quit: retire from the match", () => Fe.Push(new RetireScreen())));
+            else Add(new ButtonItem("Quit to menu", () => Fe.Push(new ConfirmScreen("Leave the match?", () => Fe.QuitToMenu()))));
         }
         public override void Back() { Fe.Resume(); }
     }
@@ -481,6 +484,12 @@ namespace SquashGame.UI
             Row(box, "Longest rally", st.LongestRally + " shots", "");
             Content.Add(box);
 
+            if (m.Settings.Career)
+            {
+                bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
+                Add(new ButtonItem("Continue", () => Career.Record(Fe, won, false), true));
+                return;
+            }
             Add(new ButtonItem("Rematch", () => Fe.Restart(), true));
             Add(new ButtonItem("Change settings", () =>
             {
@@ -503,6 +512,10 @@ namespace SquashGame.UI
             box.Add(row);
         }
 
-        public override void Back() { Fe.QuitToMenu(); }
+        public override void Back()
+        {
+            if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
+            else Fe.QuitToMenu();
+        }
     }
 }

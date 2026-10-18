@@ -32,6 +32,10 @@ namespace SquashGame
         public int GamesToWin = 3;
         public string Scoring = "par";
         public bool WarmUp = false;              // the knock-up is gone from the game (kept in the sim for tests)
+        /// <summary>P2-M4: a Career match (the post-match and pause screens go back to the career).</summary>
+        public bool Career;
+        /// <summary>Score-bug names instead of "YOU" and the AI's personality (null = the defaults).</summary>
+        public string P1Name, P2Name;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -135,7 +139,8 @@ namespace SquashGame
             else
             {
                 Sim.Bots[1] = MakeOpponent();
-                Names[0] = "YOU"; Names[1] = OpponentName;
+                if (!string.IsNullOrEmpty(Settings.P2Name)) OpponentName = Settings.P2Name;
+                Names[0] = string.IsNullOrEmpty(Settings.P1Name) ? "YOU" : Settings.P1Name; Names[1] = OpponentName;
             }
             Sim.RallyEnded += OnRallyEnded;
             // Everyone plays the simple hitting system, aiming at a point on the front wall - the AI too (playtest

@@ -10,11 +10,19 @@
 //           p(A wins a rally) = 1 / (1 + exp(-K * (sA - sB)))
 //       and, per personality, its rally share against the others at
 //       equal strength (RallyModel's matchup table).
+//
+//   --season [--seasons N]
+//       a career where "you" are the human-style model (the one the
+//       difficulty levels are balanced against), playing every one of
+//       your matches as a real sim match against the pro's personality
+//       and strength; each month you enter the best event open to you.
+//       Prints each event, the ranking as it moves, and your rating.
 // ===========================================================
 
 using System;
 using System.Collections.Generic;
 using SquashSim;
+using SquashSim.Career;
 
 public static class CareerBench
 {
@@ -101,5 +109,48 @@ public static class CareerBench
             }
             Console.WriteLine(line);
         }
+    }
+
+    public static void Season(int seasons)
+    {
+        var c = CareerSession.New("Bench", "ENG", 2026, gamesToWin: 2);
+        int game = 0;
+        Console.WriteLine("CAREER SEASON  the human-style model plays its matches (best of 3, PAR) - " + seasons + " season(s)");
+        SeasonRunner.PlayMatch real = (CareerSession cs, Pro opp, out string score, out int won, out int total) =>
+        {
+            PhysicsConfig.ResetToDefaults();
+            PhysicsConfig.UseGameProfile();
+            var cfg = PhysicsConfig.Current.Match;
+            cfg.GamesToWin = cs.S.GamesToWin; cfg.Scoring = cs.S.English ? "english" : "par"; cfg.BetweenGamesSeconds = 1.0;
+            var m = new MatchSimulation(0);
+            m.Bots[0] = new HumanStyle((uint)(700 + game)) { Arcade = true };
+            m.Bots[1] = new OpponentBrain(AiProfile.ByName(opp.Style).WithDifficulty(opp.Strength), (uint)(900 + game));
+            m.Players[0].WallAimEnabled = true; m.Players[0].ArcadeHitEnabled = true;
+            Program.ArcadeAi(m);
+            game++;
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            var games = new List<string>();
+            while (m.Phase != MatchPhase.MatchOver && m.Time < 3600)
+            {
+                var before = m.Phase;
+                m.Step(dt);
+                if (m.Phase == MatchPhase.GameOver && before != MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver && before != MatchPhase.MatchOver)
+                    games.Add(m.Score.Points[0] + "-" + m.Score.Points[1]);
+            }
+            won = 0; total = 0;
+            foreach (var o in m.History) { if (o.Winner < 0) continue; total++; if (o.Winner == 0) won++; }
+            score = string.Join(" ", games);
+            PhysicsConfig.ResetToDefaults();
+            return m.Score.MatchWinner == 0;
+        };
+        SeasonRunner.Months(c, seasons * Tour.SlotsPerSeason, real, (cs, e) =>
+        {
+            string what = e == null || !e.YouIn ? "skipped" : e.Name + " (" + Tour.Info((Tier)e.Tier).Name + "): " + CareerSession.ReachedLong(e.YouReached) + "  +" + e.YouPoints;
+            int month = (cs.S.Month + Tour.SlotsPerSeason - 1) % Tour.SlotsPerSeason;
+            Console.WriteLine("  " + Tour.Month(month) + "  " + what.PadRight(58) + " rank " + cs.RankOf(CareerSession.You).ToString().PadLeft(3) + "   rating " + cs.S.Rating.ToString("0.000"));
+        });
+        int w = 0, l = 0;
+        foreach (var mr in c.S.Matches) if (mr.Won) w++; else l++;
+        Console.WriteLine("  matches " + w + "-" + l + ", titles " + c.S.Titles + ", final rank " + c.RankOf(CareerSession.You) + ", rating " + c.S.Rating.ToString("0.000"));
     }
 }

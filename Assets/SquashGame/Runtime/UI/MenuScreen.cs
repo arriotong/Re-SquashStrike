@@ -124,8 +124,20 @@ namespace SquashGame.UI
         public virtual void Tick(float dt) { }
         public virtual void Back() { Fe.Pop(); }
 
+        /// <summary>A text field has the keyboard (the menu's keys are left alone).</summary>
+        public virtual bool Typing { get { foreach (var i in Items) if (i is TextItem t && t.Typing) return true; return false; } }
+
         public void HandleInput(MenuInput input)
         {
+            if (Typing)
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                bool done = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame);
+                foreach (var pad in UnityEngine.InputSystem.Gamepad.all) done |= pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame;
+                if (done)
+                    foreach (var i in Items) if (i is TextItem t) t.StopTyping();
+                return;
+            }
             if (input.Vertical != 0) Navigate(input.Vertical);
             if (input.Horizontal != 0 && Focused != null) Focused.Change(input.Horizontal);
             if (input.Submit && Focused != null) Focused.Submit();
