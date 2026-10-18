@@ -22,7 +22,8 @@ namespace SquashGame.UI
 {
     public sealed class TierBadge : VisualElement
     {
-        static readonly Color[] Fill =
+        /// <summary>Each tier's colour (Club .. World Finals).</summary>
+        public static readonly Color[] Fill =
         {
             new Color32(150, 160, 172, 255), new Color32(80, 170, 255, 255), new Color32(31, 165, 154, 255),
             new Color32(200, 255, 61, 255), new Color32(255, 184, 59, 255), new Color32(255, 215, 106, 255)

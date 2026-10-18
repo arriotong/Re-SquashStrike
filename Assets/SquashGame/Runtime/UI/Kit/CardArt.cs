@@ -8,6 +8,7 @@
 //   split     two colours split on a diagonal (versus)
 //   trophy    a cup on a plinth (career, titles)
 //   trail     dots on a winding line (the Academy)
+//   bracket   a small draw, one path lit (the career draw)
 // ===========================================================
 
 using UnityEngine;
@@ -78,6 +79,27 @@ namespace SquashGame.UI
                     p.strokeColor = _b; p.lineWidth = 5f;
                     p.BeginPath(); p.Arc(new Vector2(cx - w * 0.5f, top + w * 0.22f), w * 0.16f, Angle.Degrees(90), Angle.Degrees(270)); p.Stroke();
                     p.BeginPath(); p.Arc(new Vector2(cx + w * 0.5f, top + w * 0.22f), w * 0.16f, Angle.Degrees(-90), Angle.Degrees(90)); p.Stroke();
+                    break;
+                }
+                case "bracket":
+                {
+                    // a little draw: 4 first-round lines feeding 2, then the final, lit lime on one path
+                    float x0 = r.width * 0.18f, w = r.width * 0.2f, top = r.height * 0.08f, h = r.height * 0.5f;
+                    p.lineWidth = 3f;
+                    for (int round = 0; round < 3; round++)
+                    {
+                        int n = 4 >> round;
+                        for (int i = 0; i < n; i++)
+                        {
+                            float y = top + h * (i + 0.5f) / n, x = x0 + round * w;
+                            bool lit = i == 0;
+                            p.strokeColor = lit ? Lime : new Color(1, 1, 1, 0.25f);
+                            p.BeginPath(); p.MoveTo(new Vector2(x, y)); p.LineTo(new Vector2(x + w * 0.7f, y));
+                            if (round < 2) { float y2 = top + h * ((i ^ 1) + 0.5f) / n; p.LineTo(new Vector2(x + w * 0.7f, (y + y2) * 0.5f)); p.LineTo(new Vector2(x + w, (y + y2) * 0.5f)); }
+                            p.Stroke();
+                        }
+                    }
+                    p.BeginPath(); p.Arc(new Vector2(x0 + 3 * w - w * 0.1f, top + h * 0.5f), 10f, Angle.Degrees(0), Angle.Degrees(360)); p.fillColor = _b; p.Fill();
                     break;
                 }
                 case "trail":

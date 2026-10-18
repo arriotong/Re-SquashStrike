@@ -278,3 +278,189 @@
 .k-ft-high-n { font-size: 11px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.6); margin-top: -6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-ft-more { position: absolute; left: 96px; bottom: 40px; flex-direction: row; }
 .k-ft-more > .k-action { width: 280px; margin-right: 16px; margin-bottom: 0; }
+
+/* ================= U3: the career ================= */
+.k-cr-head { font-size: 12px; letter-spacing: 3px; color: rgb(200, 255, 61); margin-bottom: 12px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-note { font-size: 12px; margin-top: 10px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-empty { font-size: 13px; color: rgba(255, 255, 255, 0.55); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-up { color: rgb(200, 255, 61); }
+.k-down { color: rgb(255, 90, 74); }
+.k-same { color: rgba(255, 255, 255, 0.4); }
+.k-stamp--plain { border-color: rgb(255, 255, 255); color: rgb(255, 255, 255); }
+
+/* ---------- central ---------- */
+.k-cr-top { flex-direction: row; height: 450px; }
+.k-cr-hero { flex-grow: 1; margin-right: 24px; }
+.k-cr-hero > .k-row { align-items: flex-start; }
+.k-card--match { width: 640px; height: 390px; }
+.k-card--event { width: 270px; height: 390px; margin-right: 20px; }
+.k-card--event .k-card-title { font-size: 28px; }
+.k-cr-cardtier { position: absolute; left: 18px; top: 18px; }
+.k-cr-rankw { width: 470px; margin: 0; }
+.k-cr-rank-row { flex-direction: row; align-items: flex-end; }
+.k-cr-rank-big { font-size: 84px; margin: -14px 0 -8px 0; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-rank-move { font-size: 20px; margin: 0 0 14px 14px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-rank-sub { font-size: 12px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.65); margin-bottom: 10px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-rankw .k-tr-bar { width: 70px; }
+.k-cr-bottom { flex-direction: row; margin-top: 24px; align-items: flex-start; }
+.k-cr-bottom > .k-panel { margin: 0 24px 0 0; }
+.k-cr-news { flex-grow: 1.4; flex-basis: 0; }
+.k-cr-season { flex-grow: 1; flex-basis: 0; margin-right: 0; }
+.k-cr-news-row { flex-direction: row; }
+.k-cr-news-item { flex-grow: 1; flex-basis: 0; margin-right: 18px; padding: 4px 0 4px 14px; border-left-width: 3px; border-left-color: rgba(200, 255, 61, 0.7); }
+.k-cr-news-k { font-size: 10px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-news-t { font-size: 20px; margin-top: 4px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* ---------- calendar ---------- */
+.k-cr-cal { flex-direction: row; flex-wrap: wrap; justify-content: space-between; }
+.k-cr-month {
+    width: 272px; height: 372px; margin-bottom: 20px; padding: 16px 16px; border-radius: 12px;
+    background-color: rgba(16, 18, 22, 0.88); border-width: 1px; border-color: rgba(255, 255, 255, 0.08);
+}
+.k-cr-month--past { opacity: 0.6; }
+.k-cr-month--now { border-width: 2px; border-color: rgb(200, 255, 61); background-color: rgba(24, 30, 18, 0.92); }
+.k-cr-month-head { flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.k-cr-month-name { font-size: 30px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-now { padding: 2px 8px; border-radius: 10px; font-size: 10px; letter-spacing: 2px; color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-ev { flex-direction: row; align-items: center; height: 30px; }
+.k-cr-ev-name { font-size: 16px; margin-left: 10px; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-mine {
+    position: absolute; left: 16px; right: 16px; bottom: 16px; padding: 6px 10px; border-radius: 6px; white-space: normal;
+    font-size: 12px; color: rgb(255, 255, 255); background-color: rgba(255, 255, 255, 0.08); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-cr-mine--won { color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); }
+
+/* ---------- rankings ---------- */
+.k-cr-rgrid { flex-direction: row; flex-grow: 1; }
+.k-cr-tablep { flex-grow: 1; margin-bottom: 0; }
+.k-cr-tablep .k-tr-bar { width: 260px; }
+.k-cr-tablebox { margin-top: 4px; }
+.k-cr-ladder { width: 520px; margin: 0; }
+.k-cr-lad { flex-direction: row; align-items: center; height: 92px; padding: 0 14px; margin-bottom: 10px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.03); opacity: 0.55; }
+.k-cr-lad--open { opacity: 1; background-color: rgba(200, 255, 61, 0.06); }
+.k-cr-lad-text { flex-grow: 1; margin-left: 16px; }
+.k-cr-lad-name { font-size: 24px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-lad-line { font-size: 11px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-lad-gate { font-size: 14px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- player ---------- */
+.k-cr-pgrid { flex-direction: row; flex-grow: 1; }
+.k-cr-pgrid > .k-panel, .k-cr-pmid > .k-panel { margin: 0 24px 24px 0; }
+.k-cr-pcard { width: 420px; margin-bottom: 0; }
+.k-cr-ppic { width: 376px; height: 470px; border-radius: 10px; margin-bottom: 14px; -unity-background-scale-mode: scale-and-crop; background-color: rgb(21, 23, 28); }
+.k-cr-pname { font-size: 44px; margin-top: -6px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-pmeta { font-size: 12px; letter-spacing: 1px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-pmid { flex-grow: 1; flex-basis: 0; }
+.k-cr-bytier { flex-direction: row; flex-wrap: wrap; margin-top: 14px; }
+.k-cr-bytier-item { flex-direction: row; align-items: center; width: 33%; height: 30px; }
+.k-cr-bytier-n { font-size: 15px; margin-left: 8px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-rival { flex-direction: row; align-items: center; height: 36px; }
+.k-cr-rival-star { width: 24px; color: rgb(255, 184, 59); font-size: 16px; }
+.k-cr-rival-name { flex-grow: 1; font-size: 20px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-rival-h2h { font-size: 13px; color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-hist { flex-grow: 1; flex-basis: 0; margin-right: 0; margin-bottom: 0; }
+.k-cr-hrow { flex-direction: row; align-items: center; height: 58px; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
+.k-cr-hmid { flex-grow: 1; margin-left: 12px; }
+.k-cr-hname { font-size: 18px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-hline { font-size: 10px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-hscore { font-size: 12px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- chips and tiles ---------- */
+.k-cr-form { flex-direction: row; }
+.k-cr-form-none { font-size: 11px; color: rgba(255, 255, 255, 0.45); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-chip {
+    min-width: 30px; height: 24px; padding: 0 6px; margin: 0 3px; border-radius: 5px; -unity-text-align: middle-center;
+    font-size: 11px; color: rgba(255, 255, 255, 0.7); background-color: rgba(255, 255, 255, 0.08); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-cr-chip--w { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-cr-chip--f { color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); }
+.k-cr-tiles { flex-direction: row; justify-content: center; }
+.k-cr-tile { min-width: 220px; align-items: center; margin: 0 14px; padding: 14px 18px; border-radius: 12px; background-color: rgba(16, 18, 22, 0.88); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-cr-tile-v { font-size: 52px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-tile-n { font-size: 11px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-tile-move { font-size: 12px; margin-top: 4px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-pmid .k-cr-tile { min-width: 0; flex-grow: 1; margin: 0 6px; }
+.k-cr-pmid .k-cr-tile-v { font-size: 38px; }
+
+/* ---------- match preview ---------- */
+.k-vs-side--right { align-items: flex-end; }
+.k-vs-side--right .k-vs-name, .k-vs-side--right .k-vs-meta { -unity-text-align: upper-right; }
+.k-cr-pv-event { flex-direction: row; align-items: center; justify-content: center; margin-bottom: 14px; }
+.k-cr-pv-round { font-size: 14px; letter-spacing: 3px; margin-left: 12px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-tape-row { flex-direction: row; align-items: center; height: 46px; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
+.k-cr-tape-a { flex-grow: 1; flex-basis: 0; flex-direction: row; justify-content: flex-start; }
+.k-cr-tape-b { flex-grow: 1; flex-basis: 0; flex-direction: row; justify-content: flex-end; }
+.k-cr-tape-n { width: 200px; font-size: 11px; letter-spacing: 2px; -unity-text-align: middle-center; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-tape-v { font-size: 24px; color: rgba(255, 255, 255, 0.8); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-tape-v--win { color: rgb(200, 255, 61); }
+.k-cr-pv-acts { flex-direction: row; justify-content: center; margin-top: 16px; }
+.k-cr-pv-acts > .k-action { width: 240px; margin: 0 8px; }
+.k-cr-callout {
+    align-self: flex-end; max-width: 460px; margin-top: 8px; padding: 6px 12px; border-radius: 6px; white-space: normal; -unity-text-align: middle-right;
+    font-size: 13px; color: rgb(255, 255, 255); background-color: rgba(16, 18, 22, 0.88); border-right-width: 3px; border-right-color: rgb(200, 255, 61);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
+}
+.k-cr-rivalkick { color: rgb(255, 184, 59); }
+
+/* ---------- the draw ---------- */
+.k-cr-draw { flex-direction: row; flex-grow: 1; }
+.k-cr-draw-scroll { flex-grow: 1; margin-right: 24px; border-radius: 14px; background-color: rgba(12, 13, 16, 0.9); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-cr-draw-scroll .unity-scroll-view__content-container { padding: 22px 22px 22px 22px; }
+.k-cr-draw .k-bm { background-color: rgba(28, 31, 38, 0.95); }
+.k-cr-draw .k-bm--you { background-color: rgba(52, 66, 24, 0.95); }
+.k-cr-draw-detail { width: 400px; margin: 0; }
+.k-cr-champ { position: absolute; width: 200px; padding: 10px 14px; border-radius: 10px; border-width: 2px; border-color: rgb(255, 184, 59); background-color: rgba(30, 24, 12, 0.92); }
+.k-cr-champ-k { font-size: 10px; letter-spacing: 3px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-champ-n { font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-champ-n--you { color: rgb(200, 255, 61); }
+.k-cr-dt-player { padding: 10px 14px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-left-width: 3px; border-left-color: rgba(255, 255, 255, 0.15); }
+.k-cr-dt-player--won { border-left-color: rgb(255, 255, 255); background-color: rgba(255, 255, 255, 0.08); }
+.k-cr-dt-player--you { border-left-color: rgb(200, 255, 61); }
+.k-cr-dt-name { font-size: 28px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-dt-meta { font-size: 11px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-dt-v { font-size: 18px; margin: 6px 0; -unity-text-align: middle-center; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-dt-chips { flex-direction: row; margin: 16px 0 6px 0; }
+.k-cr-dt-chips > .k-ft-chip { margin: 0 8px 0 0; }
+.k-cr-dt-h2h { font-size: 12px; margin-top: 12px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- results ---------- */
+.k-cr-result { flex-grow: 1; align-items: center; justify-content: center; }
+.k-cr-result--card { flex-grow: 0; align-self: center; width: 760px; margin-top: 110px; padding: 40px 40px 34px 40px; border-radius: 16px; background-color: rgba(12, 13, 16, 0.9); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-cr-result > .k-stamp { align-self: center; font-size: 72px; margin: 0 0 18px 0; }
+.k-cr-preview .k-vs-pic { height: 470px; }
+.k-cr-res-head { flex-direction: row; align-items: center; margin-bottom: 14px; }
+.k-cr-res-head > .k-tier { margin-right: 22px; }
+.k-cr-res-head > .k-stamp { align-self: center; margin-top: 0; font-size: 64px; }
+.k-cr-res-k { font-size: 13px; letter-spacing: 3px; margin-right: 22px; color: rgba(255, 255, 255, 0.65); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-res-v { font-size: 26px; margin: 10px 0 18px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-result > .k-cr-tiles { margin-bottom: 22px; }
+.k-cr-result > .rw { width: 1000px; }
+.k-cr-res-year { width: 1000px; margin: 8px 0 0 0; }
+
+/* ---------- create a player ---------- */
+.k-cr-create { flex-direction: row; flex-grow: 1; align-items: flex-start; }
+.k-cr-steps { flex-grow: 1; margin-left: 40px; padding: 30px 40px 36px 40px; border-radius: 16px; background-color: rgba(12, 13, 16, 0.88); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-cr-dots { flex-direction: row; margin-bottom: 36px; }
+.k-cr-dot {
+    padding: 6px 16px; margin-right: 12px; border-radius: 16px; font-size: 13px; letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.45); background-color: rgba(255, 255, 255, 0.05); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-cr-dot--done { color: rgb(200, 255, 61); }
+.k-cr-dot--on { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-cr-step-q { font-size: 64px; margin-bottom: 24px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-step-hint { font-size: 13px; margin-top: 18px; max-width: 760px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-name { width: 760px; flex-direction: row; align-items: center; height: 76px; padding: 0 18px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-cr-name.fe-item--focused { border-color: rgb(200, 255, 61); background-color: rgba(200, 255, 61, 0.08); }
+.k-cr-name .fe-item__label { width: 140px; font-size: 22px; }
+.k-cr-name .fe-text { flex-grow: 1; }
+.k-cr-step > .k-sel { width: 760px; }
+.k-cr-summary { margin-top: 48px; font-size: 14px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-carousel { flex-direction: row; align-items: center; width: 760px; height: 110px; padding: 0 18px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-carousel.fe-item--focused { border-color: rgb(200, 255, 61); background-color: rgba(200, 255, 61, 0.08); }
+.k-car-strip { flex-direction: row; align-items: center; flex-grow: 1; justify-content: center; }
+.k-car-arrow { font-size: 26px; color: rgb(200, 255, 61); padding: 0 18px; }
+.k-car-value { width: 240px; font-size: 72px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-car-count { font-size: 12px; color: rgba(255, 255, 255, 0.5); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- career settings ---------- */
+.k-cr-settings { width: 900px; align-self: center; margin-top: 120px; }

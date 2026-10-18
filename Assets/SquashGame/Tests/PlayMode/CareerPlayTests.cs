@@ -1,12 +1,14 @@
 // ===========================================================
 // Assets/SquashGame/Tests/PlayMode/CareerPlayTests.cs
 // P2-M4: the Career in the real scene, on the keyboard.
-//   - main menu -> Career -> New career -> create a player -> the hub
-//   - enter a Club event -> scouting -> the match starts with the
-//     players' names, the pro's style and strength
+//   - main menu -> Career -> create a player (name, nation, matches:
+//     one step each) -> the hub; its tabs
+//   - CONTINUE enters the Club event -> the match preview -> the match
+//     starts with the players' names, the pro's style and strength
 //   - the match is played (an AI stands in for you, sped up) -> post-
 //     match Continue -> the result is recorded and saved
-//   - rankings, calendar and the draw open
+//   - a simulated match, the draw (it opens on your match), the season
+//     review
 //   - in the next match, Quit = retiring: a loss, back to the hub
 // Writes Captures/P2M4_UI_*.png for review.
 // ===========================================================
@@ -89,35 +91,71 @@ namespace SquashGame.Tests
 
             yield return HubNav.Open(fe, kb, Tap, "CAREER", "START A CAREER");
             Assert.That(fe.Top, Is.InstanceOf<CreatePlayerScreen>());
+            var create = (CreatePlayerScreen)fe.Top;
 
-            // the name: typing is the field's job; the test sets it
+            // step 1, the name: typing is the field's job; the test sets it
             var name = (TextItem)fe.Top.Find("Name");
             name.Field.value = "Tester";
-            yield return FocusRow(kb, fe, "Match");
-            yield return Tap(kb.leftArrowKey);                                   // Best of 3 -> One game
-            Assert.That(((OptionItem)fe.Top.Focused).Value, Is.EqualTo("One game"));
-            yield return CaptureUI(fe, "P2M4_UI_1_CreatePlayer.png");
-            yield return FocusRow(kb, fe, "Start career");
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Next"));
             yield return Tap(kb.enterKey);
+            yield return null; yield return null;
+            Assert.That(create.Step, Is.EqualTo(1));
+            // step 2, the nation
+            Assert.That(fe.Top.Focused, Is.InstanceOf<CarouselItem>());
+            yield return Tap(kb.rightArrowKey);
+            Assert.That(((CarouselItem)fe.Top.Focused).Value, Is.EqualTo("SCO"));
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null;
+            // step 3, the matches
+            Assert.That(create.Step, Is.EqualTo(2));
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Match"));
+            yield return Tap(kb.leftArrowKey);                                   // Best of 3 -> One game
+            Assert.That(((SelectorItem)fe.Top.Focused).Value, Is.EqualTo("One game"));
+            yield return CaptureUI(fe, "P2M4_UI_1_CreatePlayer.png");
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Start career"));
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null; yield return null;
 
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
+            var hub = (CareerHubScreen)fe.Top;
             var c = CareerStore.Current;
             Assert.That(c, Is.Not.Null);
             Assert.That(c.S.Name, Is.EqualTo("Tester"));
+            Assert.That(c.S.Nat, Is.EqualTo("SCO"));
             Assert.That(c.S.GamesToWin, Is.EqualTo(1));
             Assert.That(File.Exists(Path.Combine(ProfileStore.Folder, CareerStore.FileName)), Is.True, "saved");
             Assert.That(fe.Top.Focused.Name, Does.Contain("Club"), "the Club event is the one open to a newcomer");
+            Assert.That(hub.Reachable().Count, Is.LessThanOrEqualTo(6), "few choices in view");
             yield return CaptureUI(fe, "P2M4_UI_2_Hub.png");
 
-            yield return Tap(kb.enterKey);                                       // enter it
+            // the other tabs: calendar, rankings, player, and round to Central
+            foreach (var tab in new[] { "CALENDAR", "RANKINGS", "PLAYER" })
+            {
+                yield return Tap(kb.eKey);
+                yield return null;
+                Assert.That(hub.Tabs.Current, Is.EqualTo(tab));
+                yield return CaptureUI(fe, "U3_" + tab + ".png");
+            }
+            yield return Tap(kb.eKey);
+            Assert.That(hub.Tabs.Current, Is.EqualTo("CENTRAL"));
+
+            // CONTINUE: into the best event open to you
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Continue"));
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null; yield return null;
             Assert.That(c.S.Current, Is.Not.Null);
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
-            Assert.That(fe.Top.Focused.Name, Does.StartWith("Next: Round of 16 v "));
+            Assert.That(fe.Top.Focused.Name, Does.StartWith("Round of 16 v "), "your next match");
+            yield return CaptureUI(fe, "U3_Central_Match.png");
             int opp = c.NextOpponent();
             yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<ScoutingScreen>());
+            Assert.That(fe.Top, Is.InstanceOf<MatchPreviewScreen>());
             yield return CaptureUI(fe, "P2M4_UI_3_Scouting.png");
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Play the match"));
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Play"));
             yield return Tap(kb.enterKey);
 
             Assert.That(fe.Top, Is.Null, "into the match");
@@ -144,40 +182,62 @@ namespace SquashGame.Tests
             if (!won)
             {
                 Assert.That(fe.Top, Is.InstanceOf<EventResultScreen>(), "out: the event's result");
+                yield return Wait(1.5f, () => false);
                 yield return CaptureUI(fe, "P2M4_UI_5_EventResult.png");
                 yield return Tap(kb.enterKey);
             }
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
 
-            // rankings, calendar
-            yield return FocusRow(kb, fe, "Rankings");
+            // a simulated match: next month's event (or the next round)
+            if (c.S.Current == null)
+            {
+                yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+                yield return Tap(kb.enterKey);                                     // CONTINUE: enter
+                yield return null; yield return null; yield return null;
+            }
+            Assert.That(c.NextOpponent(), Is.GreaterThanOrEqualTo(0));
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            yield return Tap(kb.enterKey);                                         // CONTINUE: the preview
+            Assert.That(fe.Top, Is.InstanceOf<MatchPreviewScreen>());
+            int simmed = c.S.Matches.Count;
+            yield return Tap(kb.fKey);                                             // X: simulate
+            yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<SimResultScreen>());
+            Assert.That(c.S.Matches.Count, Is.EqualTo(simmed + 1));
+            Assert.That(c.S.Matches[simmed].Simulated, Is.True);
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "U3_SimResult.png");
             yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<RankingsScreen>());
-            yield return CaptureUI(fe, "P2M4_UI_6_Rankings.png");
-            yield return Tap(kb.escapeKey);
-            yield return FocusRow(kb, fe, "Calendar");
+            yield return null; yield return null;
+            if (fe.Top is EventResultScreen)
+            {
+                yield return Wait(1.5f, () => false);
+                yield return CaptureUI(fe, "U3_EventResult.png");
+                yield return Tap(kb.enterKey);
+            }
+            Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
+
+            // the draw, from the hub's draw card
+            if (c.S.Current == null)
+            {
+                yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+                yield return Tap(kb.enterKey);
+                yield return null; yield return null; yield return null;
+            }
+            for (int i = 0; i < 6 && !(fe.Top.Focused is CardItem card && card.Title == "THE DRAW"); i++) yield return Tap(kb.rightArrowKey);
             yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<CalendarScreen>());
-            yield return CaptureUI(fe, "P2M4_UI_7_Calendar.png");
+            Assert.That(fe.Top, Is.InstanceOf<DrawScreen>());
+            yield return null; yield return null; yield return null;
+            Assert.That(fe.Top.Focused, Is.InstanceOf<BracketMatchItem>());
+            Assert.That(((BracketMatchItem)fe.Top.Focused).YouIn, Is.True, "the draw opens on your match");
+            yield return CaptureUI(fe, "P2M4_UI_8_Draw.png");
             yield return Tap(kb.escapeKey);
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
 
-            // a match to retire from: still in the event, or next month's
-            if (c.S.Current == null)
-            {
-                yield return Tap(kb.upArrowKey);
-                while (!fe.Top.Focused.Name.Contains("Club")) yield return Tap(kb.upArrowKey);
-                yield return Tap(kb.enterKey);
-            }
-            yield return FocusRow(kb, fe, "View the draw");
-            yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<DrawScreen>());
-            yield return CaptureUI(fe, "P2M4_UI_8_Draw.png");
-            yield return Tap(kb.escapeKey);
+            // a match to retire from
             int before = c.S.Matches.Count;
-            yield return Tap(kb.upArrowKey);
-            while (!fe.Top.Focused.Name.StartsWith("Next:")) yield return Tap(kb.upArrowKey);
-            yield return Tap(kb.enterKey);                                         // scouting
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            yield return Tap(kb.enterKey);                                         // the preview
             yield return Tap(kb.enterKey);                                         // play
             Assert.That(fe.Top, Is.Null);
             yield return Wait(0.5f, () => false);
@@ -197,6 +257,9 @@ namespace SquashGame.Tests
             Assert.That(fe.Match.Demo, Is.True, "back to the menus");
             if (fe.Top is EventResultScreen) yield return Tap(kb.enterKey);
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
+            yield return CaptureUI(fe, "U3_Central_AfterMonth.png");
+            yield return Tap(kb.eKey); yield return Tap(kb.eKey); yield return Tap(kb.eKey);
+            yield return CaptureUI(fe, "U3_PLAYER_History.png");
 
             // a 32-player draw (a Tour event): rank the player up, move on to March
             c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = 4, Reached = 0, Points = 9000 });
@@ -205,9 +268,27 @@ namespace SquashGame.Tests
             c.Enter(Tier.Tour);
             c.SimulateYours();
             fe.Push(new DrawScreen(c.S.Current));
-            yield return null;
+            yield return null; yield return null; yield return null;
             yield return CaptureUI(fe, "P2M4_UI_9_TourDraw.png");
             fe.Pop();
+            Assert.That(c.S.Last, Is.Not.Null);
+            fe.Push(new EventResultScreen(c.S.Last));                                // the result screen, whatever the matches did
+            yield return Wait(1.5f, () => false);
+            yield return CaptureUI(fe, "U3_EventResult.png");
+            fe.Pop();
+
+            // the season's end: the review
+            while (c.NextOpponent() >= 0) c.SimulateYours();
+            c.FinishSlot();
+            while (!c.S.SeasonJustEnded) c.Skip();
+            fe.Replace(new CareerHubScreen());
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<SeasonSummaryScreen>(), "the hub shows the season review");
+            yield return Wait(1.5f, () => false);
+            yield return CaptureUI(fe, "U3_SeasonSummary.png");
+            yield return Tap(kb.enterKey);
+            Assert.That(c.S.SeasonJustEnded, Is.False);
+            Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
 
             // it is all on disk
             CareerStore.Save();

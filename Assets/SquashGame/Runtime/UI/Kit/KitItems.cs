@@ -6,6 +6,7 @@
 //                 glyph), a kicker, a title, a line, a stat badge;
 //                 grows and glows when focused; locked / NEW states
 //   SelectorItem  one option as a pill strip or pips (left / right)
+//   CarouselItem  one value of a long list, big, between arrows
 //   PrimaryItem   the screen's one big lime action (bottom right)
 //
 // They are MenuItems, so a screen's focus, mouse, sounds and tests
@@ -137,6 +138,40 @@ namespace SquashGame.UI
             _caption.text = cap ?? "";
             _caption.style.display = string.IsNullOrEmpty(cap) ? DisplayStyle.None : DisplayStyle.Flex;
         }
+    }
+
+    /// <summary>One value from a long list, shown big between arrows (a nationality): left / right steps it.</summary>
+    public sealed class CarouselItem : MenuItem
+    {
+        readonly string[] _values;
+        readonly Func<int> _get;
+        readonly Action<int> _set;
+        readonly Label _value = new Label(), _count = new Label();
+
+        public override bool WantsSlant { get { return false; } }
+        public override bool TakesHorizontal { get { return true; } }
+
+        public CarouselItem(string label, string[] values, Func<int> get, Action<int> set) : base(label)
+        {
+            _values = values; _get = get; _set = set;
+            Root.RemoveFromClassList("fe-item");
+            Root.AddToClassList("k-carousel");
+            LabelEl.RemoveFromClassList("fe-item__label");
+            LabelEl.AddToClassList("k-sel-label");
+            var strip = new VisualElement(); strip.AddToClassList("k-car-strip");
+            var left = new Label("◀"); left.AddToClassList("k-car-arrow");
+            var right = new Label("▶"); right.AddToClassList("k-car-arrow");
+            left.RegisterCallback<ClickEvent>(e => { Change(-1); e.StopPropagation(); });
+            right.RegisterCallback<ClickEvent>(e => { Change(1); e.StopPropagation(); });
+            _value.AddToClassList("k-car-value"); _count.AddToClassList("k-car-count");
+            strip.Add(left); strip.Add(_value); strip.Add(right);
+            Root.Add(strip); Root.Add(_count);
+        }
+
+        public string Value { get { return _values[Mathf.Clamp(_get(), 0, _values.Length - 1)]; } }
+        public override void Submit() { Change(1); }
+        public override void Change(int d) { if (!IsEnabled) return; _set(OptionItem.Step(_get(), d, _values.Length)); Refresh(); }
+        public override void Refresh() { base.Refresh(); _value.text = Value; _count.text = (_get() + 1) + " / " + _values.Length; }
     }
 
     /// <summary>A plain action as a wide row (pause, full time, confirm): a label, an optional glyph; lime when focused.</summary>

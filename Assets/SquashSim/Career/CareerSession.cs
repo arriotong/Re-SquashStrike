@@ -79,14 +79,21 @@ namespace SquashSim.Career
         public List<Row> Ranking()
         {
             if (_ranking != null && _rankingAt == S.Slot && _rankingResults == S.Results.Count) return _ranking;
+            _ranking = RankingAt(S.Slot); _rankingAt = S.Slot; _rankingResults = S.Results.Count;
+            return _ranking;
+        }
+
+        /// <summary>The ranking as it stood at the start of a slot (an earlier one: how far a player has moved).</summary>
+        public List<Row> RankingAt(int slot)
+        {
             var rows = new Dictionary<int, Row>();
             var per = new Dictionary<int, List<int>>();
             foreach (var p in S.Roster) if (!p.Retired) { rows[p.Id] = new Row { Id = p.Id }; per[p.Id] = new List<int>(); }
             rows[You] = new Row { Id = You }; per[You] = new List<int>();
-            int from = S.Slot - Tour.RankingWindow;
+            int from = slot - Tour.RankingWindow;
             foreach (var r in S.Results)
             {
-                if (r.Slot < from || r.Slot >= S.Slot || !rows.ContainsKey(r.Player)) continue;
+                if (r.Slot < from || r.Slot >= slot || !rows.ContainsKey(r.Player)) continue;
                 per[r.Player].Add(r.Points);
                 if (r.Points > 0 && r.Slot > rows[r.Player].LastSlot) rows[r.Player].LastSlot = r.Slot;
             }
@@ -108,8 +115,20 @@ namespace SquashSim.Career
                 return a.Id.CompareTo(b.Id);
             });
             for (int i = 0; i < list.Count; i++) list[i].Rank = i + 1;
-            _ranking = list; _rankingAt = S.Slot; _rankingResults = S.Results.Count;
             return list;
+        }
+
+        List<Row> _before;
+        int _beforeAt = int.MinValue, _beforeResults = -1;
+
+        /// <summary>Places moved since the start of last month: positive = up. 0 when new to the list.</summary>
+        public int Movement(int id)
+        {
+            if (_before == null || _beforeAt != S.Slot || _beforeResults != S.Results.Count)
+            { _before = RankingAt(S.Slot - 1); _beforeAt = S.Slot; _beforeResults = S.Results.Count; }
+            int was = 0;
+            foreach (var r in _before) if (r.Id == id) { was = r.Rank; break; }
+            return was == 0 ? 0 : was - RankOf(id);
         }
 
         public int RankOf(int id) { foreach (var r in Ranking()) if (r.Id == id) return r.Rank; return 999; }
