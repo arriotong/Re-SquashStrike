@@ -24,12 +24,18 @@ namespace SquashGame.UI
 
     public sealed class TitleScreen : MenuScreen
     {
-        protected override string Kicker { get { return "SQUASH  ·  PC"; } }
         protected override string Title { get { return "re:SquashStrike"; } }
+        protected override string RootClass { get { return "fe-screen--title"; } }
+        protected override bool Sidebar { get { return false; } }
         protected override string Hint { get { return "Enter / A   start"; } }
         protected override void Build()
         {
-            Text("Real squash physics. Simple to play.");
+            // the old intro's logo: outlined SQUASH, glowing lime STRIKE
+            Content.style.alignItems = Align.Center;
+            Text("re:", "fe-logo-re");
+            Text("SQUASH", "fe-logo-squash");
+            Text("STRIKE", "fe-logo-strike");
+            Text("Real squash physics. Simple to play.", "fe-press");
             Add(new ButtonItem("START", () => Fe.Replace(new MainMenuScreen()), true));
         }
         public override void Back() { }                                   // nowhere to go back to
@@ -37,33 +43,79 @@ namespace SquashGame.UI
 
     // ---------------- main menu ----------------
 
+    /// <summary>The old SquashStrike's home: the brand, a column of slanted buttons and, on the right, a glowing
+    /// preview of the one in focus over the slow-motion rally (MenuCinematics picks the camera angles).</summary>
     public sealed class MainMenuScreen : MenuScreen
     {
-        protected override string Kicker { get { return "MAIN MENU"; } }
-        protected override string Title { get { return "re:SquashStrike"; } }
+        protected override string Title { get { return ""; } }
+        protected override string RootClass { get { return "fe-screen--home"; } }
         static string Soon() { return "coming soon"; }
+
+        static readonly System.Collections.Generic.Dictionary<string, string> Blurbs = new System.Collections.Generic.Dictionary<string, string>
+        {
+            { "Quick Match", "Jump straight onto the glass court. Pick your opponent, the difficulty and the length, and play." },
+            { "Local Versus", "Two players, one screen: pad and keyboard, or two pads." },
+            { "Career", "Climb the world tour, from club events to the World Finals." },
+            { "Target Arcade", "Just you, the feeder and the targets. Chase high scores and three stars on every level." },
+            { "Practice Court", "Free hitting off the feed machine, and drills for length, drops and boasts." },
+            { "Academy", "The controls, then the rules of squash - one short lesson at a time." },
+            { "Locker Room", "Kit, rackets and celebrations, earned by playing." },
+            { "Replays", "Your best rallies again, slowed down, from any angle." },
+            { "Settings", "Controls, video, audio and accessibility." },
+            { "Quit", "Leave re:SquashStrike." },
+        };
+
+        readonly VisualElement _preview = new VisualElement();
+        readonly Label _previewTitle = new Label(), _previewDesc = new Label();
+        MenuItem _shown;
+
+        /// <summary>The preview's heading (tests).</summary>
+        public string PreviewTitle { get { return _previewTitle.text; } }
+
         protected override void Build()
         {
-            Section("Play");
+            var brand = new VisualElement(); brand.AddToClassList("fe-brand");
+            foreach (var (text, cls) in new[] { ("re:", "fe-brand-re"), ("SQUASH", "fe-brand-squash"), ("STRIKE", "fe-brand-strike") })
+            { var l = new Label(text); l.AddToClassList(cls); brand.Add(l); }
+            Content.Add(brand);
+
             Add(new ButtonItem("Quick Match", () => Fe.Push(new QuickMatchScreen()), true));
-            var vs = Add(new ButtonItem("Local Versus", () => Fe.Push(new LocalVersusScreen()), false,
+            Add(new ButtonItem("Local Versus", () => Fe.Push(new LocalVersusScreen()), false,
                 () => MatchRunner.CanPlayTwoPlayer ? "" : "connect a pad"));
             Add(new ButtonItem("Career", null, false, Soon)).Enabled = () => false;
             Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
-            Section("Practice");
             Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
             Add(new ButtonItem("Academy", () => Fe.Push(new AcademyScreen()), false, AcademyScreen.Summary));
-            Section("More");
             Add(new ButtonItem("Locker Room", null, false, Soon)).Enabled = () => false;
             Add(new ButtonItem("Replays", null, false, Soon)).Enabled = () => false;
             Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ButtonItem("Quit", () => Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame))));
+
+            _preview.AddToClassList("home-preview");
+            _preview.pickingMode = PickingMode.Ignore;
+            _previewTitle.AddToClassList("home-preview-title");
+            _previewDesc.AddToClassList("home-preview-desc");
+            _preview.Add(_previewTitle); _preview.Add(_previewDesc);
+            Root.Add(_preview);
         }
+
+        void ShowPreview()
+        {
+            var f = Focused;
+            if (f == _shown) return;
+            _shown = f;
+            _previewTitle.text = f != null ? f.Name.ToUpperInvariant() : "";
+            _previewDesc.text = f != null && Blurbs.TryGetValue(f.Name, out var d) ? d : "";
+            MenuCinematics.Scene = f != null ? Items.IndexOf(f) : 0;
+        }
+
+        public override void OnShow() { base.OnShow(); _shown = null; ShowPreview(); }
         public override void Back() { }
 
         /// <summary>P2-M3: a new player is pointed to the Academy, once.</summary>
         public override void Tick(float dt)
         {
+            ShowPreview();
             var a = ProfileStore.Current.Academy;
             if (a.Suggested) return;
             a.Suggested = true;

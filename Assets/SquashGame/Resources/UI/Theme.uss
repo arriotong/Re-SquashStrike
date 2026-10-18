@@ -1,153 +1,274 @@
 /* ===========================================================
-   re:SquashStrike front end - TV broadcast style.
-   Dark translucent panels, white type, one red accent (the score
-   bug's stripe), condensed bold headings. Used by every screen.
+   re:SquashStrike front end - the old SquashStrike look.
+   Charcoal panels, lime accent (#c8ff3d), red for quitting,
+   Rajdhani (bold, upper case) for headings and buttons, JetBrains
+   Mono for the small print and the numbers. The left column's rows
+   are slanted buttons (painted: UI/Slant.cs); centred cards (pause,
+   results) use plain rounded buttons like the old pause card.
+   Used by every screen.
    =========================================================== */
 
 .fe-root {
     flex-grow: 1;
-    color: rgb(240, 242, 246);
+    color: rgba(255, 255, 255, 0.92);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-SemiBold");
     -unity-font-style: normal;
 }
 
 /* ---------- layers ---------- */
 .fe-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.fe-dim { background-color: rgba(8, 10, 14, 0.55); }
+.fe-dim { background-color: rgba(8, 9, 11, 0.62); }
 
-/* ---------- a menu screen: a left-aligned column over the court ---------- */
+/* ---------- a menu screen: the left column over the court ---------- */
 .fe-screen {
     position: absolute; left: 0; top: 0; bottom: 0;
-    width: 640px;
-    padding: 72px 56px 48px 72px;
-    background-color: rgba(10, 12, 16, 0.86);
-    border-right-width: 4px;
-    border-right-color: rgb(214, 56, 46);
+    width: 820px;
+    padding: 64px 260px 48px 72px;
+    -unity-background-scale-mode: stretch-to-fill;
 }
 .fe-screen--centre {
     left: 50%; translate: -50% 0;
-    border-right-width: 0;
-    border-left-width: 0;
-    border-top-width: 4px;
-    border-top-color: rgb(214, 56, 46);
-    top: 18%; bottom: auto;
-    width: 720px;
+    top: 16%; bottom: auto;
+    width: 640px;
+    padding: 40px 44px 36px 44px;
+    background-color: rgb(20, 22, 27);
+    border-width: 1px; border-color: rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    align-items: stretch;
 }
-.fe-kicker { font-size: 18px; color: rgb(214, 56, 46); -unity-font-style: bold; letter-spacing: 3px; margin-bottom: 4px; }
-.fe-title { font-size: 46px; -unity-font-style: bold; margin-bottom: 28px; letter-spacing: 1px; }
-.fe-subtitle { font-size: 18px; color: rgb(170, 178, 190); margin-bottom: 20px; white-space: normal; }
+.fe-screen--centre .fe-kicker { -unity-text-align: middle-center; }
+.fe-screen--centre .fe-title { -unity-text-align: middle-center; color: rgb(200, 255, 61); font-size: 40px; margin-bottom: 24px; }
+.fe-screen--centre .fe-subtitle { -unity-text-align: middle-center; }
 
-/* ---------- items ---------- */
+.fe-kicker {
+    font-size: 15px; color: rgb(200, 255, 61); letter-spacing: 3px; margin-bottom: 6px;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.fe-title {
+    font-size: 54px; margin-bottom: 26px; letter-spacing: 1px;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+}
+.fe-subtitle {
+    font-size: 16px; color: rgba(255, 255, 255, 0.62); margin-bottom: 20px; white-space: normal;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
+}
+
+/* ---------- rows ---------- */
 .fe-item {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    height: 54px;
-    padding: 0 18px;
-    margin-bottom: 6px;
+    height: 52px;
+    padding: 0 22px;
+    margin-bottom: 8px;
+    border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.04);
-    border-left-width: 4px;
-    border-left-color: rgba(0, 0, 0, 0);
+    border-width: 1px; border-color: rgba(255, 255, 255, 0.10);
+    transition-property: translate, background-color;
+    transition-duration: 0.16s;
 }
-.fe-item__label { font-size: 22px; -unity-font-style: bold; }
-.fe-item__value { font-size: 20px; color: rgb(205, 212, 222); }
-.fe-item__arrow { font-size: 22px; color: rgb(120, 128, 140); padding: 0 10px; }
-.fe-item--focused {
-    background-color: rgba(255, 255, 255, 0.14);
-    border-left-color: rgb(214, 56, 46);
+.fe-item__label {
+    font-size: 22px; letter-spacing: 1px;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
 }
-.fe-item--focused .fe-item__arrow { color: rgb(240, 242, 246); }
-.fe-item--disabled { opacity: 0.38; }
-.fe-item--primary { height: 64px; background-color: rgba(214, 56, 46, 0.30); }
-.fe-item--primary.fe-item--focused { background-color: rgba(214, 56, 46, 0.75); }
-.fe-item__note { font-size: 15px; color: rgb(150, 158, 170); }
-.fe-section { font-size: 15px; color: rgb(150, 158, 170); letter-spacing: 2px; margin: 18px 0 8px 2px; }
+.fe-item__value { font-size: 20px; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fe-item__arrow { font-size: 20px; color: rgba(255, 255, 255, 0.40); padding: 0 10px; }
+.fe-item__note { font-size: 13px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.fe-item--focused { background-color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); }
+.fe-item--focused .fe-item__label,
+.fe-item--focused .fe-item__value,
+.fe-item--focused .fe-item__arrow,
+.fe-item--focused .fe-item__note { color: rgb(14, 15, 18); }
+.fe-item--disabled { opacity: 0.34; }
+.fe-item--primary { height: 60px; border-color: rgba(200, 255, 61, 0.55); }
+.fe-item--primary .fe-item__label { font-size: 26px; }
+.fe-item--danger { border-color: rgba(255, 74, 64, 0.55); }
+.fe-item--danger .fe-item__label { color: rgb(255, 74, 64); }
+.fe-item--danger.fe-item--focused { background-color: rgb(255, 74, 64); border-color: rgb(255, 74, 64); }
+.fe-item--danger.fe-item--focused .fe-item__label { color: rgb(14, 15, 18); }
+
+/* the left column's rows: the painted slant is the background */
+.fe-item--slant { background-color: rgba(0, 0, 0, 0); border-width: 0; border-radius: 0; padding: 0 26px; }
+.fe-item--slant.fe-item--focused { background-color: rgba(0, 0, 0, 0); translate: 10px 0; }
+.fe-item--slant.fe-item--danger.fe-item--focused { background-color: rgba(0, 0, 0, 0); }
+
+.fe-section {
+    font-size: 12px; color: rgb(200, 255, 61); letter-spacing: 3px; margin: 16px 0 8px 4px;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
 
 .fe-hint {
-    position: absolute; left: 72px; bottom: 28px;
-    font-size: 16px; color: rgb(150, 158, 170);
+    position: absolute; left: 72px; bottom: 26px;
+    font-size: 13px; color: rgba(255, 255, 255, 0.50);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
 }
 
-/* ---------- title ---------- */
-.fe-logo { font-size: 96px; -unity-font-style: bold; letter-spacing: 2px; }
-.fe-logo-accent { color: rgb(214, 56, 46); }
-.fe-press { font-size: 24px; color: rgb(205, 212, 222); margin-top: 24px; }
-.fe-title-box { position: absolute; left: 96px; bottom: 140px; }
+/* ---------- the brand: SQUASH / STRIKE ---------- */
+.fe-brand { margin-bottom: 30px; }
+.fe-brand-re { font-size: 16px; color: rgb(200, 255, 61); letter-spacing: 4px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); margin-bottom: -6px; }
+.fe-brand-squash, .fe-brand-strike {
+    font-size: 76px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    letter-spacing: 2px; margin: -14px 0 -14px 0;
+}
+.fe-brand-strike { color: rgb(200, 255, 61); text-shadow: 0 0 18px rgba(200, 255, 61, 0.55); }
 
-/* ---------- HUD ---------- */
+/* ---------- main menu: the old home screen ---------- */
+.fe-screen--home { padding-top: 40px; }
+.fe-screen--home > .fe-title { display: none; }
+.fe-screen--home .fe-item { height: 50px; margin-bottom: 9px; }
+.fe-screen--home .fe-item__label { font-size: 26px; }
+.home-preview {
+    position: absolute; left: 820px; width: 1040px; top: 55%;
+    align-items: center;
+}
+.home-preview-title {
+    font-size: 64px; color: rgb(200, 255, 61); letter-spacing: 3px;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 0 26px rgba(200, 255, 61, 0.85);
+    -unity-text-outline-width: 1px; -unity-text-outline-color: rgba(0, 0, 0, 0.55);
+    -unity-text-align: middle-center;
+}
+.home-preview-desc {
+    font-size: 17px; color: rgba(255, 255, 255, 0.92); white-space: normal; width: 640px;
+    -unity-text-align: middle-center; margin-top: 8px;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
+    padding: 10px 24px; border-radius: 8px;
+    background-color: rgba(14, 15, 18, 0.62);
+}
+
+/* ---------- title (boot) ---------- */
+.fe-screen--title {
+    left: 0; right: 0; top: 0; bottom: 0; width: auto;
+    padding: 0;
+    justify-content: center; align-items: center;
+}
+.fe-screen--title .fe-kicker, .fe-screen--title > .fe-title { display: none; }
+.fe-logo-squash, .fe-logo-strike {
+    font-size: 150px; letter-spacing: 4px; -unity-text-align: middle-center;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    margin: -30px 0 -30px 0;
+}
+.fe-logo-squash { color: rgb(255, 255, 255); -unity-text-outline-width: 3px; -unity-text-outline-color: rgb(0, 0, 0); }
+.fe-logo-strike { color: rgb(200, 255, 61); -unity-text-outline-width: 3px; -unity-text-outline-color: rgb(0, 0, 0); text-shadow: 0 0 30px rgba(200, 255, 61, 0.9); }
+.fe-logo-re { font-size: 22px; color: rgb(200, 255, 61); letter-spacing: 8px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); -unity-text-align: middle-center; }
+.fe-press { font-size: 15px; color: rgba(255, 255, 255, 0.75); margin-top: 10px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); -unity-text-align: middle-center; }
+.fe-screen--title .fe-item { width: 380px; height: 58px; margin-top: 46px; justify-content: center; }
+.fe-screen--title .fe-item__label { font-size: 28px; letter-spacing: 4px; }
+.fe-screen--title .fe-hint { display: none; }
+
+/* ---------- HUD: the old score bug ---------- */
+.sb {
+    position: absolute; left: 20px; top: 20px;
+    flex-direction: row; align-items: center;
+    padding: 10px 18px 10px 18px;
+    background-color: rgba(14, 15, 18, 0.86);
+    border-width: 1px; border-color: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+.sb-side { align-items: center; min-width: 110px; }
+.sb-name-row { flex-direction: row; align-items: center; }
+.sb-name {
+    font-size: 13px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.75); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.sb-serve { width: 8px; height: 8px; border-radius: 4px; margin-right: 6px; background-color: rgba(0, 0, 0, 0); }
+.sb-serve--on { background-color: rgb(200, 255, 61); }
+.sb-score { font-size: 40px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); margin-top: -4px; }
+.sb-mid { align-items: center; margin: 0 16px; }
+.sb-label { font-size: 10px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.sb-games {
+    font-size: 11px; color: rgb(200, 255, 61); margin-top: 6px; padding: 2px 8px;
+    border-width: 1px; border-color: rgba(200, 255, 61, 0.45); border-radius: 4px;
+    background-color: rgba(200, 255, 61, 0.08);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.sb-meta {
+    position: absolute; left: 20px; top: 142px;
+    font-size: 12px; color: rgba(255, 255, 255, 0.70); padding: 4px 10px;
+    background-color: rgba(14, 15, 18, 0.70); border-radius: 6px;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
+}
+
+/* panels (Target Arcade, Academy) */
 .hud-bug {
     position: absolute; left: 20px; top: 20px; width: 420px;
-    background-color: rgba(14, 16, 20, 0.92);
-    border-left-width: 5px; border-left-color: rgb(214, 56, 46);
-    padding: 6px 0 6px 0;
+    background-color: rgba(14, 15, 18, 0.86);
+    border-width: 1px; border-color: rgba(255, 255, 255, 0.08);
+    border-left-width: 4px; border-left-color: rgb(200, 255, 61);
+    border-radius: 12px;
+    padding: 8px 0 8px 0;
 }
-.hud-row { flex-direction: row; align-items: center; height: 38px; padding: 0 12px 0 10px; }
-.hud-serve { width: 10px; height: 10px; border-radius: 5px; margin-right: 10px; flex-shrink: 0; background-color: rgba(0, 0, 0, 0); }
-.hud-serve--on { background-color: rgb(255, 209, 64); }
-.hud-name { flex-grow: 1; flex-shrink: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 21px; -unity-font-style: bold; }
-.hud-games { width: 40px; flex-shrink: 0; font-size: 21px; -unity-text-align: middle-center; color: rgb(170, 178, 190); }
-.hud-points { width: 52px; flex-shrink: 0; font-size: 24px; -unity-font-style: bold; -unity-text-align: middle-center; background-color: rgba(255, 255, 255, 0.08); }
-.hud-meta { font-size: 13px; color: rgb(150, 158, 170); padding: 4px 12px 0 25px; }
+.hud-meta { font-size: 12px; color: rgba(255, 255, 255, 0.6); padding: 4px 12px 0 0; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
 .hud-banner {
     position: absolute; top: 24px; left: 50%; translate: -50% 0;
     min-width: 520px;
-    padding: 12px 28px;
-    background-color: rgba(14, 16, 20, 0.92);
-    border-bottom-width: 4px; border-bottom-color: rgb(214, 56, 46);
-    font-size: 28px; -unity-font-style: bold; -unity-text-align: middle-center;
+    padding: 10px 28px;
+    background-color: rgba(14, 15, 18, 0.90);
+    border-width: 1px; border-color: rgba(200, 255, 61, 0.35);
+    border-radius: 10px;
+    font-size: 28px; -unity-text-align: middle-center;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
 }
 .hud-sub {
-    position: absolute; top: 92px; left: 50%; translate: -50% 0;
+    position: absolute; top: 90px; left: 50%; translate: -50% 0;
     padding: 4px 14px;
-    background-color: rgba(14, 16, 20, 0.75);
-    font-size: 16px; -unity-text-align: middle-center;
+    background-color: rgba(14, 15, 18, 0.75); border-radius: 6px;
+    font-size: 13px; -unity-text-align: middle-center; color: rgba(255, 255, 255, 0.75);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
 }
 .hud-centre {
     position: absolute; top: 44%; left: 50%; translate: -50% -50%;
-    padding: 16px 36px;
-    background-color: rgba(14, 16, 20, 0.92);
-    border-bottom-width: 4px; border-bottom-color: rgb(214, 56, 46);
-    font-size: 34px; -unity-font-style: bold; -unity-text-align: middle-center;
+    padding: 14px 40px;
+    background-color: rgba(14, 15, 18, 0.92);
+    border-width: 1px; border-color: rgba(200, 255, 61, 0.45);
+    border-radius: 12px;
+    font-size: 40px; color: rgb(200, 255, 61); -unity-text-align: middle-center;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 0 16px rgba(200, 255, 61, 0.45);
 }
 .hud-prompt {
-    position: absolute; bottom: 70px; left: 50%; translate: -50% 0;
-    max-width: 900px;
+    position: absolute; bottom: 64px; left: 50%; translate: -50% 0;
+    max-width: 920px;
     padding: 10px 20px;
-    background-color: rgba(14, 16, 20, 0.78);
-    font-size: 17px; -unity-text-align: middle-center; white-space: normal;
+    background-color: rgba(14, 15, 18, 0.80); border-radius: 8px;
+    font-size: 15px; -unity-text-align: middle-center; white-space: normal;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium");
 }
 
 /* ---------- post-match ---------- */
-.pm-result { font-size: 40px; -unity-font-style: bold; margin-bottom: 6px; }
-.pm-score { font-size: 22px; color: rgb(205, 212, 222); margin-bottom: 22px; }
-.pm-stat { flex-direction: row; justify-content: space-between; height: 32px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.08); }
-.pm-stat__name { font-size: 17px; color: rgb(170, 178, 190); }
-.pm-stat__val { font-size: 18px; -unity-font-style: bold; width: 120px; -unity-text-align: middle-right; }
+.pm-result { font-size: 44px; margin-bottom: 4px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pm-score { font-size: 20px; color: rgb(200, 255, 61); margin-bottom: 22px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pm-stat { flex-direction: row; justify-content: space-between; height: 32px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
+.pm-stat__name { font-size: 14px; color: rgba(255, 255, 255, 0.70); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.pm-stat__val { font-size: 18px; width: 140px; -unity-text-align: middle-right; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .pm-stats { margin-bottom: 24px; }
 
 /* ---------- controls page ---------- */
-.ctl-row { flex-direction: row; height: 34px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
-.ctl-action { width: 230px; font-size: 18px; -unity-font-style: bold; }
-.ctl-keys { font-size: 17px; color: rgb(205, 212, 222); white-space: normal; flex-shrink: 1; }
+.ctl-row { flex-direction: row; height: 34px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.05); }
+.ctl-action { width: 230px; font-size: 18px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.ctl-keys { font-size: 13px; color: rgba(255, 255, 255, 0.80); white-space: normal; flex-shrink: 1; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
 /* ---------- Target Arcade ---------- */
 .ah-panel { width: 400px; padding: 10px 16px 10px 16px; }
-.ah-name { font-size: 15px; color: rgb(214, 56, 46); -unity-font-style: bold; letter-spacing: 2px; }
-.ah-score { font-size: 46px; -unity-font-style: bold; margin: 2px 0 2px 0; }
-.ah-line { font-size: 19px; color: rgb(205, 212, 222); }
+.ah-name { font-size: 12px; color: rgb(200, 255, 61); letter-spacing: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.ah-score { font-size: 48px; margin: 0 0 0 0; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.ah-line { font-size: 15px; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .ah-callout {
     position: absolute; top: 26%; left: 50%; translate: -50% 0;
-    font-size: 34px; -unity-font-style: bold; color: rgb(255, 255, 255);
-    -unity-text-outline-width: 1px; -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+    font-size: 40px; color: rgb(200, 255, 61);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    -unity-text-outline-width: 1px; -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+    text-shadow: 0 0 18px rgba(200, 255, 61, 0.6);
 }
-.ta-stars { font-size: 20px; color: rgb(255, 209, 64); }
-.ta-big-stars { font-size: 54px; color: rgb(255, 209, 64); margin-bottom: 8px; }
-.ta-best { font-size: 20px; color: rgb(205, 212, 222); margin-bottom: 18px; }
-.ta-new { color: rgb(255, 209, 64); -unity-font-style: bold; }
+.ta-stars { font-size: 20px; color: rgb(255, 184, 59); }
+.ta-big-stars { font-size: 54px; color: rgb(255, 184, 59); margin-bottom: 8px; -unity-text-align: middle-center; }
+.ta-best { font-size: 15px; color: rgba(255, 255, 255, 0.80); margin-bottom: 18px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.ta-new { color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
-/* ---------- academy (P2-M3) ---------- */
-.ls-card { width: 620px; padding: 12px 18px 14px 18px; }
-.ls-text { font-size: 24px; -unity-font-style: bold; white-space: normal; margin: 6px 0 6px 0; }
-.ls-keys { font-size: 17px; color: rgb(255, 209, 64); white-space: normal; }
-.ls-progress { font-size: 20px; color: rgb(205, 212, 222); margin-top: 6px; }
-.ls-progress--done { color: rgb(120, 214, 120); -unity-font-style: bold; }
+/* ---------- Academy ---------- */
+.ls-card { width: 640px; padding: 12px 20px 14px 18px; }
+.ls-text { font-size: 26px; white-space: normal; margin: 6px 0 6px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.ls-keys { font-size: 14px; color: rgb(200, 255, 61); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.ls-progress { font-size: 16px; color: rgba(255, 255, 255, 0.80); margin-top: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.ls-progress--done { color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

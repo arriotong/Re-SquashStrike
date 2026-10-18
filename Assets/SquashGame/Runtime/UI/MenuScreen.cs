@@ -21,6 +21,10 @@ namespace SquashGame.UI
 
         /// <summary>Centred panel (pause, post-match) instead of the left column.</summary>
         protected virtual bool Centred { get { return false; } }
+        /// <summary>An extra style class for the screen's root (a layout of its own: the title, the main menu).</summary>
+        protected virtual string RootClass { get { return null; } }
+        /// <summary>The dark sidebar behind the column (off for the title).</summary>
+        protected virtual bool Sidebar { get { return !Centred; } }
         /// <summary>Dim the court behind this screen.</summary>
         public virtual bool Dims { get { return false; } }
         /// <summary>Esc belongs to the game here (it un-pauses), so the menu ignores it.</summary>
@@ -34,6 +38,8 @@ namespace SquashGame.UI
             Fe = fe;
             Root.AddToClassList("fe-screen");
             if (Centred) Root.AddToClassList("fe-screen--centre");
+            if (Sidebar) Root.style.backgroundImage = new StyleBackground(Palette.SidebarFade());   // the old game's sidebar: dark, fading out
+            if (RootClass != null) Root.AddToClassList(RootClass);
             if (Kicker != null) { var k = new Label(Kicker); k.AddToClassList("fe-kicker"); Root.Add(k); }
             var t = new Label(Title); t.AddToClassList("fe-title"); Root.Add(t);
             Root.Add(Content);
@@ -49,6 +55,8 @@ namespace SquashGame.UI
         {
             item.OnHover = it => Focus(it);
             item.OnClick = it => { Focus(it); it.Submit(); };
+            if (item.Name != null && item.Name.StartsWith("Quit")) item.Root.AddToClassList("fe-item--danger");
+            if (!Centred) item.UseSlant();
             Items.Add(item);
             Content.Add(item.Root);
             return item;

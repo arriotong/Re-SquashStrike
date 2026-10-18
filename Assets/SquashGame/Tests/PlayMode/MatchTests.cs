@@ -23,7 +23,11 @@ namespace SquashGame.Tests
         {
             var court = Object.FindFirstObjectByType<MatchCourt>();
             Assert.That(court, Is.Not.Null, "MatchCourt not in scene");
-            if (court.Runner.InSetup) court.Runner.BeginMatch(MatchSettings.QuickGame());   // past the setup panel
+            if (court.Runner.InSetup || court.Runner.Demo)                                  // past the menus (and their demo rally)
+            {
+                var fe = Object.FindFirstObjectByType<UI.FrontEnd>();
+                if (fe != null) fe.StartMatch(MatchSettings.QuickGame()); else court.Runner.BeginMatch(MatchSettings.QuickGame());
+            }
             return court.Runner;
         }
 

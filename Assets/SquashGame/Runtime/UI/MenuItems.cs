@@ -11,6 +11,7 @@
 // ===========================================================
 
 using System;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace SquashGame.UI
@@ -40,8 +41,34 @@ namespace SquashGame.UI
         public void SetLabel(string text) { LabelEl.text = text; }
         public virtual void Submit() { }
         public virtual void Change(int d) { }
-        public virtual void Refresh() { Root.EnableInClassList("fe-item--disabled", !IsEnabled); }
-        public void SetFocused(bool on) { Root.EnableInClassList("fe-item--focused", on); }
+        public virtual void Refresh() { Root.EnableInClassList("fe-item--disabled", !IsEnabled); Paint(); }
+        public void SetFocused(bool on) { Root.EnableInClassList("fe-item--focused", on); Paint(); }
+
+        // ---- the old SquashStrike look: a slanted row (left-column screens) ----
+        Slant _slant;
+        public bool Focused { get { return Root.ClassListContains("fe-item--focused"); } }
+
+        /// <summary>Draw this row as a slanted button (the menus' left column).</summary>
+        public void UseSlant()
+        {
+            if (_slant != null) return;
+            _slant = new Slant();
+            Root.Insert(0, _slant);
+            Root.AddToClassList("fe-item--slant");
+            Paint();
+        }
+
+        void Paint()
+        {
+            if (_slant == null) return;
+            bool focused = Focused;
+            bool primary = Root.ClassListContains("fe-item--primary");
+            bool danger = Root.ClassListContains("fe-item--danger");
+            if (focused) _slant.Set(danger ? Palette.Red : Palette.Lime, new Color(0, 0, 0, 0), 0, new Color(0, 0, 0, 0.45f));
+            else _slant.Set(new Color(0.07f, 0.08f, 0.10f, 0.84f),
+                            danger ? new Color(Palette.Red.r, Palette.Red.g, Palette.Red.b, 0.7f) : primary ? new Color(Palette.Lime.r, Palette.Lime.g, Palette.Lime.b, 0.75f) : new Color(1f, 1f, 1f, 0.16f),
+                            primary ? 2f : 1.5f, new Color(0, 0, 0, 0));
+        }
     }
 
     public sealed class ButtonItem : MenuItem

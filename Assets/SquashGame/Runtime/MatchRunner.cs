@@ -63,6 +63,9 @@ namespace SquashGame
         public bool Demo { get; private set; }
         protected override bool PauseAllowed { get { return !Demo && !InSetup; } }
 
+        /// <summary>The menus' demo rally runs in slow motion (the old home screen: 0.4x).</summary>
+        public const double DemoSpeed = 0.4;
+
         /// <summary>Play the menus' demo: two AIs, on and on (a new match when one ends).</summary>
         public void BeginDemo()
         {
@@ -82,7 +85,7 @@ namespace SquashGame
             InSetup = false;
             DeviceLost = null;
             Clock.Resume();
-            Clock.TimeScale = GameSpeed;
+            Clock.TimeScale = DemoSpeed;
             Clock.Flush();
             SnapViews();
         }

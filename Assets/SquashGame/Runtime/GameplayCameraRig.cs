@@ -43,6 +43,13 @@ namespace SquashGame
                 return;
             }
 
+            // The menus' demo rally: slow-motion cuts from cinematic angles (the old home screen).
+            if (Runner is MatchRunner menu && menu.Demo)
+            {
+                MenuCinematics.Apply(_cam, Runner, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+                return;
+            }
+
             // Projection: hold the horizontal field on narrow windows.
             float aspect = _cam.aspect;
             float fov = (float)cfg.Fov;
