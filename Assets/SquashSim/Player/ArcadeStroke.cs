@@ -57,6 +57,8 @@ namespace SquashSim
         public double DiveSeconds, DiveSpeedScale, DiveRecovery, DiveRecoverySpeed, DiveReachScale, DiveStamina, DiveMinStamina;
         public double SprintScale, SprintDrain, WindedStamina;
         public double BoastPaceScale, BoastMaxHeight, BoastMinHeight, BoastCross;
+        public double ServeSpeed;
+        public double LobRise, LobMaxSpeed, LobDepth, LobWallMax;
         public double EarlyFull, EarlySpreadCut, EarlyMishitCut, EarlyNear;
         public double DropFlightTime, DropSpeedMin, DropSpeedMax;
     }
@@ -282,6 +284,7 @@ namespace SquashSim
             switch (shot)
             {
                 case "lob": speed = c.LobSpeed; break;
+                case "serve": speed = c.ServeSpeed; break;
                 case "drop":
                     // A real pace for the distance (a short, firm flight low onto the front wall), not a float.
                     ty = CourtDimensions.TIN_H + c.DropHeightAboveTin;
@@ -318,6 +321,7 @@ namespace SquashSim
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
             if (boast) shot = "boast";
+            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, System.Math.Min(ty, c.LobWallMax));   // any higher and it cannot stay in
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // High shots: soft enough to come down before the back wall's out line (playable, not long).
             _good.CopyFrom(_vel);
@@ -329,6 +333,7 @@ namespace SquashSim
                     if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
                     _good.CopyFrom(_vel);
                 }
+                else if (shot == "lob" && wall == 0 && !touch) break;            // the lob search already kept it in court
                 else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             }
 
@@ -389,9 +394,80 @@ namespace SquashSim
 
         /// <summary>Velocity of the given speed that carries the ball from where it is to the target point
         /// (front wall, or a side wall for a boast): straight-line start, then corrected on the real flight.</summary>
+        /// <summary>Start the next Solve this far above the target (a lob's high arc); 0 = straight at it.</summary>
+        double _lift;
+
+        /// <summary>
+        /// A lob: still RISING when it meets the front wall, so it carries on up and over to the back. Tries a few
+        /// arcs (how fast it is still rising at the wall); each starts from the drag-free flight and is corrected on
+        /// the real one by Solve; keeps the one landing nearest LobDepth that stays in court (no ceiling, nothing
+        /// out, no back-wall hit on the full above the safe height). Returns the pace; the launch is left in the
+        /// stroke velocity.
+        /// </summary>
+        public double SolveLob(BallState ball, List<Surface> surfaces, double tx, double ty)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double g = PhysicsConfig.Current.World.Gravity;
+            double dx = tx - ball.Pos.X, dz = ball.Pos.Z, d = System.Math.Max(0.5, System.Math.Sqrt(dx * dx + dz * dz));
+            double dy = ty - ball.Pos.Y;
+            double best = double.MaxValue, bestSpeed = c.LobSpeed;
+            bool any = false;
+            for (int k = 0; k < 6; k++)
+            {
+                double up = 1.0 + k * c.LobRise;                     // rising this fast at the wall
+                double t = (-up + System.Math.Sqrt(System.Math.Max(0, up * up + 2 * g * dy))) / g;
+                if (t < 0.12) t = 0.12;
+                double h = d / t, vy = up + g * t;
+                double speed = System.Math.Min(c.LobMaxSpeed, System.Math.Sqrt(h * h + vy * vy) * 1.08);
+                _lift = vy / h * d - dy;
+                Solve(ball, surfaces, tx, ty, 0, 0, speed);
+                _lift = 0;
+                double land = LobLanding(ball, surfaces);
+                double score = land < 0 ? 1e6 : System.Math.Abs(land - c.LobDepth);
+                if (score < best) { best = score; bestSpeed = speed; _good.CopyFrom(_vel); any = true; }
+            }
+            if (any) _vel.CopyFrom(_good);
+            return bestSpeed;
+        }
+
+        /// <summary>Where this launch first bounces after the front wall (z), or -1 if it would go out / hit the ceiling / the back wall high on the full.</summary>
+        /// <summary>The side-wall out line: 4.57 m at the front wall sloping to 2.13 m at the back.</summary>
+        static double SideOutHeight(double z)
+        {
+            double f = Clamp(z / CourtDimensions.LENGTH, 0, 1);
+            return CourtDimensions.FRONT_WALL_OUT_H + (CourtDimensions.BACK_WALL_OUT_H - CourtDimensions.FRONT_WALL_OUT_H) * f;
+        }
+
+        double LobLanding(BallState ball, List<Surface> surfaces)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            bool front = false;
+            for (int i = 0; i < 480; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                if (_scratch.Pos.Y > CourtDimensions.CEILING_H - 0.3) return -1;
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceClass == "frontWall")
+                    {
+                        if (e.Point.Y > CourtDimensions.FRONT_WALL_OUT_H - 0.1) return -1;
+                        front = true;
+                    }
+                    else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return -1; }
+                    else if (e.SurfaceClass == "backWall") { if (e.Point.Y > c.BackWallSafeHeight) return -1; }
+                    else if (e.SurfaceClass == "outBackstop" || e.SurfaceClass == "ceiling") return -1;
+                    else if (e.SurfaceClass == "sideWall" && e.Point.Y > SideOutHeight(e.Point.Z) - 0.1) return -1;
+                    else if (e.SurfaceClass == "floor") return e.Point.Z;
+                }
+            }
+            return -1;
+        }
+
         void Solve(BallState ball, List<Surface> surfaces, double tx, double ty, double tz, int wall, double speed)
         {
-            _aimPoint.X = tx; _aimPoint.Y = ty; _aimPoint.Z = tz;
+            _aimPoint.X = tx; _aimPoint.Y = ty + _lift; _aimPoint.Z = tz;
             for (int it = 0; it < 4; it++)
             {
                 double dx = _aimPoint.X - ball.Pos.X, dy = _aimPoint.Y - ball.Pos.Y, dz = _aimPoint.Z - ball.Pos.Z;

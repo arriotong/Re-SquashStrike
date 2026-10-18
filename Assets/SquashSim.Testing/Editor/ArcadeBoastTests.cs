@@ -58,8 +58,10 @@ namespace SquashSim.Tests
             Assert.That(err, Is.LessThan(0.3), "and onto the aim point");
         }
 
-        [Test] public void FromTheBackCornerItLandsOnTheAim() { Boast(2.6, 0.7, 8.0, -1.5, 1.6, 24 * 0.95); }
-        [Test] public void FromTheMiddleItComesAcross() { Boast(0.1, 0.8, 6.5, 1.8, 1.4, 24 * 0.95); }
+        static double Pace { get { var c = PhysicsConfig.Current.ArcadeHit; return c.DriveSpeed * c.BoastPaceScale; } }
+
+        [Test] public void FromTheBackCornerItLandsOnTheAim() { Boast(2.6, 0.7, 8.0, -1.5, 1.6, Pace); }
+        [Test] public void FromTheMiddleItComesAcross() { Boast(0.1, 0.8, 6.5, 1.8, 1.4, Pace); }
         [Test] public void ALowTrickleBoast() { Boast(-2.4, 0.5, 4.0, 1.2, CourtDimensions.TIN_H + 0.17, 9.0); }
 
         [Test] public void SideChoice()

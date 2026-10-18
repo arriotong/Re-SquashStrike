@@ -517,12 +517,13 @@ namespace SquashSim
             Current.ArcadeHit = new ArcadeHitSection
             {
                 Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.9,
-                DriveSpeed = 24.0, ChargeBonus = 0.6, LobSpeed = 14.0, LobHeight = 3.0, TouchSpeed = 11.0,
+                DriveSpeed = 28.0, ChargeBonus = 0.6, LobSpeed = 14.0, LobHeight = 3.0, TouchSpeed = 11.0,
                 MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4,
                 // The original SquashStrike: shot type from aim height, dive, sprint.
                 LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
                 DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
                 DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3,
+                ServeSpeed = 24.0, LobRise = 1.5, LobMaxSpeed = 26.0, LobDepth = 8.0, LobWallMax = 3.3,
                 BoastPaceScale = 0.9, BoastMaxHeight = 1.8, BoastMinHeight = 0.8, BoastCross = 0.3,
                 // Set early (in position before the ball arrives): up to 75% less spread, 85% fewer mishits.
                 EarlyFull = 0.45, EarlySpreadCut = 0.75, EarlyMishitCut = 0.85, EarlyNear = 0.35,
@@ -565,9 +566,9 @@ namespace SquashSim
         /// </summary>
         public static void UseGameMovement()
         {
-            // Smaller-looking, quicker athletes (playtest 2026-10-17): +12% top speed, acceleration and braking.
+            // Quicker off the mark (playtest 2026-10-17): +12% acceleration and braking. Top speed stays the lab's
+            // 5.2 m/s (playtest 2026-10-18: 5.8 felt too fast once nothing slows a local player down).
             var p = Current.Player;
-            p.MaxSpeed *= 1.12;
             p.Acceleration *= 1.12;
             p.Braking *= 1.12;
         }
@@ -586,12 +587,18 @@ namespace SquashSim
             c.Assist.MaxCorrection = 0.12;                            // lab 0.30
         }
 
+        public const double GameFrontWallRestitution = 0.62;
+        public const double GamePaceScale = 1.15;
+
         public static void UseMatchBall()
         {
             var c = Current;
             // PSA pace: a hard drive leaves the racket at ~40-50 m/s (the lab swings were club pace).
-            c.Racket.Swing.Neutral.HeadSpeed = 24.0;
-            c.Racket.Swing.Attack.HeadSpeed = 37.0;
+            // Hit ~15% harder than that (playtest 2026-10-18) to keep the depth off the deader front wall below.
+            c.Racket.Swing.Neutral.HeadSpeed = 24.0 * GamePaceScale;
+            c.Racket.Swing.Attack.HeadSpeed = 37.0 * GamePaceScale;
+            // A deader front wall: the ball comes off it ~15% slower (playtest 2026-10-18; lab 0.74).
+            c.Surfaces.FrontWall.Restitution = GameFrontWallRestitution;
             // (Lift - lobs and serves - keeps the lab's soft pace.)
             // A double yellow is dead at pace: restitution falls off further at high impact speed...
             c.Restitution.SpeedResponse = new[]
