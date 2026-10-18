@@ -62,6 +62,7 @@ namespace SquashSim
 
             // The original SquashStrike moves (game, local players): sprint, and the dive replaces running for its duration.
             bool diving = false;
+            Player.ArcadeMovement = ArcadeOn;
             if (ArcadeOn)
             {
                 Player.SpeedScale = Arcade.SpeedScaleFor(Player, intent, dt);

@@ -21,9 +21,13 @@
 //   dive               (Space / pad B) a lunge in the move direction: 1.5x
 //                      reach (less accurate), then a slow recovery.
 //   sprint             (Shift / pad LB) faster, at a stamina cost.
-//   boast              hold E / pad RB while you hit: off the side wall
-//                      nearer the ball, landing on the aim point (aimed
-//                      like a drive; the side-wall bounce is solved).
+//   boast              tap E / pad RB to arm it for the next stroke: off the
+//                      side wall by the ball, across to the aim point on the
+//                      other half of the front wall (the ring shows where).
+//   early              being set (in position) before the ball arrives makes
+//                      the shot tighter: less spread, far fewer mishits.
+//   drop               struck at a real pace for its distance, low on the
+//                      front wall - not floated.
 //
 // The hit is a normal racket contact to everything downstream (the
 // referee, sounds, pop-ups, the timing note), and the swing still plays
@@ -52,7 +56,9 @@ namespace SquashSim
         public double LowHeight, KillCharge, KillHeightAboveTin, DropHeightAboveTin, DropSpeed;
         public double DiveSeconds, DiveSpeedScale, DiveRecovery, DiveRecoverySpeed, DiveReachScale, DiveStamina, DiveMinStamina;
         public double SprintScale, SprintDrain, WindedStamina;
-        public double BoastPaceScale, BoastMaxHeight;
+        public double BoastPaceScale, BoastMaxHeight, BoastMinHeight, BoastCross;
+        public double EarlyFull, EarlySpreadCut, EarlyMishitCut, EarlyNear;
+        public double DropFlightTime, DropSpeedMin, DropSpeedMax;
     }
 
     public sealed class ArcadeStroke
@@ -63,14 +69,20 @@ namespace SquashSim
         double _pending = -1;          // grace time left for a released stroke waiting for the ball
         double _pendingCharge, _lunged;
         bool _boast;
-        /// <summary>This stroke will be played as a boast (Boast held since the press).</summary>
+        /// <summary>The next stroke will be a boast (E / pad RB tapped).</summary>
         public bool BoastArmed { get { return _boast; } }
+        double _setTime;
+        /// <summary>0..1: how early the athlete was set for the last stroke (1 = in position EarlyFull seconds ahead).</summary>
+        public double LastEarliness { get; private set; }
+        /// <summary>Seconds in position for the ball now coming (presentation and tests).</summary>
+        public double SetTime { get { return _setTime; } }
         uint _rng;
         readonly InputIntent _idle = new InputIntent();
         readonly BallState _scratch = new BallState();
         readonly List<SimEvent> _events = new List<SimEvent>();
         readonly V3 _vel = new V3();
         readonly V3 _aimPoint = new V3();
+        readonly V3 _good = new V3();
         static readonly Prediction _fakePred = new Prediction();
 
         /// <summary>0..1 how charged the stroke being held is (presentation).</summary>
@@ -91,8 +103,7 @@ namespace SquashSim
             var c = PhysicsConfig.Current.ArcadeHit;
             double s = 1.0;
             bool moving = intent.MoveMagnitude > 0.1;
-            if (_diveRecover > 0) s *= c.DiveRecoverySpeed;
-            else if (intent.Sprint && moving && p.Stamina > c.WindedStamina)
+            if (intent.Sprint && moving && p.Stamina > c.WindedStamina)
             {
                 s *= c.SprintScale;
                 p.Stamina = System.Math.Max(0, p.Stamina - c.SprintDrain * dt);
@@ -171,7 +182,7 @@ namespace SquashSim
             string pressed = intent.Hit.Pressed ? "hit" : (intent.Touch.Pressed ? "touch" : null);
             if (pressed != null)
             {
-                _charging = true; _charge = 0; _stroke = pressed; _pending = -1; _lunged = 0; _boast = false;
+                _charging = true; _charge = 0; _stroke = pressed; _pending = -1; _lunged = 0;
                 if (sw.State == SwingStates.Idle) { sw.State = SwingStates.Preparing; sw.Stroke = pressed; sw.Mode = "prepared"; sw.HoldSeconds = 0; }
             }
             if (_charging)
@@ -186,12 +197,20 @@ namespace SquashSim
                 }
             }
 
-            // Boast held at any time between the press and the contact: the stroke is a boast.
-            if (_charging || _pending > 0) _boast |= intent.Boast;
-            else if (sw.State == SwingStates.Idle) _boast = false;
+            // Tap to arm / disarm a boast for the next stroke.
+            if (intent.BoastPressed) _boast = !_boast;
+
+            // Getting there early: time spent in position for the ball that is coming.
+            var pred = ctrl.Prediction;
+            if (ctrl.ContactEnabled && pred.Valid)
+            {
+                double ex0 = pred.Point.X - player.Pos.X, ez0 = pred.Point.Z - player.Pos.Z;
+                if (System.Math.Sqrt(ex0 * ex0 + ez0 * ez0) <= c.SweetSpot + c.EarlyNear) _setTime += dt;
+                else _setTime = System.Math.Max(0, _setTime - 2 * dt);
+            }
+            else _setTime = 0;
 
             // Auto step toward the ball while the stroke is ready and the ball is nearly there.
-            var pred = ctrl.Prediction;
             bool ready = _pending > 0 || (_charging && pred.Valid && pred.Time < 0.35);
             if (ready && ctrl.ContactEnabled && pred.Valid && _lunged < c.LungeMax)
             {
@@ -219,6 +238,7 @@ namespace SquashSim
                 if (_pending <= 0)
                 {
                     _pending = -1;
+                    _boast = false;
                     Whiff(ctrl, ball);
                 }
             }
@@ -237,6 +257,9 @@ namespace SquashSim
             var player = ctrl.Player;
             var aim = ctrl.Aim;
             double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale - c.SweetSpot), 0, 1);
+            double early = ctrl.ServeStroke ? 1 : Clamp(_setTime / c.EarlyFull, 0, 1);
+            LastEarliness = early;
+            _setTime = 0;
             if (Diving) missRatio = System.Math.Min(1, missRatio + 0.35);            // a diving hit is a scramble
             else if (_diveRecover > 0) missRatio = System.Math.Min(1, missRatio + 0.15);
 
@@ -245,36 +268,47 @@ namespace SquashSim
             int wall = aim.HasWallTarget ? aim.TargetWall : 0;
             if (aim.HasWallTarget) { tx = aim.WallTarget.X; ty = aim.WallTarget.Y; tz = aim.WallTarget.Z; }
             else { tx = aim.IntendedPoint.X; ty = aim.IntendedPoint.Y; tz = 0; }
-            // The serve must go above the service line (the original game did the same).
-            if (ctrl.ServeStroke && wall == 0)
+            // The serve goes where you aim (under the service line the referee calls a fault). Bots, with no
+            // reticle, keep the old safe serve: above the line, cross-court when the stick is centred.
+            if (ctrl.ServeStroke && wall == 0 && !aim.FromPoint)
             {
                 ty = System.Math.Max(ty, CourtDimensions.SERVICE_LINE_H + 0.3);
                 if (System.Math.Abs(aim.BiasX) < 0.08) tx = ctrl.ServeDefaultX;    // no drag: the normal cross-court serve
             }
             bool touch = _stroke == "touch";
             // The shot type from the aim height (the original SquashStrike); charge adds pace to drives and kills.
-            string shot = ctrl.ServeStroke ? "serve" : ShotTypeFor(ty);
+            string shot = ctrl.ServeStroke ? (ty > c.LobHeight ? "lob" : "serve") : ShotTypeFor(ty);
             double speed;
             switch (shot)
             {
                 case "lob": speed = c.LobSpeed; break;
-                case "drop": ty = CourtDimensions.TIN_H + c.DropHeightAboveTin; speed = c.DropSpeed; break;
+                case "drop":
+                    // A real pace for the distance (a short, firm flight low onto the front wall), not a float.
+                    ty = CourtDimensions.TIN_H + c.DropHeightAboveTin;
+                    double reach = System.Math.Sqrt((tx - ball.Pos.X) * (tx - ball.Pos.X) + ball.Pos.Z * ball.Pos.Z);
+                    speed = Clamp(reach / c.DropFlightTime, c.DropSpeedMin, c.DropSpeedMax);
+                    break;
                 case "kill": ty = CourtDimensions.TIN_H + c.KillHeightAboveTin; speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
                 default: speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
             }
             if (touch && shot != "drop") speed = c.TouchSpeed;
             bool boast = _boast && !ctrl.ServeStroke && wall == 0;
+            _boast = false;
+            int side = 0;
             if (boast)
             {
-                ty = System.Math.Min(ty, c.BoastMaxHeight);
+                // Off the wall by the ball, across to the aim point - kept on the other half (where the ring shows it).
+                side = BoastTarget(ball.Pos.X, tx, out tx);
+                if (shot != "drop") ty = Clamp(ty, c.BoastMinHeight, c.BoastMaxHeight);
                 if (shot != "drop" && !touch) speed *= c.BoastPaceScale;
             }
             double spread = missRatio * missRatio * c.MaxSpread * (charge > 0.8 ? 0.6 : 1.0);
+            spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
             ty += ey;
-            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance)
+            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early))
             {
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - 0.15;                                    // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (0.4 + missRatio * 0.6);                             // well off
@@ -282,15 +316,19 @@ namespace SquashSim
             speed *= 1.0 - 0.15 * missRatio;
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
-            int side = boast ? BoastSide(ball.Pos.X, tx) : 0;
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
             if (boast) shot = "boast";
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // High shots: soft enough to come down before the back wall's out line (playable, not long).
+            _good.CopyFrom(_vel);
             for (int k = 0; k < 8 && BackWallHeight(ball, surfaces) > c.BackWallSafeHeight; k++)
             {
                 speed *= 0.9;
-                if (boast) SolveBoastAt(ball, surfaces, tx, ty, side, speed);
+                if (boast)
+                {
+                    if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
+                    _good.CopyFrom(_vel);
+                }
                 else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             }
 
@@ -381,6 +419,21 @@ namespace SquashSim
         {
             if (System.Math.Abs(ballX) >= 0.4) return ballX > 0 ? 1 : -1;
             return targetX > 0 ? -1 : 1;
+        }
+
+        /// <summary>
+        /// The boast for a ball at <paramref name="ballX"/> aimed at <paramref name="aimX"/>: the side wall it goes off
+        /// (returned) and where it lands on the front wall - the aim, kept on the other half of the wall (a boast
+        /// comes across the court).
+        /// </summary>
+        public static int BoastTarget(double ballX, double aimX, out double landX)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double cross = c != null ? c.BoastCross : 0.3;
+            int side = BoastSide(ballX, aimX);
+            double far = CourtDimensions.HALF_W - 0.15;
+            landX = side > 0 ? Clamp(aimX, -far, -cross) : Clamp(aimX, cross, far);
+            return side;
         }
 
         /// <summary>

@@ -16,7 +16,7 @@ namespace SquashSim
         {
             var cfg = PhysicsConfig.Current.Player;
 
-            bool adjusting = assist != null && assist.HasIdealSpot &&
+            bool adjusting = !player.ArcadeMovement && assist != null && assist.HasIdealSpot &&
                 DMath.Hypot(assist.IdealSpot.X - player.Pos.X, assist.IdealSpot.Z - player.Pos.Z) < cfg.AdjustRange;
 
             double analog = intent.MoveMagnitude > 0 ? intent.MoveMagnitude : 1;
@@ -30,7 +30,7 @@ namespace SquashSim
 
             // Match-only modifiers. All timers are zero in the lab, so this block
             // never runs there and the lab's arithmetic is exactly unchanged.
-            bool modified = player.RecoveryTimer > 0 || player.BoostTimer > 0 || player.PlantTimer > 0;
+            bool modified = !player.ArcadeMovement && (player.RecoveryTimer > 0 || player.BoostTimer > 0 || player.PlantTimer > 0);
             double modRate = 1, modSpeed = 1;
             if (modified)
             {
@@ -43,7 +43,7 @@ namespace SquashSim
             }
 
             // Fatigue (match only): the lab's stamina is exactly 1.0, so this never runs there.
-            bool tired = player.Stamina < 1.0;
+            bool tired = player.Stamina < 1.0 && !player.ArcadeMovement;
             double fatigueScale = 1;
             if (tired)
             {
@@ -98,7 +98,7 @@ namespace SquashSim
             player.Speed = DMath.Hypot(player.Vel.X, player.Vel.Z);
             player.MovementState = DeriveMovementState(player, intent, adjusting);
 
-            if (modified)
+            if (modified || player.ArcadeMovement)
             {
                 if (player.RecoveryTimer > 0) player.RecoveryTimer = DMath.Max(0, player.RecoveryTimer - dt);
                 if (player.BoostTimer > 0) player.BoostTimer = DMath.Max(0, player.BoostTimer - dt);

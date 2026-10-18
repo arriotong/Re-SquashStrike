@@ -283,6 +283,7 @@ namespace SquashSim
         public int GamesToWin;
         public double TX, TZ;               // where players recover to (the T)
         public double StartTemperature;     // ball temperature at the first serve when the warm-up is skipped
+        public bool AppealsEnabled = true;  // "let, please" (players and AI); the game turns it off for now
         public bool WarmUpEnabled;          // knock-up before the first serve (the ball starts cold)
         public double WarmUpSecondsEach;    // each player's half of the knock-up (real squash: 150 s)
         public double WarmUpRefeedSeconds;  // a dead ball is fed again after this long
@@ -501,6 +502,7 @@ namespace SquashSim
             UseGameAim();
             UseGameSwing();
             UseArcadeHit();
+            Current.Match.AppealsEnabled = false;                     // let calls: to be reworked
             // Presentation only: the drawn ball is bigger than the real one (physics radius unchanged).
             Current.Render.BallVisualScale = 2.2;                    // lab 1.45
         }
@@ -521,7 +523,11 @@ namespace SquashSim
                 LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
                 DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
                 DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3,
-                BoastPaceScale = 0.95, BoastMaxHeight = 2.6
+                BoastPaceScale = 0.9, BoastMaxHeight = 1.8, BoastMinHeight = 0.8, BoastCross = 0.3,
+                // Set early (in position before the ball arrives): up to 75% less spread, 85% fewer mishits.
+                EarlyFull = 0.45, EarlySpreadCut = 0.75, EarlyMishitCut = 0.85, EarlyNear = 0.35,
+                // The drop: about 0.45 s to the front wall (firm from the back, gentle from the front).
+                DropFlightTime = 0.45, DropSpeedMin = 10.0, DropSpeedMax = 17.0
             };
         }
 

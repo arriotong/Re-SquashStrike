@@ -47,8 +47,8 @@ namespace SquashSim
         public bool DivePressed;
         /// <summary>Sprint held (Shift / pad LB).</summary>
         public bool Sprint;
-        /// <summary>Boast held (E / pad RB): the stroke goes off the side wall to land on the aim point.</summary>
-        public bool Boast;
+        /// <summary>Boast tapped (E / pad RB): arms (or disarms) a boast for the next stroke. One-shot edge.</summary>
+        public bool BoastPressed;
 
         public void ClearEdges()
         {
@@ -57,6 +57,7 @@ namespace SquashSim
             SplitStepPressed = false;
             AppealPressed = false;
             DivePressed = false;
+            BoastPressed = false;
         }
     }
 }

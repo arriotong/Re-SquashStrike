@@ -9,8 +9,8 @@
 //          needed); the right stick drives it. It glides right up to the
 //          front-wall corners and stops there. Its height picks the shot:
 //          high = lob, low = drop (or a kill when charged).
-//   Boast  hold E / pad RB while you hit: the ball goes off the side wall
-//          and lands on the reticle.
+//   Boast  tap E / pad RB to arm a boast for your next shot (tap again to
+//          cancel): off the side wall by the ball, landing on the reticle.
 //   Hit    LMB / pad South: hold to charge, let go as the ball arrives
 //   Dive   Space / pad East     Sprint  Shift / pad LB
 //   Let    RMB / Q / pad Y: "Let, please"   Touch  pad West
@@ -269,7 +269,7 @@ namespace SquashGame
             }
 
             Intent.Sprint = _sprint.IsPressed();
-            Intent.Boast = _boast.IsPressed();
+            if (_boast.WasPressedThisFrame()) Intent.BoastPressed = true;          // consumed by the next fixed step
             if (_dive.WasPressedThisFrame()) Intent.DivePressed = true;          // consumed by the next fixed step
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step

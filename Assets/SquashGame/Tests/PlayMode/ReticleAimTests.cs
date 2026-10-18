@@ -3,7 +3,7 @@
 // The original SquashStrike controls, with a virtual mouse + keyboard in
 // the practice court: the mouse moves the reticle without any button and
 // it stays where you leave it (also after a stroke); it glides into the
-// front-wall corners and stops there; E arms a boast; its height picks the shot
+// front-wall corners and stops there; a tap on E arms a boast; its height picks the shot
 // (lob / drive / drop); Space dives (a brief slow-mo, the dive pose).
 // ===========================================================
 
@@ -74,16 +74,17 @@ namespace SquashGame.Tests
             Set(mouse.delta, Vector2.zero); yield return null;
             Assert.That(Mathf.Abs(r.Input.ReticleX), Is.LessThan(Mathf.Abs(atEdge) - 0.1f), "coming back responds at once");
 
-            // Hold E: a boast - tagged, with a marker on a side wall.
-            Press(kb.eKey);
-            yield return WaitReal(0.1f);
-            Debug.Log("[Reticle] boast held: boasting " + ring.Boasting + ", side wall " + ring.SideWall + " marker " + ring.SideMarker);
-            Assert.That(ring.Boasting, Is.True, "E arms a boast");
+            // Tap E: the next shot is a boast - tagged, the ring on the far half, a marker on the side wall.
+            Press(kb.eKey); yield return null; yield return null; Release(kb.eKey);
+            yield return WaitReal(0.15f);
+            Debug.Log("[Reticle] boast armed: boasting " + ring.Boasting + ", side wall " + ring.SideWall + " marker " + ring.SideMarker + ", ring " + ring.WorldPoint);
+            Assert.That(ring.Boasting, Is.True, "a tap on E arms a boast");
             Assert.That(ring.SideWall, Is.Not.EqualTo(0));
             Assert.That(Mathf.Abs(Mathf.Abs(ring.SideMarker.x) - (float)CourtDimensions.HALF_W), Is.LessThan(0.1f), "the marker is on a side wall");
-            Release(kb.eKey);
-            yield return WaitReal(0.1f);
-            Assert.That(ring.Boasting, Is.False);
+            Assert.That(Mathf.Sign(ring.WorldPoint.x), Is.Not.EqualTo(Mathf.Sign(ring.SideMarker.x)), "the boast lands across the court");
+            Press(kb.eKey); yield return null; yield return null; Release(kb.eKey);
+            yield return WaitReal(0.15f);
+            Assert.That(ring.Boasting, Is.False, "a second tap cancels it");
 
             // Height picks the shot.
             r.Input.SetReticle(0f, 3.6f); yield return WaitReal(0.05f);

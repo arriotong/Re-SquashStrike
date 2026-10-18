@@ -31,7 +31,7 @@ namespace SquashGame
         public const float CircleRadius = 0.12f;
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
-        /// <summary>Boast held: the shot goes off <see cref="SideWall"/> (-1 / +1) near <see cref="SideMarker"/> (world).</summary>
+        /// <summary>Boast armed: the shot goes off <see cref="SideWall"/> (-1 / +1) near <see cref="SideMarker"/> (world).</summary>
         public bool Boasting { get; private set; }
         public int SideWall { get; private set; }
         public Vector3 SideMarker { get; private set; }
@@ -92,7 +92,7 @@ namespace SquashGame
             Fade = Mathf.MoveTowards(Fade, Shown ? 1f : 0f, Time.unscaledDeltaTime / 0.15f);
             _ring.gameObject.SetActive(DrawRing && Fade > 0.01f);
             _dot.gameObject.SetActive(DrawRing && Fade > 0.01f);
-            Boasting = Shown && src.Intent.Boast;
+            Boasting = Shown && Runner.Athletes[Athlete].ArcadeHitEnabled && Runner.Athletes[Athlete].Arcade.BoastArmed;
             _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
             if (!Shown) { _hasPos = false; return; }
 
@@ -111,9 +111,12 @@ namespace SquashGame
                 : SimToWorld.Pos(aim.X - wall * 0.02, aim.Y, aim.Z);
             if (Boasting)
             {
-                // Where it strikes the side wall: the straight line from the contact to the target's mirror image.
+                // The ring shows where the boast lands (the aim, kept on the far half); the marker where it meets the side wall
+                // (the straight line from the contact to the landing point's mirror image).
                 var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
-                int side = ArcadeStroke.BoastSide(from.X, aim.X);
+                int side = ArcadeStroke.BoastTarget(from.X, aim.X, out double landX);
+                aim.X = landX;
+                target = SimToWorld.Pos(aim.X, aim.Y, 0.02);
                 double wx = side * CourtDimensions.HALF_W, mx = 2 * wx - aim.X;
                 double fy = ctrl.Prediction.Valid ? from.Y : 0.9;
                 double t = System.Math.Abs(mx - from.X) > 1e-6 ? (wx - from.X) / (mx - from.X) : 0;

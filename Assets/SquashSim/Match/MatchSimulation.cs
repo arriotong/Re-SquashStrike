@@ -286,8 +286,8 @@ namespace SquashSim
                 else SetUpServe();
             }
 
-            // ---- appeals: the player going for the ball stops and asks for a let ----
-            if (Phase == MatchPhase.Rally && Referee.Outcome == null)
+            // ---- appeals: the player going for the ball stops and asks for a let (off in the game for now) ----
+            if (Phase == MatchPhase.Rally && Referee.Outcome == null && PhysicsConfig.Current.Match.AppealsEnabled)
             {
                 for (int i = 0; i < 2; i++)
                 {
@@ -323,6 +323,19 @@ namespace SquashSim
             }
             Intents[0].ClearEdges();
             Intents[1].ClearEdges();
+
+            // ---- the simple system's server walks about the service box freely (never out of it: no foot faults) ----
+            if (Phase == MatchPhase.AwaitToss && Players[Score.Server].ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null)
+            {
+                var sp = Players[Score.Server].Player;
+                RallyReferee.ServiceBox(Score.ServeSide, out double bx0, out double bx1, out double bz0, out double bz1);
+                double r = PhysicsConfig.Current.Player.Radius;
+                double cx = System.Math.Max(bx0 + 0.05, System.Math.Min(bx1 - System.Math.Min(r, 0.3), sp.Pos.X));
+                double cz = System.Math.Max(bz0 + 0.05, System.Math.Min(bz1 - 0.05, sp.Pos.Z));
+                if (cx != sp.Pos.X) { sp.Pos.X = cx; sp.Vel.X = 0; }
+                if (cz != sp.Pos.Z) { sp.Pos.Z = cz; sp.Vel.Z = 0; }
+                Ball.Pos.CopyFrom(HandPosition());
+            }
 
             // ---- bodies cannot overlap ----
             SimEvent pc = BodyCollision.BodyVsBody(Players[0].Player, 0, Players[1].Player, 1,

@@ -138,8 +138,8 @@ namespace SquashGame
 
             GUI.Label(new Rect(16, Screen.height - 48, 900, 20),
                 twoPlayer
-                ? "P1 (" + Runner.Input.DeviceLabel + ") vs P2 (" + (Runner.Input2 != null ? Runner.Input2.DeviceLabel : "pad") + ")    Move WASD / left stick   Aim mouse / right stick (high = lob, low = drop, low + charge = kill)   Hold LMB / A to charge, let go as the ball arrives   Boast hold E / RB   Dive Space / B   Sprint Shift / LB   Let RMB / Y   Pause Esc / Start"
-                : "Move WASD / left stick   Aim mouse / right stick (high = lob, low = drop, low + charge = kill)   Hold LMB / A to charge, let go as the ball arrives   Boast hold E / RB   Dive Space / B   Sprint Shift / LB   Let RMB / Y   Pause Esc / Start",
+                ? "P1 (" + Runner.Input.DeviceLabel + ") vs P2 (" + (Runner.Input2 != null ? Runner.Input2.DeviceLabel : "pad") + ")    Move WASD / left stick   Aim mouse / right stick (high = lob, low = drop, low + charge = kill)   Hold LMB / A to charge, let go as the ball arrives   Boast tap E / RB   Dive Space / B   Sprint Shift / LB   Pause Esc / Start"
+                : "Move WASD / left stick   Aim mouse / right stick (high = lob, low = drop, low + charge = kill)   Hold LMB / A to charge, let go as the ball arrives   Boast tap E / RB   Dive Space / B   Sprint Shift / LB   Pause Esc / Start",
                 _small);
         }
     }
