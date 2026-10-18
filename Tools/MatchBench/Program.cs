@@ -66,12 +66,6 @@ public static class Program
         if (Array.IndexOf(args, "--hitself") >= 0) { HitSelfReport(games); return 0; }
         if (Array.IndexOf(args, "--interference") >= 0) { InterferenceReport(games); return 0; }
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
-        if (Arg(args, "--diff") != null)
-        {
-            // Try difficulty knobs: reaction0,reactionSpan,noise0,noiseSpan,move0[,pace0,paceSpan]
-            var k = Array.ConvertAll(Arg(args, "--diff").Split(','), double.Parse);
-            AiProfile.DiffReaction0 = k[0]; AiProfile.DiffReactionSpan = k[1]; AiProfile.DiffNoise0 = k[2]; AiProfile.DiffNoiseSpan = k[3]; AiProfile.DiffMove0 = k[4]; if (k.Length > 5) AiProfile.DiffPace0 = k[5]; if (k.Length > 6) AiProfile.DiffPaceSpan = k[6]; if (k.Length > 7) OpponentBrain.ArcadeGapWeight = k[7]; if (k.Length > 8) OpponentBrain.ArcadeChoiceNoise = k[8]; if (k.Length > 9) OpponentBrain.ArcadeAimNoiseScale = k[9];
-        }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
         if (Array.IndexOf(args, "--season") >= 0) { CareerBench.Season(int.Parse(Arg(args, "--seasons") ?? "1")); return 0; }

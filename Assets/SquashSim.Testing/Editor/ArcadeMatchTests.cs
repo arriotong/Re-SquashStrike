@@ -177,6 +177,143 @@ namespace SquashSim.Tests
             Assert.That(rattleOff, Is.GreaterThan(0), "the test should include crosses that rattle without help");
         }
 
+        [Test] public void AssistedKillsTakeACleanLine()
+        {
+            // Playtest 2026-10-18: a kill gets the assist too - still low and dying early, but on a clean line: straight,
+            // down its own wall without touching it before the second bounce; cross, no side wall before it bounces.
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var surfaces = CourtSurfaces.Create();
+            double ky = CourtDimensions.TIN_H + c.KillHeightAboveTin, speed = c.DriveSpeed * (1 + c.ChargeBonus);
+            int n = 0, clipOff = 0, clipOn = 0, crossN = 0, rattleOff = 0, rattleOn = 0;
+            foreach (double side in new[] { 1.0, -1.0 })
+                foreach (double bz in new[] { 3.5, 5.0, 6.5 })
+                {
+                    foreach (double tx in new[] { 2.7, 3.05 })
+                    {
+                        var ball = new BallState(); ball.Reset(new V3(side * 2.5, 0.7, bz), new V3(0, 0, 0), null, 42);
+                        var s = new ArcadeStroke(3);
+                        n++;
+                        s.Solve(ball, surfaces, side * tx, ky, 0, 0, speed);
+                        if (s.ClipsSide(ball, surfaces, (int)side, 2)) clipOff++;
+                        double x = s.StraightAssist(ball, surfaces, side * tx, ky, speed, true);
+                        s.Solve(ball, surfaces, x, ky, 0, 0, speed);
+                        if (s.ClipsSide(ball, surfaces, (int)side, 2)) clipOn++;
+                    }
+                    foreach (double tx in new[] { -2.2, -3.0 })
+                    {
+                        var ball = new BallState(); ball.Reset(new V3(side * 2.0, 0.7, bz), new V3(0, 0, 0), null, 42);
+                        var s = new ArcadeStroke(3);
+                        double sp = speed;
+                        crossN++;
+                        s.Solve(ball, surfaces, side * tx, ky, 0, 0, sp);
+                        if (!s.CleanCrossKill(ball, surfaces)) rattleOff++;
+                        double x = s.CrossAssist(ball, surfaces, side * tx, ky, ref sp, true);
+                        s.Solve(ball, surfaces, x, ky, 0, 0, sp);
+                        if (!s.CleanCrossKill(ball, surfaces)) rattleOn++;
+                    }
+                }
+            UnityEngine.Debug.Log("[Assist] straight kills touching their wall before the 2nd bounce: non-assisted " + clipOff + "/" + n + ", assisted " + clipOn + "/" + n +
+                                  "; cross kills off a side wall early: non-assisted " + rattleOff + "/" + crossN + ", assisted " + rattleOn + "/" + crossN);
+            Assert.That(clipOn, Is.EqualTo(0));
+            Assert.That(rattleOn, Is.EqualTo(0));
+            Assert.That(clipOff + rattleOff, Is.GreaterThan(0), "the test should include kills that need the help");
+        }
+
+        [Test] public void ABadContactMayLoseTheAssistAGoodOneNever()
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            Assert.That(ArcadeStroke.BadnessOf(c.SweetSpot, 0.6, false, false, c), Is.EqualTo(0), "sweet spot, set early: good");
+            Assert.That(ArcadeStroke.BadnessOf(c.SweetSpot + 0.2, 0.6, false, false, c), Is.EqualTo(0), "a little off: still good");
+            Assert.That(ArcadeStroke.AssistLossChance(0, c), Is.EqualTo(0), "a good contact always keeps the clean line");
+            double jammed = ArcadeStroke.BadnessOf(c.SweetSpot - 0.6, 0.6, false, false, c);
+            double stretched = ArcadeStroke.BadnessOf(c.SweetSpot + 0.6, 0.6, false, false, c);
+            double late = ArcadeStroke.BadnessOf(c.SweetSpot, 0.05, false, false, c);
+            double diving = ArcadeStroke.BadnessOf(c.SweetSpot, 0.6, true, false, c);
+            Assert.That(jammed, Is.GreaterThan(0.5), "too close");
+            Assert.That(stretched, Is.GreaterThan(0.5), "too far");
+            Assert.That(late, Is.GreaterThan(0.5), "got there late");
+            Assert.That(diving, Is.EqualTo(1));
+            double worst = ArcadeStroke.AssistLossChance(1, c), slight = ArcadeStroke.AssistLossChance(0.01, c);
+            Assert.That(worst, Is.LessThan(1), "even the worst contact still has a chance");
+            Assert.That(slight, Is.GreaterThan(0.2));
+            UnityEngine.Debug.Log("[Assist] loss chance: just bad " + (100 * slight).ToString("0") + "%, fully bad " + (100 * worst).ToString("0") + "%");
+        }
+
+        [Test] public void DrivesComeOffTheFrontWallFlatterAndStillGoDeep()
+        {
+            // Playtest 2026-10-18: drives and charged drives popped up off the front wall and came back slow. Now they
+            // keep only a little of that rise, with the same pace: lower when they pass the T (no easy volley), still deep.
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var surfaces = CourtSurfaces.Create();
+            double dip = c.FrontWallRiseKeep;
+            int n = 0, rising = 0, shallow = 0; double hBefore = 0, hAfter = 0, zBefore = 0, zAfter = 0;
+            foreach (double bz in new[] { 5.0, 7.0, 8.5 })
+                foreach (double charge in new[] { 0.0, 1.0 })
+                    foreach (double ty in new[] { 1.5, 2.2 })
+                    {
+                        double speed = c.DriveSpeed * (1 + c.ChargeBonus * charge);
+                        var ball = new BallState(); ball.Reset(new V3(1.8, 0.8, bz), new V3(0, 0, 0), null, 42);
+                        var s = new ArcadeStroke(3);
+                        s.Solve(ball, surfaces, 2.4, ty, 0, 0, speed);
+                        Fly(ball, s.LaunchVelocity, false, surfaces, out double vyA, out double hA, out double zA);
+                        Fly(ball, s.LaunchVelocity, true, surfaces, out double vyB, out double hB, out double zB);
+                        n++;
+                        if (vyB > dip * System.Math.Max(0, vyA) + 1e-6) rising++;     // keeps no more than its share of the rise
+                        if (zB < CourtDimensions.SHORT_LINE_Z + 0.5) shallow++;                // not a ball that dies in the front court
+                        hBefore += hA; hAfter += hB; zBefore += zA; zAfter += zB;
+                    }
+            UnityEngine.Debug.Log("[Dip] " + n + " drives off the front wall (rise kept " + dip + "): height passing the short line " + (hBefore / n).ToString("0.00") + " m -> " +
+                                  (hAfter / n).ToString("0.00") + " m; first bounce " + (zBefore / n).ToString("0.00") + " m -> " + (zAfter / n).ToString("0.00") + " m");
+            Assert.That(rising, Is.EqualTo(0), "no drive keeps more of its rise off the wall than the setting");
+            Assert.That(hAfter, Is.LessThan(hBefore), "lower through the middle of the court");
+            Assert.That(shallow, Is.EqualTo(0), "and none dies short");
+            Assert.That(zAfter / n, Is.GreaterThan(6.8), "still a good length on average (the back third of the court)");
+            Assert.That(hAfter / n, Is.LessThan(0.7 * hBefore / n), "clearly lower through the middle");
+        }
+
+        /// <summary>Fly a launch: its vertical speed just off the front wall, its height passing the short line on the way
+        /// back, and where it first bounces.</summary>
+        static void Fly(BallState from, V3 vel, bool dip, List<Surface> surfaces, out double vyOff, out double hShort, out double zBounce)
+        {
+            var b = new BallState(); b.Reset(from.Pos, vel, null, from.Temperature); b.DipOffFrontWall = dip;
+            var ev = new List<SimEvent>();
+            vyOff = 0; hShort = -1; zBounce = -1;
+            bool front = false;
+            for (int i = 0; i < 1200 && zBounce < 0; i++)
+            {
+                ev.Clear();
+                double z0 = b.Pos.Z;
+                BallPhysics.Step(b, surfaces, 1.0 / 240, ev);
+                foreach (var e in ev)
+                {
+                    if (e.SurfaceClass == "frontWall" && !front) { front = true; vyOff = b.Vel.Y; }
+                    else if (front && e.SurfaceClass == "floor") zBounce = e.Point.Z;
+                }
+                if (front && hShort < 0 && z0 < CourtDimensions.SHORT_LINE_Z && b.Pos.Z >= CourtDimensions.SHORT_LINE_Z) hShort = b.Pos.Y;
+            }
+            if (hShort < 0) hShort = 0;
+        }
+
+        [Test] public void TheGameProfileIsGameTuning()
+        {
+            // Every on-court number lives in GameTuning; the game profile is the lab plus exactly those.
+            var c = PhysicsConfig.Current;
+            double pace = GameTuning.Ball.Pace;
+            Assert.That(c.ArcadeHit.DriveSpeed, Is.EqualTo(GameTuning.Shots.DriveSpeed * pace));
+            Assert.That(c.ArcadeHit.ServeSpeed, Is.EqualTo(GameTuning.Serve.Speed * pace));
+            Assert.That(c.ArcadeHit.SweetSpot, Is.EqualTo(GameTuning.Hit.SweetSpot));
+            Assert.That(c.ArcadeHit.FrontWallRiseKeep, Is.EqualTo(GameTuning.Ball.FrontWallRiseKeep));
+            Assert.That(c.ArcadeHit.AssistMissMax, Is.EqualTo(GameTuning.Assist.MissMax));
+            Assert.That(c.Surfaces.FrontWall.Restitution, Is.EqualTo(GameTuning.Ball.FrontWallRestitution));
+            Assert.That(c.WallAim.MinHeight, Is.EqualTo(GameTuning.Aim.MinHeight));
+            Assert.That(c.Reach.Stretch, Is.EqualTo(GameTuning.Movement.Stretch));
+            Assert.That(c.Racket.Swing.Attack.HeadSpeed, Is.EqualTo(GameTuning.Ball.AttackHeadSpeed * GameTuning.Ball.SwingPaceScale * pace));
+            Assert.That(c.Restitution.SpeedResponse.Length, Is.EqualTo(GameTuning.Ball.SpeedResponse.GetLength(0)));
+            var easy = AiProfile.Retriever().WithDifficulty(0);
+            Assert.That(easy.ReactionTime, Is.EqualTo(GameTuning.Ai.Reaction0));
+            Assert.That(easy.AimNoise, Is.EqualTo(GameTuning.Ai.Noise0));
+        }
+
         [Test] public void LobsLandDeepAndStayIn()
         {
             var c = PhysicsConfig.Current.ArcadeHit;

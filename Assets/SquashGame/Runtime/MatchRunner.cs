@@ -70,7 +70,7 @@ namespace SquashGame
         protected override bool PauseAllowed { get { return !Demo && !InSetup; } }
 
         /// <summary>The menus' demo rally runs in slow motion (the old home screen: 0.4x).</summary>
-        public const double DemoSpeed = 0.4;
+        public const double DemoSpeed = GameTuning.Speed.MenuDemo;
 
         /// <summary>Play the menus' demo: two AIs, on and on (a new match when one ends).</summary>
         public void BeginDemo()

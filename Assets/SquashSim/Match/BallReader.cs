@@ -63,7 +63,7 @@ namespace SquashSim
             ShortBy = 0;
             if (ball.Asleep) return false;
 
-            _scratch.Pos.CopyFrom(ball.Pos); _scratch.Vel.CopyFrom(ball.Vel); _scratch.Omega.CopyFrom(ball.Omega);
+            _scratch.Pos.CopyFrom(ball.Pos); _scratch.Vel.CopyFrom(ball.Vel); _scratch.Omega.CopyFrom(ball.Omega); _scratch.DipOffFrontWall = ball.DipOffFrontWall;
             _scratch.Temperature = ball.Temperature; _scratch.Resting = ball.Resting; _scratch.Asleep = false;
             _scratch.LastCollisionSurface = ball.LastCollisionSurface;
             _scratch.FloorBounces = 0; _scratch.ImpactHistory.Clear();

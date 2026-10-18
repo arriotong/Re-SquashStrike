@@ -111,7 +111,7 @@ static class PressAudit
 
     /// <summary>The share of rallies the human-style player wins against each AI at each setup-panel difficulty.</summary>
     /// <summary>The setup panel's Easy / Medium / Hard (MatchSetupPanel.DifficultyValues).</summary>
-    public static double[] Levels = { 0.0, 0.12, 0.42 };
+    public static double[] Levels = (double[])GameTuning.Ai.Levels.Clone();
 
     public static void Balance(int games)
     {

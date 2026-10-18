@@ -38,6 +38,7 @@ namespace SquashSim
             dst.Vel.X = src.Vel.X; dst.Vel.Y = src.Vel.Y; dst.Vel.Z = src.Vel.Z;
             dst.Omega.X = src.Omega.X; dst.Omega.Y = src.Omega.Y; dst.Omega.Z = src.Omega.Z;
             dst.Temperature = src.Temperature;
+            dst.DipOffFrontWall = src.DipOffFrontWall;
             dst.Resting = src.Resting;
             dst.Asleep = src.Asleep;
             dst.SimTime = 0;

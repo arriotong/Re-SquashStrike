@@ -133,7 +133,7 @@ namespace SquashGame.UI
         public static readonly string[] OpponentLabels = { "Retriever", "Attacker", "Shot-maker", "Grinder", "Wall-bot" };
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };
         /// <summary>Balanced with MatchBench --balance (human-style model wins ~55 / 44 / 29% of rallies).</summary>
-        public static readonly float[] DifficultyValues = { 0.0f, 0.12f, 0.42f };
+        public static readonly float[] DifficultyValues = System.Array.ConvertAll(SquashSim.GameTuning.Ai.Levels, v => (float)v);
         public static readonly string[] LengthLabels = { "One game", "Best of 3", "Best of 5" };
         public static readonly int[] LengthGames = { 1, 2, 3 };
         public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };

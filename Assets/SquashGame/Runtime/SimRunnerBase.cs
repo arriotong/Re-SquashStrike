@@ -231,10 +231,10 @@ namespace SquashGame
         /// The whole simulation runs at this fraction of real time: every flight, bounce and distance is
         /// exactly the same (the fixed step is unchanged), there is just more time to get there.
         /// </summary>
-        public const double GameSpeed = 0.85;
+        public const double GameSpeed = GameTuning.Speed.Game;
         /// <summary>A local player's dive: a moment of slow motion (real seconds, and the speed during it).</summary>
-        public const float DiveSlowMoSeconds = 0.38f;
-        public const double DiveSlowMoScale = 0.3;
+        public const float DiveSlowMoSeconds = (float)GameTuning.Speed.DiveSlowMoSeconds;
+        public const double DiveSlowMoScale = GameTuning.Speed.DiveSlowMo;
         float _slowMo;
         readonly int[] _dives = new int[4];
         /// <summary>A local player started a dive (athlete index).</summary>

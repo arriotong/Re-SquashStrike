@@ -56,8 +56,9 @@ namespace SquashSim
         // the deader front wall). Pace is the strong one: softer shots are the ones a human gets back.
         // Re-balanced after the front wall went to 0.50: Easy leans on mistakes (aim noise, late reactions), Hard on pace.
         // Re-balanced 2026-10-18 for the AI on the simple hitting system (MatchBench --balance).
-        public static double DiffReaction0 = 0.50, DiffReactionSpan = 0.36, DiffNoise0 = 0.80, DiffNoiseSpan = 0.55,
-                             DiffMove0 = 0.60, DiffPace0 = 0.30, DiffPaceSpan = 0.40;
+        // (the numbers: GameTuning.Ai)
+        const double DiffReaction0 = GameTuning.Ai.Reaction0, DiffReactionSpan = GameTuning.Ai.ReactionSpan, DiffNoise0 = GameTuning.Ai.Noise0,
+                     DiffNoiseSpan = GameTuning.Ai.NoiseSpan, DiffMove0 = GameTuning.Ai.Move0, DiffPace0 = GameTuning.Ai.Pace0, DiffPaceSpan = GameTuning.Ai.PaceSpan;
 
         public AiProfile WithDifficulty(double d)
         {
@@ -150,7 +151,7 @@ namespace SquashSim
         public double TossDelay = 0.9;
         public double ServeStrikeDelay = 0.26;  // after the toss: strike near its top
         public double ServeAimX = 0.55, ServeAimY = 0.85;
-        public static double ServePace = 0.85 / PhysicsConfig.GameBallPace;   // the serve keeps its tuned pace (0.8-0.9 of the old lift)
+        public const double ServePace = GameTuning.Serve.AiPace / GameTuning.Ball.Pace;   // the serve keeps its tuned pace
         static readonly double[] CandX = { -0.85, -0.55, -0.25, 0.0, 0.25, 0.55, 0.85 };
         static readonly double[] CandY = { -0.5, -0.2, 0.1, 0.4, 0.7 };
         static readonly double[] TouchY = { 0.0, 0.3, 0.6 };
@@ -476,7 +477,7 @@ namespace SquashSim
         // metres x ArcadeAimNoiseScale), how well it times the release (TriggerJitter), how hard it hits (Pace),
         // how quickly it reacts and runs (shared with the physical brain).
 
-        public static double ArcadeAimNoiseScale = 1.0, ArcadeGapWeight = 0.25, ArcadeChoiceNoise = 2.5;
+        const double ArcadeAimNoiseScale = GameTuning.Ai.AimNoiseScale, ArcadeGapWeight = GameTuning.Ai.GapWeight, ArcadeChoiceNoise = GameTuning.Ai.ChoiceNoise;
         double _aimPX, _aimPY, _aChargeFor, _releaseLead, _aReleaseAt = -1;
         bool _aHolding, _aBoast, _boastTapped;
         /// <summary>The last shot it chose (tests and diagnostics): "straight", "cross", "lob", "drop", "kill", "boast".</summary>

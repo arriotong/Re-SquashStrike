@@ -306,6 +306,7 @@ namespace SquashSim
             };
 
             racket.LastContact = ev;
+            ball.DipOffFrontWall = false;                          // the physical swing: the lab's flight
             ball.LastRacketContact = new RacketTouch
             {
                 By = "player",

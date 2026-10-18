@@ -40,6 +40,9 @@ namespace SquashSim
         public double LastImpactEnergyLost;
         public double LastImpactRestitution;
         public RacketTouch LastRacketContact;
+        /// <summary>Game profile: this shot (a drive, kill or boast on the simple hitting system) comes off the front
+        /// wall with little of its rise left (ArcadeHitSection.FrontWallRiseKeep). Cleared at that impact.</summary>
+        public bool DipOffFrontWall;
         public NickRecord LastNick;
 
         // --- counters ---
@@ -72,6 +75,7 @@ namespace SquashSim
             LastImpactEnergyLost = 0;
             LastImpactRestitution = 0;
             LastRacketContact = null;
+            DipOffFrontWall = false;
             LastNick = null;
 
             FloorBounces = 0;

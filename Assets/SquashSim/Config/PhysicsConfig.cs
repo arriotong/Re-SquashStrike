@@ -504,7 +504,7 @@ namespace SquashSim
             UseArcadeHit();
             Current.Match.AppealsEnabled = false;                     // let calls: to be reworked
             // Presentation only: the drawn ball is bigger than the real one (physics radius unchanged).
-            Current.Render.BallVisualScale = 2.2;                    // lab 1.45
+            Current.Render.BallVisualScale = GameTuning.Ball.VisualScale;
         }
 
         /// <summary>
@@ -514,29 +514,35 @@ namespace SquashSim
         /// </summary>
         public static void UseArcadeHit()
         {
+            // Every number: GameTuning (Hit, Shots, Serve, Assist, Ball).
+            double pace = GameTuning.Ball.Pace;
             Current.ArcadeHit = new ArcadeHitSection
             {
-                Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6, Grace = 0.22, ChargeFull = 0.9,
-                DriveSpeed = 28.0, ChargeBonus = 0.6, LobSpeed = 14.0, LobHeight = 3.0, TouchSpeed = 11.0,
-                MaxSpread = 0.7, GrossMissChance = 0.12, LungeMax = 0.7, LungeSpeed = 4.0, BackWallSafeHeight = 1.4,
-                // The original SquashStrike: shot type from aim height, dive, sprint.
-                LowHeight = 1.15, KillCharge = 0.25, KillHeightAboveTin = 0.10, DropHeightAboveTin = 0.17, DropSpeed = 9.0,
-                DiveSeconds = 0.42, DiveSpeedScale = 1.85, DiveRecovery = 1.1, DiveRecoverySpeed = 0.65, DiveReachScale = 1.5,
-                DiveStamina = 0.12, DiveMinStamina = 0.2, SprintScale = 1.3, SprintDrain = 0.05, WindedStamina = 0.3,
-                // The serve: a tap is a lob serve (onto the ring, high and deep); held past ServeHardCharge it is a hard serve
-                // (up to +60% pace with a full charge).
-                ServeSpeed = 24.0, ServeHardCharge = 0.3, ServeChargeBonus = 0.6, ServeDepth = 8.4,
-                LobRise = 1.1, LobMaxSpeed = 28.0, LobDepth = 8.7, LobWallMax = 3.8,
-                BoastPaceScale = 0.9, BoastMaxHeight = 1.8, BoastMinHeight = 0.8, BoastCross = 0.3,
-                // Set early (in position before the ball arrives): up to 75% less spread, 85% fewer mishits.
-                EarlyFull = 0.45, EarlySpreadCut = 0.75, EarlyMishitCut = 0.85, EarlyNear = 0.35,
-                // The drop: about 0.45 s to the front wall (firm from the back, gentle from the front).
-                DropFlightTime = 0.45, DropSpeedMin = 10.0, DropSpeedMax = 17.0
+                Reach = GameTuning.Hit.Reach, SweetSpot = GameTuning.Hit.SweetSpot, MinHeight = GameTuning.Hit.MinHeight, MaxHeight = GameTuning.Hit.MaxHeight,
+                Grace = GameTuning.Hit.Grace, ChargeFull = GameTuning.Hit.ChargeFull, ChargeBonus = GameTuning.Hit.ChargeBonus,
+                MaxSpread = GameTuning.Hit.MaxSpread, GrossMissChance = GameTuning.Hit.GrossMissChance,
+                LungeMax = GameTuning.Hit.LungeMax, LungeSpeed = GameTuning.Hit.LungeSpeed, BackWallSafeHeight = GameTuning.Hit.BackWallSafeHeight,
+                DriveSpeed = GameTuning.Shots.DriveSpeed * pace, TouchSpeed = GameTuning.Shots.TouchSpeed * pace,
+                LobSpeed = GameTuning.Shots.LobSpeed * pace, LobHeight = GameTuning.Shots.LobHeight,
+                LowHeight = GameTuning.Shots.LowHeight, KillCharge = GameTuning.Shots.KillCharge, KillHeightAboveTin = GameTuning.Shots.KillHeightAboveTin,
+                DropHeightAboveTin = GameTuning.Shots.DropHeightAboveTin, DropSpeed = GameTuning.Shots.DropSpeed,
+                DiveSeconds = GameTuning.Hit.DiveSeconds, DiveSpeedScale = GameTuning.Hit.DiveSpeedScale, DiveRecovery = GameTuning.Hit.DiveRecovery,
+                DiveRecoverySpeed = GameTuning.Hit.DiveRecoverySpeed, DiveReachScale = GameTuning.Hit.DiveReachScale,
+                DiveStamina = GameTuning.Hit.DiveStamina, DiveMinStamina = GameTuning.Hit.DiveMinStamina,
+                SprintScale = GameTuning.Hit.SprintScale, SprintDrain = GameTuning.Hit.SprintDrain, WindedStamina = GameTuning.Hit.WindedStamina,
+                ServeSpeed = GameTuning.Serve.Speed * pace, ServeHardCharge = GameTuning.Serve.HardCharge, ServeChargeBonus = GameTuning.Serve.ChargeBonus,
+                ServeDepth = GameTuning.Serve.Depth,
+                LobRise = GameTuning.Shots.LobRise, LobMaxSpeed = GameTuning.Shots.LobMaxSpeed * pace, LobDepth = GameTuning.Shots.LobDepth,
+                LobWallMax = GameTuning.Shots.LobWallMax,
+                BoastPaceScale = GameTuning.Shots.BoastPaceScale, BoastMaxHeight = GameTuning.Shots.BoastMaxHeight,
+                BoastMinHeight = GameTuning.Shots.BoastMinHeight, BoastCross = GameTuning.Shots.BoastCross,
+                EarlyFull = GameTuning.Hit.EarlyFull, EarlySpreadCut = GameTuning.Hit.EarlySpreadCut, EarlyMishitCut = GameTuning.Hit.EarlyMishitCut,
+                EarlyNear = GameTuning.Hit.EarlyNear,
+                DropFlightTime = GameTuning.Shots.DropFlightTime, DropSpeedMin = GameTuning.Shots.DropSpeedMin * pace, DropSpeedMax = GameTuning.Shots.DropSpeedMax * pace,
+                FrontWallRiseKeep = GameTuning.Ball.FrontWallRiseKeep,
+                AssistBadDistance = GameTuning.Assist.BadDistance, AssistBadSpan = GameTuning.Assist.BadSpan, AssistBadSetTime = GameTuning.Assist.BadSetTime,
+                AssistMissMin = GameTuning.Assist.MissMin, AssistMissMax = GameTuning.Assist.MissMax, AssistMissOffset = GameTuning.Assist.MissOffset,
             };
-            // Playtest 2026-10-18: every shot a touch quicker (+5%).
-            var h = Current.ArcadeHit;
-            h.DriveSpeed *= GameBallPace; h.TouchSpeed *= GameBallPace; h.ServeSpeed *= GameBallPace; h.LobSpeed *= GameBallPace;
-            h.LobMaxSpeed *= GameBallPace; h.DropSpeedMin *= GameBallPace; h.DropSpeedMax *= GameBallPace;
         }
 
         /// <summary>
@@ -558,9 +564,10 @@ namespace SquashSim
         {
             Current.WallAim = new WallAimSection
             {
-                HalfWidth = 2.75, NeutralHeight = 1.7, MinHeight = 0.85, MaxHeight = 4.0,
-                RefreshSteps = 4, Iterations = 3,
-                BoastZone = 0.15, BoastHeightLow = 1.1, BoastHeightHigh = 2.4
+                HalfWidth = GameTuning.Aim.HalfWidth, NeutralHeight = GameTuning.Aim.NeutralHeight,
+                MinHeight = GameTuning.Aim.MinHeight, MaxHeight = GameTuning.Aim.MaxHeight,
+                RefreshSteps = GameTuning.Aim.RefreshSteps, Iterations = GameTuning.Aim.Iterations,
+                BoastZone = GameTuning.Aim.BoastZone, BoastHeightLow = GameTuning.Aim.BoastHeightLow, BoastHeightHigh = GameTuning.Aim.BoastHeightHigh
             };
         }
 
@@ -576,8 +583,8 @@ namespace SquashSim
             // Quicker off the mark (playtest 2026-10-17): +12% acceleration and braking. Top speed stays the lab's
             // 5.2 m/s (playtest 2026-10-18: 5.8 felt too fast once nothing slows a local player down).
             var p = Current.Player;
-            p.Acceleration *= 1.12;
-            p.Braking *= 1.12;
+            p.Acceleration *= GameTuning.Movement.AccelerationScale;
+            p.Braking *= GameTuning.Movement.BrakingScale;
         }
 
         /// <summary>
@@ -588,45 +595,31 @@ namespace SquashSim
         public static void UseGameReach()
         {
             var c = Current;
-            c.Reach.Stretch = 1.45;                                   // lab 1.55 (from the body, at prediction time)
-            c.Lunge = new LungeSection { Enabled = true, ArmReach = 0.95, MaxStep = 0.55 };
-            c.Assist.Radius = 0.25;                                   // lab 0.42
-            c.Assist.MaxCorrection = 0.12;                            // lab 0.30
+            c.Reach.Stretch = GameTuning.Movement.Stretch;
+            c.Lunge = new LungeSection { Enabled = true, ArmReach = GameTuning.Movement.LungeArmReach, MaxStep = GameTuning.Movement.LungeMaxStep };
+            c.Assist.Radius = GameTuning.Movement.AssistRadius;
+            c.Assist.MaxCorrection = GameTuning.Movement.AssistMaxCorrection;
         }
-
-        public const double GameFrontWallRestitution = 0.50;   // playtest 2026-10-18: 0.62 still sent drives onto the back wall
-        public const double GamePaceScale = 1.15;
-        /// <summary>Every shot's pace in the game, human and AI (playtest 2026-10-18: +5%).</summary>
-        public const double GameBallPace = 1.05;
-        public static double GameLiftScale = 1.25;
 
         public static void UseMatchBall()
         {
+            // Every number: GameTuning.Ball.
             var c = Current;
-            // PSA pace: a hard drive leaves the racket at ~40-50 m/s (the lab swings were club pace).
-            // Hit ~15% harder than that (playtest 2026-10-18) to keep the depth off the deader front wall below.
-            c.Racket.Swing.Neutral.HeadSpeed = 24.0 * GamePaceScale * GameBallPace;
-            c.Racket.Swing.Attack.HeadSpeed = 37.0 * GamePaceScale * GameBallPace;
-            // Lift (the AI's lobs and serves) a little firmer too, or its serves die short of the short line off the
-            // deader wall (the lab's 12 m/s).
-            c.Racket.Swing.Lift.HeadSpeed = 12.0 * GameLiftScale * GameBallPace;
-            // A deader front wall: the ball comes off it ~20% slower than the lab's (playtest 2026-10-18; lab 0.74).
-            c.Surfaces.FrontWall.Restitution = GameFrontWallRestitution;
-            // (Lift - lobs and serves - keeps the lab's soft pace.)
-            // A double yellow is dead at pace: restitution falls off further at high impact speed...
-            c.Restitution.SpeedResponse = new[]
-            {
-                new SpeedPoint(0.0, 1.10), new SpeedPoint(2.0, 1.00), new SpeedPoint(10.0, 0.88),
-                new SpeedPoint(25.0, 0.70), new SpeedPoint(50.0, 0.58)
-            };
-            // ...and warming it buys bounce height (margin), not pace off the walls.
-            c.Temperature.HotSpeedFade = new[]
-            {
-                new SpeedPoint(0.0, 1.0), new SpeedPoint(6.0, 1.0), new SpeedPoint(15.0, 0.55),
-                new SpeedPoint(30.0, 0.25), new SpeedPoint(50.0, 0.15)
-            };
-            // Runs at ~42-45 C in a rally (it sat on the 48 C cap).
-            c.Temperature.HeatPerJoule = 0.22;
+            double pace = GameTuning.Ball.Pace, swing = GameTuning.Ball.SwingPaceScale;
+            c.Racket.Swing.Neutral.HeadSpeed = GameTuning.Ball.NeutralHeadSpeed * swing * pace;
+            c.Racket.Swing.Attack.HeadSpeed = GameTuning.Ball.AttackHeadSpeed * swing * pace;
+            c.Racket.Swing.Lift.HeadSpeed = GameTuning.Ball.LiftHeadSpeed * GameTuning.Ball.LiftScale * pace;
+            c.Surfaces.FrontWall.Restitution = GameTuning.Ball.FrontWallRestitution;
+            c.Restitution.SpeedResponse = Curve(GameTuning.Ball.SpeedResponse);
+            c.Temperature.HotSpeedFade = Curve(GameTuning.Ball.HotSpeedFade);
+            c.Temperature.HeatPerJoule = GameTuning.Ball.HeatPerJoule;
+        }
+
+        static SpeedPoint[] Curve(double[,] pts)
+        {
+            var a = new SpeedPoint[pts.GetLength(0)];
+            for (int i = 0; i < a.Length; i++) a[i] = new SpeedPoint(pts[i, 0], pts[i, 1]);
+            return a;
         }
 
         /// <summary>Piecewise-linear curve read (lab sampleCurve).</summary>

@@ -61,6 +61,13 @@ namespace SquashSim
         public double LobRise, LobMaxSpeed, LobDepth, LobWallMax;
         public double EarlyFull, EarlySpreadCut, EarlyMishitCut, EarlyNear;
         public double DropFlightTime, DropSpeedMin, DropSpeedMax;
+        // Drives, kills and boasts keep only this much of their rise off the front wall (BallPhysics.DipOff): 1 = off.
+        public double FrontWallRiseKeep = 1;
+        // Assisted: a bad contact may lose the clean line. Bad = met more than AssistBadDistance from the sweet spot
+        // (fully bad AssistBadSpan beyond that), set in position less than AssistBadSetTime, or diving. The chance runs
+        // from AssistMissMin (just bad) to AssistMissMax (fully bad); a lost one goes AssistMissOffset (and up to as
+        // much again) off the aim.
+        public double AssistBadDistance, AssistBadSpan, AssistBadSetTime, AssistMissMin, AssistMissMax, AssistMissOffset;
     }
 
     public sealed class ArcadeStroke
@@ -87,6 +94,7 @@ namespace SquashSim
         readonly V3 _good = new V3();
         readonly V3 _scratchVel = new V3();
         readonly V3 _best = new V3();
+        bool _dip;                      // the shot being solved leaves the front wall heading down (its scratch flights too)
         static readonly Prediction _fakePred = new Prediction();
 
         /// <summary>0..1 how charged the stroke being held is (presentation).</summary>
@@ -149,7 +157,7 @@ namespace SquashSim
         }
 
         // ---- the great hit (the ring's flash, the arcade's bonus) ----
-        public const double GreatEarliness = 0.75, GreatReleaseWait = 0.06, GreatDistance = 0.15;
+        public const double GreatEarliness = GameTuning.Hit.GreatEarliness, GreatReleaseWait = GameTuning.Hit.GreatReleaseWait, GreatDistance = GameTuning.Hit.GreatDistance;
 
         /// <summary>A great hit: set early, and let go so the ball met the racket at the sweet spot - not early, not jammed.</summary>
         public static bool IsGreat(SimEvent e)
@@ -173,6 +181,28 @@ namespace SquashSim
 
 
         public bool Waiting { get { return _pending > 0; } }
+
+        /// <summary>How bad the last contact was, 0 (good) .. 1: jammed / stretched, late into position, or diving.</summary>
+        public double LastBadness { get; private set; }
+        /// <summary>The last Assisted shot lost its clean line (a bad contact's chance).</summary>
+        public bool LastAssistLost { get; private set; }
+
+        /// <summary>0 = a good contact .. 1 = fully bad: the worst of distance from the sweet spot (too close or too far),
+        /// how little time the athlete was set before the ball came, and a dive.</summary>
+        double Badness(double dist, double setTime, ArcadeHitSection c) { return BadnessOf(dist, setTime, Diving, _diveRecover > 0, c); }
+
+        public static double BadnessOf(double dist, double setTime, bool diving, bool recovering, ArcadeHitSection c)
+        {
+            if (diving) return 1;
+            double off = System.Math.Abs(dist - c.SweetSpot) - c.AssistBadDistance;
+            double b = off > 0 ? Clamp(off / c.AssistBadSpan, 0, 1) : 0;
+            if (setTime < c.AssistBadSetTime) b = System.Math.Max(b, (c.AssistBadSetTime - setTime) / c.AssistBadSetTime);
+            if (recovering) b = System.Math.Max(b, 0.5);
+            return b;
+        }
+
+        /// <summary>The chance an Assisted shot with this badness loses its clean line (0 for a good contact).</summary>
+        public static double AssistLossChance(double bad, ArcadeHitSection c) { return bad > 0 ? c.AssistMissMin + (c.AssistMissMax - c.AssistMissMin) * bad : 0; }
 
         double _releaseWait;
 
@@ -288,9 +318,11 @@ namespace SquashSim
             double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale - c.SweetSpot), 0, 1);
             double early = ctrl.ServeStroke ? 1 : Clamp(_setTime / c.EarlyFull, 0, 1);
             LastEarliness = early;
+            double bad = ctrl.ServeStroke ? 0 : Badness(dist, _setTime, c);
+            LastBadness = bad;
             _setTime = 0;
-            if (Diving) missRatio = System.Math.Min(1, missRatio + 0.35);            // a diving hit is a scramble
-            else if (_diveRecover > 0) missRatio = System.Math.Min(1, missRatio + 0.15);
+            if (Diving) missRatio = System.Math.Min(1, missRatio + GameTuning.Hit.DiveMiss);            // a diving hit is a scramble
+            else if (_diveRecover > 0) missRatio = System.Math.Min(1, missRatio + GameTuning.Hit.DiveRecoveryMiss);
 
             // ---- where it goes ----
             double tx, ty, tz = 0;
@@ -310,6 +342,7 @@ namespace SquashSim
             {
                 // A local player's serve: tap = lob serve, hold = hard serve (struck from the hand: no spread).
                 _boast = false;
+                _dip = false;
                 shot = ServeLaunch(ball, surfaces, tx, ty, charge, ctrl.ServeDefaultX > 0 ? -1 : 1, out speed);
             }
             else
@@ -341,7 +374,7 @@ namespace SquashSim
                 if (shot != "drop") ty = Clamp(ty, c.BoastMinHeight, c.BoastMaxHeight);
                 if (shot != "drop" && !touch) speed *= c.BoastPaceScale;
             }
-            double spread = missRatio * missRatio * c.MaxSpread * (charge > 0.8 ? 0.6 : 1.0);
+            double spread = missRatio * missRatio * c.MaxSpread * (charge > GameTuning.Hit.FullChargeAt ? GameTuning.Hit.FullChargeSpreadCut : 1.0);
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
@@ -349,19 +382,35 @@ namespace SquashSim
             ty += ey;
             if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early))
             {
-                if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - 0.15;                                    // into the tin
-                else ty += (Rnd() < 0.5 ? 1 : -1) * (0.4 + missRatio * 0.6);                             // well off
+                if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - GameTuning.Hit.GrossMissTinDepth;                       // into the tin
+                else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
             }
-            speed *= 1.0 - 0.15 * missRatio;
+            speed *= 1.0 - GameTuning.Hit.MissPaceLoss * missRatio;
             // The AI's difficulty (1 for a human): how hard its drives and kills are. Drops, boasts, lobs and serves
             // set their own pace (a softer drop just dies in the tin).
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
 
-            // Assisted controls: a straight drive is kept off its side wall.
+            // Drives, kills and boasts leave the front wall heading down (lobs, drops and serves keep their arc).
+            _dip = c.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill" || boast);
+
+            // Assisted controls: a drive or a kill takes a clean line - straight, off its side wall; cross, no rattle.
+            // A bad contact (jammed, stretched, late, diving) may lose it and go clearly off the aim instead.
+            LastAssistLost = false;
             if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill"))
             {
-                tx = StraightAssist(ball, surfaces, tx, ty, speed);
-                tx = CrossAssist(ball, surfaces, tx, ty, ref speed);
+                if (bad > 0 && Rnd() < AssistLossChance(bad, c))
+                {
+                    LastAssistLost = true;
+                    double off = c.AssistMissOffset * (1 + Rnd());
+                    tx = Clamp(tx + (Rnd() < 0.5 ? -off : off), -CourtDimensions.HALF_W + 0.1, CourtDimensions.HALF_W - 0.1);
+                    ty += (Rnd() - 0.5) * off * 0.6;
+                }
+                else
+                {
+                    bool kill = shot == "kill";
+                    tx = StraightAssist(ball, surfaces, tx, ty, speed, kill);
+                    tx = CrossAssist(ball, surfaces, tx, ty, ref speed, kill);
+                }
             }
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
@@ -372,9 +421,9 @@ namespace SquashSim
             // Floor before the back wall, and in: a drive, kill, serve or boast that would reach the back wall on the
             // full - or a drive / kill that would fly over an out line - is struck just soft enough. Lobs keep their own rule.
             _good.CopyFrom(_vel);
-            for (int k = 0; k < 14 && (BackWallHeight(ball, surfaces) >= 0 || (!boast && GoesOut(ball, surfaces))); k++)
+            for (int k = 0; k < GameTuning.Hit.SoftenTries && (BackWallHeight(ball, surfaces) >= 0 || (!boast && GoesOut(ball, surfaces))); k++)
             {
-                speed *= 0.93;
+                speed *= GameTuning.Hit.SoftenStep;
                 if (boast)
                 {
                     if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
@@ -389,6 +438,8 @@ namespace SquashSim
             ball.Vel.CopyFrom(_vel);
             ball.Omega.X = 0; ball.Omega.Y = 0; ball.Omega.Z = 0;
             BallPhysics.Wake(ball);
+            ball.DipOffFrontWall = _dip;
+            _dip = false;
             ball.FloorSinceFrontWall = 0;
             double m = PhysicsConfig.Current.Ball.Mass;
             BallTemperature.ApplyImpactHeat(ball, 0.5 * m * (before * before + speed * speed) * 0.25, "racket");
@@ -472,6 +523,7 @@ namespace SquashSim
         /// </summary>
         public string ServeLaunch(BallState ball, List<Surface> surfaces, double tx, double ty, double charge, int serveSide, out double speed)
         {
+            _dip = false;                                       // serves keep their own arc off the wall
             var c = PhysicsConfig.Current.ArcadeHit;
             bool hard = charge >= c.ServeHardCharge;
             double pace = hard ? c.ServeSpeed * (1 + c.ServeChargeBonus * (charge - c.ServeHardCharge) / (1 - c.ServeHardCharge)) : c.ServeSpeed;
@@ -484,7 +536,7 @@ namespace SquashSim
                 if (bestScore >= 1.5)
                 {
                     double lim = CourtDimensions.HALF_W - 0.3;
-                    for (double x = -lim; x <= lim + 1e-9; x += 0.2)
+                    for (double x = -lim; x <= lim + 1e-9; x += GameTuning.Assist.ServeLineStep)
                     {
                         ServeAt(ball, surfaces, x, ty, hard, pace, serveSide, out _);
                         double score = ServeScore(ball, surfaces, serveSide) + 1.0 * System.Math.Abs(x - tx);
@@ -512,9 +564,9 @@ namespace SquashSim
                 Solve(ball, surfaces, tx, y, 0, 0, speed);
                 if ((BackWallHeight(ball, surfaces) < 0 && !GoesOut(ball, surfaces)) || y <= floorY || y <= ty - 1.6) break;
             }
-            for (int k = 0; k < 14 && (BackWallHeight(ball, surfaces) >= 0 || GoesOut(ball, surfaces)); k++)
+            for (int k = 0; k < GameTuning.Hit.SoftenTries && (BackWallHeight(ball, surfaces) >= 0 || GoesOut(ball, surfaces)); k++)
             {
-                speed *= 0.93;
+                speed *= GameTuning.Hit.SoftenStep;
                 Solve(ball, surfaces, tx, y, 0, 0, speed);
             }
         }
@@ -532,17 +584,17 @@ namespace SquashSim
         /// Assisted: a straight drive (ball and aim on the same side) that would touch its side wall before the first bounce
         /// is aimed a little further in, step by step (up to 1.2 m), until it runs clean down the wall.
         /// </summary>
-        public double StraightAssist(BallState ball, List<Surface> surfaces, double tx, double ty, double speed)
+        public double StraightAssist(BallState ball, List<Surface> surfaces, double tx, double ty, double speed, bool kill = false)
         {
             int side = ball.Pos.X > 0 ? 1 : -1;
-            if (System.Math.Abs(ball.Pos.X) < 0.6 || tx * side < 0.6) return tx;          // not a straight shot
+            if (System.Math.Abs(ball.Pos.X) < GameTuning.Assist.StraightMinSide || tx * side < GameTuning.Assist.StraightMinSide) return tx;   // not a straight shot
             double x = tx;
-            for (int k = 0; k <= 12; k++)
+            for (int k = 0; k <= GameTuning.Assist.StraightSteps; k++)
             {
-                x = tx - side * 0.1 * k;
-                if (x * side < 0.5) break;
+                x = tx - side * GameTuning.Assist.StraightStep * k;
+                if (x * side < GameTuning.Assist.StraightInner) break;
                 Solve(ball, surfaces, x, ty, 0, 0, speed);
-                if (!ClipsSide(ball, surfaces, side)) return x;
+                if (!ClipsSide(ball, surfaces, side, kill ? 2 : 1)) return x;
             }
             return x;
         }
@@ -553,7 +605,7 @@ namespace SquashSim
         /// far back corner. If no line within 2.4 m does,
         /// a little pace comes off too (up to ~50%).
         /// </summary>
-        public double CrossAssist(BallState ball, List<Surface> surfaces, double tx, double ty, ref double speed)
+        public double CrossAssist(BallState ball, List<Surface> surfaces, double tx, double ty, ref double speed, bool kill = false)
         {
             int side = ball.Pos.X >= 0 ? 1 : -1;
             bool cross = tx * side < -0.2 || (System.Math.Abs(ball.Pos.X) < 0.6 && System.Math.Abs(tx) > 1.0);
@@ -561,12 +613,12 @@ namespace SquashSim
             int toward = System.Math.Abs(ball.Pos.X) < 0.6 ? (tx > 0 ? -1 : 1) : side;     // less wide = toward the ball's side
             // A less wide line first; if no line within 2.4 m is clean at this pace, a little softer too.
             double pace = speed;
-            for (int f = 0; f < 10; f++, pace *= 0.92)
-                for (int k = 0; k <= 12; k++)
+            for (int f = 0; f < GameTuning.Assist.CrossSoftens; f++, pace *= GameTuning.Assist.CrossSoften)
+                for (int k = 0; k <= GameTuning.Assist.CrossSteps; k++)
                 {
-                    double x = tx + toward * 0.2 * k;
+                    double x = tx + toward * GameTuning.Assist.CrossStep * k;
                     Solve(ball, surfaces, x, ty, 0, 0, pace);
-                    if (CleanCross(ball, surfaces)) { speed = pace; return x; }
+                    if (kill ? CleanCrossKill(ball, surfaces) : CleanCross(ball, surfaces)) { speed = pace; return x; }
                 }
             return tx;                                   // no clean line: leave the aim alone
         }
@@ -579,6 +631,13 @@ namespace SquashSim
             return _sideHitsInAir <= 1 && total <= 2;
         }
 
+        /// <summary>A clean cross kill: straight across, no side wall before it bounces, one at most before the second.</summary>
+        public bool CleanCrossKill(BallState ball, List<Surface> surfaces)
+        {
+            int total = SideWallHits(ball, surfaces);
+            return _sideHitsInAir == 0 && total <= 1;
+        }
+
         int _sideHitsInAir;
 
         /// <summary>How many times this launch meets a side wall after the front wall, before its second bounce
@@ -586,7 +645,7 @@ namespace SquashSim
         public int SideWallHits(BallState ball, List<Surface> surfaces)
         {
             _sideHitsInAir = 0;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             bool front = false;
             int sides = 0, floors = 0;
             for (int i = 0; i < 480; i++)
@@ -605,12 +664,14 @@ namespace SquashSim
             return sides;
         }
 
-        /// <summary>Does this launch touch side wall <paramref name="side"/> before its first bounce after the front wall?</summary>
-        public bool ClipsSide(BallState ball, List<Surface> surfaces, int side)
+        /// <summary>Does this launch touch side wall <paramref name="side"/> before bounce number <paramref name="bounces"/>
+        /// after the front wall (1: in the air - a drive; 2: a kill, which bounces early, along its whole line)?</summary>
+        public bool ClipsSide(BallState ball, List<Surface> surfaces, int side, int bounces = 1)
         {
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             string id = side > 0 ? "sideWallRight" : "sideWallLeft";
             bool front = false;
+            int floors = 0;
             for (int i = 0; i < 480; i++)
             {
                 _events.Clear();
@@ -619,7 +680,8 @@ namespace SquashSim
                 {
                     if (e.SurfaceId == id) return true;
                     if (e.SurfaceClass == "frontWall") front = true;
-                    else if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return false;
+                    else if (e.SurfaceClass == "tin" || (!front && e.SurfaceClass == "floor")) return false;
+                    else if (e.SurfaceClass == "floor" && ++floors >= bounces) return false;
                     else if (front && e.SurfaceClass == "backWall") return false;
                 }
             }
@@ -662,7 +724,7 @@ namespace SquashSim
         double ServeScore(BallState ball, List<Surface> surfaces, int serveSide)
         {
             var c = PhysicsConfig.Current.ArcadeHit;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             bool front = false;
             for (int i = 0; i < 600; i++)
             {
@@ -695,7 +757,7 @@ namespace SquashSim
         /// <summary>Would this launch go out of court (lines, ceiling) before its first bounce after the front wall?</summary>
         bool GoesOut(BallState ball, List<Surface> surfaces)
         {
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             bool front = false;
             for (int i = 0; i < 480; i++)
             {
@@ -789,7 +851,7 @@ namespace SquashSim
         double LobLanding(BallState ball, List<Surface> surfaces)
         {
             var c = PhysicsConfig.Current.ArcadeHit;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             bool front = false;
             for (int i = 0; i < 480; i++)
             {
@@ -916,7 +978,7 @@ namespace SquashSim
         {
             u = 0; v = 0;
             double wx = side * CourtDimensions.HALF_W;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             string sideId = side > 0 ? "sideWallRight" : "sideWallLeft";
             bool offSide = false;
             for (int i = 0; i < 240; i++)
@@ -943,7 +1005,7 @@ namespace SquashSim
         /// <summary>How high the solved launch meets the back wall on the full (before it bounces twice), or -1.</summary>
         double BackWallHeight(BallState ball, List<Surface> surfaces)
         {
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             int floors = 0;
             bool front = false;
             for (int i = 0; i < 400; i++)
@@ -964,7 +1026,7 @@ namespace SquashSim
         bool Fly(BallState ball, List<Surface> surfaces, int wall, out double u, out double v)
         {
             u = 0; v = 0;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
             string sideId = wall > 0 ? "sideWallRight" : "sideWallLeft";
             for (int i = 0; i < 200; i++)
             {

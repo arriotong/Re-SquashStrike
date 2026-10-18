@@ -168,6 +168,14 @@ namespace SquashSim
                 ball.Omega.Z += _tmpB.Z * gs;
             }
 
+            // ---- game profile: a drive / kill / boast comes off the front wall heading down (same speed) ----
+            if (surf.SurfaceClass == "frontWall" && ball.DipOffFrontWall)
+            {
+                ball.DipOffFrontWall = false;
+                var hit = PhysicsConfig.Current.ArcadeHit;
+                if (hit != null && hit.FrontWallRiseKeep < 1) DipOff(ball, hit.FrontWallRiseKeep);
+            }
+
             // ---- separate cleanly ----
             double distNow = CourtSurfaces.SignedDistance(surf, ball.Pos);
             if (distNow < r + CONTACT_SKIN)
@@ -230,6 +238,22 @@ namespace SquashSim
             };
             ball.RecordImpact(ev);
             return ev;
+        }
+
+        /// <summary>
+        /// A ball still rising as it leaves the front wall keeps only <paramref name="keep"/> of that rise; the speed it
+        /// loses upward goes into its flight out, so it keeps its pace and still carries deep - it just does not pop up
+        /// off the wall into a slow volley.
+        /// </summary>
+        public static void DipOff(BallState ball, double keep)
+        {
+            double vy = ball.Vel.Y;
+            if (vy <= 0) return;
+            double h2 = ball.Vel.X * ball.Vel.X + ball.Vel.Z * ball.Vel.Z;
+            if (h2 < 1e-9) return;
+            double ny = keep * vy;
+            double scale = System.Math.Sqrt((h2 + vy * vy - ny * ny) / h2);
+            ball.Vel.X *= scale; ball.Vel.Z *= scale; ball.Vel.Y = ny;
         }
 
         /// <summary>Advance the ball by exactly one FIXED timestep.</summary>
