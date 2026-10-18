@@ -142,6 +142,7 @@ namespace SquashSim
                 string stroke = sw.State != SwingStates.Idle ? sw.Stroke : "hit";
                 var ctx = new SwingContext
                 {
+                    PlayerPace = ctrl.Player.PaceScale,
                     Mode = prepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
                     ReachState = ctrl.Assist.ReachState, IsVolley = pred.IsVolley
                 };

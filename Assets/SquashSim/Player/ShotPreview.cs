@@ -71,6 +71,7 @@ namespace SquashSim
                 }
                 var plan = SwingPlanner.Plan(touch ? "touch" : "hit", _aim, ctrl.Player.SwingSide >= 0 ? 1 : -1, new SwingContext
                 {
+                    PlayerPace = ctrl.Player.PaceScale,
                     Mode = prepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
                     ReachState = ctrl.Assist.ReachState, IsVolley = pred.IsVolley
                 });

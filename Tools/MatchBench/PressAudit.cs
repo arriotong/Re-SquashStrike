@@ -99,6 +99,32 @@ static class PressAudit
 {
     public static bool AimHigh;
 
+    public static double LastWinRate;
+    public static bool Quiet;
+
+    /// <summary>The share of rallies the human-style player wins against each AI at each setup-panel difficulty.</summary>
+    public static void Balance(int games)
+    {
+        Quiet = true;
+        double[] levels = { 0.2, 0.5, 0.85 };
+        string[] names = { "retriever", "attacker", "shotmaker", "grinder" };
+        var mean = new double[levels.Length];
+        Console.WriteLine("BALANCE  human-style rallies won (targets: easy 60%, medium 45%, hard 30%)");
+        foreach (var n in names)
+        {
+            string line = "  " + n.PadRight(10);
+            for (int i = 0; i < levels.Length; i++)
+            {
+                Run(games, n, levels[i], true);
+                mean[i] += LastWinRate / names.Length;
+                line += (100 * LastWinRate).ToString("0").PadLeft(6) + "%";
+            }
+            Console.WriteLine(line);
+        }
+        Console.WriteLine("  " + "mean".PadRight(10) + string.Concat(System.Array.ConvertAll(mean, m => (100 * m).ToString("0").PadLeft(6) + "%")));
+        Quiet = false;
+    }
+
     public static void Run(int games, string opponent, double difficulty, bool gameProfile)
     {
         int outBack = 0, ownEnds = 0;
@@ -176,6 +202,8 @@ static class PressAudit
                 }
             }
         }
+        LastWinRate = (double)won / Math.Max(1, rallies);
+        if (Quiet) return;
         Console.WriteLine("PRESS AUDIT  human-style vs " + opponent + " (" + difficulty.ToString("0.0") + ")" + (gameProfile ? "  game profile" : "  lab") +
                           ":  " + presses + " rally presses, " + (100.0 * contacts / Math.Max(1, presses)).ToString("0") + "% connect, rallies won " + won + "/" + rallies +
                           " (" + (100.0 * won / Math.Max(1, rallies)).ToString("0") + "%)");

@@ -54,6 +54,13 @@ public static class Program
         if (Array.IndexOf(args, "--hitself") >= 0) { HitSelfReport(games); return 0; }
         if (Array.IndexOf(args, "--interference") >= 0) { InterferenceReport(games); return 0; }
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
+        if (Arg(args, "--diff") != null)
+        {
+            // Try difficulty knobs: reaction0,reactionSpan,noise0,noiseSpan,move0[,pace0,paceSpan]
+            var k = Array.ConvertAll(Arg(args, "--diff").Split(','), double.Parse);
+            AiProfile.DiffReaction0 = k[0]; AiProfile.DiffReactionSpan = k[1]; AiProfile.DiffNoise0 = k[2]; AiProfile.DiffNoiseSpan = k[3]; AiProfile.DiffMove0 = k[4]; if (k.Length > 5) AiProfile.DiffPace0 = k[5]; if (k.Length > 6) AiProfile.DiffPaceSpan = k[6];
+        }
+        if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {
             PressAudit.AimHigh = Array.IndexOf(args, "--aim-high") >= 0;

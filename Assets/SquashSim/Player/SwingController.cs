@@ -107,6 +107,7 @@ namespace SquashSim
         {
             return SwingPlanner.Plan(sw.Stroke, aim, player.SwingSide >= 0 ? 1 : -1, new SwingContext
             {
+                PlayerPace = player.PaceScale,
                 Mode = sw.Mode,
                 PrepQuality = sw.PrepQuality,
                 Quality = ctx.Quality,

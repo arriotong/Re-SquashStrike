@@ -46,6 +46,8 @@ namespace SquashSim
         /// <summary>Game only (local players on the simple hitting system): full speed always - no near-ball
         /// "adjust" cap, no post-stroke recovery, split-step plant or fatigue slowdown. False in the lab.</summary>
         public bool ArcadeMovement;
+        /// <summary>Game only: the AI's hitting pace for its difficulty (exactly 1 in the lab: no effect).</summary>
+        public double PaceScale = 1.0;
 
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 

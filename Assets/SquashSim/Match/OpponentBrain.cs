@@ -34,6 +34,8 @@ namespace SquashSim
         public double TriggerJitter;      // std dev of press timing (s)
         public double SplitStepError;     // std dev of split-step timing (s); <= 0: never split-steps
         public double AimSlew;            // stick travel per step
+        public double MoveSpeed = 1.0;    // fraction of the athletes' top speed it runs at (difficulty)
+        public double Pace = 1.0;         // its hitting pace (difficulty): softer shots are easier to get back
         public int NoiseSamples = 2;      // rollouts per candidate (noisy copies)
 
         // ---- decision (personality) ----
@@ -49,12 +51,21 @@ namespace SquashSim
         public AiProfile Clone() { return (AiProfile)MemberwiseClone(); }
 
         /// <summary>Execution quality from 0 (beginner) to 1 (strong club player).</summary>
+        // Difficulty knobs (balanced 2026-10-18 with MatchBench --balance against the slower game athletes and
+        // the deader front wall). Pace is the strong one: softer shots are the ones a human gets back.
+        public static double DiffReaction0 = 0.36, DiffReactionSpan = 0.20, DiffNoise0 = 0.26, DiffNoiseSpan = 0.14,
+                             DiffMove0 = 0.75, DiffPace0 = 0.62, DiffPaceSpan = 0.27;
+
         public AiProfile WithDifficulty(double d)
         {
             d = d < 0 ? 0 : (d > 1 ? 1 : d);
             var p = Clone();
-            p.ReactionTime = 0.32 - 0.20 * d;
-            p.AimNoise = 0.22 - 0.17 * d;
+            // Tuned (MatchBench --balance) so a human-style player wins about 60% / 45% / 30% of rallies
+            // at Easy (0.2) / Medium (0.5) / Hard (0.85).
+            p.ReactionTime = DiffReaction0 - DiffReactionSpan * d;
+            p.AimNoise = DiffNoise0 - DiffNoiseSpan * d;
+            p.MoveSpeed = DiffMove0 + (1 - DiffMove0) * d;
+            p.Pace = DiffPace0 + DiffPaceSpan * d;
             p.TriggerJitter = 0.06 - 0.045 * d;
             p.SplitStepError = 0.15 - 0.11 * d;
             p.AimSlew = 0.05 + 0.04 * d;
@@ -220,6 +231,7 @@ namespace SquashSim
         {
             var ctrl = m.Players[me];
             var p = ctrl.Player;
+            p.PaceScale = Profile.Pace;                 // its difficulty: how hard it hits
             var r = m.Referee;
             int opp = 1 - me;
             double t = m.Time;
@@ -322,7 +334,7 @@ namespace SquashSim
                     var pc = PhysicsConfig.Current.Player;
                     double arrive = System.Math.Sqrt(2 * pc.Braking * (d - 0.05)) / pc.MaxSpeed;
                     intent.Move.X = dx / d; intent.Move.Z = dz / d;
-                    intent.MoveMagnitude = System.Math.Min(1.0, System.Math.Max(0.25, arrive));
+                    intent.MoveMagnitude = System.Math.Min(1.0, System.Math.Max(0.25, arrive)) * Profile.MoveSpeed;
                 }
             }
 
@@ -623,6 +635,7 @@ namespace SquashSim
             AimController.Step(_aim, _probe, origin);
             var plan = SwingPlanner.Plan(touch ? "touch" : "hit", _aim, ctrl.Player.SwingSide >= 0 ? 1 : -1, new SwingContext
             {
+                PlayerPace = ctrl.Player.PaceScale,
                 Mode = _planPrepared ? "prepared" : "quick", Quality = ctrl.Assist.Quality,
                 ReachState = ctrl.Assist.ReachState, IsVolley = pred.IsVolley
             });

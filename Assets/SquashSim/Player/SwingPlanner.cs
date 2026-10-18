@@ -22,6 +22,8 @@ namespace SquashSim
 
     public struct SwingContext
     {
+        /// <summary>The athlete's own pace scale (TestPlayer.PaceScale; AI difficulty). 0 or 1 = none.</summary>
+        public double PlayerPace;
         public string Mode;           // "quick" | "prepared" | null
         public double PrepQuality;
         public double Quality;
@@ -80,6 +82,7 @@ namespace SquashSim
             paceScale *= modePace;
             if (context.Rushed) paceScale *= plan.RushedPaceScale;
             if (context.IsVolley) paceScale *= plan.VolleyPaceScale;
+            if (context.PlayerPace > 0 && context.PlayerPace != 1.0) paceScale *= context.PlayerPace;
 
             double duration = profile.Duration * modeDuration;
             if (context.IsVolley) duration *= plan.VolleyDurationScale;
