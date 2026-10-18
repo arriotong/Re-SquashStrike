@@ -198,23 +198,12 @@ namespace SquashSim.Arcade
         void Feed()
         {
             double side = Challenge.FeedBothSides ? (Rnd() < 0.5 ? -1 : 1) : 1;
-            double px = side * (0.4 + 0.5 * Rnd()), py = 1.0, pz = 7.4;
+            double px = side * (0.4 + 0.5 * Rnd()), pz = 7.4;
             // High and firm enough off the (dead) front wall to come back past the short line, like a length ball.
             double wx = side * (0.9 + 0.9 * Rnd()), wy = 2.0 + 0.8 * Rnd();
             if (Challenge.Drill == DrillKind.Drop || Challenge.Drill == DrillKind.NickHunt) { wy = 1.6 + 0.5 * Rnd(); }
             double speed = Challenge.FeedSpeed + (Rnd() * 2 - 1) * Challenge.FeedSpeedSpread;
-            double dx = wx - px, dz = pz, horiz = System.Math.Sqrt(dx * dx + dz * dz);
-            double t = horiz / speed;
-            double vy = (wy - py) / t + 0.5 * PhysicsConfig.Current.World.Gravity * t;
-            var cfg = Launcher.Config;
-            cfg.Position.X = px; cfg.Position.Y = py; cfg.Position.Z = pz;
-            cfg.Speed = System.Math.Sqrt(speed * speed + vy * vy);
-            cfg.AzimuthDeg = DMath.Atan2(dx, dz) * 180 / DMath.PI;
-            cfg.ElevationDeg = DMath.Atan2(vy, speed) * 180 / DMath.PI;
-            cfg.Temperature = 40;
-            cfg.Spin.X = 0; cfg.Spin.Y = 0; cfg.Spin.Z = 0;
-            Launcher.SetRepeat(false);
-            Launcher.Fire(fresh: true);
+            Feeder.Front(Launcher, px, pz, wx, wy, speed);
         }
 
         // ---------------- the serve (Serve Targets) ----------------
