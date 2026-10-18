@@ -148,6 +148,17 @@ namespace SquashSim
             return true;
         }
 
+        // ---- the great hit (the ring's flash, the arcade's bonus) ----
+        public const double GreatEarliness = 0.75, GreatReleaseWait = 0.06, GreatDistance = 0.15;
+
+        /// <summary>A great hit: set early, and let go so the ball met the racket at the sweet spot - not early, not jammed.</summary>
+        public static bool IsGreat(SimEvent e)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            return c != null && e != null && e.ArcadeDistance >= 0 && System.Math.Abs(e.ArcadeDistance - c.SweetSpot) <= GreatDistance &&
+                   e.Earliness >= GreatEarliness && e.ReleaseWait >= 0 && e.ReleaseWait <= GreatReleaseWait;
+        }
+
         /// <summary>The shot type the reticle height (and the charge) would play: lob / drop / kill / drive.</summary>
         public string ShotTypeFor(double aimHeight)
         {

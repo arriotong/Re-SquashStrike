@@ -71,6 +71,7 @@ public static class Program
             AiProfile.DiffReaction0 = k[0]; AiProfile.DiffReactionSpan = k[1]; AiProfile.DiffNoise0 = k[2]; AiProfile.DiffNoiseSpan = k[3]; AiProfile.DiffMove0 = k[4]; if (k.Length > 5) AiProfile.DiffPace0 = k[5]; if (k.Length > 6) AiProfile.DiffPaceSpan = k[6]; if (k.Length > 7) OpponentBrain.ArcadeGapWeight = k[7]; if (k.Length > 8) OpponentBrain.ArcadeChoiceNoise = k[8]; if (k.Length > 9) OpponentBrain.ArcadeAimNoiseScale = k[9];
         }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
+        if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
         if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {

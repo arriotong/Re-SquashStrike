@@ -117,12 +117,7 @@ namespace SquashGame
         public int GreatHits { get; private set; }
 
         /// <summary>Set early, and let go so the ball met the racket at the sweet spot - not early, not jammed.</summary>
-        public static bool IsGreat(SimEvent e)
-        {
-            var c = PhysicsConfig.Current.ArcadeHit;
-            return c != null && e.ArcadeDistance >= 0 && System.Math.Abs(e.ArcadeDistance - c.SweetSpot) <= GreatDistance &&
-                   e.Earliness >= GreatEarliness && e.ReleaseWait >= 0 && e.ReleaseWait <= GreatReleaseWait;
-        }
+        public static bool IsGreat(SimEvent e) { return ArcadeStroke.IsGreat(e); }       // the rule lives in the sim
 
         void OnStepped(System.Collections.Generic.IReadOnlyList<SimEvent> events)
         {
