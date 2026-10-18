@@ -69,7 +69,7 @@ namespace SquashGame
         public void Build(SimRunnerBase runner)
         {
             Runner = runner;
-            LoadSettings();
+            // (the on/off setting comes from the profile: ProfileStore.Apply)
             Runner.Stepped += OnStepped;
             Runner.Dived += OnDived;
         }
@@ -200,7 +200,7 @@ namespace SquashGame
         {
             if (!Enabled || _pops.Count == 0) return;
             var mr = Runner as MatchRunner;
-            if (mr != null && mr.InSetup) return;
+            if (mr != null && (mr.InSetup || mr.Demo)) return;
             Camera cam = Camera.main;
             if (cam == null) return;
             EnsureStyles();

@@ -1,7 +1,8 @@
 // ===========================================================
 // Assets/SquashGame/Tests/PlayMode/LocalMatchTests.cs
 // M5 in the real Match scene, with virtual devices only:
-//   - the setup panel, driven by a pad, starts a Local 2P match;
+//   - the front end (title -> main menu -> Local Versus), driven by a
+//     pad, starts a Local 2P match;
 //     each pad steers only its own athlete; the match starts at the
 //     serve (no knock-up); only the server can serve, in one click
 //   - the audio director plays the event sounds (no errors)
@@ -13,6 +14,8 @@ using System.Collections;
 using System.IO;
 using NUnit.Framework;
 using SquashGame.Audio;
+using SquashGame.Profile;
+using SquashGame.UI;
 using SquashSim;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -36,30 +39,43 @@ namespace SquashGame.Tests
             Release(b); yield return null;
         }
 
-        [UnityTest]
-        public IEnumerator TwoPadsPlayLocalTwoPlayerFromTheSetupPanel()
+        /// <summary>A fresh profile in a temp folder, and the game opening on its title screen.</summary>
+        public static void FreshProfile()
         {
+            ProfileStore.Folder = Path.Combine(Path.GetTempPath(), "reSquashStrikeTests");
+            if (File.Exists(Path.Combine(ProfileStore.Folder, ProfileStore.FileName))) File.Delete(Path.Combine(ProfileStore.Folder, ProfileStore.FileName));
+            ProfileStore.Reset();
+            ProfileStore.Current.Settings = new GameSettings();
+            FrontEnd.StartAtTitle = true;
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPadsPlayLocalTwoPlayerFromTheFrontEnd()
+        {
+            FreshProfile();
             var pad1 = InputSystem.AddDevice<Gamepad>();
             var pad2 = InputSystem.AddDevice<Gamepad>();
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
-            var panel = Object.FindFirstObjectByType<MatchSetupPanel>();
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
             var audio = Object.FindFirstObjectByType<AudioDirector>();
-            Assert.That(r.InSetup, Is.True, "the match opens on the setup panel");
-            Assert.That(panel.Selected, Is.EqualTo(MatchSetupPanel.RowStart));
+            Assert.That(fe.Top, Is.InstanceOf<TitleScreen>(), "the game opens on the title");
+            Assert.That(r.Demo, Is.True, "a demo rally plays behind the menus");
 
-            // D-pad up to the opponent row, left once: wraps to "Player 2 (local)".
-            double simTimeAtSetup = r.Sim.Time;
-            while (panel.Selected != MatchSetupPanel.RowOpponent) yield return Tap(pad1.dpad.up);
-            Assert.That(panel.Selected, Is.EqualTo(MatchSetupPanel.RowOpponent));
-            yield return Tap(pad1.dpad.left);
-            Assert.That(panel.TwoPlayer, Is.True);
-            Assert.That(r.Sim.Time, Is.EqualTo(simTimeAtSetup), "nothing moves behind the panel");
-            Capture("M5_Setup.png");
+            yield return Tap(pad1.buttonSouth);                     // title -> main menu
+            Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Quick Match"));
+            yield return Tap(pad1.dpad.down);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Local Versus"));
+            yield return Tap(pad1.buttonSouth);
+            Assert.That(fe.Top, Is.InstanceOf<LocalVersusScreen>());
+            Capture("P2M1_LocalVersus.png");
+            while (fe.Top.Focused.Name != "START") yield return Tap(pad1.dpad.down);
             yield return Tap(pad1.buttonSouth);                     // start
+            Assert.That(fe.Top, Is.Null, "the menus close");
+            Assert.That(r.Demo, Is.False);
 
-            Assert.That(r.InSetup, Is.False);
             MatchSimulation m = r.Sim;
             Assert.That(r.Settings.TwoPlayer, Is.True);
             Assert.That(m.Bots[1], Is.Null, "no AI in a two-player match");
@@ -110,24 +126,30 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
-        public IEnumerator KeyboardStartsAKnockUpAgainstTheAiAndEnterSkipsIt()
+        public IEnumerator KeyboardStartsAQuickMatchAgainstTheAiAndOneClickServes()
         {
+            FreshProfile();
             var kb = InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
-            var panel = Object.FindFirstObjectByType<MatchSetupPanel>();
-            Assert.That(r.InSetup, Is.True);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
             Assert.That(MatchRunner.CanPlayTwoPlayer, Is.False);
-            // With no pad, the opponent row skips "Player 2".
-            while (panel.Selected != MatchSetupPanel.RowOpponent) yield return Tap(kb.upArrowKey);
-            yield return Tap(kb.leftArrowKey);
-            Assert.That(panel.TwoPlayer, Is.False, "Local 2P needs a pad");
+            yield return Tap(kb.enterKey);                          // title -> main menu
+            var menu = fe.Top;
+            Assert.That(menu, Is.InstanceOf<MainMenuScreen>());
+            Assert.That(menu.Find("Local Versus").IsEnabled, Is.True, "the row is there (its START needs a pad)");
+            yield return Tap(kb.enterKey);                          // Quick Match
+            Assert.That(fe.Top, Is.InstanceOf<QuickMatchScreen>());
+            Capture("P2M1_QuickMatch.png");
+            yield return Tap(kb.upArrowKey);                        // wraps to START
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("START"));
             yield return Tap(kb.enterKey);
 
             MatchSimulation m = r.Sim;
-            Assert.That(r.InSetup, Is.False);
+            Assert.That(fe.Top, Is.Null);
+            Assert.That(r.Demo, Is.False);
             Assert.That(m.Bots[1], Is.Not.Null, "the AI plays");
             Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "no knock-up: straight to the serve");
             Assert.That(m.Score.Points[0] + m.Score.Points[1], Is.EqualTo(0));

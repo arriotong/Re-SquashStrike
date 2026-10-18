@@ -44,9 +44,6 @@ namespace SquashGame
             overlay.transform.SetParent(transform, false);
             overlay.Build(Runner, Palette);
 
-            var hud = new GameObject("MatchHud").AddComponent<MatchHud>();
-            hud.transform.SetParent(transform, false);
-            hud.Runner = Runner;
 
             // M6: an always-on aim target per local player (athlete 1 shows one only in local 2P).
             Color[] aimColours = { new Color(1f, 0.78f, 0.22f), new Color(0.35f, 0.85f, 1f) };
@@ -63,9 +60,10 @@ namespace SquashGame
             popups.transform.SetParent(transform, false);
             popups.Build(Runner);
 
-            var setup = new GameObject("MatchSetupPanel").AddComponent<MatchSetupPanel>();
-            setup.transform.SetParent(transform, false);
-            setup.Runner = Runner;
+            // P2-M1: the front end (menus over the live court, the HUD, pause, post-match).
+            var fe = new GameObject("FrontEnd").AddComponent<UI.FrontEnd>();
+            fe.transform.SetParent(transform, false);
+            fe.Build(Runner);
 
             var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
             audio.transform.SetParent(transform, false);

@@ -36,12 +36,15 @@ namespace SquashGame
             get
             {
                 var cfg = PhysicsConfig.Current;
-                float ballDiameter = 2f * (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale);
+                float ballDiameter = 2f * (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale) * BallView.UserScale;
                 return 0.75f * ballDiameter;
             }
         }
         /// <summary>Plain white, a little see-through (in local 2P the second player's ring is a soft grey-blue).</summary>
         public static readonly Color Plain = new Color(1f, 1f, 1f, 0.85f);
+        /// <summary>Accessibility setting: the ring's colour (0 white, 1 yellow, 2 cyan).</summary>
+        public static int RingColourIndex;
+        public static readonly Color[] RingColours = { new Color(1f, 1f, 1f, 0.85f), new Color(1f, 0.9f, 0.3f, 0.9f), new Color(0.4f, 0.95f, 1f, 0.9f) };
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
         /// <summary>Boast armed: the shot goes off <see cref="SideWall"/> (-1 / +1) near <see cref="SideMarker"/> (world).</summary>
@@ -171,7 +174,7 @@ namespace SquashGame
             if (Runner.ReplayActive) return false;
             var mr = Runner as MatchRunner;
             if (mr == null) return true;                                  // the practice court: always
-            if (mr.InSetup || mr.Sim == null) return false;
+            if (mr.InSetup || mr.Demo || mr.Sim == null) return false;
             var ph = mr.Sim.Phase;
             return ph == MatchPhase.WarmUp || ph == MatchPhase.AwaitToss || ph == MatchPhase.Rally;
         }
@@ -240,7 +243,7 @@ namespace SquashGame
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
             // Plain: one colour, no words (the shot type is still worked out for tests / later UI).
-            Color c = Plain;
+            Color c = RingColours[Mathf.Clamp(RingColourIndex, 0, RingColours.Length - 1)];
             if (Athlete != 0 && Runner.LocalSource(0) != null) c = new Color(0.75f, 0.85f, 1f, 0.85f);
             c.a *= Fade;
             _mat.color = c;

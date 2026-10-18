@@ -1,7 +1,7 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/MatchRunner.cs
 // A match on the shared frame loop: SquashSim's MatchSimulation, set up
-// by the pre-match panel (MatchSetupPanel), against the AI or a second
+// by the front end (UI/FrontEnd: Quick Match / Local Versus), against the AI or a second
 // local player.
 //
 //   vs AI      athlete 0 = every device; athlete 1 = OpponentBrain (or
@@ -59,6 +59,33 @@ namespace SquashGame
         public IntentSource Input2 { get; private set; }
         /// <summary>The pre-match panel is up; the simulation waits.</summary>
         public bool InSetup { get; private set; }
+        /// <summary>P2-M1: the menus' background - an AI-vs-AI rally on the live court, no local player, no HUD.</summary>
+        public bool Demo { get; private set; }
+        protected override bool PauseAllowed { get { return !Demo && !InSetup; } }
+
+        /// <summary>Play the menus' demo: two AIs, on and on (a new match when one ends).</summary>
+        public void BeginDemo()
+        {
+            Settings = new MatchSettings { Opponent = "attacker", Difficulty = 0.42f, GamesToWin = 1, Scoring = "par", WarmUp = false };
+            Input.UseDevices(null);
+            if (Input2 != null) { Input2.Dispose(); Input2 = null; }
+            ApplyConfig(Settings);
+            BotSeed = BotSeed * 1664525u + 1013904223u;
+            NewMatch();
+            Sim.Intents[0] = new InputIntent();                          // the player's own input is not used
+            Sim.Bots[0] = new OpponentBrain(AiProfile.ByName("retriever").WithDifficulty(0.42), BotSeed ^ 0x9E3779B9u);
+            Sim.Players[0].WallAimEnabled = true;
+            Sim.Players[0].ArcadeHitEnabled = true;
+            Names[0] = "RETRIEVER"; Names[1] = "ATTACKER";
+            ClearDebugHistory();
+            Demo = true;
+            InSetup = false;
+            DeviceLost = null;
+            Clock.Resume();
+            Clock.TimeScale = GameSpeed;
+            Clock.Flush();
+            SnapViews();
+        }
         /// <summary>A local player's pad was unplugged: play is paused until it is back.</summary>
         public string DeviceLost { get; private set; }
 
@@ -162,6 +189,7 @@ namespace SquashGame
             BotSeed = BotSeed * 1664525u + 1013904223u;   // a different (still deterministic) bot each match
             NewMatch();
             ClearDebugHistory();
+            Demo = false;
             InSetup = false;
             DeviceLost = null;
             Clock.Resume();
@@ -241,16 +269,16 @@ namespace SquashGame
         protected override void Update()
         {
             if (InSetup) return;          // the panel is up: nothing moves (the views keep the last frame)
+            if (Demo)
+            {
+                // The menus' demo rally: on and on.
+                if (Sim.Phase == MatchPhase.MatchOver || Sim.Phase == MatchPhase.GameOver) { BeginDemo(); return; }
+                Input.ConsumeReady();
+                base.Update();
+                return;
+            }
 
             WatchDevices();
-
-            // Paused: M / pad View leaves the match for the setup panel.
-            if (Clock.Paused && DeviceLost == null)
-            {
-                bool menu = Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame;
-                foreach (var pad in Gamepad.all) menu |= pad.selectButton.wasPressedThisFrame;
-                if (menu) { Clock.Resume(); ReturnToSetup(); return; }
-            }
             if (_replayRequested && !ReplayActive)
             {
                 _replayRequested = false;
@@ -269,7 +297,7 @@ namespace SquashGame
             {
                 if (Sim.Phase == MatchPhase.WarmUp) { Sim.SkipWarmUp(); SnapViews(); }
                 else if (Sim.Phase == MatchPhase.GameOver) { Sim.NextGame(); SnapViews(); }
-                else if (Sim.Phase == MatchPhase.MatchOver) { ReturnToSetup(); return; }
+                // (match over: the post-match screen takes it from here)
             }
             base.Update();
         }

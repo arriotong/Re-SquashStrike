@@ -123,7 +123,7 @@ namespace SquashGame
         {
             var mouse = Mouse.current;
             var match = Runner as MatchRunner;
-            bool wantFree = PanelVisible || Runner.Clock.Paused || (match != null && match.InSetup);
+            bool wantFree = PanelVisible || Runner.Clock.Paused || UI.FrontEnd.MenuOpen || (match != null && (match.InSetup || match.Demo));
             if (wantFree)
             {
                 if (Cursor.lockState != CursorLockMode.None) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }

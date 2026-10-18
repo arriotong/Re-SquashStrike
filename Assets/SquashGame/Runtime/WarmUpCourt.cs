@@ -57,6 +57,11 @@ namespace SquashGame
             audio.transform.SetParent(transform, false);
             audio.Build(Runner);
 
+            // P2-M1: the front end (pause menu: resume, settings, controls, back to the main menu).
+            var fe = new GameObject("FrontEnd").AddComponent<UI.FrontEnd>();
+            fe.transform.SetParent(transform, false);
+            fe.Build(Runner);
+
             if (GameplayCamera == null) GameplayCamera = Camera.main;
             if (GameplayCamera != null)
             {
@@ -76,7 +81,7 @@ namespace SquashGame
             var kb = Keyboard.current;
             bool menu = kb != null && kb.mKey.wasPressedThisFrame;
             foreach (var pad in Gamepad.all) menu |= pad.selectButton.wasPressedThisFrame;
-            if (menu) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; SceneManager.LoadScene(MenuScene); }
+            if (menu) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; UI.FrontEnd.StartAtTitle = false; SceneManager.LoadScene(MenuScene); }
         }
 
         GUIStyle _hint;

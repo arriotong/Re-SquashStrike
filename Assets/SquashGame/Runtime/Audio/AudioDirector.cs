@@ -27,6 +27,8 @@ namespace SquashGame.Audio
     {
         public SimRunnerBase Runner;
         [Range(0, 1)] public float MasterVolume = 0.9f;
+        /// <summary>Settings: the referee's calls and every other sound (the master volume is the AudioListener's).</summary>
+        public static float SfxVolume = 1f, RefereeVolume = 1f;
         public int Voices = 14;
 
         /// <summary>Sounds started so far, by name (tests and diagnostics).</summary>
@@ -81,7 +83,7 @@ namespace SquashGame.Audio
             _next = (_next + 1) % _pool.Count;
             src.transform.position = at;
             src.clip = clip;
-            src.volume = Mathf.Clamp01(volume) * MasterVolume;
+            src.volume = Mathf.Clamp01(volume) * MasterVolume * (name == "call" ? RefereeVolume : SfxVolume);
             src.pitch = pitch;
             src.Play();
             Played[name] = Played.TryGetValue(name, out int n) ? n + 1 : 1;

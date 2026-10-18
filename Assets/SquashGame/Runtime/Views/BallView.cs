@@ -18,6 +18,9 @@ namespace SquashGame
 {
     public sealed class BallView : MonoBehaviour
     {
+        /// <summary>Accessibility setting: the drawn ball's size x this (render only; the physics ball is unchanged).</summary>
+        public static float UserScale = 1f;
+
         static readonly Color Cold = new Color(0.20f, 0.30f, 0.55f);
         static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
 
@@ -56,7 +59,7 @@ namespace SquashGame
             BallState ball = _runner.Ball;
             SimConfig cfg = PhysicsConfig.Current;
 
-            float visualRadius = (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale);
+            float visualRadius = (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale) * UserScale;
             Vector3 p = _runner.View.BallPos;
             _ball.position = p;
             _ball.localScale = Vector3.one * (visualRadius * 2f);   // Unity sphere primitive has radius 0.5

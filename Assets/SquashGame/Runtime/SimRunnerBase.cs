@@ -278,7 +278,7 @@ namespace SquashGame
 
         protected virtual void Awake()
         {
-            IntentSource.LoadSettings();
+            Profile.ProfileStore.Apply(Profile.ProfileStore.Current.Settings);   // P2-M1: settings live in the profile
             Input = new IntentSource();
             Clock = new SimulationClock(OnFixedStep);
             CreateSimulation();
@@ -297,7 +297,7 @@ namespace SquashGame
             Input.Sample(rawDt);
             bool pause = Input.ConsumePause();
             pause |= SampleExtraInput(rawDt);
-            if (pause) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
+            if (pause && PauseAllowed && !UI.FrontEnd.BlocksGamePause) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
 
             // During a referee replay the simulation waits; the views show the recording.
             if (AdvanceReplay(rawDt)) return;
@@ -384,6 +384,9 @@ namespace SquashGame
 
         public void SetTimeScale(double s) { Clock.Resume(); Clock.TimeScale = s; }
         public void TogglePause() { Clock.TogglePause(); }
+
+        /// <summary>Can the game's pause key pause it now? (Not in the menus' demo rally.)</summary>
+        protected virtual bool PauseAllowed { get { return true; } }
         public void StepOnce() { Clock.StepOnce(); }
     }
 }

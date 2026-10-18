@@ -1,0 +1,154 @@
+// ===========================================================
+// Assets/SquashGame/Runtime/Profile/ProfileStore.cs
+// P2-M1: the player's profile on disk - one JSON file in the
+// persistent data folder. Settings now; career, stats and cosmetics
+// get their own sections in later milestones.
+//
+// On first run the old per-setting PlayerPrefs (aim speed, invert,
+// control mode, pop-ups) are imported, so nothing is lost. Apply()
+// pushes the settings to the parts of the game that read them.
+// ===========================================================
+
+using System;
+using System.IO;
+using UnityEngine;
+
+namespace SquashGame.Profile
+{
+    [Serializable]
+    public sealed class GameSettings
+    {
+        // ---- controls ----
+        public bool Assisted;
+        public float AimSpeed = 1f;              // IntentSource.MouseSensitivityScale
+        public bool InvertMouseY;
+        // ---- video ----
+        public int ResolutionW, ResolutionH;     // 0 = leave as is
+        public int DisplayMode = 0;              // 0 fullscreen window, 1 exclusive, 2 windowed
+        public bool VSync = true;
+        public int FrameCap = 0;                 // 0 = none, else fps
+        public int Quality = -1;                 // QualitySettings level; -1 = leave
+        // ---- audio ----
+        public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f;
+        // ---- accessibility ----
+        public float BallScale = 1f;             // x the game's drawn ball (render only)
+        public int RingColour = 0;               // 0 white, 1 yellow, 2 cyan
+        public float CallTextScale = 1f;
+        // ---- gameplay ----
+        public bool Popups = true;
+
+        public GameSettings Clone() { return (GameSettings)MemberwiseClone(); }
+    }
+
+    [Serializable]
+    public sealed class MenuChoices
+    {
+        public int Opponent = 0, Difficulty = 1, Length = 2, Scoring = 0;
+        public int VsLength = 2, VsScoring = 0;
+    }
+
+    [Serializable]
+    public sealed class PlayerProfile
+    {
+        public int Version = ProfileStore.CurrentVersion;
+        public GameSettings Settings = new GameSettings();
+        public MenuChoices Choices = new MenuChoices();
+    }
+
+    public static class ProfileStore
+    {
+        public const int CurrentVersion = 1;
+        public const string FileName = "profile.json";
+
+        /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
+        public static string Folder = null;
+        static string PathOf { get { return System.IO.Path.Combine(Folder ?? Application.persistentDataPath, FileName); } }
+
+        static PlayerProfile _current;
+        /// <summary>The profile in use (loaded on first access).</summary>
+        public static PlayerProfile Current { get { if (_current == null) _current = Load(); return _current; } }
+
+        /// <summary>Forget the cached profile (tests).</summary>
+        public static void Reset() { _current = null; }
+
+        public static PlayerProfile Load()
+        {
+            try
+            {
+                string path = PathOf;
+                if (File.Exists(path))
+                {
+                    var p = JsonUtility.FromJson<PlayerProfile>(File.ReadAllText(path));
+                    if (p != null) return Upgrade(p);
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("Profile: could not read it, starting fresh (" + e.Message + ")"); }
+            var fresh = new PlayerProfile();
+            ImportPlayerPrefs(fresh.Settings);
+            return fresh;
+        }
+
+        public static void Save()
+        {
+            try
+            {
+                string path = PathOf;
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+                string tmp = path + ".tmp";
+                File.WriteAllText(tmp, JsonUtility.ToJson(Current, true));
+                if (File.Exists(path)) File.Delete(path);
+                File.Move(tmp, path);
+            }
+            catch (Exception e) { Debug.LogWarning("Profile: could not save (" + e.Message + ")"); }
+        }
+
+        static PlayerProfile Upgrade(PlayerProfile p)
+        {
+            if (p.Settings == null) p.Settings = new GameSettings();
+            if (p.Choices == null) p.Choices = new MenuChoices();
+            // (future versions: migrate fields here)
+            p.Version = CurrentVersion;
+            return p;
+        }
+
+        /// <summary>The settings the game kept in PlayerPrefs before the profile existed.</summary>
+        public static void ImportPlayerPrefs(GameSettings s)
+        {
+            try
+            {
+                s.AimSpeed = PlayerPrefs.GetFloat("aim.mouseSensitivity", s.AimSpeed);
+                s.InvertMouseY = PlayerPrefs.GetInt("aim.invertY", s.InvertMouseY ? 1 : 0) == 1;
+                s.Assisted = PlayerPrefs.GetInt("controls.assisted", s.Assisted ? 1 : 0) == 1;
+                s.Popups = PlayerPrefs.GetInt("ui.popups", s.Popups ? 1 : 0) == 1;
+            }
+            catch (Exception) { }
+        }
+
+        /// <summary>Push the settings to the game (input, ring, pop-ups, audio, video).</summary>
+        public static void Apply(GameSettings s, bool video = true)
+        {
+            IntentSource.MouseSensitivityScale = s.AimSpeed;
+            IntentSource.InvertMouseY = s.InvertMouseY;
+            IntentSource.Assisted = s.Assisted;
+            ArcadePopups.Enabled = s.Popups;
+            AimTargetView.RingColourIndex = s.RingColour;
+            Audio.AudioDirector.SfxVolume = s.SfxVolume;
+            Audio.AudioDirector.RefereeVolume = s.RefereeVolume;
+            AudioListener.volume = Mathf.Clamp01(s.MasterVolume);
+            BallView.UserScale = Mathf.Clamp(s.BallScale, 0.75f, 1.6f);
+            HudLayer.CallTextScale = Mathf.Clamp(s.CallTextScale, 0.8f, 1.5f);
+            if (!video || Application.isBatchMode) return;
+            QualitySettings.vSyncCount = s.VSync ? 1 : 0;
+            Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : -1;
+            if (s.Quality >= 0 && s.Quality < QualitySettings.names.Length) QualitySettings.SetQualityLevel(s.Quality, true);
+            var modes = new[] { FullScreenMode.FullScreenWindow, FullScreenMode.ExclusiveFullScreen, FullScreenMode.Windowed };
+            var mode = modes[Mathf.Clamp(s.DisplayMode, 0, 2)];
+            if (s.ResolutionW > 0 && s.ResolutionH > 0)
+            {
+                if (Screen.width != s.ResolutionW || Screen.height != s.ResolutionH || Screen.fullScreenMode != mode)
+                    Screen.SetResolution(s.ResolutionW, s.ResolutionH, mode);
+            }
+            else if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+        }
+    }
+}

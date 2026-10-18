@@ -1,0 +1,131 @@
+/* ===========================================================
+   re:SquashStrike front end - TV broadcast style.
+   Dark translucent panels, white type, one red accent (the score
+   bug's stripe), condensed bold headings. Used by every screen.
+   =========================================================== */
+
+.fe-root {
+    flex-grow: 1;
+    color: rgb(240, 242, 246);
+    -unity-font-style: normal;
+}
+
+/* ---------- layers ---------- */
+.fe-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.fe-dim { background-color: rgba(8, 10, 14, 0.55); }
+
+/* ---------- a menu screen: a left-aligned column over the court ---------- */
+.fe-screen {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 640px;
+    padding: 72px 56px 48px 72px;
+    background-color: rgba(10, 12, 16, 0.86);
+    border-right-width: 4px;
+    border-right-color: rgb(214, 56, 46);
+}
+.fe-screen--centre {
+    left: 50%; translate: -50% 0;
+    border-right-width: 0;
+    border-left-width: 0;
+    border-top-width: 4px;
+    border-top-color: rgb(214, 56, 46);
+    top: 18%; bottom: auto;
+    width: 720px;
+}
+.fe-kicker { font-size: 18px; color: rgb(214, 56, 46); -unity-font-style: bold; letter-spacing: 3px; margin-bottom: 4px; }
+.fe-title { font-size: 46px; -unity-font-style: bold; margin-bottom: 28px; letter-spacing: 1px; }
+.fe-subtitle { font-size: 18px; color: rgb(170, 178, 190); margin-bottom: 20px; white-space: normal; }
+
+/* ---------- items ---------- */
+.fe-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 54px;
+    padding: 0 18px;
+    margin-bottom: 6px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left-width: 4px;
+    border-left-color: rgba(0, 0, 0, 0);
+}
+.fe-item__label { font-size: 22px; -unity-font-style: bold; }
+.fe-item__value { font-size: 20px; color: rgb(205, 212, 222); }
+.fe-item__arrow { font-size: 22px; color: rgb(120, 128, 140); padding: 0 10px; }
+.fe-item--focused {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-left-color: rgb(214, 56, 46);
+}
+.fe-item--focused .fe-item__arrow { color: rgb(240, 242, 246); }
+.fe-item--disabled { opacity: 0.38; }
+.fe-item--primary { height: 64px; background-color: rgba(214, 56, 46, 0.30); }
+.fe-item--primary.fe-item--focused { background-color: rgba(214, 56, 46, 0.75); }
+.fe-item__note { font-size: 15px; color: rgb(150, 158, 170); }
+.fe-section { font-size: 15px; color: rgb(150, 158, 170); letter-spacing: 2px; margin: 18px 0 8px 2px; }
+
+.fe-hint {
+    position: absolute; left: 72px; bottom: 28px;
+    font-size: 16px; color: rgb(150, 158, 170);
+}
+
+/* ---------- title ---------- */
+.fe-logo { font-size: 96px; -unity-font-style: bold; letter-spacing: 2px; }
+.fe-logo-accent { color: rgb(214, 56, 46); }
+.fe-press { font-size: 24px; color: rgb(205, 212, 222); margin-top: 24px; }
+.fe-title-box { position: absolute; left: 96px; bottom: 140px; }
+
+/* ---------- HUD ---------- */
+.hud-bug {
+    position: absolute; left: 20px; top: 20px; width: 420px;
+    background-color: rgba(14, 16, 20, 0.92);
+    border-left-width: 5px; border-left-color: rgb(214, 56, 46);
+    padding: 6px 0 6px 0;
+}
+.hud-row { flex-direction: row; align-items: center; height: 38px; padding: 0 12px 0 10px; }
+.hud-serve { width: 10px; height: 10px; border-radius: 5px; margin-right: 10px; flex-shrink: 0; background-color: rgba(0, 0, 0, 0); }
+.hud-serve--on { background-color: rgb(255, 209, 64); }
+.hud-name { flex-grow: 1; flex-shrink: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 21px; -unity-font-style: bold; }
+.hud-games { width: 40px; flex-shrink: 0; font-size: 21px; -unity-text-align: middle-center; color: rgb(170, 178, 190); }
+.hud-points { width: 52px; flex-shrink: 0; font-size: 24px; -unity-font-style: bold; -unity-text-align: middle-center; background-color: rgba(255, 255, 255, 0.08); }
+.hud-meta { font-size: 13px; color: rgb(150, 158, 170); padding: 4px 12px 0 25px; }
+
+.hud-banner {
+    position: absolute; top: 24px; left: 50%; translate: -50% 0;
+    min-width: 520px;
+    padding: 12px 28px;
+    background-color: rgba(14, 16, 20, 0.92);
+    border-bottom-width: 4px; border-bottom-color: rgb(214, 56, 46);
+    font-size: 28px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.hud-sub {
+    position: absolute; top: 92px; left: 50%; translate: -50% 0;
+    padding: 4px 14px;
+    background-color: rgba(14, 16, 20, 0.75);
+    font-size: 16px; -unity-text-align: middle-center;
+}
+.hud-centre {
+    position: absolute; top: 44%; left: 50%; translate: -50% -50%;
+    padding: 16px 36px;
+    background-color: rgba(14, 16, 20, 0.92);
+    border-bottom-width: 4px; border-bottom-color: rgb(214, 56, 46);
+    font-size: 34px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.hud-prompt {
+    position: absolute; bottom: 70px; left: 50%; translate: -50% 0;
+    max-width: 900px;
+    padding: 10px 20px;
+    background-color: rgba(14, 16, 20, 0.78);
+    font-size: 17px; -unity-text-align: middle-center; white-space: normal;
+}
+
+/* ---------- post-match ---------- */
+.pm-result { font-size: 40px; -unity-font-style: bold; margin-bottom: 6px; }
+.pm-score { font-size: 22px; color: rgb(205, 212, 222); margin-bottom: 22px; }
+.pm-stat { flex-direction: row; justify-content: space-between; height: 32px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.08); }
+.pm-stat__name { font-size: 17px; color: rgb(170, 178, 190); }
+.pm-stat__val { font-size: 18px; -unity-font-style: bold; width: 120px; -unity-text-align: middle-right; }
+.pm-stats { margin-bottom: 24px; }
+
+/* ---------- controls page ---------- */
+.ctl-row { flex-direction: row; height: 34px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
+.ctl-action { width: 230px; font-size: 18px; -unity-font-style: bold; }
+.ctl-keys { font-size: 17px; color: rgb(205, 212, 222); white-space: normal; flex-shrink: 1; }
