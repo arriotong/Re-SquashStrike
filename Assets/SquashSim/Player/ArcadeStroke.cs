@@ -163,6 +163,8 @@ namespace SquashSim
 
         public bool Waiting { get { return _pending > 0; } }
 
+        double _releaseWait;
+
         public ArcadeStroke(uint seed) { _rng = seed * 2654435761u + 12345u; }
         double Rnd() { _rng = unchecked(_rng * 1664525u + 1013904223u); return _rng / 4294967296.0; }
 
@@ -242,6 +244,7 @@ namespace SquashSim
             {
                 if (ctrl.ContactEnabled && InReach(player, ball, c, out double dist))
                 {
+                    _releaseWait = c.Grace - _pending;
                     _pending = -1;
                     return Hit(ctrl, ball, surfaces, dist, _pendingCharge, c);
                 }
@@ -261,7 +264,7 @@ namespace SquashSim
         {
             var c = PhysicsConfig.Current.ArcadeHit;
             double charge = _serveCharging ? System.Math.Min(1, _charge / c.ChargeFull) : 0;
-            _stroke = "hit"; _charging = false; _serveCharging = false; _pending = -1; _boast = false;
+            _stroke = "hit"; _charging = false; _serveCharging = false; _pending = -1; _boast = false; _releaseWait = 0;
             var ev = Hit(ctrl, ball, surfaces, 0, charge, c);
             _charge = 0;
             return ev;
@@ -339,6 +342,9 @@ namespace SquashSim
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (0.4 + missRatio * 0.6);                             // well off
             }
             speed *= 1.0 - 0.15 * missRatio;
+            // The AI's difficulty (1 for a human): how hard its drives and kills are. Drops, boasts, lobs and serves
+            // set their own pace (a softer drop just dies in the tin).
+            if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
 
             // Assisted controls: a straight drive is kept off its side wall.
             if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill")) tx = StraightAssist(ball, surfaces, tx, ty, speed);
@@ -348,10 +354,10 @@ namespace SquashSim
             if (boast) shot = "boast";
             else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, c.LobHeight);
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
-            // Floor before the back wall: a drive, kill, serve or boast that would reach the back wall on the full
-            // is struck just soft enough to bounce first (a length drive dies at the back). Lobs keep their own rule.
+            // Floor before the back wall, and in: a drive, kill, serve or boast that would reach the back wall on the
+            // full - or a drive / kill that would fly over an out line - is struck just soft enough. Lobs keep their own rule.
             _good.CopyFrom(_vel);
-            for (int k = 0; k < 14 && BackWallHeight(ball, surfaces) >= 0; k++)
+            for (int k = 0; k < 14 && (BackWallHeight(ball, surfaces) >= 0 || (!boast && GoesOut(ball, surfaces))); k++)
             {
                 speed *= 0.93;
                 if (boast)
@@ -399,7 +405,10 @@ namespace SquashSim
                 Temperature = ball.Temperature,
                 Time = ball.SimTime,
                 SwingPhaseAtContact = 0.5,
-                ArcadeQuality = quality
+                ArcadeQuality = quality,
+                Earliness = early,
+                ReleaseWait = _releaseWait,
+                ArcadeDistance = ctrl.ServeStroke ? -1 : dist
             };
             ctrl.Racket.LastContact = ev;
             ball.LastRacketContact = new RacketTouch { By = "player", Time = ball.SimTime, Speed = ev.BallSpeedOut, Stroke = _stroke, Technique = ev.Technique };

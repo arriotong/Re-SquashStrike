@@ -109,6 +109,7 @@ namespace SquashGame.Tests
                       (errors.Count > 0 ? errors[errors.Count - 1].ToString("0.00") : "-") + " m");
             var timing = aim.GetComponent<TimingFeedbackView>();
             Debug.Log("[M6] timing notes shown " + timing.Count + ", last " + timing.Last);
+            Debug.Log("[Flash] great hits flashed " + aim.GreatHits);
             Assert.That(timing.Count, Is.GreaterThan(0), "every stroke gets a timing note");
             var pops = Object.FindFirstObjectByType<ArcadePopups>();
             Debug.Log("[Pop] practice shown: " + string.Join(" ", pops.Shown));

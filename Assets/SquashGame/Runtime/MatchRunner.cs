@@ -108,11 +108,13 @@ namespace SquashGame
                 Names[0] = "YOU"; Names[1] = OpponentName;
             }
             Sim.RallyEnded += OnRallyEnded;
-            // Local players aim at a point on the front wall; the AI keeps its own aim model.
+            // Everyone plays the simple hitting system, aiming at a point on the front wall - the AI too (playtest
+            // 2026-10-18: same game on both sides). The wall-bot keeps the physical swing.
+            bool p2Arcade = Settings.TwoPlayer || Sim.Bots[1] is OpponentBrain;
             Sim.Players[0].WallAimEnabled = true;
-            Sim.Players[1].WallAimEnabled = Settings.TwoPlayer;
-            Sim.Players[0].ArcadeHitEnabled = true;                  // the simple hitting system (the AI keeps its swing)
-            Sim.Players[1].ArcadeHitEnabled = Settings.TwoPlayer;
+            Sim.Players[1].WallAimEnabled = p2Arcade;
+            Sim.Players[0].ArcadeHitEnabled = true;
+            Sim.Players[1].ArcadeHitEnabled = p2Arcade;
         }
 
         // ---------------- devices ----------------

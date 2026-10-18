@@ -103,10 +103,61 @@ namespace SquashGame
         float _radius = 0.3f;
         bool _hasPos;
 
+        // ---- the great-hit flash ----
+        /// <summary>A great hit (clean, set early, released on time): the ring pulses once.</summary>
+        public const double GreatEarliness = 0.75, GreatReleaseWait = 0.06, GreatDistance = 0.15;
+        public const float FlashSeconds = 0.4f;
+        Transform _flash;
+        Material _flashMat;
+        float _flashAge = 99f;
+        /// <summary>Great hits flashed so far (tests).</summary>
+        public int GreatHits { get; private set; }
+
+        /// <summary>Set early, and let go so the ball met the racket at the sweet spot - not early, not jammed.</summary>
+        public static bool IsGreat(SimEvent e)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            return c != null && e.ArcadeDistance >= 0 && System.Math.Abs(e.ArcadeDistance - c.SweetSpot) <= GreatDistance &&
+                   e.Earliness >= GreatEarliness && e.ReleaseWait >= 0 && e.ReleaseWait <= GreatReleaseWait;
+        }
+
+        void OnStepped(System.Collections.Generic.IReadOnlyList<SimEvent> events)
+        {
+            for (int i = 0; i < events.Count; i++)
+            {
+                var e = events[i];
+                if (e.Type != SimEventType.RacketContact) continue;
+                if (e.PlayerIndex != Athlete && !(e.PlayerIndex < 0 && Athlete == 0)) continue;
+                var mr = Runner as MatchRunner;
+                if (mr != null && mr.Sim != null && mr.Sim.Referee.Shots <= 1) continue;     // not for a serve
+                if (IsGreat(e)) { _flashAge = 0f; GreatHits++; }
+            }
+        }
+
+        void OnDestroy() { if (Runner != null) Runner.Stepped -= OnStepped; }
+
+        void DrawFlash()
+        {
+            _flashAge += Time.unscaledDeltaTime;
+            bool on = _flashAge < FlashSeconds && Shown && DrawRing;
+            _flash.gameObject.SetActive(on);
+            if (!on) return;
+            float u = _flashAge / FlashSeconds;
+            float r = _radius * (1f + 1.4f * u);
+            _flash.position = _ring.position; _flash.rotation = _ring.rotation;
+            _flash.localScale = new Vector3(r, r, 1f);
+            _flashMat.color = new Color(1f, 1f, 1f, 0.8f * (1f - u) * (1f - u));
+        }
+
         public void Build(SimRunnerBase runner, int athlete, GreyboxPalette palette, Color colour)
         {
             Runner = runner; Athlete = athlete; Colour = colour;
             _mat = palette.Clear(colour);
+            // A great hit: one faint white ring that grows out of the aim ring and fades (the shot-quality sign).
+            _flashMat = palette.Clear(new Color(1f, 1f, 1f, 0f));
+            _flash = Greybox.MeshObject("GreatHit", transform, Greybox.Torus(1f, 0.10f, 48, 6), _flashMat).transform;
+            _flash.gameObject.SetActive(false);
+            Runner.Stepped += OnStepped;
             // Unit ring (radius 1) scaled to the spread; a fixed-size centre dot.
             _ring = Greybox.MeshObject("Ring", transform, Greybox.Torus(1f, 0.16f, 48, 6), _mat).transform;
             _dot = Greybox.MeshObject("Dot", transform, Greybox.Torus(0.045f, 0.045f, 12, 6), _mat).transform;
@@ -134,7 +185,7 @@ namespace SquashGame
             _dot.gameObject.SetActive(false);                      // plain: no centre dot
             Boasting = Shown && Runner.Athletes[Athlete].ArcadeHitEnabled && Runner.Athletes[Athlete].Arcade.BoastArmed;
             _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
-            if (!Shown) { _hasPos = false; return; }
+            if (!Shown) { _hasPos = false; if (_flash != null) _flash.gameObject.SetActive(false); return; }
 
             var athletes = Runner.Athletes;
             Preview.Update(athletes[Athlete], src.Intent, Runner.Ball, Runner.Surfaces);
@@ -193,6 +244,7 @@ namespace SquashGame
             if (Athlete != 0 && Runner.LocalSource(0) != null) c = new Color(0.75f, 0.85f, 1f, 0.85f);
             c.a *= Fade;
             _mat.color = c;
+            DrawFlash();
         }
 
         void OnGUI()

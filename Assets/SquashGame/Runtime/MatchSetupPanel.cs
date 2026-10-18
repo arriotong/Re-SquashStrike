@@ -26,7 +26,7 @@ namespace SquashGame
 
         public static readonly string[] OpponentLabels = { "Retriever", "Attacker", "Shot-maker", "Grinder", "Wall-bot", "Player 2 (local)" };
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };
-        public static readonly float[] DifficultyValues = { 0.0f, 0.58f, 0.78f };   // balanced with MatchBench --balance
+        public static readonly float[] DifficultyValues = { 0.0f, 0.12f, 0.42f };   // balanced with MatchBench --balance
         public static readonly string[] LengthLabels = { "One game", "Best of 3", "Best of 5" };
         public static readonly int[] LengthGames = { 1, 2, 3 };
         public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };

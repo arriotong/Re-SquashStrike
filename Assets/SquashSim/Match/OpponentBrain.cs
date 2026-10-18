@@ -35,6 +35,7 @@ namespace SquashSim
         public double SplitStepError;     // std dev of split-step timing (s); <= 0: never split-steps
         public double AimSlew;            // stick travel per step
         public double MoveSpeed = 1.0;    // fraction of the athletes' top speed it runs at (difficulty)
+        public double Skill = 1.0;        // the difficulty it was made at (0..1)
         public double Pace = 1.0;         // its hitting pace (difficulty): softer shots are easier to get back
         public int NoiseSamples = 2;      // rollouts per candidate (noisy copies)
 
@@ -54,18 +55,20 @@ namespace SquashSim
         // Difficulty knobs (balanced 2026-10-18 with MatchBench --balance against the slower game athletes and
         // the deader front wall). Pace is the strong one: softer shots are the ones a human gets back.
         // Re-balanced after the front wall went to 0.50: Easy leans on mistakes (aim noise, late reactions), Hard on pace.
-        public static double DiffReaction0 = 0.50, DiffReactionSpan = 0.36, DiffNoise0 = 0.60, DiffNoiseSpan = 0.44,
-                             DiffMove0 = 0.60, DiffPace0 = 0.40, DiffPaceSpan = 0.40;
+        // Re-balanced 2026-10-18 for the AI on the simple hitting system (MatchBench --balance).
+        public static double DiffReaction0 = 0.50, DiffReactionSpan = 0.36, DiffNoise0 = 0.80, DiffNoiseSpan = 0.55,
+                             DiffMove0 = 0.60, DiffPace0 = 0.30, DiffPaceSpan = 0.40;
 
         public AiProfile WithDifficulty(double d)
         {
             d = d < 0 ? 0 : (d > 1 ? 1 : d);
             var p = Clone();
             // Tuned (MatchBench --balance) so a human-style player wins about 60% / 45% / 30% of rallies
-            // at Easy (0.0) / Medium (0.58) / Hard (0.78) - the setup panel's values.
+            // at Easy (0.0) / Medium (0.12) / Hard (0.42) - the setup panel's values.
             p.ReactionTime = DiffReaction0 - DiffReactionSpan * d;
             p.AimNoise = DiffNoise0 - DiffNoiseSpan * d;
             p.MoveSpeed = DiffMove0 + (1 - DiffMove0) * d;
+            p.Skill = d;
             p.Pace = DiffPace0 + DiffPaceSpan * d;
             p.TriggerJitter = 0.06 - 0.045 * d;
             p.SplitStepError = 0.15 - 0.11 * d;
@@ -235,7 +238,7 @@ namespace SquashSim
             var p = ctrl.Player;
             // Its difficulty: how hard it hits in the rally. The serve has its own pace at every level (not short, not out).
             bool serving = m.Score.Server == me && (m.Phase == MatchPhase.AwaitToss || (m.Phase == MatchPhase.Rally && m.Referee.Shots == 0));
-            p.PaceScale = serving ? ServePace : Profile.Pace;
+            p.PaceScale = serving ? (ctrl.ArcadeHitEnabled ? 1.0 : ServePace) : Profile.Pace;
             var r = m.Referee;
             int opp = 1 - me;
             double t = m.Time;
@@ -342,6 +345,10 @@ namespace SquashSim
                 }
             }
 
+            bool arcade = ctrl.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null;
+            if (arcade) ArcadeStrokes(intent, m, ctrl, me, dt, canStrike);
+            else
+            {
             // ---- serve ----
             // Settle the stick on the serve aim while standing in the box, so the body has
             // turned to it before the toss; toss; strike near the top of the toss.
@@ -424,6 +431,8 @@ namespace SquashSim
                 else if (_choiceTouch) intent.Touch.Held = true; else intent.Hit.Held = true;
             }
 
+            }
+
             // ---- appeal: only when obstructed AND it expects the decision ----
             // A player knows the rules: they ask when they would get a let or a stroke, and
             // otherwise play on. Their read of the situation is imperfect (Misjudge). They ask
@@ -461,9 +470,128 @@ namespace SquashSim
             intent.AimRawY = _stickY;
         }
 
+        // ---------------- the simple hitting system (the same one the human plays) ----------------
+        // It aims at a point on the front wall (like the reticle), holds Hit to charge, lets go as the ball
+        // arrives and taps Boast to arm a boast. Its difficulty: how far its aim point strays (AimNoise, in
+        // metres x ArcadeAimNoiseScale), how well it times the release (TriggerJitter), how hard it hits (Pace),
+        // how quickly it reacts and runs (shared with the physical brain).
+
+        public static double ArcadeAimNoiseScale = 1.0, ArcadeGapWeight = 0.25, ArcadeChoiceNoise = 2.5;
+        double _aimPX, _aimPY, _aChargeFor, _releaseLead, _aReleaseAt = -1;
+        bool _aHolding, _aBoast, _boastTapped;
+        /// <summary>The last shot it chose (tests and diagnostics): "straight", "cross", "lob", "drop", "kill", "boast".</summary>
+        public string ArcadeShot { get; private set; }
+
+        void ArcadeStrokes(InputIntent intent, MatchSimulation m, TestPlayerController ctrl, int me, double dt, bool canStrike)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            double t = m.Time;
+            intent.HasAimPoint = true;
+            intent.Touch.Held = false;
+
+            if (m.Phase == MatchPhase.AwaitToss && m.Score.Server == me)
+            {
+                // The serve: a lob serve on a legal line (just on its own side of the middle), sometimes a hard one.
+                if (!_serveAimSet)
+                {
+                    int side = m.Score.ServeSide;
+                    bool hard = Uniform() < (0.1 + 0.35 * Profile.RiskAppetite) * (0.2 + 0.8 * Profile.Skill);   // hard serves come with skill
+                    _aimPX = side * (0.35 + 0.2 * Uniform()) + Gauss() * Profile.AimNoise * ArcadeAimNoiseScale * 0.2;
+                    _aimPY = hard ? 2.05 + 0.3 * Uniform() : 2.3 + 0.7 * Profile.Skill * Uniform();       // a weaker player serves lower, shorter
+                    _aChargeFor = hard ? 0.45 + 0.45 * Uniform() : 0.04;
+                    _serveAimSet = true;
+                }
+                if (m.PhaseTime >= TossDelay && !_pressed)
+                {
+                    intent.Hit.Pressed = true; _pressed = true; _aHolding = true; _aReleaseAt = t + _aChargeFor;
+                }
+            }
+            else if (canStrike && m.TurnShots > 0)
+            {
+                var pred = ctrl.Prediction;
+                if (!_decided && pred.Valid && !m.Ball.Asleep && pred.Time < DecisionLead)
+                {
+                    ChooseArcadeShot(m, ctrl, me);
+                    _decided = true; _boastTapped = false;
+                    _releaseLead = 0.05 + Gauss() * Profile.TriggerJitter;
+                }
+                if (_decided)
+                {
+                    if (_aBoast != ctrl.Arcade.BoastArmed && !_boastTapped) { intent.BoastPressed = true; _boastTapped = true; }
+                    if (!_pressed && pred.Valid && pred.Time < _aChargeFor + _releaseLead + 0.12)
+                    {
+                        intent.Hit.Pressed = true; _pressed = true; _aHolding = true; _aReleaseAt = -1;
+                        RallyPresses++;
+                    }
+                    // Let go as the ball arrives (early or late by its timing error).
+                    if (_aHolding && _aReleaseAt < 0 && (!pred.Valid || pred.Time < _releaseLead)) _aReleaseAt = t;
+                    // A release that met nothing: the ball is still coming - set up and go again.
+                    if (_pressed && !_aHolding && !ctrl.Arcade.Waiting && ctrl.Swing.State == SwingStates.Idle && pred.Valid && pred.Time > 0.25)
+                        _pressed = false;
+                }
+            }
+            else if (_aHolding && m.Phase != MatchPhase.AwaitToss && !canStrike) _aReleaseAt = t;   // not its ball any more
+
+            intent.AimPointX = _aimPX; intent.AimPointY = _aimPY;
+            if (_aHolding)
+            {
+                if (_aReleaseAt >= 0 && t >= _aReleaseAt) { intent.Hit.Held = false; intent.Hit.Released = true; _aHolding = false; }
+                else intent.Hit.Held = true;
+            }
+            else intent.Hit.Held = false;
+        }
+
+        /// <summary>
+        /// Pick the shot from its personality and the picture: where the ball is struck, where the opponent stands.
+        /// Each option sends the ball to a part of the court; it is worth more the further that is from the opponent,
+        /// weighted by the profile (length, width, low, short, touch) and less when risky from deep. A softmax pick
+        /// (a little randomness), then the aim point strays by the difficulty's aim noise.
+        /// </summary>
+        void ChooseArcadeShot(MatchSimulation m, TestPlayerController ctrl, int me)
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var pred = ctrl.Prediction;
+            var opp = m.Players[1 - me].Player.Pos;
+            double bx = pred.Point.X, bz = pred.Point.Z;
+            int side = bx >= 0 ? 1 : -1;
+            bool deep = bz > 6.5, front = bz < 4.0;
+            double risk = 1 - Profile.RiskAppetite;
+            // name, aim x, aim y, charge (s), boast, where it ends up (x, z), weight
+            var o = new (string n, double x, double y, double ch, bool b, double zx, double zz, double w)[]
+            {
+                ("straight", side * 2.75, 1.7, 0.0, false, side * 2.6, 8.6, 0.6 + Profile.WLength + 0.4 * Profile.WWidth),
+                ("cross", -side * 0.7, 1.8, 0.0, false, -side * 2.6, 8.6, 0.5 + Profile.WLength + 0.6 * Profile.WWidth),
+                ("lob", -side * 0.8, 3.5, 0.0, false, -side * 2.4, 9.0, 0.3 + 0.6 * Profile.WLength + (deep ? 0.4 : 0)),
+                ("drop", side * 2.5, 0.95, 0.0, false, side * 2.6, 1.2, 0.2 + Profile.WShort + Profile.TouchPreference - (deep ? 1.2 * risk : 0)),
+                ("kill", side * 2.4, 0.95, c.ChargeFull * 0.5, false, side * 2.6, 3.0, 0.2 + Profile.WLow + 0.5 * Profile.WPressure - (deep ? 1.0 * risk : 0) + (front ? 0.4 : 0)),
+                ("boast", -side * 1.5, 1.2, 0.0, true, -side * 2.6, 1.6, 0.1 + 0.8 * Profile.WShort - (front ? 0.5 : 0)),
+            };
+            double[] score = new double[o.Length];
+            double max = double.MinValue;
+            for (int i = 0; i < o.Length; i++)
+            {
+                double gap = System.Math.Sqrt((o[i].zx - opp.X) * (o[i].zx - opp.X) + (o[i].zz - opp.Z) * (o[i].zz - opp.Z));
+                score[i] = o[i].w + ArcadeGapWeight * Profile.Skill * gap;      // a better player reads where you are
+                if (score[i] > max) max = score[i];
+            }
+            double temp = 0.3 + ArcadeChoiceNoise * (1 - Profile.Skill), sum = 0;     // and picks less at random
+            for (int i = 0; i < o.Length; i++) { score[i] = System.Math.Exp((score[i] - max) / temp); sum += score[i]; }
+            double r = Uniform() * sum;
+            int pick = o.Length - 1;
+            for (int i = 0; i < o.Length; i++) { r -= score[i]; if (r <= 0) { pick = i; break; } }
+            var s = o[pick];
+            ArcadeShot = s.n;
+            double noise = Profile.AimNoise * ArcadeAimNoiseScale;
+            _aimPX = Clamp(s.x + Gauss() * noise, -CourtDimensions.HALF_W + 0.15, CourtDimensions.HALF_W - 0.15);
+            _aimPY = Clamp(s.y + Gauss() * noise * 0.45, 0.65, CourtDimensions.FRONT_WALL_OUT_H - 0.5);
+            _aChargeFor = s.ch;
+            _aBoast = s.b;
+        }
+
         void ResetTurn()
         {
             _decided = false; _pressed = false; _appealed = false; _useDecoy = false; _swungThisTurn = false;
+            _aHolding = false; _aReleaseAt = -1; _boastTapped = false;
             _obstructedFor = 0;
             _notedLanding = false;
             _serveAimSet = false;

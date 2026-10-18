@@ -64,5 +64,13 @@ namespace SquashSim
         public double SwingPhaseAtContact = -1;
         /// <summary>Simple hitting system: how clean the hit was, 1 = in the sweet spot .. 0 = at full stretch. -1 = n/a.</summary>
         public double ArcadeQuality = -1;
+        /// <summary>The simple hitting system: 0..1 how early the striker was set for the ball (-1: not that system).</summary>
+        public double Earliness = -1;
+        /// <summary>The simple hitting system: seconds from letting go of Hit to the contact (-1: not that system).
+        /// About zero = let go just as the ball arrived.</summary>
+        public double ReleaseWait = -1;
+        /// <summary>The simple hitting system: how far the ball was from the athlete at contact (m; the sweet spot is
+        /// ArcadeHit.SweetSpot - nearer = held on too long, further = let go early). -1: not that system.</summary>
+        public double ArcadeDistance = -1;
     }
 }

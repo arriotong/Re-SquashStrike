@@ -185,6 +185,36 @@ namespace SquashSim.Tests
             Assert.That(mean, Is.GreaterThan(7.0), "and land deep");
         }
 
+        [Test] public void TheAIPlaysTheSimpleSystemToo()
+        {
+            var m = new MatchSimulation(0);
+            m.Bots[0] = new OpponentBrain(AiProfile.ByName("retriever").WithDifficulty(0.42), 11);
+            m.Bots[1] = new OpponentBrain(AiProfile.ByName("shotmaker").WithDifficulty(0.42), 12);
+            for (int i = 0; i < 2; i++) { m.Players[i].WallAimEnabled = true; m.Players[i].ArcadeHitEnabled = true; }
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            int arcadeContacts = 0, rallies = 0, faults = 0;
+            var shots = new HashSet<string>();
+            m.RallyEnded += o => { rallies++; if (o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.FootFault) faults++; };
+            int great = 0;
+            while (m.Phase != MatchPhase.GameOver && m.Phase != MatchPhase.MatchOver && m.Time < 900)
+            {
+                m.Step(dt);
+                foreach (var e in m.StepEvents)
+                    if (e.Type == SimEventType.RacketContact && e.ArcadeQuality >= 0)
+                    {
+                        arcadeContacts++; shots.Add(e.Technique);
+                        if (e.ArcadeDistance >= 0 && System.Math.Abs(e.ArcadeDistance - PhysicsConfig.Current.ArcadeHit.SweetSpot) <= 0.15 &&
+                            e.Earliness >= 0.75 && e.ReleaseWait >= 0 && e.ReleaseWait <= 0.06 && m.Referee.Shots > 1) great++;      // the ring's great-hit flash
+                    }
+            }
+            UnityEngine.Debug.Log("[AI] simple-system game: " + rallies + " rallies, " + arcadeContacts + " contacts, faults " + faults + ", shots " + string.Join(" ", shots) + ", great hits " + great);
+            Assert.That(m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver, Is.True, "a whole game is played");
+            Assert.That(great, Is.GreaterThan(0), "getting set early and striking cleanly happens (and flashes)");
+            Assert.That(arcadeContacts, Is.GreaterThan(rallies), "every stroke through the simple system");
+            Assert.That(shots.Count, Is.GreaterThanOrEqualTo(4), "with a mix of shots");
+            Assert.That(faults, Is.LessThan(rallies / 4 + 1), "and serves that are mostly legal");
+        }
+
         [Test] public void ALocalPlayerIsNeverCappedNearTheBall()
         {
             var me = new TestPlayerController();

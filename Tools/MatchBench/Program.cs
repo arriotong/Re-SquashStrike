@@ -37,8 +37,18 @@ public static class Program
     static bool WarmUp;
     static bool MatchBall;
 
+    /// <summary>The game's AI plays the simple hitting system (like the human); --physical-ai for the old swing.</summary>
+    public static bool ArcadeAiOn = true;
+    public static void ArcadeAi(MatchSimulation m)
+    {
+        if (!ArcadeAiOn || PhysicsConfig.Current.ArcadeHit == null) return;
+        for (int i = 0; i < 2; i++)
+            if (m.Bots[i] is OpponentBrain) { m.Players[i].WallAimEnabled = true; m.Players[i].ArcadeHitEnabled = true; }
+    }
+
     public static int Main(string[] args)
     {
+        ArcadeAiOn = Array.IndexOf(args, "--physical-ai") < 0;
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         int games = int.Parse(Arg(args, "--games") ?? "20");
         string scoring = Arg(args, "--scoring") ?? "par";
@@ -58,7 +68,7 @@ public static class Program
         {
             // Try difficulty knobs: reaction0,reactionSpan,noise0,noiseSpan,move0[,pace0,paceSpan]
             var k = Array.ConvertAll(Arg(args, "--diff").Split(','), double.Parse);
-            AiProfile.DiffReaction0 = k[0]; AiProfile.DiffReactionSpan = k[1]; AiProfile.DiffNoise0 = k[2]; AiProfile.DiffNoiseSpan = k[3]; AiProfile.DiffMove0 = k[4]; if (k.Length > 5) AiProfile.DiffPace0 = k[5]; if (k.Length > 6) AiProfile.DiffPaceSpan = k[6];
+            AiProfile.DiffReaction0 = k[0]; AiProfile.DiffReactionSpan = k[1]; AiProfile.DiffNoise0 = k[2]; AiProfile.DiffNoiseSpan = k[3]; AiProfile.DiffMove0 = k[4]; if (k.Length > 5) AiProfile.DiffPace0 = k[5]; if (k.Length > 6) AiProfile.DiffPaceSpan = k[6]; if (k.Length > 7) OpponentBrain.ArcadeGapWeight = k[7]; if (k.Length > 8) OpponentBrain.ArcadeChoiceNoise = k[8]; if (k.Length > 9) OpponentBrain.ArcadeAimNoiseScale = k[9];
         }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
         if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
@@ -181,7 +191,7 @@ public static class Program
             PhysicsConfig.ResetToDefaults();
             if (MatchBall) PhysicsConfig.UseGameProfile();
             var m = new MatchSimulation(0);
-            m.Bots[0] = Brain(P0, D0, (uint)(100 + g)); m.Bots[1] = Brain(P1, D1, (uint)(200 + g));
+            m.Bots[0] = Brain(P0, D0, (uint)(100 + g)); m.Bots[1] = Brain(P1, D1, (uint)(200 + g)); ArcadeAi(m);
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             var lastReach = new string[2]; var lastSide = new int[2]; var lastFacing = new double[2]; var lastHead = new V3[2]; var lastVel = new V3[2];
             for (int i = 0; i < 2; i++)
@@ -326,7 +336,7 @@ public static class Program
         if (matchBall) PhysicsConfig.UseGameProfile();
         PhysicsConfig.Current.Match.GamesToWin = 3; PhysicsConfig.Current.Match.WarmUpEnabled = true;
         var m = new MatchSimulation(0);
-        m.Bots[0] = Brain("grinder", 0.85, 3); m.Bots[1] = Brain("retriever", 0.85, 4);
+        m.Bots[0] = Brain("grinder", 0.85, 3); m.Bots[1] = Brain("retriever", 0.85, 4); ArcadeAi(m);
         var outs = new List<double>(); var temps = new List<double>(); var offWall = new List<double>();
         double sampleAt = 0;
         while (m.Phase != MatchPhase.MatchOver && m.Time < 3 * 3600)
@@ -354,7 +364,7 @@ public static class Program
         if (MatchBall) PhysicsConfig.UseGameProfile();
         PhysicsConfig.Current.Match.WarmUpEnabled = true;
         var m = new MatchSimulation(0);
-        m.Bots[0] = Brain(P0, D0, 7); m.Bots[1] = Brain(P1, D1, 8);
+        m.Bots[0] = Brain(P0, D0, 7); m.Bots[1] = Brain(P1, D1, 8); ArcadeAi(m);
         double dt = PhysicsConfig.Current.Sim.FixedDt;
         int shots = 0; bool asleep = false;
         while (m.Phase == MatchPhase.WarmUp)
@@ -381,7 +391,7 @@ public static class Program
         PhysicsConfig.Current.Match.WarmUpEnabled = WarmUp;
         m = new MatchSimulation(0);
         m.Bots[0] = Brain(P0, D0, seedA);
-        m.Bots[1] = Brain(P1, D1, seedB);
+        m.Bots[1] = Brain(P1, D1, seedB); ArcadeAi(m);
         double dt = PhysicsConfig.Current.Sim.FixedDt;
         var sb = new StringBuilder();
         long maxSteps = (long)(60 * 60 * GamesToWin * 2 / dt);      // an hour of play per game

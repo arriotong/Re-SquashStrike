@@ -111,7 +111,7 @@ static class PressAudit
 
     /// <summary>The share of rallies the human-style player wins against each AI at each setup-panel difficulty.</summary>
     /// <summary>The setup panel's Easy / Medium / Hard (MatchSetupPanel.DifficultyValues).</summary>
-    public static double[] Levels = { 0.0, 0.58, 0.78 };
+    public static double[] Levels = { 0.0, 0.12, 0.42 };
 
     public static void Balance(int games)
     {
@@ -139,6 +139,7 @@ static class PressAudit
     {
         int outBack = 0, ownEnds = 0;
         var lossWhy = new Dictionary<string, int>();
+        int greatHits = 0;
         var outcome = new Dictionary<string, int>(); var whyWhiff = new Dictionary<string, int>(); var commitErr = new List<double>();
         int presses = 0, contacts = 0, rallies = 0, won = 0;
         for (int g = 0; g < games; g++)
@@ -152,6 +153,7 @@ static class PressAudit
                                               : new OpponentBrain(AiProfile.ByName(opponent).WithDifficulty(difficulty), (uint)(40 + g));
             m.Players[0].WallAimEnabled = gameProfile;
             m.Players[0].ArcadeHitEnabled = gameProfile;
+            Program.ArcadeAi(m);
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             var c = m.Players[0];
             string lastState = c.Swing.State;
@@ -183,6 +185,7 @@ static class PressAudit
                         if (e.Type == SimEventType.RacketContact && e.PlayerIndex == 0)
                         {
                             pending = false; contacts++;
+                            if (e.ArcadeDistance >= 0 && Math.Abs(e.ArcadeDistance - PhysicsConfig.Current.ArcadeHit.SweetSpot) <= 0.15 && e.Earliness >= 0.75 && e.ReleaseWait >= 0 && e.ReleaseWait <= 0.06) greatHits++;     // the ring's great-hit flash
                             Add(outcome, sw.Rushed ? "contact (late)" : "contact");
                         }
                     if (pending && lastState != SwingStates.Idle && sw.State == SwingStates.Idle && lastState != SwingStates.Recovering)
@@ -209,9 +212,14 @@ static class PressAudit
                 if (m.History.Count != hist)
                 {
                     hist = m.History.Count; rallies++; if (m.LastOutcome.Winner == 0) won++;
+                    if (m.LastOutcome.Winner == 0)
+                    {
+                        string k = "human won - " + (m.Referee.Shots <= 1 ? "[serve] " : "") + m.LastOutcome.Reason;
+                        lossWhy[k] = lossWhy.TryGetValue(k, out int v) ? v + 1 : 1;
+                    }
                     if (m.LastOutcome.Winner == 1)
                     {
-                        string k = (m.LastOutcome.Loser == 0 ? "own error: " : "lost: ") + (m.Referee.Shots <= 1 ? "[serve] " : "") + m.LastOutcome.Reason;
+                        string k = "AI won - " + (m.LastOutcome.Loser == 0 ? "own error: " : "lost: ") + (m.Referee.Shots <= 1 ? "[serve] " : "") + m.LastOutcome.Reason;
                         lossWhy[k] = lossWhy.TryGetValue(k, out int v) ? v + 1 : 1;
                     }
                     if (m.LastOutcome.Loser == 0) { ownEnds++; if ((m.LastOutcome.Reason ?? "").Contains("back wall")) outBack++; }
@@ -223,7 +231,8 @@ static class PressAudit
         Console.WriteLine("PRESS AUDIT  human-style vs " + opponent + " (" + difficulty.ToString("0.0") + ")" + (gameProfile ? "  game profile" : "  lab") +
                           ":  " + presses + " rally presses, " + (100.0 * contacts / Math.Max(1, presses)).ToString("0") + "% connect, rallies won " + won + "/" + rallies +
                           " (" + (100.0 * won / Math.Max(1, rallies)).ToString("0") + "%)");
-        foreach (var kv in lossWhy.OrderByDescending(k => k.Value).Take(8)) Console.WriteLine("    rally lost - " + kv.Key + ": " + kv.Value);
+        foreach (var kv in lossWhy.OrderByDescending(k => k.Value).Take(12)) Console.WriteLine("    " + kv.Key + ": " + kv.Value);
+        Console.WriteLine("  great hits (ring flash): " + greatHits + " of " + contacts + " contacts");
         Console.WriteLine("  rallies lost by the human: " + ownEnds + ", of them out off the back wall: " + outBack + " (" + (100.0 * outBack / Math.Max(1, ownEnds)).ToString("0") + "%)");
         foreach (var kv in outcome.OrderByDescending(k => k.Value))
             Console.WriteLine("  " + kv.Key.PadRight(36) + (100.0 * kv.Value / Math.Max(1, presses)).ToString("0.0").PadLeft(6) + " %");

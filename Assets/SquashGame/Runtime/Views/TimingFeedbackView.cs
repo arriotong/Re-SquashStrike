@@ -1,7 +1,7 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Views/TimingFeedbackView.cs
-// M6: after each stroke, a small note by the aim target says how it was
-// timed, so the timing can be learned:
+// M6: after each stroke, a note on how it was timed. No longer drawn
+// (ShowNotes, playtest 2026-10-18); still judged and counted:
 //
 //   GOOD    the ball met the strings within +-7% of the swing's ideal
 //           contact moment (half way through the swing)
@@ -89,8 +89,12 @@ namespace SquashGame
 
         void Update() { _age += Time.unscaledDeltaTime; }
 
+        /// <summary>Draw the notes. Off (playtest 2026-10-18: distracting); they are still judged and counted.</summary>
+        public static bool ShowNotes = false;
+
         void OnGUI()
         {
+            if (!ShowNotes) return;
             if (_text == null || _age > 1.1f || Target == null || !Target.Shown) return;
             var cam = Camera.main;
             if (cam == null) return;
