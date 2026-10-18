@@ -464,3 +464,129 @@
 
 /* ---------- career settings ---------- */
 .k-cr-settings { width: 900px; align-self: center; margin-top: 120px; }
+
+/* ================= U4: arcade, practice, academy ================= */
+.k-stamp--good { border-color: rgb(200, 255, 61); color: rgb(200, 255, 61); }
+.k-stamp--bad { border-color: rgb(255, 90, 74); color: rgb(255, 90, 74); }
+
+/* ---------- target arcade ---------- */
+.k-ta-head { flex-direction: row; align-items: flex-end; margin-bottom: 26px; }
+.k-ta-total { font-size: 40px; margin-right: 22px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ta-sub { font-size: 14px; margin-bottom: 8px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-ta-cabs { align-items: flex-start; }
+.k-card--cab { width: 262px; height: 540px; margin-right: 18px; }
+.k-card--cab .k-card-title { font-size: 30px; }
+.k-card--cab .k-card-shade { height: 50%; }
+.k-ta-levels { flex-direction: row; margin-top: 22px; }
+.k-ta-levels > .k-row { align-items: flex-start; flex-grow: 0; }
+.k-card--level { width: 400px; height: 440px; }
+.k-card--level .k-card-title { font-size: 44px; }
+.k-ta-detail { width: 430px; margin: 0; }
+.k-ta-thr-row { flex-direction: row; margin-bottom: 18px; }
+.k-ta-thr { flex-grow: 1; flex-basis: 0; align-items: center; margin-right: 8px; padding: 10px 0; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.k-ta-thr--on { background-color: rgba(200, 255, 61, 0.12); border-color: rgb(200, 255, 61); }
+.k-ta-thr-s { font-size: 16px; color: rgba(255, 255, 255, 0.4); }
+.k-ta-thr--on .k-ta-thr-s { color: rgb(200, 255, 61); }
+.k-ta-thr-v { font-size: 24px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ta-bestrow { flex-direction: row; align-items: flex-end; justify-content: space-between; margin-bottom: 10px; }
+.k-ta-best-k { font-size: 11px; letter-spacing: 2px; margin-bottom: 8px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-best-v { font-size: 44px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ta-best-none { font-size: 13px; margin-bottom: 8px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-next-k { font-size: 12px; margin: 6px 0 6px 0; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-bar { height: 10px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.08); }
+.k-ta-bar-fill { height: 10px; border-radius: 5px; background-color: rgb(200, 255, 61); }
+
+/* results */
+.k-ta-res-top { align-items: center; }
+.k-ta-res-k { font-size: 13px; letter-spacing: 4px; color: rgba(255, 255, 255, 0.65); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-score { font-size: 120px; margin: -20px 0 -14px 0; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 0 30px rgba(200, 255, 61, 0.45); }
+.k-ta-stars { flex-direction: row; align-items: center; margin-bottom: 6px; }
+.k-ta-star {
+    font-size: 84px; margin: 0 6px; color: rgba(255, 255, 255, 0.14);
+    transition-property: scale, color; transition-duration: 0.2s; transition-timing-function: ease-out-back;
+}
+.k-ta-star--on { color: rgb(255, 207, 58); scale: 1.12 1.12; }
+.k-ta-stars > .k-stamp { align-self: center; margin: 0 0 0 26px; }
+.k-ta-res-best { font-size: 16px; margin-bottom: 14px; color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-nextbox { width: 700px; margin: 6px 0 14px 0; }
+
+/* practice */
+.k-ta-free { flex-direction: row; align-items: flex-start; }
+.k-card--free { width: 800px; height: 560px; }
+.k-ta-traypanel { flex-grow: 1; margin: 0 0 0 10px; }
+.k-ta-trayrow { flex-direction: row; padding: 12px 0; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
+.k-ta-tray-k { width: 150px; font-size: 11px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ta-tray-v { flex-shrink: 1; font-size: 17px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ta-drills { align-items: flex-start; }
+.k-card--drill { width: 316px; height: 540px; margin-right: 20px; }
+
+/* the coach tray: the right edge, the court in view */
+.k-tray {
+    position: absolute; left: auto; right: 0; top: 0; bottom: 0; width: 640px;
+    padding: 48px 44px 48px 44px; background-color: rgba(12, 13, 16, 0.95); border-left-width: 4px; border-left-color: rgb(200, 255, 61);
+}
+.k-tray .fe-title { font-size: 46px; margin-bottom: 14px; }
+.k-tray .k-sel { height: 52px; margin-bottom: 8px; padding: 0 14px; }
+.k-tray .k-sel-label { width: 112px; font-size: 18px; }
+.k-tray .k-pill { font-size: 14px; padding: 4px 10px; margin-right: 6px; }
+.k-tray .k-carousel { width: auto; height: 76px; margin-bottom: 8px; padding: 0 14px; }
+.k-tray .k-car-value { width: 220px; font-size: 36px; }
+.k-tray .k-action { height: 50px; margin: 8px 0 0 0; }
+.k-tray .k-prompts--side { left: 44px; bottom: 26px; }
+
+/* ---------- academy: the trail ---------- */
+.k-ac-stage { flex-direction: row; flex-grow: 1; }
+.k-ac-left { flex-grow: 1; margin-right: 24px; }
+.k-ac-chapter { margin: 0 0 24px 0; height: 330px; }
+.k-trail { position: relative; height: 250px; margin: 6px 20px 0 20px; }
+.k-node, .k-node.fe-item--focused { align-items: center; background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.k-node-dot {
+    width: 64px; height: 64px; border-radius: 32px; -unity-text-align: middle-center; font-size: 26px;
+    color: rgba(255, 255, 255, 0.55); background-color: rgb(24, 26, 32); border-width: 3px; border-color: rgba(255, 255, 255, 0.2);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); transition-property: scale, border-color; transition-duration: 0.12s;
+}
+.k-node--done .k-node-dot { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); }
+.k-node--next .k-node-dot { color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); border-width: 5px; }
+.k-node--just .k-node-dot { scale: 1.2 1.2; border-color: rgb(255, 255, 255); }
+.k-node.fe-item--focused .k-node-dot { scale: 1.18 1.18; border-color: rgb(255, 255, 255); border-width: 4px; }
+.k-node-title { margin-top: 8px; font-size: 16px; -unity-text-align: upper-center; white-space: normal; color: rgba(255, 255, 255, 0.8); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-node.fe-item--focused .k-node-title { color: rgb(255, 255, 255); }
+.k-ac-card { width: 470px; margin: 0; }
+.k-ac-title { font-size: 46px; margin-top: -6px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ac-status { align-self: flex-start; margin: 6px 0 14px 0; padding: 3px 10px; border-radius: 10px; font-size: 11px; letter-spacing: 2px; color: rgb(200, 255, 61); border-width: 1px; border-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ac-status--done { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-ac-blurb { font-size: 20px; margin-bottom: 16px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ac-steps { margin-bottom: 10px; }
+.k-ac-step { flex-direction: row; align-items: flex-start; margin-bottom: 10px; }
+.k-ac-step-n { width: 26px; height: 26px; border-radius: 13px; margin-right: 12px; -unity-text-align: middle-center; font-size: 12px; color: rgb(14, 15, 18); background-color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ac-step-t { flex-shrink: 1; font-size: 13px; white-space: normal; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-ac-quiz { font-size: 12px; margin: 4px 0 12px 0; color: rgb(255, 207, 58); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ac-keys { flex-direction: row; align-items: center; padding: 10px 12px; border-radius: 8px; background-color: rgba(255, 255, 255, 0.05); }
+.k-ac-keys-k { font-size: 10px; letter-spacing: 2px; margin-right: 14px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ac-keys-v { flex-shrink: 1; font-size: 12px; white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ac-mini { width: 1180px; height: 280px; margin: 14px 0 14px 0; }
+.k-ac-mini .k-trail { height: 200px; }
+.k-ac-modepick { width: 1000px; margin: 0 0 14px 0; }
+.k-cr-result > .k-stamp--good { font-size: 64px; }
+
+/* ---------- the quiz: a panel at the bottom ---------- */
+.k-quiz {
+    position: absolute; left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 400px;
+    padding: 34px 96px 0 96px; background-color: rgba(10, 11, 14, 0.95); border-top-width: 4px; border-top-color: rgb(200, 255, 61);
+}
+.k-quiz .fe-kicker { font-size: 13px; }
+.k-quiz .fe-title { font-size: 40px; margin-bottom: 20px; max-width: 1300px; white-space: normal; }
+.k-quiz-count { position: absolute; right: 96px; top: 38px; font-size: 13px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-quiz-answers { flex-direction: row; }
+.k-card--answer { width: 440px; height: 150px; margin-right: 26px; }
+.k-card--answer .k-card-shade { height: 100%; background-color: rgba(255, 255, 255, 0.03); }
+.k-card--answer .k-card-title { font-size: 30px; }
+.k-quiz-reveal { flex-direction: row; align-items: center; }
+.k-quiz-reveal > .k-stamp { align-self: center; margin: 0 36px 0 0; font-size: 46px; }
+.k-quiz-why { flex-grow: 1; flex-shrink: 1; margin-right: 36px; }
+.k-quiz-call { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-quiz-explain { flex-shrink: 1; font-size: 20px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-quiz-go { width: 260px; }
+.k-prompts--quiz { left: 96px; bottom: 28px; }
+.k-quiz .k-cr-pv-acts { justify-content: flex-start; margin-top: 22px; }
+.k-quiz .k-cr-pv-acts > .k-action { width: 320px; margin: 0 16px 0 0; }

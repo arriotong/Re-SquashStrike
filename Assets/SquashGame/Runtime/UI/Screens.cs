@@ -227,18 +227,24 @@ namespace SquashGame.UI
 
     public sealed class PracticePauseScreen : MenuScreen
     {
-        protected override bool Centred { get { return true; } }
+        protected override bool Sidebar { get { return false; } }
+        protected override string RootClass { get { return "k-side"; } }
+        public override bool Spatial { get { return true; } }
         public override bool Dims { get { return true; } }
         public override bool EscapeIsGame { get { return true; } }
+        protected override string Hint { get { return null; } }
         protected override string Kicker { get { return "PRACTICE COURT"; } }
         protected override string Title { get { return "Paused"; } }
         protected override void Build()
         {
-            Add(new ButtonItem("Resume", () => Fe.Resume(), true));
-            Add(new ButtonItem("Coach panel", () => Fe.Push(new CoachScreen())));
-            Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
-            Add(new ButtonItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
-            Add(new ButtonItem("Main menu", () => Fe.QuitToMenu()));
+            Add(new ActionItem("Resume", () => Fe.Resume(), "▶"));
+            Add(new ActionItem("Coach tray", () => Fe.Push(new CoachScreen())));
+            Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
+            Add(new ActionItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
+            Add(new ActionItem("Quit to menu", () => Fe.QuitToMenu()));
+            var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
+            prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Resume"));
+            Root.Add(prompts);
         }
         public override void Back() { Fe.Resume(); }
     }

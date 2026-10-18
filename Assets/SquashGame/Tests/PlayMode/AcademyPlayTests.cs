@@ -114,7 +114,9 @@ namespace SquashGame.Tests
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return HubNav.Open(fe, kb, Tap, "ACADEMY", "ALL LESSONS");
             Assert.That(fe.Top, Is.InstanceOf<AcademyScreen>());
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Continue: Move"));
+            yield return null; yield return null;
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Move"), "the trail starts on the next lesson");
+            yield return CaptureUI(fe, "U4_Academy_Trail.png");
             yield return Tap(kb.enterKey);
 
             yield return Loaded("WarmUpCourt");
@@ -159,14 +161,16 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P2M3_UI_4_LessonPassed.png");
             Assert.That(ProfileStore.Load().Academy.Done, Does.Contain("move"), "saved");
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Next: Aim"));
-            while (fe.Top.Focused.Name != "Academy") yield return Tap(kb.downArrowKey);
+            yield return HubNav.Seek(fe, "Academy", kb.leftArrowKey, kb.upArrowKey, Tap);
             yield return Tap(kb.enterKey);
 
             yield return Loaded("Match");
             fe = Object.FindFirstObjectByType<FrontEnd>();
             Assert.That(fe.Top, Is.InstanceOf<AcademyScreen>(), "back on the Academy menu");
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Continue: Aim"));
-            Assert.That(((ButtonItem)fe.Top.Find("1.  Move")).Note, Is.EqualTo("✓"));
+            yield return null; yield return null;
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Aim"));
+            Assert.That(((TrailNode)fe.Top.Find("Move")).Done, Is.True, "ticked on the trail");
+            yield return CaptureUI(fe, "U4_Academy_TrailAfter.png");
         }
 
         [UnityTest]
@@ -210,7 +214,7 @@ namespace SquashGame.Tests
                 yield return Choose(kb, fe, (right + 1) % question.Choices.Length);
                 Assert.That(fe.Top, Is.InstanceOf<QuizRevealScreen>());
                 Assert.That(((QuizRevealScreen)fe.Top).Right, Is.False);
-                if (q == 0) yield return CaptureUI(fe, "P2M3_UI_7_Reveal.png");
+                if (q == 0) { yield return Wait(0.6f, () => false); yield return CaptureUI(fe, "P2M3_UI_7_Reveal.png"); }
                 yield return Tap(kb.enterKey);
             }
             Assert.That(fe.Top, Is.InstanceOf<QuizFailedScreen>(), "0 of 3: failed");
@@ -238,7 +242,7 @@ namespace SquashGame.Tests
         IEnumerator Choose(Keyboard kb, FrontEnd fe, int index)
         {
             var screen = fe.Top;
-            for (int i = 0; i < index; i++) yield return Tap(kb.downArrowKey);
+            for (int i = 0; i < index; i++) yield return Tap(kb.rightArrowKey);
             yield return Tap(kb.enterKey);
             Assert.That(fe.Top, Is.Not.SameAs(screen), "answered");
         }

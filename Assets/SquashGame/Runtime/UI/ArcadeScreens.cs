@@ -1,17 +1,24 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/UI/ArcadeScreens.cs
-// P2-M2: the Target Arcade and Practice Court screens.
+// The Target Arcade and Practice Court screens. UI redesign U4.
 //
-//   TargetArcadeScreen   the six modes, with your stars
-//   LevelScreen          Easy / Medium / Hard: best score, stars
-//   PracticeScreen       free practice, or a drill
-//   ArcadePauseScreen    resume, restart, settings, controls, quit
-//   ResultsScreen        score, stars, best, breakdown -> retry / next
-//   CoachScreen          the practice court's feeder (Tab / pad View)
+//   TargetArcadeScreen   six cabinet cards (drawn art, stars, best)
+//   LevelScreen          Easy / Medium / Hard cards; the focused one's
+//                        star scores, your best and the next star
+//   PracticeScreen       tabs FREE PRACTICE / DRILLS: the free court
+//                        (live) and the Coach tray; five drill cards
+//   ArcadePauseScreen    a side panel: resume, restart, settings, quit
+//   ResultsScreen        the score counts up, the stars pop in one by
+//                        one, NEW BEST stamps on, the next-star bar,
+//                        the rewards; Retry
+//   CoachScreen          the practice court's feeder: a slim tray on
+//                        the right edge, the court stays in view
 // ===========================================================
 
+using System;
 using SquashGame.Profile;
 using SquashSim.Arcade;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace SquashGame.UI
@@ -24,82 +31,284 @@ namespace SquashGame.UI
             var r = ProfileStore.Record(id);
             return r == null ? "not played" : Of(r.Stars) + "   best " + r.Best.ToString("N0");
         }
-    }
 
-    public sealed class TargetArcadeScreen : MenuScreen
-    {
-        protected override string Kicker { get { return "PLAY"; } }
-        protected override string Title { get { return "Target Arcade"; } }
-        protected override void Build()
-        {
-            Text("Just you, the feeder and the targets. Earn up to three stars on every level.");
-            for (int m = 0; m < Challenges.ModeNames.Length; m++)
-            {
-                var mode = (ArcadeMode)m;
-                Add(new ButtonItem(Challenges.ModeNames[m], () => Fe.Push(new LevelScreen(mode)), false, () => Total(mode)));
-            }
-        }
-        static string Total(ArcadeMode mode)
+        public static int Mode(ArcadeMode mode)
         {
             int n = 0;
             for (int l = 0; l < 3; l++) { var r = ProfileStore.Record(Challenges.Get(mode, l).Id); if (r != null) n += r.Stars; }
-            return "★ " + n + " / 9";
+            return n;
+        }
+
+        public static int All() { int n = 0; for (int m = 0; m < Challenges.ModeNames.Length; m++) n += Mode((ArcadeMode)m); return n; }
+
+        /// <summary>The cabinet art for a challenge (CardArt kinds).</summary>
+        public static string Art(Challenge c)
+        {
+            if (c.Mode == ArcadeMode.Drill)
+                switch (c.Drill) { case DrillKind.Length: return "corner"; case DrillKind.Drop: return "drop"; case DrillKind.BoastDrive: return "angle"; case DrillKind.Ghosting: return "spots"; default: return "nick"; }
+            return Art(c.Mode);
+        }
+
+        public static string Art(ArcadeMode m)
+        {
+            switch (m) { case ArcadeMode.TimeAttack: return "clock"; case ArcadeMode.Precision: return "rings"; case ArcadeMode.ShotMenu: return "menu"; case ArcadeMode.Streak: return "chevrons"; case ArcadeMode.ServeTargets: return "corner"; default: return "wall"; }
+        }
+
+        static readonly Color32[] Bgs =
+        {
+            new Color32(36, 22, 18, 255), new Color32(20, 23, 30, 255), new Color32(22, 30, 22, 255),
+            new Color32(34, 18, 34, 255), new Color32(16, 28, 36, 255), new Color32(30, 28, 16, 255),
+        };
+        public static Color Bg(int i) { return Bgs[((i % Bgs.Length) + Bgs.Length) % Bgs.Length]; }
+
+        /// <summary>"60 s  ·  rings 1.1 m  ·  feed 22 m/s  ·  both sides".</summary>
+        public static string Rules(Challenge c)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (c.Seconds > 0) parts.Add(c.Seconds.ToString("0") + " s");
+            if (c.Balls > 0) parts.Add(c.Balls + " balls");
+            if (c.Mode == ArcadeMode.TimeAttack || c.Mode == ArcadeMode.Precision || c.Mode == ArcadeMode.Streak || c.Mode == ArcadeMode.WallRally)
+                parts.Add("rings " + (c.RingRadius * 2).ToString("0.0") + " m");
+            if (c.Mode == ArcadeMode.ShotMenu && c.Shots != null) parts.Add(string.Join(" / ", c.Shots));
+            if (c.Mode != ArcadeMode.ServeTargets && c.Drill != DrillKind.Ghosting) parts.Add("feed " + c.FeedSpeed.ToString("0") + " m/s");
+            if (c.Mode != ArcadeMode.ServeTargets && c.Drill != DrillKind.Ghosting) parts.Add(c.FeedBothSides ? "both sides" : "forehand side");
+            return string.Join("  ·  ", parts);
+        }
+
+        /// <summary>The three star scores as chips, the ones you have lit; your best; a bar to the next star.</summary>
+        public static void Ladder(VisualElement panel, Challenge c)
+        {
+            var rec = ProfileStore.Record(c.Id);
+            int best = rec != null ? rec.Best : 0, stars = rec != null ? rec.Stars : 0;
+            var row = Kit.Box(panel, "k-ta-thr-row");
+            for (int i = 0; i < 3; i++)
+            {
+                var t = Kit.Box(row, "k-ta-thr");
+                if (i < stars) t.AddToClassList("k-ta-thr--on");
+                Kit.L(t, new string('★', i + 1), "k-ta-thr-s");
+                Kit.L(t, c.Stars[i].ToString("N0"), "k-ta-thr-v");
+            }
+            var bestRow = Kit.Box(panel, "k-ta-bestrow");
+            Kit.L(bestRow, "YOUR BEST", "k-ta-best-k");
+            Kit.L(bestRow, rec == null ? "NOT PLAYED YET" : best.ToString("N0"), rec == null ? "k-ta-best-none" : "k-ta-best-v");
+            if (stars < 3 && c.Stars[stars] > 0)
+            {
+                Kit.L(panel, "Next star at " + c.Stars[stars].ToString("N0"), "k-ta-next-k");
+                var bar = Kit.Box(panel, "k-ta-bar");
+                var fill = Kit.Box(bar, "k-ta-bar-fill");
+                fill.style.width = Length.Percent(Mathf.Clamp01((float)best / c.Stars[stars]) * 100f);
+            }
+            else if (stars == 3) Kit.L(panel, "Three stars. Beat your best.", "k-ta-next-k");
         }
     }
 
-    public sealed class LevelScreen : MenuScreen
+    // ---------------- the arcade ----------------
+
+    public sealed class TargetArcadeScreen : GameScreen
+    {
+        protected override string Kicker { get { return "PLAY"; } }
+        protected override string Title { get { return "Target Arcade"; } }
+
+        protected override void Compose()
+        {
+            var head = Kit.Box(Content, "k-ta-head");
+            Kit.L(head, "★ " + Stars.All() + " / 54", "k-ta-total");
+            Kit.L(head, "Just you, the feeder and the targets. Three stars on every level.", "k-ta-sub");
+            var row = Kit.Box(Content, "k-row"); row.AddToClassList("k-ta-cabs");
+            for (int m = 0; m < Challenges.ModeNames.Length; m++)
+            {
+                var mode = (ArcadeMode)m;
+                var card = AddTo(row, new CardItem(Challenges.ModeNames[m], "CABINET " + (m + 1), () => Fe.Push(new LevelScreen(mode)))
+                    .Drawn(Stars.Art(mode), Stars.Bg(m), Color.white)
+                    .Line(() => Challenges.ModeBlurbs[(int)mode] + "\n" + BestLine(mode))
+                    .Badge(() => "★ " + Stars.Mode(mode) + " / 9", Stars.Mode(mode) == 9));
+                card.Root.AddToClassList("k-card--cab");
+            }
+            AddTo(Root, new PrimaryItem("Next challenge", PlayNext));
+        }
+
+        static string BestLine(ArcadeMode mode)
+        {
+            for (int l = 2; l >= 0; l--)
+            {
+                var c = Challenges.Get(mode, l);
+                var r = ProfileStore.Record(c.Id);
+                if (r != null) return c.LevelName.ToUpperInvariant() + "  " + Stars.Of(r.Stars) + "  " + r.Best.ToString("N0");
+            }
+            return "NOT PLAYED YET";
+        }
+
+        /// <summary>The first level without three stars (easy levels first, across the modes).</summary>
+        public static Challenge NextUp()
+        {
+            for (int l = 0; l < 3; l++)
+                for (int m = 0; m < Challenges.ModeNames.Length; m++)
+                {
+                    var c = Challenges.Get((ArcadeMode)m, l);
+                    var r = ProfileStore.Record(c.Id);
+                    if (r == null || r.Stars < 3) return c;
+                }
+            return Challenges.Get(ArcadeMode.TimeAttack, 2);
+        }
+
+        static void PlayNext() { FrontEnd.LaunchChallenge(NextUp().Id); }
+
+        public override void OnShow() { base.OnShow(); MenuCinematics.Scene = 3; }
+    }
+
+    public sealed class LevelScreen : GameScreen
     {
         readonly ArcadeMode _mode;
         public LevelScreen(ArcadeMode mode) { _mode = mode; }
         protected override string Kicker { get { return "TARGET ARCADE"; } }
         protected override string Title { get { return Challenges.ModeNames[(int)_mode]; } }
-        protected override void Build()
+        protected override bool ShowChip { get { return false; } }
+        VisualElement _detail;
+        CardItem _shown;
+        readonly CardItem[] _cards = new CardItem[3];
+
+        protected override void Compose()
         {
-            Text(Challenges.ModeBlurbs[(int)_mode]);
+            Kit.L(Content, Challenges.ModeBlurbs[(int)_mode], "k-ta-sub");
+            var stage = Kit.Box(Content, "k-ta-levels");
+            var row = Kit.Box(stage, "k-row");
             for (int l = 0; l < 3; l++)
             {
                 var c = Challenges.Get(_mode, l);
-                Add(new ButtonItem(c.LevelName, () => FrontEnd.LaunchChallenge(c.Id), l == 0, () => Stars.Best(c.Id)));
+                _cards[l] = AddTo(row, new CardItem(c.LevelName, Challenges.ModeNames[(int)_mode].ToUpperInvariant(), () => FrontEnd.LaunchChallenge(c.Id), CardSize.L)
+                    .Drawn(Stars.Art(_mode), Color.Lerp(Stars.Bg((int)_mode), new Color(0.3f, 0.05f, 0.05f), l * 0.3f), Color.white)
+                    .Line(Stars.Rules(c))
+                    .Badge(() => { var r = ProfileStore.Record(c.Id); return r == null ? "☆☆☆" : Stars.Of(r.Stars); }, ProfileStore.Record(c.Id) != null && ProfileStore.Record(c.Id).Stars == 3));
+                _cards[l].Root.AddToClassList("k-card--level");
             }
+            _detail = Kit.Panel(stage, "THE STARS");
+            _detail.AddToClassList("k-ta-detail");
+            AddTo(Root, new PrimaryItem("Play", () => FrontEnd.LaunchChallenge(Challenges.Get(_mode, Focused is CardItem ? Level(Focused) : 0).Id)));
+        }
+
+        int Level(MenuItem m) { for (int l = 0; l < 3; l++) if (_cards[l] == m) return l; return 0; }
+
+        public override void Tick(float dt)
+        {
+            if (!(Focused is CardItem card) || card == _shown) return;
+            _shown = card;
+            var c = Challenges.Get(_mode, Level(card));
+            _detail.Clear();
+            Kit.L(_detail, c.LevelName.ToUpperInvariant() + "  ·  THE STARS", "k-panel-title");
+            Stars.Ladder(_detail, c);
         }
     }
 
-    public sealed class PracticeScreen : MenuScreen
+    // ---------------- practice ----------------
+
+    public sealed class PracticeScreen : GameScreen
     {
+        readonly bool _drills;
+        public PracticeScreen(bool drills = false) { _drills = drills; }
         protected override string Kicker { get { return "PRACTICE"; } }
         protected override string Title { get { return "Practice Court"; } }
-        protected override void Build()
+        CardItem _lastDrill;
+        bool _opened;
+
+        protected override void Compose()
         {
-            Add(new ButtonItem("Free practice", () => FrontEnd.LaunchFreePractice(), true, () => "Tab / View: Coach panel"));
-            Section("Drills");
+            // ---- FREE PRACTICE ----
+            var free = Kit.Box(Page("FREE PRACTICE"), "k-ta-free");
+            var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => FrontEnd.LaunchFreePractice(), CardSize.Hero).Vignette("court")
+                .Line("The feeder sends them, you hit. Change the feed any time from the Coach tray."));
+            hero.Root.AddToClassList("k-card--free");
+            var tray = Kit.Panel(free, "THE COACH TRAY  ·  TAB / VIEW WHILE YOU PLAY");
+            tray.AddToClassList("k-ta-traypanel");
+            Line(tray, "FEED", string.Join("  ·  ", CoachFeeder.FeedNames));
+            Line(tray, "SIDE", string.Join("  ·  ", CoachFeeder.SideNames));
+            Line(tray, "SPEED", string.Join("  ·  ", CoachFeeder.SpeedNames));
+            Line(tray, "FEEDING", "automatic, every " + string.Join(" / ", CoachFeeder.IntervalNames) + ", or on your button (F)");
+            Line(tray, "SLOW MOTION", string.Join("  ·  ", CoachFeeder.SlowNames));
+            Line(tray, "TRAIL", "short, or long: see where every shot went");
+            Line(tray, "BALL", "cold, or warm like a match ball");
+
+            // ---- DRILLS ----
+            var drills = Kit.Box(Page("DRILLS"), "k-row");
+            drills.AddToClassList("k-ta-drills");
+            int i = 0;
             foreach (var c in Challenges.All())
             {
                 if (c.Mode != ArcadeMode.Drill) continue;
                 var cc = c;
-                Add(new ButtonItem(c.Name, () => FrontEnd.LaunchChallenge(cc.Id), false, () => Stars.Best(cc.Id)));
+                var card = AddTo(drills, new CardItem(c.Name, "DRILL " + (++i), () => FrontEnd.LaunchChallenge(cc.Id))
+                    .Drawn(Stars.Art(c), Stars.Bg(i + 1), Color.white)
+                    .Line(() => cc.Description + "\n" + Best(cc))
+                    .Badge(() => { var r = ProfileStore.Record(cc.Id); return r == null ? "☆☆☆" : Stars.Of(r.Stars); }));
+                card.Root.AddToClassList("k-card--drill");
             }
+            AddTo(Root, new PrimaryItem("Start", Start));
+        }
+
+        static void Line(VisualElement panel, string k, string v)
+        {
+            var row = Kit.Box(panel, "k-ta-trayrow");
+            Kit.L(row, k, "k-ta-tray-k");
+            Kit.L(row, v, "k-ta-tray-v");
+        }
+
+        static string Best(Challenge c)
+        {
+            var r = ProfileStore.Record(c.Id);
+            return r == null ? "NOT PLAYED YET" : "BEST " + r.Best + (c.Balls > 0 ? " / " + c.Balls : "");
+        }
+
+        void Start()
+        {
+            if (PageIndex == 0) { FrontEnd.LaunchFreePractice(); return; }
+            var c = _lastDrill;
+            if (c == null) foreach (var it in Items) if (it is CardItem ci && ci.Title != "FREE PRACTICE") { c = ci; break; }
+            c?.Submit();
+        }
+
+        public override void Tick(float dt) { if (Focused is CardItem c && c.Title != "FREE PRACTICE") _lastDrill = c; }
+
+        public override void OnShow()
+        {
+            base.OnShow();
+            MenuCinematics.Scene = 4;
+            if (_drills && !_opened) { _opened = true; Tabs.Select(1); }
         }
     }
 
+    // ---------------- in play ----------------
+
     public sealed class ArcadePauseScreen : MenuScreen
     {
-        protected override bool Centred { get { return true; } }
+        protected override bool Sidebar { get { return false; } }
+        protected override string RootClass { get { return "k-side"; } }
+        public override bool Spatial { get { return true; } }
         public override bool Dims { get { return true; } }
         public override bool EscapeIsGame { get { return true; } }
-        protected override string Kicker { get { return Fe.Arcade.Challenge.Mode == ArcadeMode.Drill ? "DRILL" : "TARGET ARCADE"; } }
+        protected override string Hint { get { return null; } }
+        bool Drill { get { return Fe.Arcade.Challenge.Mode == ArcadeMode.Drill; } }
+        protected override string Kicker { get { return (Drill ? "DRILL  ·  " : "TARGET ARCADE  ·  ") + Fe.Arcade.Challenge.Name.ToUpperInvariant(); } }
         protected override string Title { get { return "Paused"; } }
         protected override void Build()
         {
-            Add(new ButtonItem("Resume", () => Fe.Resume(), true));
-            Add(new ButtonItem("Restart", () => { Fe.Clear(); Fe.Arcade.Restart(); }));
-            Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
-            Add(new ButtonItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
-            Add(new ButtonItem(Fe.Arcade.Challenge.Mode == ArcadeMode.Drill ? "Quit to Practice" : "Quit to Target Arcade", () => Fe.BackToArcadeMenu()));
+            var s = Fe.Arcade.Session;
+            var box = Kit.Box(Content, "k-side-score");
+            var row = Kit.Box(box, "k-side-row");
+            Kit.L(row, "SCORE", "k-side-name");
+            Kit.L(row, s.Score.ToString("N0"), "k-side-points");
+            Kit.L(Content, "Hits " + s.Hits + " / " + s.Attempts + "   ·   best combo " + s.BestCombo + "   ·   " + Fe.Arcade.Challenge.LevelName, "k-side-stats");
+            Add(new ActionItem("Resume", () => Fe.Resume(), "▶"));
+            Add(new ActionItem("Restart", () => { Fe.Clear(); Fe.Arcade.Restart(); }));
+            Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
+            Add(new ActionItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
+            Add(new ActionItem(Drill ? "Quit to Practice" : "Quit to Target Arcade", () => Fe.BackToArcadeMenu()));
+            var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
+            prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Resume"));
+            Root.Add(prompts);
         }
         public override void Back() { Fe.Resume(); }
     }
 
-    public sealed class ResultsScreen : MenuScreen
+    public sealed class ResultsScreen : GameScreen
     {
         readonly int _score, _stars;
         readonly bool _best;
@@ -124,45 +333,56 @@ namespace SquashGame.UI
         /// <summary>This play set a new best (tests).</summary>
         public bool NewBest { get { return _best; } }
         public Progression.RewardResult Reward { get; private set; }
+        /// <summary>Stars shown so far (they pop in one by one).</summary>
+        public int StarsShown { get; private set; }
 
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
-        protected override string Kicker { get { return (_c.Mode == ArcadeMode.Drill ? "DRILL  ·  " + _c.Name : _c.Name + "  ·  " + _c.LevelName).ToUpperInvariant(); } }
-        protected override string Title { get { return _c.Mode == ArcadeMode.Streak ? "Streak " + _score : _c.Mode == ArcadeMode.Drill ? _score + " / " + _s.Attempts : _score.ToString("N0"); } }
+        protected override bool ShowChip { get { return false; } }
+        bool IsDrill { get { return _c.Mode == ArcadeMode.Drill; } }
+        protected override string Kicker { get { return (IsDrill ? "DRILL" : _c.LevelName.ToUpperInvariant()) + "  ·  RESULTS"; } }
+        protected override string Title { get { return _c.Name; } }
 
-        protected override void Build()
+        protected override void Compose()
         {
-            var stars = new Label(Stars.Of(_stars)); stars.AddToClassList("ta-big-stars"); Content.Add(stars);
-            var best = new Label(_best ? (_prev == int.MinValue ? "First play - that's the one to beat." : "New best!   (was " + _prev.ToString("N0") + ")")
-                                       : "Best  " + ProfileStore.Record(_c.Id).Best.ToString("N0"));
-            best.AddToClassList("ta-best");
-            if (_best) best.AddToClassList("ta-new");
-            Content.Add(best);
-            var box = new VisualElement(); box.AddToClassList("pm-stats");
-            Row(box, _c.Drill == DrillKind.Ghosting ? "Spots" : "Targets hit", _s.Hits + " / " + _s.Attempts);
-            Row(box, "Best combo", _s.BestCombo.ToString());
-            Row(box, "Great hits", _s.GreatHits.ToString());
-            if (_stars < 3 && _c.Stars[_stars] > 0) Row(box, "Next star", _c.Stars[_stars].ToString("N0"));
-            Content.Add(box);
-            Content.Add(new RewardStrip(Reward));
+            AddTo(Root, new PrimaryItem("Retry", () => { Fe.Clear(); Fe.Arcade.Restart(); }));
+            var col = Kit.Box(Content, "k-cr-result");
+            var top = Kit.Box(col, "k-ta-res-top");
+            Kit.L(top, _c.Mode == ArcadeMode.Streak ? "STREAK" : IsDrill ? (_c.Drill == DrillKind.Ghosting ? "SPOTS" : "ON TARGET") : "SCORE", "k-ta-res-k");
+            if (IsDrill) Kit.L(top, _score + " / " + Mathf.Max(_s.Attempts, _c.Balls), "k-ta-score");
+            else { var cu = new CountUp(_score, 1.1); cu.AddToClassList("k-ta-score"); top.Add(cu); }
+
+            var stars = Kit.Box(col, "k-ta-stars");
+            for (int i = 0; i < 3; i++)
+            {
+                var st = Kit.L(stars, "★", "k-ta-star");
+                if (i >= _stars) continue;
+                int k = i;
+                st.schedule.Execute(() => { st.AddToClassList("k-ta-star--on"); StarsShown = k + 1; Sounds.Play("star"); }).StartingIn(1200 + 380 * i);
+            }
+            if (_best) stars.Add(new Stamp(_prev == int.MinValue ? "FIRST SCORE" : "NEW BEST", 1.3f + 0.38f * _stars));
+            else Kit.L(col, "Best " + ProfileStore.Record(_c.Id).Best.ToString("N0"), "k-ta-res-best");
+            if (_best && _prev != int.MinValue) Kit.L(col, "was " + _prev.ToString("N0"), "k-ta-res-best");
+
+            var tiles = Kit.Box(col, "k-cr-tiles");
+            Career.Tile(tiles, _c.Drill == DrillKind.Ghosting ? "SPOTS" : "TARGETS HIT", _s.Hits + " / " + _s.Attempts);
+            Career.Tile(tiles, "BEST COMBO", _s.BestCombo.ToString());
+            Career.Tile(tiles, "GREAT HITS", _s.GreatHits.ToString());
+            if (_stars < 3 && _c.Stars[_stars] > 0)
+            {
+                var next = Kit.Box(col, "k-ta-nextbox");
+                Kit.L(next, "Next star at " + _c.Stars[_stars].ToString("N0"), "k-ta-next-k");
+                var bar = Kit.Box(next, "k-ta-bar");
+                Kit.Box(bar, "k-ta-bar-fill").style.width = Length.Percent(Mathf.Clamp01((float)_score / _c.Stars[_stars]) * 100f);
+            }
+            col.Add(new RewardStrip(Reward));
             Fe.ToastAchievements(Reward);
 
-            Add(new ButtonItem("Retry", () => { Fe.Clear(); Fe.Arcade.Restart(); }, true));
-            if (_c.Mode != ArcadeMode.Drill && _c.Level < 2)
+            var acts = Kit.Box(col, "k-cr-pv-acts");
+            if (!IsDrill && _c.Level < 2)
             {
                 var next = Challenges.Get(_c.Mode, _c.Level + 1);
-                Add(new ButtonItem("Next level: " + next.LevelName, () => { Fe.Clear(); Fe.Arcade.Play(next); }));
+                AddTo(acts, new ActionItem("Next level: " + next.LevelName, () => { Fe.Clear(); Fe.Arcade.Play(next); }));
             }
-            Add(new ButtonItem(_c.Mode == ArcadeMode.Drill ? "Practice menu" : "Target Arcade", () => Fe.BackToArcadeMenu()));
-        }
-
-        static void Row(VisualElement box, string name, string value)
-        {
-            var row = new VisualElement(); row.AddToClassList("pm-stat");
-            var n = new Label(name); n.AddToClassList("pm-stat__name"); n.style.flexGrow = 1;
-            var v = new Label(value); v.AddToClassList("pm-stat__val");
-            row.Add(n); row.Add(v);
-            box.Add(row);
+            AddTo(acts, new ActionItem(IsDrill ? "Practice menu" : "Target Arcade", () => Fe.BackToArcadeMenu()));
         }
 
         public override void Back() { Fe.BackToArcadeMenu(); }
@@ -170,30 +390,30 @@ namespace SquashGame.UI
 
     public sealed class CoachScreen : MenuScreen
     {
+        protected override bool Sidebar { get { return false; } }
+        protected override string RootClass { get { return "k-tray"; } }
+        public override bool Spatial { get { return true; } }
         protected override string Kicker { get { return "PRACTICE COURT"; } }
         protected override string Title { get { return "Coach"; } }
-        protected override string Hint { get { return "←→ change    Enter / A  select    Tab / Esc  close"; } }
+        protected override string Hint { get { return null; } }
         static CoachChoices C { get { return ProfileStore.Current.Coach; } }
         CoachFeeder Feeder { get { return Fe.Coach; } }
 
         protected override void Build()
         {
-            Opt("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v);
-            Opt("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v);
-            Opt("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v);
-            Add(new OptionItem("Feeding", () => C.Auto ? "Automatic" : "On button (F)", d => C.Auto = !C.Auto));
-            Opt("Every", CoachFeeder.IntervalNames, () => C.Interval, v => C.Interval = v).Enabled = () => C.Auto;
-            Opt("Slow motion", CoachFeeder.SlowNames, () => C.Slow, v => C.Slow = v);
-            Add(new OptionItem("Trail", () => C.LongTrail ? "Long" : "Short", d => { C.LongTrail = !C.LongTrail; Feeder.Apply(); }));
-            Add(new OptionItem("Ball", () => C.WarmBall ? "Warm (match)" : "Cold", d => C.WarmBall = !C.WarmBall));
-            Add(new ButtonItem("Feed now", () => { Fe.Pop(); Feeder.FeedNow(); }, true));
-            Add(new ButtonItem("Close", () => Fe.Pop()));
-        }
-
-        OptionItem Opt(string label, string[] names, System.Func<int> get, System.Action<int> set)
-        {
-            return Add(new OptionItem(label, () => names[System.Math.Max(0, System.Math.Min(names.Length - 1, get()))],
-                d => set(OptionItem.Step(get(), d, names.Length))));
+            Add(new CarouselItem("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v));
+            Add(new SelectorItem("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v));
+            Add(new SelectorItem("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v));
+            Add(new SelectorItem("Feeding", new[] { "Automatic", "On F" }, () => C.Auto ? 0 : 1, v => C.Auto = v == 0));
+            Add(new SelectorItem("Every", CoachFeeder.IntervalNames, () => C.Interval, v => C.Interval = v)).Enabled = () => C.Auto;
+            Add(new SelectorItem("Slow-mo", CoachFeeder.SlowNames, () => C.Slow, v => C.Slow = v));
+            Add(new SelectorItem("Trail", new[] { "Short", "Long" }, () => C.LongTrail ? 1 : 0, v => { C.LongTrail = v == 1; Feeder.Apply(); }));
+            Add(new SelectorItem("Ball", new[] { "Cold", "Warm" }, () => C.WarmBall ? 1 : 0, v => C.WarmBall = v == 1));
+            Add(new ActionItem("Feed now", () => { Fe.Pop(); Feeder.FeedNow(); }, "▶"));
+            Add(new ActionItem("Close", () => Fe.Pop()));
+            var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
+            prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Close"));
+            Root.Add(prompts);
         }
 
         public override void OnShow() { base.OnShow(); Fe.Runner.Clock.Pause(); }

@@ -598,6 +598,7 @@ namespace SquashGame.UI
             if (_placed) return;
             _placed = true;
             // the first focus: your match, or the best event open to you
+            // after the first tab's own focus (ShowPage runs on the next update)
             Root.schedule.Execute(() =>
             {
                 if (MatchCard != null) { Focus(MatchCard); return; }
@@ -829,16 +830,14 @@ namespace SquashGame.UI
         public override void OnShow()
         {
             base.OnShow();
-            // start on your latest match
-            Root.schedule.Execute(() =>
-            {
-                BracketMatchItem pick = null;
-                foreach (var kv in _info) if (kv.Key.YouIn && (pick == null || kv.Key.Round > pick.Round)) pick = kv.Key;
-                if (pick != null) Focus(pick);
-            }).StartingIn(30);
+            // start on your latest match (Tick scrolls to it once it is laid out)
+            BracketMatchItem pick = null;
+            foreach (var kv in _info) if (kv.Key.YouIn && (pick == null || kv.Key.Round > pick.Round)) pick = kv.Key;
+            if (pick != null && !_placed) { _placed = true; Focus(pick); }
         }
 
         MenuItem _shown;
+        bool _placed;
         public override void Tick(float dt)
         {
             if (Focused == _shown || !(Focused is BracketMatchItem m)) return;

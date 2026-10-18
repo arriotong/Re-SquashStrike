@@ -319,7 +319,7 @@ namespace SquashGame.UI
         public void BackToArcadeMenu()
         {
             bool drill = Arcade != null && Arcade.Challenge.Mode == SquashSim.Arcade.ArcadeMode.Drill;
-            OpenOnLoad = drill ? (System.Func<MenuScreen>)(() => new PracticeScreen()) : () => new TargetArcadeScreen();
+            OpenOnLoad = drill ? (System.Func<MenuScreen>)(() => new PracticeScreen(true)) : () => new TargetArcadeScreen();
             StartAtTitle = false;
             ProfileStore.Save();
             SceneManager.LoadScene(MatchScene);

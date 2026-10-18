@@ -131,7 +131,7 @@ namespace SquashGame.Tests
             yield return Tap(kb.escapeKey);
             yield return null;
             Assert.That(fe.Top, Is.InstanceOf<PracticePauseScreen>());
-            while (fe.Top.Focused.Name != "Main menu") yield return Tap(kb.downArrowKey);
+            while (fe.Top.Focused.Name != "Quit to menu") yield return Tap(kb.downArrowKey);
             yield return Tap(kb.enterKey);
             yield return null; yield return null; yield return null;
             var fe2 = Object.FindFirstObjectByType<FrontEnd>();

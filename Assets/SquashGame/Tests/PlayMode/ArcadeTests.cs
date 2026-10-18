@@ -104,6 +104,8 @@ namespace SquashGame.Tests
             Assert.That(r.Session.Hits, Is.GreaterThan(0));
             Assert.That(targets.HitsShown, Is.EqualTo(r.Session.Hits), "every hit flashes");
             r.SetTimeScale(SimRunnerBase.GameSpeed);
+            yield return Wait(2.6f, () => false);                            // the score counts up, the stars pop in
+            Assert.That(((ResultsScreen)fe.Top).StarsShown, Is.EqualTo(r.Session.Stars), "every star popped in");
             yield return CaptureUI(fe, "P2M2_UI_4_Results.png");
             var rec = ProfileStore.Record("timeattack-easy");
             Assert.That(rec, Is.Not.Null, "the record is saved");
@@ -134,12 +136,18 @@ namespace SquashGame.Tests
             Assert.That(r.Session.BallsUsed, Is.EqualTo(20));
             Debug.Log("[P2M2] length drill: " + r.Session.Hits + " / " + r.Session.Attempts);
             r.SetTimeScale(SimRunnerBase.GameSpeed);
-            while (fe.Top.Focused.Name != "Practice menu") yield return Tap(kb.downArrowKey);
+            yield return HubNav.Seek(fe, "Practice menu", kb.leftArrowKey, kb.upArrowKey, Tap);
             yield return Tap(kb.enterKey);
             yield return Loaded("Match");
             fe = Object.FindFirstObjectByType<FrontEnd>();
             Assert.That(fe.Top, Is.InstanceOf<PracticeScreen>(), "back on the Practice menu");
             Assert.That(fe.Top.Find("Length"), Is.Not.Null);
+            yield return null; yield return null;
+            Assert.That(((PracticeScreen)fe.Top).Tabs.Current, Is.EqualTo("DRILLS"), "on the drills");
+            yield return CaptureUI(fe, "U4_Practice_Drills.png");
+            yield return Tap(kb.qKey);
+            yield return null;
+            yield return CaptureUI(fe, "U4_Practice_Free.png");
         }
 
         [UnityTest]

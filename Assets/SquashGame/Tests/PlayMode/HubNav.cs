@@ -30,6 +30,13 @@ namespace SquashGame.Tests
             if (pick) yield return tap(kb.enterKey);
         }
 
+        /// <summary>Move the focus (left, then up) until the choice named <paramref name="name"/> has it.</summary>
+        public static IEnumerator Seek(FrontEnd fe, string name, ButtonControl left, ButtonControl up, Func<ButtonControl, IEnumerator> tap)
+        {
+            for (int i = 0; i < 12 && fe.Top.Focused.Name != name; i++) yield return tap(i % 2 == 0 ? left : up);
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo(name));
+        }
+
         /// <summary>Move the focus to the screen's primary action (down / right until it has it).</summary>
         public static IEnumerator ToPrimary(FrontEnd fe, ButtonControl down, ButtonControl right, Func<ButtonControl, IEnumerator> tap)
         {

@@ -264,17 +264,17 @@ namespace SquashGame.Tests
             // a 32-player draw (a Tour event): rank the player up, move on to March
             c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = 4, Reached = 0, Points = 9000 });
             while (c.S.Current != null) { while (c.NextOpponent() >= 0) c.SimulateYours(); c.FinishSlot(); }
+            Assert.That(c.S.Last, Is.Not.Null);
+            fe.Push(new EventResultScreen(c.S.Last));                                // the result screen, whatever the matches did (skipping a month clears Last)
+            yield return Wait(1.5f, () => false);
+            yield return CaptureUI(fe, "U3_EventResult.png");
+            fe.Pop();
             while (System.Array.IndexOf(c.EventsNow(), Tier.Tour) < 0) c.Skip();
             c.Enter(Tier.Tour);
             c.SimulateYours();
             fe.Push(new DrawScreen(c.S.Current));
             yield return null; yield return null; yield return null;
             yield return CaptureUI(fe, "P2M4_UI_9_TourDraw.png");
-            fe.Pop();
-            Assert.That(c.S.Last, Is.Not.Null);
-            fe.Push(new EventResultScreen(c.S.Last));                                // the result screen, whatever the matches did
-            yield return Wait(1.5f, () => false);
-            yield return CaptureUI(fe, "U3_EventResult.png");
             fe.Pop();
 
             // the season's end: the review
