@@ -347,7 +347,11 @@ namespace SquashSim
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
 
             // Assisted controls: a straight drive is kept off its side wall.
-            if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill")) tx = StraightAssist(ball, surfaces, tx, ty, speed);
+            if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill"))
+            {
+                tx = StraightAssist(ball, surfaces, tx, ty, speed);
+                tx = CrossAssist(ball, surfaces, tx, ty, ref speed);
+            }
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
@@ -530,6 +534,64 @@ namespace SquashSim
                 if (!ClipsSide(ball, surfaces, side)) return x;
             }
             return x;
+        }
+
+        /// <summary>
+        /// Assisted: a cross-court (aimed across the middle, away from the ball's side) that would rattle from side wall to
+        /// side wall is aimed a little less wide, step by step, until it is a clean cross (CleanCross) that dies in the
+        /// far back corner. If no line within 2.4 m does,
+        /// a little pace comes off too (up to ~50%).
+        /// </summary>
+        public double CrossAssist(BallState ball, List<Surface> surfaces, double tx, double ty, ref double speed)
+        {
+            int side = ball.Pos.X >= 0 ? 1 : -1;
+            bool cross = tx * side < -0.2 || (System.Math.Abs(ball.Pos.X) < 0.6 && System.Math.Abs(tx) > 1.0);
+            if (!cross) return tx;
+            int toward = System.Math.Abs(ball.Pos.X) < 0.6 ? (tx > 0 ? -1 : 1) : side;     // less wide = toward the ball's side
+            // A less wide line first; if no line within 2.4 m is clean at this pace, a little softer too.
+            double pace = speed;
+            for (int f = 0; f < 10; f++, pace *= 0.92)
+                for (int k = 0; k <= 12; k++)
+                {
+                    double x = tx + toward * 0.2 * k;
+                    Solve(ball, surfaces, x, ty, 0, 0, pace);
+                    if (CleanCross(ball, surfaces)) { speed = pace; return x; }
+                }
+            return tx;                                   // no clean line: leave the aim alone
+        }
+
+        /// <summary>A clean cross: at most one side wall in the air (before the first bounce), at most two before the second
+        /// bounce (the far wall, then the back corner) - no rattling from wall to wall.</summary>
+        public bool CleanCross(BallState ball, List<Surface> surfaces)
+        {
+            int total = SideWallHits(ball, surfaces);
+            return _sideHitsInAir <= 1 && total <= 2;
+        }
+
+        int _sideHitsInAir;
+
+        /// <summary>How many times this launch meets a side wall after the front wall, before its second bounce
+        /// (and, in _sideHitsInAir, before its first).</summary>
+        public int SideWallHits(BallState ball, List<Surface> surfaces)
+        {
+            _sideHitsInAir = 0;
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature);
+            bool front = false;
+            int sides = 0, floors = 0;
+            for (int i = 0; i < 480; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceClass == "frontWall") front = true;
+                    else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return 0; }
+                    else if (e.SurfaceClass == "sideWall") { sides++; if (floors == 0) _sideHitsInAir++; }
+                    else if (e.SurfaceClass == "floor" && ++floors == 2) return sides;
+                    else if (e.SurfaceClass == "backWall" && floors >= 1) return sides;
+                }
+            }
+            return sides;
         }
 
         /// <summary>Does this launch touch side wall <paramref name="side"/> before its first bounce after the front wall?</summary>

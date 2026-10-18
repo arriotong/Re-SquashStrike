@@ -152,6 +152,31 @@ namespace SquashSim.Tests
             Assert.That(clipOff, Is.GreaterThan(0), "the test should include drives that clip without help");
         }
 
+        [Test] public void AssistedCrossCourtsDoNotRattleOffTheSideWalls()
+        {
+            var c = PhysicsConfig.Current.ArcadeHit;
+            var surfaces = CourtSurfaces.Create();
+            int n = 0, rattleOff = 0, rattleOn = 0;
+            foreach (double side in new[] { 1.0, -1.0 })
+                foreach (double bz in new[] { 3.5, 6.0, 8.5 })
+                    foreach (double tx in new[] { -1.0, -2.6 })
+                        foreach (double charge in new[] { 0.0, 1.0 })
+                        {
+                            var ball = new BallState(); ball.Reset(new V3(side * 2.2, 0.8, bz), new V3(0, 0, 0), null, 42);
+                            var s = new ArcadeStroke(3);
+                            double speed = c.DriveSpeed * (1 + c.ChargeBonus * charge);
+                            n++;
+                            s.Solve(ball, surfaces, side * tx, 1.8, 0, 0, speed);
+                            if (!s.CleanCross(ball, surfaces)) rattleOff++;
+                            double x = s.CrossAssist(ball, surfaces, side * tx, 1.8, ref speed);
+                            s.Solve(ball, surfaces, x, 1.8, 0, 0, speed);
+                            if (!s.CleanCross(ball, surfaces)) rattleOn++;
+                        }
+            UnityEngine.Debug.Log("[Assist] cross-courts rattling off the side walls: non-assisted " + rattleOff + "/" + n + ", assisted " + rattleOn + "/" + n);
+            Assert.That(rattleOn, Is.EqualTo(0));
+            Assert.That(rattleOff, Is.GreaterThan(0), "the test should include crosses that rattle without help");
+        }
+
         [Test] public void LobsLandDeepAndStayIn()
         {
             var c = PhysicsConfig.Current.ArcadeHit;
