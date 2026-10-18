@@ -48,9 +48,9 @@ namespace SquashGame.UI
             var vs = Add(new ButtonItem("Local Versus", () => Fe.Push(new LocalVersusScreen()), false,
                 () => MatchRunner.CanPlayTwoPlayer ? "" : "connect a pad"));
             Add(new ButtonItem("Career", null, false, Soon)).Enabled = () => false;
-            Add(new ButtonItem("Target Arcade", null, false, Soon)).Enabled = () => false;
+            Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
             Section("Practice");
-            Add(new ButtonItem("Practice Court", () => Fe.GoPractice()));
+            Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
             Add(new ButtonItem("Academy", null, false, Soon)).Enabled = () => false;
             Section("More");
             Add(new ButtonItem("Locker Room", null, false, Soon)).Enabled = () => false;
@@ -355,6 +355,7 @@ namespace SquashGame.UI
         protected override void Build()
         {
             Add(new ButtonItem("Resume", () => Fe.Resume(), true));
+            Add(new ButtonItem("Coach panel", () => Fe.Push(new CoachScreen())));
             Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ButtonItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
             Add(new ButtonItem("Main menu", () => Fe.QuitToMenu()));

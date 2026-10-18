@@ -10,6 +10,7 @@
 // ===========================================================
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -47,12 +48,31 @@ namespace SquashGame.Profile
         public int VsLength = 2, VsScoring = 0;
     }
 
+    /// <summary>P2-M2: a Target Arcade challenge's (or drill's) best.</summary>
+    [Serializable]
+    public sealed class ArcadeRecord
+    {
+        public string Id;
+        public int Best, Stars, Plays;
+        public string When;
+    }
+
+    /// <summary>P2-M2: the practice court's Coach panel, as last left.</summary>
+    [Serializable]
+    public sealed class CoachChoices
+    {
+        public int Feed = 0, Side = 2, Speed = 1, Interval = 1, Slow = 0;
+        public bool Auto = true, LongTrail = false, WarmBall = true;
+    }
+
     [Serializable]
     public sealed class PlayerProfile
     {
         public int Version = ProfileStore.CurrentVersion;
         public GameSettings Settings = new GameSettings();
         public MenuChoices Choices = new MenuChoices();
+        public List<ArcadeRecord> Arcade = new List<ArcadeRecord>();
+        public CoachChoices Coach = new CoachChoices();
     }
 
     public static class ProfileStore
@@ -106,9 +126,31 @@ namespace SquashGame.Profile
         {
             if (p.Settings == null) p.Settings = new GameSettings();
             if (p.Choices == null) p.Choices = new MenuChoices();
+            if (p.Arcade == null) p.Arcade = new List<ArcadeRecord>();
+            if (p.Coach == null) p.Coach = new CoachChoices();
             // (future versions: migrate fields here)
             p.Version = CurrentVersion;
             return p;
+        }
+
+        /// <summary>This challenge's record, or null if never played.</summary>
+        public static ArcadeRecord Record(string id)
+        {
+            foreach (var r in Current.Arcade) if (r.Id == id) return r;
+            return null;
+        }
+
+        /// <summary>Note a finished play; true when it is a new best. Saves.</summary>
+        public static bool Submit(string id, int score, int stars)
+        {
+            var r = Record(id);
+            if (r == null) { r = new ArcadeRecord { Id = id, Best = int.MinValue }; Current.Arcade.Add(r); }
+            r.Plays++;
+            bool best = score > r.Best;
+            if (best) { r.Best = score; r.When = DateTime.Now.ToString("yyyy-MM-dd"); }
+            if (stars > r.Stars) r.Stars = stars;
+            Save();
+            return best;
         }
 
         /// <summary>The settings the game kept in PlayerPrefs before the profile existed.</summary>

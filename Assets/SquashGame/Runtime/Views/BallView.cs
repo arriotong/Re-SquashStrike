@@ -20,6 +20,8 @@ namespace SquashGame
     {
         /// <summary>Accessibility setting: the drawn ball's size x this (render only; the physics ball is unchanged).</summary>
         public static float UserScale = 1f;
+        /// <summary>Practice: a long "where that went" trail (else the short one).</summary>
+        public static bool LongTrail;
 
         static readonly Color Cold = new Color(0.20f, 0.30f, 0.55f);
         static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
@@ -66,6 +68,7 @@ namespace SquashGame
             if ((p - _lastPos).sqrMagnitude > 4f) _trail.Clear();     // a reset / new feed: no streak across the court
             _lastPos = p;
             _trail.startWidth = visualRadius * 1.6f;
+            _trail.time = LongTrail ? 1.4f : 0.16f;
             _trail.endWidth = 0f;
 
             // Visual spin, only while the sim is actually running.

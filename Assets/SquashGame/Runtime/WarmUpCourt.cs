@@ -19,13 +19,20 @@ namespace SquashGame
         public GreyboxPalette Palette;
         public Camera GameplayCamera;
 
-        public LabSimRunner Runner { get; private set; }
+        /// <summary>The runner: free practice (LabSimRunner) or a Target Arcade challenge / drill (ArcadeRunner).</summary>
+        public SimRunnerBase Base { get; private set; }
+        /// <summary>Free practice's lab runner (null in a challenge).</summary>
+        public LabSimRunner Runner { get { return Base as LabSimRunner; } }
+        public ArcadeRunner Arcade { get { return Base as ArcadeRunner; } }
 
         void Awake()
         {
             if (Palette == null) { Debug.LogError("WarmUpCourt: no GreyboxPalette assigned."); enabled = false; return; }
 
-            Runner = gameObject.AddComponent<LabSimRunner>();
+            // P2-M2: the menus say what to run here (then the request is used up).
+            if (SessionLaunch.ChallengeId != null) Base = gameObject.AddComponent<ArcadeRunner>();
+            else Base = gameObject.AddComponent<LabSimRunner>();
+            SessionLaunch.ChallengeId = null;
 
             var court = new GameObject("Court").AddComponent<CourtView>();
             court.transform.SetParent(transform, false);
@@ -33,41 +40,49 @@ namespace SquashGame
 
             var ball = new GameObject("BallView").AddComponent<BallView>();
             ball.transform.SetParent(transform, false);
-            ball.Build(Runner, Palette);
+            ball.Build(Base, Palette);
 
             // M4: the Gate A athlete on the Gate B skeleton (replaces the greybox capsule + racket).
             var athlete = new GameObject("Athlete0").AddComponent<Athlete.AthleteFigure>();
             athlete.transform.SetParent(transform, false);
-            athlete.Build(Runner, 0, Palette, Greybox.Hex(0x7d93ab));
+            athlete.Build(Base, 0, Palette, Greybox.Hex(0x7d93ab));
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();
             overlay.transform.SetParent(transform, false);
-            overlay.Build(Runner, Palette);
+            overlay.Build(Base, Palette);
 
             var aim = new GameObject("AimTarget0").AddComponent<AimTargetView>();
             aim.transform.SetParent(transform, false);
-            aim.Build(Runner, 0, Palette, new Color(1f, 0.78f, 0.22f));
-            aim.gameObject.AddComponent<TimingFeedbackView>().Build(Runner, aim, 0);
+            aim.Build(Base, 0, Palette, new Color(1f, 0.78f, 0.22f));
+            aim.gameObject.AddComponent<TimingFeedbackView>().Build(Base, aim, 0);
 
             var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();
             popups.transform.SetParent(transform, false);
-            popups.Build(Runner);
+            popups.Build(Base);
 
             var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
             audio.transform.SetParent(transform, false);
-            audio.Build(Runner);
+            audio.Build(Base);
+
+            // P2-M2: the challenge's targets on the walls and the floor.
+            if (Arcade != null)
+            {
+                var targets = new GameObject("Targets").AddComponent<TargetView>();
+                targets.transform.SetParent(transform, false);
+                targets.Build(Arcade, Palette);
+            }
 
             // P2-M1: the front end (pause menu: resume, settings, controls, back to the main menu).
             var fe = new GameObject("FrontEnd").AddComponent<UI.FrontEnd>();
             fe.transform.SetParent(transform, false);
-            fe.Build(Runner);
+            fe.Build(Base);
 
             if (GameplayCamera == null) GameplayCamera = Camera.main;
             if (GameplayCamera != null)
             {
                 var rig = GameplayCamera.GetComponent<GameplayCameraRig>();
                 if (rig == null) rig = GameplayCamera.gameObject.AddComponent<GameplayCameraRig>();
-                rig.Runner = Runner;
+                rig.Runner = Base;
                 GameplayCamera.backgroundColor = Greybox.Hex(0x161a20);
                 GameplayCamera.clearFlags = CameraClearFlags.SolidColor;
             }

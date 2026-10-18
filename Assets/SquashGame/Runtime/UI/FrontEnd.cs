@@ -37,6 +37,12 @@ namespace SquashGame.UI
 
         public SimRunnerBase Runner { get; private set; }
         public MatchRunner Match { get { return Runner as MatchRunner; } }
+        public ArcadeRunner Arcade { get { return Runner as ArcadeRunner; } }
+        /// <summary>Free practice's feeder (the Coach panel drives it).</summary>
+        public CoachFeeder Coach { get; private set; }
+        public ArcadeHud ArcadeHud { get; private set; }
+        /// <summary>A screen to open over the main menu when the match scene loads (back from the arcade).</summary>
+        public static System.Func<MenuScreen> OpenOnLoad;
         public UIDocument Doc { get; private set; }
         public HudLayer Hud { get; private set; }
         public MatchStats Stats { get; private set; }
@@ -72,6 +78,16 @@ namespace SquashGame.UI
                 Stats = new MatchStats();
                 Stats.Attach(Match);
             }
+            if (Arcade != null)
+            {
+                ArcadeHud = new ArcadeHud(Arcade);
+                _root.Add(ArcadeHud);
+            }
+            if (runner is LabSimRunner lab)
+            {
+                Coach = gameObject.AddComponent<CoachFeeder>();
+                Coach.Build(lab);
+            }
             _dim = new VisualElement();
             _dim.AddToClassList("fe-layer"); _dim.AddToClassList("fe-dim");
             _dim.pickingMode = PickingMode.Ignore;
@@ -88,6 +104,12 @@ namespace SquashGame.UI
                 Match.BeginDemo();
                 if (StartAtTitle) Push(new TitleScreen()); else Push(new MainMenuScreen());
                 StartAtTitle = false;                                       // the title only at boot
+                if (OpenOnLoad != null) { var open = OpenOnLoad; OpenOnLoad = null; Push(open()); }
+            }
+            else if (Coach != null && SessionLaunch.OpenCoach)
+            {
+                SessionLaunch.OpenCoach = false;
+                Push(new CoachScreen());
             }
         }
 
@@ -184,7 +206,7 @@ namespace SquashGame.UI
         {
             Runner.Clock.Resume();
             ClearEdges();
-            if (Top is PauseScreen || Top is PracticePauseScreen) Pop();
+            if (Top is PauseScreen || Top is PracticePauseScreen || Top is ArcadePauseScreen) Pop();
         }
 
         /// <summary>Leave the match for the main menu (the demo rally plays behind it).</summary>
@@ -197,10 +219,32 @@ namespace SquashGame.UI
             Push(new MainMenuScreen());
         }
 
-        public void GoPractice()
+        public void GoPractice() { LaunchFreePractice(); }
+
+        /// <summary>Play a Target Arcade challenge or a drill (the practice court scene runs it).</summary>
+        public static void LaunchChallenge(string id)
         {
             ProfileStore.Save();
+            SessionLaunch.ChallengeId = id;
             SceneManager.LoadScene(PracticeScene);
+        }
+
+        public static void LaunchFreePractice(bool coach = false)
+        {
+            ProfileStore.Save();
+            SessionLaunch.ChallengeId = null;
+            SessionLaunch.OpenCoach = coach;
+            SceneManager.LoadScene(PracticeScene);
+        }
+
+        /// <summary>From a challenge back to the Target Arcade (or, from a drill, the Practice menu).</summary>
+        public void BackToArcadeMenu()
+        {
+            bool drill = Arcade != null && Arcade.Challenge.Mode == SquashSim.Arcade.ArcadeMode.Drill;
+            OpenOnLoad = drill ? (System.Func<MenuScreen>)(() => new PracticeScreen()) : () => new TargetArcadeScreen();
+            StartAtTitle = false;
+            ProfileStore.Save();
+            SceneManager.LoadScene(MatchScene);
         }
 
         public static void QuitGame()
@@ -226,7 +270,7 @@ namespace SquashGame.UI
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             _input.Sample(dt);
-            if (Match != null) MatchScreens(dt); else PracticeScreens();
+            if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else PracticeScreens();
             if (Top != null)
             {
                 Top.Tick(dt);
@@ -234,6 +278,7 @@ namespace SquashGame.UI
             }
             UpdateFlags();
             if (Hud != null) Hud.Refresh(Match, Top == null || Top is PauseScreen);
+            if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);
         }
 
         void MatchScreens(float dt)
@@ -250,8 +295,33 @@ namespace SquashGame.UI
             else _matchOverFor = 0f;
         }
 
+        float _overFor;
+
+        void ArcadeScreens(float dt)
+        {
+            var a = Arcade;
+            if (Top == null && a.Clock.Paused) Push(new ArcadePauseScreen());
+            if (Top is ArcadePauseScreen && !a.Clock.Paused) Pop();
+            if (a.Session.Over)
+            {
+                _overFor += dt;
+                if (Top == null && _overFor > 1.2f) Push(new ResultsScreen(a));
+            }
+            else _overFor = 0f;
+        }
+
         void PracticeScreens()
         {
+            // Tab / pad View: the Coach panel (the game waits while it is open).
+            bool coachKey = UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.tabKey.wasPressedThisFrame;
+            foreach (var pad in UnityEngine.InputSystem.Gamepad.all) coachKey |= pad.selectButton.wasPressedThisFrame;
+            if (coachKey && Coach != null)
+            {
+                if (Top == null) { Push(new CoachScreen()); return; }
+                if (Top is CoachScreen) { Pop(); return; }
+            }
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (Top == null && Coach != null && kb != null && kb.fKey.wasPressedThisFrame && !ProfileStore.Current.Coach.Auto) Coach.FeedNow();
             if (Top == null && Runner.Clock.Paused) Push(new PracticePauseScreen());
             if (Top is PracticePauseScreen && !Runner.Clock.Paused) Pop();
         }

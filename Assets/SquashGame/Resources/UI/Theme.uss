@@ -129,3 +129,18 @@
 .ctl-row { flex-direction: row; height: 34px; align-items: center; border-bottom-width: 1px; border-bottom-color: rgba(255, 255, 255, 0.06); }
 .ctl-action { width: 230px; font-size: 18px; -unity-font-style: bold; }
 .ctl-keys { font-size: 17px; color: rgb(205, 212, 222); white-space: normal; flex-shrink: 1; }
+
+/* ---------- Target Arcade ---------- */
+.ah-panel { width: 400px; padding: 10px 16px 10px 16px; }
+.ah-name { font-size: 15px; color: rgb(214, 56, 46); -unity-font-style: bold; letter-spacing: 2px; }
+.ah-score { font-size: 46px; -unity-font-style: bold; margin: 2px 0 2px 0; }
+.ah-line { font-size: 19px; color: rgb(205, 212, 222); }
+.ah-callout {
+    position: absolute; top: 26%; left: 50%; translate: -50% 0;
+    font-size: 34px; -unity-font-style: bold; color: rgb(255, 255, 255);
+    -unity-text-outline-width: 1px; -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+}
+.ta-stars { font-size: 20px; color: rgb(255, 209, 64); }
+.ta-big-stars { font-size: 54px; color: rgb(255, 209, 64); margin-bottom: 8px; }
+.ta-best { font-size: 20px; color: rgb(205, 212, 222); margin-bottom: 18px; }
+.ta-new { color: rgb(255, 209, 64); -unity-font-style: bold; }
