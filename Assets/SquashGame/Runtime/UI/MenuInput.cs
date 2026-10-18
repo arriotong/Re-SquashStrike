@@ -7,6 +7,11 @@
 //   move     arrows / WASD / D-pad / left stick
 //   confirm  Enter / Space / pad A (South)
 //   back     Esc / Backspace / pad B (East)
+//   tabs     Q / E / pad LB / RB                   (UI redesign U1)
+//   x, y     F / R / pad X (West) / Y (North)      a screen's extra actions
+//
+// UsingPad: whether the last thing touched was a pad (the prompt bar
+// shows that device's glyphs).
 // ===========================================================
 
 using UnityEngine;
@@ -19,7 +24,7 @@ namespace SquashGame.UI
         public const float RepeatDelay = 0.38f, RepeatEvery = 0.11f;
 
         readonly InputActionMap _map;
-        readonly InputAction _up, _down, _left, _right, _submit, _cancel;
+        readonly InputAction _up, _down, _left, _right, _submit, _cancel, _tabL, _tabR, _x, _y;
         readonly float[] _held = new float[4];
         readonly float[] _next = new float[4];
 
@@ -28,6 +33,13 @@ namespace SquashGame.UI
         /// <summary>This frame: -1 left / +1 right (with repeat).</summary>
         public int Horizontal { get; private set; }
         public bool Submit { get; private set; }
+        /// <summary>This frame: -1 previous tab / +1 next tab.</summary>
+        public int Tab { get; private set; }
+        /// <summary>A screen's extra actions (pad X / F, pad Y / R).</summary>
+        public bool ActionX { get; private set; }
+        public bool ActionY { get; private set; }
+        /// <summary>The last input came from a pad (else keyboard and mouse).</summary>
+        public static bool UsingPad { get; private set; }
         public bool Cancel { get; private set; }
         /// <summary>The back press came from Esc (the game's pause key too).</summary>
         public bool CancelFromEscape { get; private set; }
@@ -41,6 +53,10 @@ namespace SquashGame.UI
             _right = Button("Right", "<Keyboard>/rightArrow", "<Keyboard>/d", "<Gamepad>/dpad/right", "<Gamepad>/leftStick/right");
             _submit = Button("Submit", "<Keyboard>/enter", "<Keyboard>/numpadEnter", "<Keyboard>/space", "<Gamepad>/buttonSouth");
             _cancel = Button("Cancel", "<Keyboard>/escape", "<Keyboard>/backspace", "<Gamepad>/buttonEast");
+            _tabL = Button("TabLeft", "<Keyboard>/q", "<Gamepad>/leftShoulder");
+            _tabR = Button("TabRight", "<Keyboard>/e", "<Gamepad>/rightShoulder");
+            _x = Button("ActionX", "<Keyboard>/f", "<Gamepad>/buttonWest");
+            _y = Button("ActionY", "<Keyboard>/r", "<Gamepad>/buttonNorth");
             _map.Enable();
         }
 
@@ -70,6 +86,16 @@ namespace SquashGame.UI
             Cancel = _cancel.WasPressedThisFrame();
             var kb = Keyboard.current;
             CancelFromEscape = Cancel && kb != null && kb.escapeKey.wasPressedThisFrame;
+            Tab = (_tabR.WasPressedThisFrame() ? 1 : 0) - (_tabL.WasPressedThisFrame() ? 1 : 0);
+            ActionX = _x.WasPressedThisFrame();
+            ActionY = _y.WasPressedThisFrame();
+            // which device: the last one that was used
+            foreach (var pad in Gamepad.all)
+                if (pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame || pad.startButton.wasPressedThisFrame ||
+                    pad.dpad.ReadValue().sqrMagnitude > 0.25f || pad.leftStick.ReadValue().sqrMagnitude > 0.25f || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame)
+                    UsingPad = true;
+            if ((kb != null && kb.anyKey.wasPressedThisFrame) || (Mouse.current != null && (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.delta.ReadValue().sqrMagnitude > 4f)))
+                UsingPad = false;
         }
     }
 }

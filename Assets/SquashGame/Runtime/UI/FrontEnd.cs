@@ -72,6 +72,8 @@ namespace SquashGame.UI
             _root.AddToClassList("fe-root");
             var sheet = Resources.Load<StyleSheet>("UI/Theme");
             if (sheet != null) _root.styleSheets.Add(sheet);
+            var kit = Resources.Load<StyleSheet>("UI/Kit");                  // the UI redesign's components
+            if (kit != null) _root.styleSheets.Add(kit);
             _root.pickingMode = PickingMode.Ignore;
 
             if (Match != null)
@@ -106,6 +108,9 @@ namespace SquashGame.UI
             _root.Add(_menus);
 
             _input = new MenuInput();
+            // UI redesign: live 3D pictures for cards
+            var vig = gameObject.AddComponent<Vignettes>();
+            vig.Runner = runner;
 
             if (Match != null)
             {
@@ -187,7 +192,19 @@ namespace SquashGame.UI
             _menus.Add(s.Root);
             _stack.Add(s);
             s.OnShow();
+            Enter(s, +1);
             UpdateFlags();
+        }
+
+        /// <summary>Screens slide in from the way you went (or fade, when centred). Off in batch runs (captures).</summary>
+        public static bool AnimateScreens = !Application.isBatchMode;
+
+        static void Enter(MenuScreen s, int dir)
+        {
+            if (!AnimateScreens) return;
+            string cls = s.Root.ClassListContains("fe-screen--centre") ? "fe-in-fade" : dir > 0 ? "fe-in-right" : "fe-in-left";
+            s.Root.AddToClassList(cls);
+            s.Root.schedule.Execute(() => s.Root.RemoveFromClassList(cls)).StartingIn(20);
         }
 
         public void Pop()
@@ -197,7 +214,7 @@ namespace SquashGame.UI
             s.OnHide();
             _stack.RemoveAt(_stack.Count - 1);
             s.Root.RemoveFromHierarchy();
-            if (Top != null) { Top.Root.style.display = DisplayStyle.Flex; Top.OnShow(); }
+            if (Top != null) { Top.Root.style.display = DisplayStyle.Flex; Top.OnShow(); Enter(Top, -1); }
             UpdateFlags();
         }
 
@@ -351,6 +368,9 @@ namespace SquashGame.UI
                 Top.Tick(dt);
                 Top.HandleInput(_input);
             }
+            // a developer's look at the UI kit (F12 on the main menu)
+            var kbd = UnityEngine.InputSystem.Keyboard.current;
+            if (kbd != null && kbd.f12Key.wasPressedThisFrame && Top is MainMenuScreen) Push(new GalleryScreen());
             UpdateFlags();
             if (Hud != null) Hud.Refresh(Match, Top == null || Top is PauseScreen);
             if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);

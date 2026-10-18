@@ -48,6 +48,11 @@ namespace SquashGame.UI
         Slant _slant;
         public bool Focused { get { return Root.ClassListContains("fe-item--focused"); } }
 
+        /// <summary>Kit items (cards, selectors, the primary button) draw themselves - no slant.</summary>
+        public virtual bool WantsSlant { get { return true; } }
+        /// <summary>Takes left / right itself (a selector); otherwise left / right moves the focus on a spatial screen.</summary>
+        public virtual bool TakesHorizontal { get { return false; } }
+
         /// <summary>Draw this row as a slanted button (the menus' left column).</summary>
         public void UseSlant()
         {
@@ -103,6 +108,7 @@ namespace SquashGame.UI
 
     public sealed class OptionItem : MenuItem
     {
+        public override bool TakesHorizontal { get { return true; } }
         readonly Func<string> _value;
         readonly Action<int> _change;
         readonly Label _valueEl = new Label();

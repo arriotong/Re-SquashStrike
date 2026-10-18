@@ -27,6 +27,13 @@ namespace SquashGame.UI
         protected virtual bool Sidebar { get { return !Centred; } }
         /// <summary>Dim the court behind this screen.</summary>
         public virtual bool Dims { get { return false; } }
+        /// <summary>UI redesign: focus moves in 2D to the nearest choice in the pressed direction (cards, grids).</summary>
+        public virtual bool Spatial { get { return false; } }
+        /// <summary>LB / RB (Q / E): change tab. Screens with tabs override.</summary>
+        public virtual void OnTab(int d) { }
+        /// <summary>Pad X / F, pad Y / R: a screen's extra actions.</summary>
+        public virtual void OnActionX() { }
+        public virtual void OnActionY() { }
         /// <summary>Esc belongs to the game here (it un-pauses), so the menu ignores it.</summary>
         public virtual bool EscapeIsGame { get { return false; } }
         protected virtual string Kicker { get { return null; } }
@@ -56,7 +63,7 @@ namespace SquashGame.UI
             item.OnHover = it => Focus(it);
             item.OnClick = it => { Focus(it); it.Submit(); };
             if (item.Name != null && item.Name.StartsWith("Quit")) item.Root.AddToClassList("fe-item--danger");
-            if (!Centred) item.UseSlant();
+            if (!Centred && item.WantsSlant) item.UseSlant();
             Items.Add(item);
             Content.Add(item.Root);
             return item;
@@ -127,8 +134,73 @@ namespace SquashGame.UI
         /// <summary>A text field has the keyboard (the menu's keys are left alone).</summary>
         public virtual bool Typing { get { foreach (var i in Items) if (i is TextItem t && t.Typing) return true; return false; } }
 
+        /// <summary>Add a choice somewhere other than the content column (a card row, a grid, a corner).</summary>
+        protected T AddTo<T>(VisualElement parent, T item) where T : MenuItem
+        {
+            Add(item);
+            item.Root.RemoveFromHierarchy();
+            parent.Add(item.Root);
+            return item;
+        }
+
+        /// <summary>Shown on screen: in a panel, and no hidden ancestor (an inactive tab page).</summary>
+        static bool Shown(VisualElement e)
+        {
+            if (e.panel == null) return false;
+            for (var p = e; p != null; p = p.parent) if (p.resolvedStyle.display == DisplayStyle.None) return false;
+            return true;
+        }
+
+        /// <summary>The choices a player can reach now (enabled and shown).</summary>
+        public List<MenuItem> Reachable()
+        {
+            var l = new List<MenuItem>();
+            foreach (var i in Items) if (i.IsEnabled && Shown(i.Root)) l.Add(i);
+            return l;
+        }
+
+        /// <summary>Spatial navigation: the nearest reachable choice in direction (dx, dy) from the focused one.</summary>
+        public void Move(int dx, int dy)
+        {
+            var cur = Focused;
+            if (cur == null || !Shown(cur.Root)) { FocusFirstShown(); return; }
+            var a = cur.Root.worldBound.center;
+            MenuItem best = null; float bestScore = float.MaxValue;
+            foreach (var it in Reachable())
+            {
+                if (it == cur) continue;
+                var b = it.Root.worldBound.center;
+                float along = dx != 0 ? (b.x - a.x) * dx : (b.y - a.y) * dy;
+                float across = dx != 0 ? System.Math.Abs(b.y - a.y) : System.Math.Abs(b.x - a.x);
+                if (along <= 4f) continue;
+                float score = along + 2.2f * across;
+                if (score < bestScore) { bestScore = score; best = it; }
+            }
+            if (best != null) { Focus(best); Sounds.Play("focus"); }
+        }
+
+        public void FocusFirstShown()
+        {
+            foreach (var it in Reachable()) { Focus(it); return; }
+        }
+
         public void HandleInput(MenuInput input)
         {
+            if (input.Tab != 0) { OnTab(input.Tab); Sounds.Play("tab"); }
+            if (input.ActionX) OnActionX();
+            if (input.ActionY) OnActionY();
+            if (Spatial && !Typing)
+            {
+                if (input.Vertical != 0) Move(0, input.Vertical);
+                if (input.Horizontal != 0)
+                {
+                    if (Focused != null && Focused.TakesHorizontal) { Focused.Change(input.Horizontal); Sounds.Play("tick"); }
+                    else Move(input.Horizontal, 0);
+                }
+                if (input.Submit && Focused != null) { Sounds.Play("select"); Focused.Submit(); }
+                if (input.Cancel && !(input.CancelFromEscape && EscapeIsGame)) { Sounds.Play("back"); Back(); }
+                return;
+            }
             if (Typing)
             {
                 var kb = UnityEngine.InputSystem.Keyboard.current;

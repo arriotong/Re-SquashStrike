@@ -92,5 +92,22 @@ namespace SquashGame.UI
             return _fade;
         }
         static Texture2D _fade;
+
+        /// <summary>The kit screens' bottom fade: clear at the top, dark at the bottom (cards read over the court).</summary>
+        public static Texture2D BottomFade()
+        {
+            if (_bottom != null) return _bottom;
+            const int n = 128;
+            _bottom = new Texture2D(1, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave };
+            for (int i = 0; i < n; i++)
+            {
+                float u = i / (n - 1f);                                   // 0 = bottom row of the texture
+                float a = Mathf.Lerp(0.92f, 0f, Mathf.SmoothStep(0f, 1f, u));
+                _bottom.SetPixel(0, i, new Color(0.02f, 0.024f, 0.03f, a));
+            }
+            _bottom.Apply();
+            return _bottom;
+        }
+        static Texture2D _bottom;
     }
 }
