@@ -64,6 +64,8 @@ namespace SquashGame.UI
         }
 
         public override void Submit() { if (IsEnabled && _run != null) _run(); }
+        /// <summary>The note beside the label, if any (tests).</summary>
+        public string Note { get { return _noteText != null ? _noteText() : null; } }
 
         public override void Refresh()
         {

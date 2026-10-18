@@ -6,8 +6,9 @@
 //   Video, Audio, Accessibility, Gameplay), Controls reference,
 //   Pause, Practice pause, Confirm, Post-match.
 //
-// Career, Target Arcade, Academy, Locker Room and Replays are on the
-// main menu as "coming soon" rows (P2-M2 .. M6).
+// Career, Locker Room and Replays are on the main menu as "coming
+// soon" rows (P2-M4 .. M6). Target Arcade (P2-M2) and the Academy
+// (P2-M3) have their own screen files.
 // ===========================================================
 
 using System;
@@ -51,7 +52,7 @@ namespace SquashGame.UI
             Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
             Section("Practice");
             Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
-            Add(new ButtonItem("Academy", null, false, Soon)).Enabled = () => false;
+            Add(new ButtonItem("Academy", () => Fe.Push(new AcademyScreen()), false, AcademyScreen.Summary));
             Section("More");
             Add(new ButtonItem("Locker Room", null, false, Soon)).Enabled = () => false;
             Add(new ButtonItem("Replays", null, false, Soon)).Enabled = () => false;
@@ -59,6 +60,16 @@ namespace SquashGame.UI
             Add(new ButtonItem("Quit", () => Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame))));
         }
         public override void Back() { }
+
+        /// <summary>P2-M3: a new player is pointed to the Academy, once.</summary>
+        public override void Tick(float dt)
+        {
+            var a = ProfileStore.Current.Academy;
+            if (a.Suggested) return;
+            a.Suggested = true;
+            ProfileStore.Save();
+            if (a.Done.Count == 0) Fe.Push(new AcademySuggestScreen());
+        }
     }
 
     // ---------------- match setup ----------------

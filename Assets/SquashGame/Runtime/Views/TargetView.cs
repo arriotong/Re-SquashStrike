@@ -22,6 +22,8 @@ namespace SquashGame
     public sealed class TargetView : MonoBehaviour
     {
         public ArcadeRunner Runner;
+        public AcademyRunner Academy;
+        System.Func<List<Target>> _targets;
         Material _mat, _zoneMat, _flashMat, _missMat;
         Mesh _torus, _disc;
         readonly List<GameObject> _shown = new List<GameObject>();
@@ -37,9 +39,30 @@ namespace SquashGame
         /// <summary>How many target shapes are up now (tests).</summary>
         public int Showing { get { return _shown.Count; } }
 
+        public void Build(AcademyRunner runner, GreyboxPalette palette)
+        {
+            Academy = runner;
+            _targets = () => Academy.Session != null ? Academy.Session.Targets : null;
+            Make(palette);
+            Academy.Judged += OnLesson;
+        }
+
+        void OnLesson(SquashSim.Academy.AcademyEvent e)
+        {
+            if (e.Kind == SquashSim.Academy.AcademyEventKind.Progress && e.Point != null) OnJudged(new ArcadeEvent { Kind = ArcadeEventKind.Hit, Point = e.Point });
+            else if (e.Kind == SquashSim.Academy.AcademyEventKind.Note && e.Point != null) OnJudged(new ArcadeEvent { Kind = ArcadeEventKind.Miss, Point = e.Point });
+        }
+
         public void Build(ArcadeRunner runner, GreyboxPalette palette)
         {
             Runner = runner;
+            _targets = () => Runner.Session != null ? Runner.Session.Targets : null;
+            Make(palette);
+            Runner.Judged += OnJudged;
+        }
+
+        void Make(GreyboxPalette palette)
+        {
             _mat = palette.Clear(new Color(1f, 1f, 1f, 0.85f));
             _zoneMat = palette.Clear(new Color(1f, 1f, 1f, 0.16f));
             _flashMat = palette.Clear(new Color(1f, 1f, 1f, 0f));
@@ -50,10 +73,13 @@ namespace SquashGame
             _flash.gameObject.SetActive(false);
             _miss = Greybox.MeshObject("Miss", transform, _disc, _missMat).transform;
             _miss.gameObject.SetActive(false);
-            Runner.Judged += OnJudged;
         }
 
-        void OnDestroy() { if (Runner != null) Runner.Judged -= OnJudged; }
+        void OnDestroy()
+        {
+            if (Runner != null) Runner.Judged -= OnJudged;
+            if (Academy != null) Academy.Judged -= OnLesson;
+        }
 
         void OnJudged(ArcadeEvent e)
         {
@@ -90,8 +116,8 @@ namespace SquashGame
 
         void LateUpdate()
         {
-            if (Runner == null || Runner.Session == null) return;
-            var targets = Runner.Session.Targets;
+            var targets = _targets != null ? _targets() : null;
+            if (targets == null) return;
             if (!Same(targets)) Rebuild(targets);
 
             float dt = Time.unscaledDeltaTime;

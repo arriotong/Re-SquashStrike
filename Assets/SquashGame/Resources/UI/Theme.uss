@@ -144,3 +144,10 @@
 .ta-big-stars { font-size: 54px; color: rgb(255, 209, 64); margin-bottom: 8px; }
 .ta-best { font-size: 20px; color: rgb(205, 212, 222); margin-bottom: 18px; }
 .ta-new { color: rgb(255, 209, 64); -unity-font-style: bold; }
+
+/* ---------- academy (P2-M3) ---------- */
+.ls-card { width: 620px; padding: 12px 18px 14px 18px; }
+.ls-text { font-size: 24px; -unity-font-style: bold; white-space: normal; margin: 6px 0 6px 0; }
+.ls-keys { font-size: 17px; color: rgb(255, 209, 64); white-space: normal; }
+.ls-progress { font-size: 20px; color: rgb(205, 212, 222); margin-top: 6px; }
+.ls-progress--done { color: rgb(120, 214, 120); -unity-font-style: bold; }

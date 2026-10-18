@@ -24,15 +24,18 @@ namespace SquashGame
         /// <summary>Free practice's lab runner (null in a challenge).</summary>
         public LabSimRunner Runner { get { return Base as LabSimRunner; } }
         public ArcadeRunner Arcade { get { return Base as ArcadeRunner; } }
+        public AcademyRunner Academy { get { return Base as AcademyRunner; } }
 
         void Awake()
         {
             if (Palette == null) { Debug.LogError("WarmUpCourt: no GreyboxPalette assigned."); enabled = false; return; }
 
             // P2-M2: the menus say what to run here (then the request is used up).
-            if (SessionLaunch.ChallengeId != null) Base = gameObject.AddComponent<ArcadeRunner>();
+            if (SessionLaunch.LessonId != null) Base = gameObject.AddComponent<AcademyRunner>();         // P2-M3
+            else if (SessionLaunch.ChallengeId != null) Base = gameObject.AddComponent<ArcadeRunner>();
             else Base = gameObject.AddComponent<LabSimRunner>();
             SessionLaunch.ChallengeId = null;
+            SessionLaunch.LessonId = null;
 
             var court = new GameObject("Court").AddComponent<CourtView>();
             court.transform.SetParent(transform, false);
@@ -71,6 +74,16 @@ namespace SquashGame
                 targets.transform.SetParent(transform, false);
                 targets.Build(Arcade, Palette);
             }
+            // P2-M3: a lesson's spots and rings, and the lines its rules cards explain.
+            if (Academy != null)
+            {
+                var targets = new GameObject("Targets").AddComponent<TargetView>();
+                targets.transform.SetParent(transform, false);
+                targets.Build(Academy, Palette);
+                var lines = new GameObject("CourtHighlight").AddComponent<CourtHighlight>();
+                lines.transform.SetParent(transform, false);
+                lines.Build(Academy, Palette);
+            }
 
             // P2-M1: the front end (pause menu: resume, settings, controls, back to the main menu).
             var fe = new GameObject("FrontEnd").AddComponent<UI.FrontEnd>();
@@ -108,7 +121,7 @@ namespace SquashGame
                 _hint = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleRight };
                 _hint.normal.textColor = new Color(0.80f, 0.83f, 0.88f);
             }
-            GUI.Label(new Rect(Screen.width - 420, 10, 408, 22), "PRACTICE   M / pad View: back to the menu", _hint);
+            if (Academy == null) GUI.Label(new Rect(Screen.width - 420, 10, 408, 22), "PRACTICE   M / pad View: back to the menu", _hint);
         }
     }
 }

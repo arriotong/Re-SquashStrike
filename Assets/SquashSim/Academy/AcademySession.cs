@@ -82,7 +82,9 @@ namespace SquashSim.Academy
 
         void Park()
         {
-            Ball.Reset(new V3(0, 0.03, 1.5), new V3(0, 0, 0), null, 40);
+            // Out of sight behind the front wall: a parked ball on the court is "playable", and the
+            // movement assist would pull a walking player towards it.
+            Ball.Reset(new V3(0, 0.03, -1.5), new V3(0, 0, 0), null, 40);
             Ball.Asleep = true;
         }
 
@@ -379,15 +381,15 @@ namespace SquashSim.Academy
             if (_quizResolved) return;
             var q = Current.Question;
             int side = q.Px >= 0 ? 1 : -1;
-            if (RulesQuiz.Judge(q, e, ref _quizFront, side) != null) ResolveQuiz();
+            if (RulesQuiz.Judge(q, e, ref _quizFront, side) != null) ResolveQuiz(e.Point);
         }
 
-        void ResolveQuiz()
+        void ResolveQuiz(V3 at = null)
         {
             _quizResolved = true;
             AwaitingAnswer = true;
             QuizAsked++;
-            Events.Add(new AcademyEvent { Kind = AcademyEventKind.QuizAsked, Note = Current.Question.Text });
+            Events.Add(new AcademyEvent { Kind = AcademyEventKind.QuizAsked, Note = Current.Question.Text, Point = at != null ? at.Clone() : null });
         }
 
         /// <summary>The player's call for the quiz question (index into its Choices). True when right.</summary>

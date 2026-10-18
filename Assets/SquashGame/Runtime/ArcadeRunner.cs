@@ -18,6 +18,8 @@ namespace SquashGame
     {
         /// <summary>A Target Arcade challenge or drill id; null = free practice.</summary>
         public static string ChallengeId;
+        /// <summary>An Academy lesson id (P2-M3); null = none.</summary>
+        public static string LessonId;
         /// <summary>Free practice: open the Coach panel at once.</summary>
         public static bool OpenCoach;
     }

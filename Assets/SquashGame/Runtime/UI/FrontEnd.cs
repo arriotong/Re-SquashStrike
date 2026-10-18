@@ -6,7 +6,8 @@
 //   Match scene    Title -> Main menu (an AI-vs-AI demo rally plays
 //                  behind) -> Quick Match / Local Versus setup ->
 //                  the match (HUD) -> Pause / Post-match
-//   Practice court Pause -> back to the main menu
+//   Practice court Pause -> back to the main menu; a Target Arcade
+//                  challenge or drill; an Academy lesson (P2-M3)
 //
 // The pause screen follows the game's own pause (Esc / Start); the
 // post-match screen comes up when the match is over. While a menu
@@ -38,9 +39,11 @@ namespace SquashGame.UI
         public SimRunnerBase Runner { get; private set; }
         public MatchRunner Match { get { return Runner as MatchRunner; } }
         public ArcadeRunner Arcade { get { return Runner as ArcadeRunner; } }
+        public AcademyRunner Academy { get { return Runner as AcademyRunner; } }
         /// <summary>Free practice's feeder (the Coach panel drives it).</summary>
         public CoachFeeder Coach { get; private set; }
         public ArcadeHud ArcadeHud { get; private set; }
+        public LessonHud LessonHud { get; private set; }
         /// <summary>A screen to open over the main menu when the match scene loads (back from the arcade).</summary>
         public static System.Func<MenuScreen> OpenOnLoad;
         public UIDocument Doc { get; private set; }
@@ -82,6 +85,11 @@ namespace SquashGame.UI
             {
                 ArcadeHud = new ArcadeHud(Arcade);
                 _root.Add(ArcadeHud);
+            }
+            if (Academy != null)
+            {
+                LessonHud = new LessonHud(Academy);
+                _root.Add(LessonHud);
             }
             if (runner is LabSimRunner lab)
             {
@@ -206,7 +214,7 @@ namespace SquashGame.UI
         {
             Runner.Clock.Resume();
             ClearEdges();
-            if (Top is PauseScreen || Top is PracticePauseScreen || Top is ArcadePauseScreen) Pop();
+            if (Top is PauseScreen || Top is PracticePauseScreen || Top is ArcadePauseScreen || Top is AcademyPauseScreen) Pop();
         }
 
         /// <summary>Leave the match for the main menu (the demo rally plays behind it).</summary>
@@ -247,6 +255,34 @@ namespace SquashGame.UI
             SceneManager.LoadScene(MatchScene);
         }
 
+        /// <summary>P2-M3: play an Academy lesson (the practice court scene runs it).</summary>
+        public static void LaunchLesson(string id)
+        {
+            ProfileStore.Save();
+            SessionLaunch.ChallengeId = null;
+            SessionLaunch.LessonId = id;
+            SceneManager.LoadScene(PracticeScene);
+        }
+
+        /// <summary>From a lesson back to the Academy menu.</summary>
+        public void BackToAcademyMenu()
+        {
+            OpenOnLoad = () => new AcademyScreen();
+            StartAtTitle = false;
+            ProfileStore.Save();
+            SceneManager.LoadScene(MatchScene);
+        }
+
+        /// <summary>The match setup, with this difficulty picked (the Academy's last lesson).</summary>
+        public static void LaunchQuickMatch(int difficulty)
+        {
+            ProfileStore.Current.Choices.Difficulty = difficulty;
+            OpenOnLoad = () => new QuickMatchScreen();
+            StartAtTitle = false;
+            ProfileStore.Save();
+            SceneManager.LoadScene(MatchScene);
+        }
+
         public static void QuitGame()
         {
             ProfileStore.Save();
@@ -270,7 +306,7 @@ namespace SquashGame.UI
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             _input.Sample(dt);
-            if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else PracticeScreens();
+            if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else if (Academy != null) AcademyScreens(dt); else PracticeScreens();
             if (Top != null)
             {
                 Top.Tick(dt);
@@ -279,6 +315,7 @@ namespace SquashGame.UI
             UpdateFlags();
             if (Hud != null) Hud.Refresh(Match, Top == null || Top is PauseScreen);
             if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);
+            if (LessonHud != null) LessonHud.Refresh(Academy, Top == null || Top is AcademyPauseScreen);
         }
 
         void MatchScreens(float dt)
@@ -306,6 +343,29 @@ namespace SquashGame.UI
             {
                 _overFor += dt;
                 if (Top == null && _overFor > 1.2f) Push(new ResultsScreen(a));
+            }
+            else _overFor = 0f;
+        }
+
+        void AcademyScreens(float dt)
+        {
+            var a = Academy;
+            var s = a.Session;
+            if (Top == null && a.Clock.Paused) Push(new AcademyPauseScreen());
+            if (Top is AcademyPauseScreen && !a.Clock.Paused) Pop();
+            if (Top == null && !s.Done && s.Current != null)
+            {
+                if (s.Current.Goal == SquashSim.Academy.GoalKind.Card)
+                {
+                    var mouse = UnityEngine.InputSystem.Mouse.current;
+                    if (_input.Submit || (mouse != null && mouse.leftButton.wasPressedThisFrame)) { s.NextCard(); a.Input.Intent.ClearEdges(); }
+                }
+                else if (s.AwaitingAnswer) Push(new QuizScreen(s.Current.Question));
+            }
+            if (s.Done)
+            {
+                _overFor += dt;
+                if (Top == null && _overFor > 1.0f) Push(new LessonCompleteScreen(a.Lesson));
             }
             else _overFor = 0f;
         }

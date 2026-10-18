@@ -39,13 +39,15 @@ namespace SquashGame.Tests
             Release(b); yield return null;
         }
 
-        /// <summary>A fresh profile in a temp folder, and the game opening on its title screen.</summary>
-        public static void FreshProfile()
+        /// <summary>A fresh profile in a temp folder, and the game opening on its title screen.
+        /// (Not a new player unless asked: the Academy suggestion is already seen.)</summary>
+        public static void FreshProfile(bool newPlayer = false)
         {
             ProfileStore.Folder = Path.Combine(Path.GetTempPath(), "reSquashStrikeTests");
             if (File.Exists(Path.Combine(ProfileStore.Folder, ProfileStore.FileName))) File.Delete(Path.Combine(ProfileStore.Folder, ProfileStore.FileName));
             ProfileStore.Reset();
             ProfileStore.Current.Settings = new GameSettings();
+            ProfileStore.Current.Academy.Suggested = !newPlayer;
             FrontEnd.StartAtTitle = true;
         }
 

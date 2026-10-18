@@ -65,6 +65,15 @@ namespace SquashGame.Profile
         public bool Auto = true, LongTrail = false, WarmBall = true;
     }
 
+    /// <summary>P2-M3: the Academy - lessons passed, and the one-time suggestion to a new player.</summary>
+    [Serializable]
+    public sealed class AcademyProgress
+    {
+        public List<string> Done = new List<string>();
+        public bool Finished;
+        public bool Suggested;
+    }
+
     [Serializable]
     public sealed class PlayerProfile
     {
@@ -73,6 +82,7 @@ namespace SquashGame.Profile
         public MenuChoices Choices = new MenuChoices();
         public List<ArcadeRecord> Arcade = new List<ArcadeRecord>();
         public CoachChoices Coach = new CoachChoices();
+        public AcademyProgress Academy = new AcademyProgress();
     }
 
     public static class ProfileStore
@@ -128,6 +138,8 @@ namespace SquashGame.Profile
             if (p.Choices == null) p.Choices = new MenuChoices();
             if (p.Arcade == null) p.Arcade = new List<ArcadeRecord>();
             if (p.Coach == null) p.Coach = new CoachChoices();
+            if (p.Academy == null) p.Academy = new AcademyProgress();
+            if (p.Academy.Done == null) p.Academy.Done = new List<string>();
             // (future versions: migrate fields here)
             p.Version = CurrentVersion;
             return p;
@@ -151,6 +163,21 @@ namespace SquashGame.Profile
             if (stars > r.Stars) r.Stars = stars;
             Save();
             return best;
+        }
+
+        public static bool LessonDone(string id) { return Current.Academy.Done.Contains(id); }
+
+        /// <summary>Note a passed lesson; true when this one finished the whole Academy. Saves.</summary>
+        public static bool CompleteLesson(string id, IEnumerable<string> all)
+        {
+            var a = Current.Academy;
+            if (!a.Done.Contains(id)) a.Done.Add(id);
+            bool every = true;
+            foreach (var l in all) if (!a.Done.Contains(l)) { every = false; break; }
+            bool first = every && !a.Finished;
+            if (every) a.Finished = true;
+            Save();
+            return first;
         }
 
         /// <summary>The settings the game kept in PlayerPrefs before the profile existed.</summary>
