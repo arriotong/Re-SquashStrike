@@ -5,7 +5,8 @@
 // filmed in cuts - a high corner, low by the front wall, along the
 // side wall, from the floor at the back - each a slow drifting shot
 // that keeps the rally in frame. Each main-menu row has its own set
-// of angles (Scene), like the old home's per-tab scenes.
+// of angles (Scene), like the old home's per-tab scenes; the Locker
+// Room films your athlete up close (LockerScene, RacketScene).
 //
 // Presentation only: GameplayCameraRig hands the camera over while
 // the demo plays.
@@ -79,9 +80,30 @@ namespace SquashGame
         /// <summary>Restart the cuts (a new scene, or the demo started again).</summary>
         public static void Reset() { _scene = -1; _haveAction = false; }
 
+        /// <summary>P2-M5: the Locker Room's shots - a slow orbit close to your athlete, or the racket up close.</summary>
+        public const int LockerScene = 100, RacketScene = 101;
+        static float _orbit;
+        static Vector3 _subject;
+
+        static void Orbit(Camera cam, SimRunnerBase runner, float dt, bool racket)
+        {
+            var a = runner != null ? runner.Athletes : null;
+            Vector3 p = a != null && a.Length > 0 ? new Vector3((float)a[0].Player.Pos.X, 0f, (float)a[0].Player.Pos.Z) : new Vector3(0, 0, 5);
+            float k = 1f - Mathf.Exp(-3f * dt);
+            if (!_haveAction) { _subject = p; _haveAction = true; } else _subject += (p - _subject) * k;
+            _orbit += dt * (racket ? 0.25f : 0.18f);
+            float r = racket ? 1.3f : 3.1f, h = racket ? 1.2f : 1.25f, look = racket ? 0.95f : 0.8f;
+            Vector3 pos = _subject + new Vector3(Mathf.Sin(_orbit) * r, h, Mathf.Cos(_orbit) * r);
+            pos.x = Mathf.Clamp(pos.x, -3.0f, 3.0f); pos.z = Mathf.Clamp(pos.z, 0.3f, 9.5f);
+            cam.fieldOfView = racket ? 44f : 48f;
+            cam.transform.position = SimToWorld.Pos(pos.x, pos.y, pos.z);
+            cam.transform.LookAt(SimToWorld.Pos(_subject.x, look, _subject.z), Vector3.up);
+        }
+
         /// <summary>Film the demo rally with this camera (instead of the gameplay camera).</summary>
         public static void Apply(Camera cam, SimRunnerBase runner, float dt)
         {
+            if (Scene == LockerScene || Scene == RacketScene) { _scene = -1; Orbit(cam, runner, dt, Scene == RacketScene); return; }
             int scene = ((Scene % Scenes.Length) + Scenes.Length) % Scenes.Length;
             var set = Scenes[scene];
             if (scene != _scene) { _scene = scene; _shot = 0; _age = 0; }

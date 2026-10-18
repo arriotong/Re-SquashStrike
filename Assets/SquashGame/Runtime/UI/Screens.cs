@@ -6,9 +6,9 @@
 //   Video, Audio, Accessibility, Gameplay), Controls reference,
 //   Pause, Practice pause, Confirm, Post-match.
 //
-// Locker Room and Replays are on the main menu as "coming soon" rows
-// (P2-M5, M6). Target Arcade (P2-M2), the Academy (P2-M3) and the
-// Career (P2-M4) have their own screen files.
+// Replays is on the main menu as a "coming soon" row (P2-M6). Target
+// Arcade (P2-M2), the Academy (P2-M3), the Career (P2-M4) and the
+// Locker Room (P2-M5) have their own screen files.
 // ===========================================================
 
 using System;
@@ -87,7 +87,8 @@ namespace SquashGame.UI
             Add(new ButtonItem("Target Arcade", () => Fe.Push(new TargetArcadeScreen())));
             Add(new ButtonItem("Practice Court", () => Fe.Push(new PracticeScreen())));
             Add(new ButtonItem("Academy", () => Fe.Push(new AcademyScreen()), false, AcademyScreen.Summary));
-            Add(new ButtonItem("Locker Room", null, false, Soon)).Enabled = () => false;
+            Add(new ButtonItem("Locker Room", () => Fe.Push(new LockerRoomScreen()), false,
+                () => "level " + Progression.Rewards.LevelOf(SquashGame.Profile.ProfileStore.Current.Progress.Xp)));
             Add(new ButtonItem("Replays", null, false, Soon)).Enabled = () => false;
             Add(new ButtonItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ButtonItem("Quit", () => Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame))));
@@ -463,10 +464,17 @@ namespace SquashGame.UI
             return w < 0 ? "Match over" : (m.Settings.TwoPlayer ? m.Names[w] + " wins" : (w == m.HumanIndex ? "You win" : m.Names[w] + " wins"));
         }
 
+        public Progression.RewardResult Reward { get; private set; }
+
         protected override void Build()
         {
             var m = Fe.Match;
             var st = Fe.Stats;
+            // P2-M5: XP, lifetime stats, the match achievements (once, when the screen is made)
+            double tier = 0;
+            var career = SquashGame.Profile.CareerStore.Current;
+            if (m.Settings.Career && career != null && career.S.Current != null) tier = Progression.Rewards.TierFactor[career.S.Current.Tier];
+            Reward = Progression.Rewards.Match(st.Facts(m), tier);
             var games = new List<string>();
             foreach (var g in st.Games) games.Add(g[0] + "-" + g[1]);
             var score = new Label(m.Names[0] + "  " + m.Sim.Score.Games[0] + " - " + m.Sim.Score.Games[1] + "  " + m.Names[1] +
@@ -483,6 +491,8 @@ namespace SquashGame.UI
             Row(box, "Top pace", Kmh(st.Players[0].TopPace), Kmh(st.Players[1].TopPace));
             Row(box, "Longest rally", st.LongestRally + " shots", "");
             Content.Add(box);
+            Content.Add(new RewardStrip(Reward));
+            Fe.ToastAchievements(Reward);
 
             if (m.Settings.Career)
             {

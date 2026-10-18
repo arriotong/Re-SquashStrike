@@ -4,6 +4,10 @@
 // RigContract) as a Transform hierarchy, the Gate A body forms on its
 // bones, the joint blends, and the Gate A racket.
 //
+// P2-M5: the forms are coloured by kit region (shirt, sleeves, shorts,
+// socks, shoes, skin), with a headband and a wristband that can be
+// shown, and the racket's frame / grip / strings - ApplyKit.
+//
 // Rig frame -> Unity: mirror X, once, here. In the athlete's local
 // space it faces -Z with its RIGHT at local -X (the mirror of the rig's
 // +X), which is what keeps a right-hander's racket on screen right from
@@ -32,6 +36,42 @@ namespace SquashGame.Athlete
 
         static Vector3 ToUnity(Vector3 rig) { return new Vector3(-rig.x, rig.y, rig.z); }
 
+        public enum Region { ShirtBody, ShirtSleeves, Shorts, Socks, Shoes, Skin }
+        readonly Material[] _region = new Material[6];
+        Material _frame, _grip, _strings, _headband, _wristband;
+        GameObject _headbandGo, _wristbandGo;
+
+        /// <summary>The kit region a body form (or a joint blend, by its bone) belongs to.</summary>
+        public static Region RegionOf(string name)
+        {
+            if (name.Contains("chest") || name.Contains("abdomen") || name.Contains("Chest") || name.Contains("Spine")) return Region.ShirtBody;
+            if (name.Contains("upperArm") || name.Contains("UpperArm")) return Region.ShirtSleeves;
+            if (name.Contains("pelvis") || name.Contains("thigh") || name.Contains("Pelvis") || name.Contains("Thigh")) return Region.Shorts;
+            if (name.Contains("shin") || name.Contains("blend_Foot")) return Region.Socks;
+            if (name.Contains("foot")) return Region.Shoes;
+            return Region.Skin;                                    // head, neck, forearms, hands; elbow, wrist and knee blends
+        }
+
+        /// <summary>The material drawing a kit region (tests, captures).</summary>
+        public Material RegionMaterial(Region r) { return _region[(int)r]; }
+        public bool HeadbandShown { get { return _headbandGo != null && _headbandGo.activeSelf; } }
+
+        /// <summary>Dress the athlete: the kit's colours on its regions, the bands, the racket. Presentation only.</summary>
+        public void ApplyKit(SquashGame.Progression.Kit k)
+        {
+            if (_region[0] == null) return;
+            _region[(int)Region.ShirtBody].color = k.ShirtBody;
+            _region[(int)Region.ShirtSleeves].color = k.ShirtSleeves;
+            _region[(int)Region.Shorts].color = k.Shorts;
+            _region[(int)Region.Socks].color = k.Socks;
+            _region[(int)Region.Shoes].color = k.Shoes;
+            _region[(int)Region.Skin].color = k.Skin;
+            _headbandGo.SetActive(k.HasHeadband); _headband.color = k.Headband;
+            _wristbandGo.SetActive(k.HasWristband); _wristband.color = k.Wristband;
+            _frame.color = k.Frame; _grip.color = k.Grip;
+            _strings.color = new Color(k.Strings.r, k.Strings.g, k.Strings.b, 0.35f);
+        }
+
         public void Build(GreyboxPalette palette, Color bodyColor)
         {
             // ---- skeleton ----
@@ -49,8 +89,8 @@ namespace SquashGame.Athlete
                 _restLocal[b.Name] = t.localPosition;
             }
 
-            // ---- body forms ----
-            Material body = palette.LitColor(bodyColor);
+            // ---- body forms (a material per kit region; all bodyColor until a kit is applied) ----
+            for (int i = 0; i < _region.Length; i++) _region[i] = palette.LitColor(bodyColor);
             foreach (FormPart f in MannequinForms.Build())
             {
                 var go = new GameObject(f.Name);
@@ -58,7 +98,7 @@ namespace SquashGame.Athlete
                 go.transform.localPosition = ToUnity(f.Pivot - rigPos[f.Bone]);
                 go.AddComponent<MeshFilter>().sharedMesh = f.Mesh.ToUnity(f.Name);
                 var r = go.AddComponent<MeshRenderer>();
-                r.sharedMaterial = body;
+                r.sharedMaterial = _region[(int)RegionOf(f.Name)];
                 FormCount++;
             }
 
@@ -68,7 +108,7 @@ namespace SquashGame.Athlete
                 var go = new GameObject("blend_" + jb.Bone);
                 go.transform.SetParent(Bones[jb.Bone], false);
                 go.AddComponent<MeshFilter>().sharedMesh = Loft.Ellipsoid(jb.W, jb.D, jb.H).ToUnity("blend");
-                go.AddComponent<MeshRenderer>().sharedMaterial = body;
+                go.AddComponent<MeshRenderer>().sharedMaterial = _region[(int)RegionOf("blend_" + jb.Bone)];
                 go.SetActive(false);
                 _blends.Add((Bones[jb.Bone], go));
             }
@@ -77,9 +117,27 @@ namespace SquashGame.Athlete
             var parts = RacketMesh.Build();
             Racket = new GameObject("Racket").transform;
             Racket.SetParent(transform, false);
-            AddPart(Racket, "racket_frame", parts.Frame, palette.LitColor(Greybox.Hex(0x5d656f)), true);
-            AddPart(Racket, "racket_handle", parts.Handle, palette.LitColor(Greybox.Hex(0x23272c)), true);
-            AddPart(Racket, "racket_stringBed", parts.Bed, palette.Clear(Greybox.Hex(0xdde2e8, 0.30f)), false);
+            _frame = palette.LitColor(Greybox.Hex(0x5d656f));
+            _grip = palette.LitColor(Greybox.Hex(0x23272c));
+            _strings = palette.Clear(Greybox.Hex(0xdde2e8, 0.30f));
+            AddPart(Racket, "racket_frame", parts.Frame, _frame, true);
+            AddPart(Racket, "racket_handle", parts.Handle, _grip, true);
+            AddPart(Racket, "racket_stringBed", parts.Bed, _strings, false);
+
+            // ---- P2-M5: the bands (hidden until a kit has them) ----
+            _headband = palette.LitColor(Color.white);
+            _wristband = palette.LitColor(Color.white);
+            var band = Greybox.Torus(1f, 0.16f, 32, 8);
+            _headbandGo = Greybox.MeshObject("headband", Bones["Head"], band, _headband, true);
+            _headbandGo.transform.localPosition = ToUnity(new Vector3(0, 0.45f * RigBoneRest("Head").y + 0.55f * GateA.Crown, 0.006f) - RigBoneRest("Head"));
+            _headbandGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            _headbandGo.transform.localScale = new Vector3(0.094f, 0.094f, 0.14f);
+            _headbandGo.SetActive(false);
+            _wristbandGo = Greybox.MeshObject("wristband", Bones["Forearm_R"], band, _wristband, true);
+            _wristbandGo.transform.localPosition = ToUnity(new Vector3(RigBoneRest("Hand_R").x, RigContract.WristY + 0.035f, 0) - RigBoneRest("Forearm_R"));
+            _wristbandGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            _wristbandGo.transform.localScale = new Vector3(0.046f, 0.046f, 0.09f);
+            _wristbandGo.SetActive(false);
         }
 
         static void AddPart(Transform parent, string name, MeshData m, Material mat, bool shadows)

@@ -87,6 +87,7 @@ namespace SquashGame.UI
                 Career = true,
                 P1Name = c.BugOf(CareerSession.You),
                 P2Name = pro.Bug,
+                KitSeed = (c.S.Seed ^ ((uint)pro.Id * 2654435761u)) | 1u,      // the pro's own kit, the same every match
             });
         }
 
@@ -450,7 +451,8 @@ namespace SquashGame.UI
     public sealed class EventResultScreen : MenuScreen
     {
         readonly EventState _e;
-        public EventResultScreen(EventState e) { _e = e; }
+        public EventResultScreen(EventState e) { _e = e; Reward = Progression.Rewards.CareerEvent(Career.C, e); }
+        public Progression.RewardResult Reward { get; private set; }
         protected override bool Centred { get { return true; } }
         public override bool Dims { get { return true; } }
         protected override string Kicker { get { return _e.Name.ToUpperInvariant(); } }
@@ -466,6 +468,8 @@ namespace SquashGame.UI
             int champ = CareerSession.Winner(_e);
             if (champ != CareerSession.You && champ >= 0) Career.Stat(box, "Champion", c.NameOf(champ));
             Content.Add(box);
+            Content.Add(new RewardStrip(Reward));
+            Fe.ToastAchievements(Reward);
             Add(new ButtonItem("Continue", () => Fe.Pop(), true));
             Add(new ButtonItem("View the draw", () => Fe.Push(new DrawScreen(_e))));
         }

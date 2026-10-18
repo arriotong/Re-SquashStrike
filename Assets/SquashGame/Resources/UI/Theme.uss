@@ -28,7 +28,7 @@
 }
 .fe-screen--centre {
     left: 50%; translate: -50% 0;
-    top: 16%; bottom: auto;
+    top: 10%; bottom: auto;
     width: 640px;
     padding: 40px 44px 36px 44px;
     background-color: rgb(20, 22, 27);
@@ -329,3 +329,51 @@
 .cr-cal .cr-rank-row { height: 40px; }
 .cr-cal .cr-rank-name { font-size: 19px; }
 .cr-cal-mine { width: 360px; font-size: 13px; color: rgb(200, 255, 61); -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- Progression (P2-M5): the reward strip, toasts ---------- */
+.rw { margin: 0 0 14px 0; padding: 8px 14px; background-color: rgba(200, 255, 61, 0.06); border-radius: 8px; border-width: 1px; border-color: rgba(200, 255, 61, 0.25); }
+.rw-head { flex-direction: row; justify-content: space-between; align-items: center; }
+.rw-level { font-size: 18px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.9); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.rw-level--up { color: rgb(200, 255, 61); text-shadow: 0 0 12px rgba(200, 255, 61, 0.7); }
+.rw-xp { font-size: 18px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.rw-bar { height: 8px; margin: 6px 0 6px 0; background-color: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden; }
+.rw-fill { height: 8px; width: 0; background-color: rgb(200, 255, 61); border-radius: 4px; }
+.rw-lines { font-size: 12px; color: rgba(255, 255, 255, 0.65); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.rw-ach { font-size: 12px; color: rgb(255, 184, 59); margin-top: 4px; white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.rw-unlock { font-size: 13px; color: rgb(200, 255, 61); margin-top: 4px; white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+.toasts { position: absolute; right: 24px; top: 24px; width: 380px; align-items: flex-end; }
+.toast {
+    width: 380px; margin-bottom: 8px; padding: 10px 16px; white-space: normal;
+    background-color: rgba(14, 15, 18, 0.94); border-width: 2px; border-color: rgb(200, 255, 61); border-radius: 8px;
+    font-size: 18px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+}
+
+/* ---------- Locker Room (P2-M5) ---------- */
+.lk-note--locked { color: rgba(255, 255, 255, 0.45); }
+.lk-note--new { color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.fe-item--focused .lk-note--locked, .fe-item--focused .lk-note--new { color: rgb(14, 15, 18); }
+.lk-card {
+    width: 640px; padding: 18px 22px 18px 24px; border-radius: 12px;
+    border-left-width: 8px; border-width: 1px; border-color: rgba(255, 255, 255, 0.08); border-left-width: 8px;
+}
+.lk-card-title { font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.lk-card-name { font-size: 54px; margin: -6px 0 2px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.lk-card-stats { flex-direction: row; justify-content: space-between; margin-top: 12px; }
+.lk-card-stat { align-items: flex-start; }
+.lk-card-stat-v { font-size: 34px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.lk-card-stat-n { font-size: 11px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.6); margin-top: -6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.lk-stats-col { width: 480px; margin: 0 14px; }
+.lk-stats-col .pm-stat__val { width: 220px; }
+.lk-grid { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 1560px; align-self: center; margin-bottom: 10px; }
+.lk-ach {
+    width: 300px; height: 86px; margin: 2px; padding: 4px 10px; border-radius: 6px; overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.04); border-left-width: 4px; border-left-color: rgba(255, 255, 255, 0.2); opacity: 0.6;
+}
+.lk-ach--done { opacity: 1; background-color: rgba(200, 255, 61, 0.08); }
+.lk-ach--bronze { border-left-color: rgb(205, 127, 50); }
+.lk-ach--silver { border-left-color: rgb(200, 205, 214); }
+.lk-ach--gold { border-left-color: rgb(255, 184, 59); }
+.lk-ach-name { font-size: 16px; margin: 0; padding: 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.lk-ach-desc { font-size: 10px; margin: 0; padding: 0; color: rgba(255, 255, 255, 0.7); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.lk-ach-reward { font-size: 10px; margin: 2px 0 0 0; padding: 0; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

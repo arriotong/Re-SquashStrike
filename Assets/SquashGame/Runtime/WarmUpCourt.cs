@@ -49,6 +49,7 @@ namespace SquashGame
             var athlete = new GameObject("Athlete0").AddComponent<Athlete.AthleteFigure>();
             athlete.transform.SetParent(transform, false);
             athlete.Build(Base, 0, Palette, Greybox.Hex(0x7d93ab));
+            athlete.KitSource = Progression.KitDirector.You;                 // P2-M5: your Locker Room kit
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();
             overlay.transform.SetParent(transform, false);

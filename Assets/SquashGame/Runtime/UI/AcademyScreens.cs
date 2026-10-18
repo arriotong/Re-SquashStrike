@@ -170,8 +170,12 @@ namespace SquashGame.UI
         public LessonCompleteScreen(Lesson l)
         {
             _l = l;
+            bool first = !ProfileStore.LessonDone(l.Id);
             _finished = ProfileStore.CompleteLesson(l.Id, AcademyScreen.AllIds());
+            Reward = Progression.Rewards.Lesson(first, ProfileStore.Current.Academy.Finished);
         }
+
+        public Progression.RewardResult Reward { get; private set; }
 
         /// <summary>This lesson finished the whole Academy (tests).</summary>
         public bool FinishedAcademy { get { return _finished; } }
@@ -184,6 +188,7 @@ namespace SquashGame.UI
         protected override void Build()
         {
             var next = Lessons.Next(_l);
+            if (Reward.Any) { Content.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }
             if (_l.Id == "mode")
             {
                 Text("Which do you want to play with? You can change it any time in Settings.");

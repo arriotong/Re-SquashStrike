@@ -36,6 +36,8 @@ namespace SquashGame
         public bool Career;
         /// <summary>Score-bug names instead of "YOU" and the AI's personality (null = the defaults).</summary>
         public string P1Name, P2Name;
+        /// <summary>P2-M5: the opponent's kit from this seed (a career pro); 0 = the personality's signature kit.</summary>
+        public uint KitSeed;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>

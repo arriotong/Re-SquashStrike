@@ -115,11 +115,15 @@ namespace SquashGame.UI
             _stars = _s.Stars;
             var rec = ProfileStore.Record(_c.Id);
             _prev = rec != null ? rec.Best : int.MinValue;
+            int starsBefore = rec != null ? rec.Stars : 0;
             _best = ProfileStore.Submit(_c.Id, _score, _stars);
+            // P2-M5: XP, new stars, the arcade achievements
+            Reward = Progression.Rewards.Arcade(_c.Id, _c.Mode == ArcadeMode.Drill, starsBefore, _stars, _score, _c.Mode == ArcadeMode.Streak);
         }
 
         /// <summary>This play set a new best (tests).</summary>
         public bool NewBest { get { return _best; } }
+        public Progression.RewardResult Reward { get; private set; }
 
         protected override bool Centred { get { return true; } }
         public override bool Dims { get { return true; } }
@@ -140,6 +144,8 @@ namespace SquashGame.UI
             Row(box, "Great hits", _s.GreatHits.ToString());
             if (_stars < 3 && _c.Stars[_stars] > 0) Row(box, "Next star", _c.Stars[_stars].ToString("N0"));
             Content.Add(box);
+            Content.Add(new RewardStrip(Reward));
+            Fe.ToastAchievements(Reward);
 
             Add(new ButtonItem("Retry", () => { Fe.Clear(); Fe.Arcade.Restart(); }, true));
             if (_c.Mode != ArcadeMode.Drill && _c.Level < 2)

@@ -107,9 +107,27 @@ namespace SquashGame.Athlete
 
         Transform B(string name) { return Rig.Bones[name]; }
 
+        /// <summary>P2-M5: what this athlete wears (polled each frame; re-dressed when it changes). Null = plain.</summary>
+        public System.Func<SquashGame.Progression.Loadout> KitSource;
+        string _kitKey;
+        /// <summary>The loadout last applied (tests).</summary>
+        public SquashGame.Progression.Loadout Worn { get; private set; }
+
+        void Dress()
+        {
+            var l = KitSource != null ? KitSource() : null;
+            if (l == null) return;
+            string key = l.Shirt + l.Shorts + l.Socks + l.Shoes + l.Skin + l.Headband + l.Wristband + l.Frame + l.Grip + l.Strings;
+            if (key == _kitKey) return;
+            _kitKey = key;
+            Worn = l.Clone();
+            Rig.ApplyKit(SquashGame.Progression.Cosmetics.KitOf(l));
+        }
+
         void LateUpdate()
         {
             if (Runner == null || Runner.Clock == null || Rig == null) return;
+            Dress();
             if (Index >= Runner.View.Count) return;
             AthleteSnapshot v = Runner.View.Athlete(Index);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
@@ -117,6 +135,12 @@ namespace SquashGame.Athlete
         }
 
         float _diveW;
+        /// <summary>P2-M5: the pose of a match moment to hold (the celebration), or null - polled every frame.</summary>
+        public System.Func<string> MomentSource;
+        AthletePose _moment;
+        float _momentW;
+        /// <summary>The moment's pose being shown (tests).</summary>
+        public string MomentShown { get; private set; }
         AthletePose _diveFrom;
         /// <summary>How much of the dive / get-up pose is drawn (tests).</summary>
         public float DiveWeight { get; private set; }
@@ -241,6 +265,13 @@ namespace SquashGame.Athlete
             }
             else _diveFrom = null;
             DiveWeight = _diveW;
+
+            // ---------------- P2-M5: a match moment (a won match point: the celebration; lost: dejected) ----------------
+            string moment = MomentSource != null ? MomentSource() : null;
+            if (moment != null) { var mp = PoseLibrary.Active.Find(moment); if (mp != null) _moment = mp; }
+            _momentW = Mathf.MoveTowards(_momentW, moment != null && _moment != null ? 1f : 0f, 2.2f * dt);
+            if (_momentW > 0.001f && _moment != null) { _tmp.Set(_moment); _out.Blend(_tmp, Ease(_momentW)); }
+            MomentShown = _momentW > 0.5f && _moment != null ? _moment.Name : null;
 
             // ---------------- body ----------------
             _out.ApplyBody(Rig);

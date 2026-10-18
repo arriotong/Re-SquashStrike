@@ -74,6 +74,28 @@ namespace SquashGame.Profile
         public bool Suggested;
     }
 
+    /// <summary>P2-M5: an achievement's state.</summary>
+    [Serializable]
+    public sealed class AchievementState
+    {
+        public string Id;
+        public int Progress;
+        public bool Done;
+        public string When;
+    }
+
+    /// <summary>P2-M5: XP, the Locker Room (owned and worn), achievements, lifetime stats.</summary>
+    [Serializable]
+    public sealed class Progress
+    {
+        public int Xp;
+        public List<string> Owned = new List<string>();
+        public List<string> Seen = new List<string>();          // looked at in the Locker Room (no "NEW" dot)
+        public Progression.Loadout Loadout = new Progression.Loadout();
+        public List<AchievementState> Achievements = new List<AchievementState>();
+        public Progression.LifetimeStats Stats = new Progression.LifetimeStats();
+    }
+
     [Serializable]
     public sealed class PlayerProfile
     {
@@ -83,11 +105,12 @@ namespace SquashGame.Profile
         public List<ArcadeRecord> Arcade = new List<ArcadeRecord>();
         public CoachChoices Coach = new CoachChoices();
         public AcademyProgress Academy = new AcademyProgress();
+        public Progress Progress = new Progress();
     }
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;              // 2: P2-M5 progression
         public const string FileName = "profile.json";
 
         /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
@@ -140,6 +163,13 @@ namespace SquashGame.Profile
             if (p.Coach == null) p.Coach = new CoachChoices();
             if (p.Academy == null) p.Academy = new AcademyProgress();
             if (p.Academy.Done == null) p.Academy.Done = new List<string>();
+            if (p.Progress == null) p.Progress = new Progress();
+            var g = p.Progress;
+            if (g.Owned == null) g.Owned = new List<string>();
+            if (g.Seen == null) g.Seen = new List<string>();
+            if (g.Loadout == null) g.Loadout = new Progression.Loadout();
+            if (g.Achievements == null) g.Achievements = new List<AchievementState>();
+            if (g.Stats == null) g.Stats = new Progression.LifetimeStats();
             // (future versions: migrate fields here)
             p.Version = CurrentVersion;
             return p;

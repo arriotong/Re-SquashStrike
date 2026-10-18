@@ -142,6 +142,44 @@ namespace SquashGame.UI
 
         // ---------------- the stack ----------------
 
+        // ---------------- P2-M5: achievement toasts ----------------
+
+        readonly List<(Label label, float age)> _toasts = new List<(Label, float)>();
+        VisualElement _toastBox;
+        /// <summary>The toasts shown so far (tests).</summary>
+        public readonly List<string> ToastLog = new List<string>();
+
+        public void ToastAchievements(Progression.RewardResult r)
+        {
+            if (r == null) return;
+            foreach (var a in r.Achieved) Toast("ACHIEVEMENT  ·  " + a.Tier.ToString().ToUpperInvariant(), a.Name);
+        }
+
+        public void Toast(string kicker, string text)
+        {
+            if (_toastBox == null)
+            {
+                _toastBox = new VisualElement(); _toastBox.AddToClassList("toasts"); _toastBox.pickingMode = PickingMode.Ignore;
+                _root.Add(_toastBox);
+            }
+            var l = new Label(kicker + "\n" + text); l.AddToClassList("toast");
+            _toastBox.Add(l);
+            _toasts.Add((l, 0f));
+            ToastLog.Add(text);
+        }
+
+        void TickToasts(float dt)
+        {
+            for (int i = _toasts.Count - 1; i >= 0; i--)
+            {
+                var (l, age) = _toasts[i];
+                age += dt;
+                l.style.opacity = Mathf.Clamp01(Mathf.Min(age / 0.25f, (5f - age) / 0.5f));
+                if (age > 5f) { l.RemoveFromHierarchy(); _toasts.RemoveAt(i); }
+                else _toasts[i] = (l, age);
+            }
+        }
+
         public void Push(MenuScreen s)
         {
             if (Top != null) { Top.OnHide(); Top.Root.style.display = DisplayStyle.None; }
@@ -306,6 +344,7 @@ namespace SquashGame.UI
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             _input.Sample(dt);
+            TickToasts(dt);
             if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else if (Academy != null) AcademyScreens(dt); else PracticeScreens();
             if (Top != null)
             {
