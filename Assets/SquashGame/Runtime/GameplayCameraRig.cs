@@ -33,6 +33,13 @@ namespace SquashGame
         {
             var cfg = PhysicsConfig.Current.Camera;
 
+            // P2-M6: the replay theatre's cameras.
+            if (Replays.TheatreSession.Active != null && Runner != null && Runner.FramesActive)
+            {
+                Replays.TheatreSession.Active.Film(_cam, Runner, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+                return;
+            }
+
             // Referee replay: high above the court, looking down on the incident.
             if (Runner != null && Runner.ReplayActive)
             {

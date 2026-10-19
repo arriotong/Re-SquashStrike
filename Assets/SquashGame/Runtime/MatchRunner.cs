@@ -331,6 +331,7 @@ namespace SquashGame
 
         protected override void Update()
         {
+            if (FramesActive) { base.Update(); return; }   // P2-M6: the replay theatre plays recorded frames; the demo waits
             if (InSetup) return;          // the panel is up: nothing moves (the views keep the last frame)
             if (Demo)
             {

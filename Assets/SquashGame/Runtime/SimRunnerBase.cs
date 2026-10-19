@@ -216,6 +216,68 @@ namespace SquashGame
 
         public void StopReplay() { ReplayActive = false; View = _curr; }
 
+        // ---- P2-M6: the replay theatre - recorded frames (60 a second) shown instead of the sim ----
+        public const float FrameRate = 60f;
+        IList<RenderSnapshot> _frames;
+        IList<List<SimEvent>> _frameEvents;
+        double _frameCursor;
+        int _lastEmitted = -1;
+        /// <summary>Frames are being shown (the sim waits).</summary>
+        public bool FramesActive { get { return _frames != null; } }
+        public int FrameCount { get { return _frames != null ? _frames.Count : 0; } }
+        /// <summary>Playback speed (1, 0.5, 0.25) and pause.</summary>
+        public double FrameSpeed = 1;
+        public bool FramesPaused;
+        /// <summary>Each frame's sim events as playback passes them (not when scrubbing): for the sound. (events, speed)</summary>
+        public event System.Action<IReadOnlyList<SimEvent>, float> FrameSounds;
+
+        /// <summary>Where playback is, in frames. Setting it scrubs (no sounds for what is skipped).</summary>
+        public double FrameCursor
+        {
+            get { return _frameCursor; }
+            set { if (_frames == null) return; _frameCursor = Mathd(value, 0, _frames.Count - 1); _lastEmitted = (int)_frameCursor; ShowFrame(); }
+        }
+
+        static double Mathd(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+        /// <summary>Show these frames from the start (events: per frame, for sound; may be null).</summary>
+        public void PlayFrames(IList<RenderSnapshot> frames, IList<List<SimEvent>> events)
+        {
+            if (frames == null || frames.Count == 0) { StopFrames(); return; }
+            if (ReplayActive) StopReplay();
+            _frames = frames; _frameEvents = events;
+            _frameCursor = 0; _lastEmitted = -1; FramesPaused = false;
+            ShowFrame();
+        }
+
+        /// <summary>Back to the sim's own view.</summary>
+        public void StopFrames()
+        {
+            _frames = null; _frameEvents = null;
+            SnapViews();
+        }
+
+        void ShowFrame()
+        {
+            int i = (int)_frameCursor;
+            int j = System.Math.Min(i + 1, _frames.Count - 1);
+            View = RenderSnapshot.Lerp(_frames[i], _frames[j], (float)(_frameCursor - i));
+        }
+
+        bool AdvanceFrames(float dt)
+        {
+            if (_frames == null) return false;
+            if (!FramesPaused) _frameCursor = Mathd(_frameCursor + dt * FrameRate * FrameSpeed, 0, _frames.Count - 1);
+            int i = (int)_frameCursor;
+            var h = FrameSounds;
+            if (_frameEvents != null && h != null && !FramesPaused)
+                for (int k = _lastEmitted + 1; k <= i && k < _frameEvents.Count; k++)
+                    if (_frameEvents[k] != null && _frameEvents[k].Count > 0) h(_frameEvents[k], (float)FrameSpeed);
+            _lastEmitted = System.Math.Max(_lastEmitted, i);
+            ShowFrame();
+            return true;
+        }
+
         bool AdvanceReplay(float dt)
         {
             if (!ReplayActive) return false;
@@ -299,7 +361,8 @@ namespace SquashGame
             pause |= SampleExtraInput(rawDt);
             if (pause && PauseAllowed && !UI.FrontEnd.BlocksGamePause) { if (ReplayActive) StopReplay(); else Clock.TogglePause(); }
 
-            // During a referee replay the simulation waits; the views show the recording.
+            // The theatre's frames, or a referee replay: the simulation waits; the views show the recording.
+            if (AdvanceFrames(rawDt)) return;
             if (AdvanceReplay(rawDt)) return;
 
             WatchDives(rawDt);

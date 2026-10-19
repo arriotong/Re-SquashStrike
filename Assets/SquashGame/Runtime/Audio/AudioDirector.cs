@@ -67,11 +67,21 @@ namespace SquashGame.Audio
                 (cam != null ? cam.gameObject : gameObject).AddComponent<AudioListener>();
             }
             Runner.Stepped += OnStepped;
+            Runner.FrameSounds += OnFrameSounds;
+        }
+
+        /// <summary>P2-M6: a replay's recorded events, as playback passes them - lower and slower in slow motion.</summary>
+        float _pitchScale = 1f;
+        void OnFrameSounds(IReadOnlyList<SimEvent> events, float speed)
+        {
+            _pitchScale = Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(speed));
+            OnStepped(events);
+            _pitchScale = 1f;
         }
 
         void OnDestroy()
         {
-            if (Runner != null) Runner.Stepped -= OnStepped;
+            if (Runner != null) { Runner.Stepped -= OnStepped; Runner.FrameSounds -= OnFrameSounds; }
         }
 
         /// <summary>Play a sound at a world point. Volume 0..1; pitch around 1.</summary>
@@ -84,7 +94,7 @@ namespace SquashGame.Audio
             src.transform.position = at;
             src.clip = clip;
             src.volume = Mathf.Clamp01(volume) * MasterVolume * (name == "call" ? RefereeVolume : SfxVolume);
-            src.pitch = pitch;
+            src.pitch = pitch * _pitchScale;
             src.Play();
             Played[name] = Played.TryGetValue(name, out int n) ? n + 1 : 1;
             PlayedTotal++;
