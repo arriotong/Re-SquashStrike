@@ -27,7 +27,7 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
             r.BeginMatch(MatchSettings.QuickGame());      // past the setup panel: one game vs the Retriever
-            PhysicsConfig.Current.Match.AppealsEnabled = true;   // lets are off in the game for now; keep this path working for their return
+            Assert.That(PhysicsConfig.Current.Match.AppealsEnabled, Is.True, "lets are on in the game (P2-M7)");
             MatchSimulation m = r.Sim;
             Assert.That(r.OpponentName, Does.Contain("RETRIEVER"), "the AI opponent should be in the match");
 

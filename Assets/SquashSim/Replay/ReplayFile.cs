@@ -41,6 +41,8 @@ namespace SquashSim.Replays
         /// <summary>An AI for athlete 0 too (a demo match: bundled replays, the title screen); null = a person.</summary>
         public string Opponent0;
         public float Difficulty0 = 0.5f;
+        /// <summary>Lets on (appeals and the referee's own swing call). Format 1 files predate it: off.</summary>
+        public bool Lets = true;
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -102,7 +104,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 1;
+        public const int FormatVersion = 2;
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -133,7 +135,7 @@ namespace SquashSim.Replays
                 w.Write(Meta.Count); foreach (var kv in Meta) { w.Write(kv.Key); w.Write(kv.Value ?? ""); }
                 var s = Setup;
                 w.Write(s.TwoPlayer); w.Write(s.Opponent ?? ""); w.Write(s.Difficulty); w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin);
-                w.Write(s.WarmUp); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Opponent0 ?? ""); w.Write(s.Difficulty0);
+                w.Write(s.WarmUp); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Opponent0 ?? ""); w.Write(s.Difficulty0); w.Write(s.Lets);
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -177,10 +179,11 @@ namespace SquashSim.Replays
         public static ReplayFile FromBytes(byte[] bytes)
         {
             var file = new MemoryStream(bytes);
+            int version;
             using (var h = new BinaryReader(file, Encoding.UTF8, true))
             {
                 if (bytes.Length < 8 || h.ReadUInt32() != Magic) throw new InvalidDataException("not a replay");
-                int version = h.ReadInt32();
+                version = h.ReadInt32();
                 if (version > FormatVersion) throw new InvalidDataException("a newer replay format (" + version + ")");
             }
             var raw = new MemoryStream();
@@ -195,6 +198,7 @@ namespace SquashSim.Replays
                 s.TwoPlayer = r.ReadBoolean(); s.Opponent = r.ReadString(); s.Difficulty = r.ReadSingle(); s.Scoring = r.ReadString(); s.GamesToWin = r.ReadInt32();
                 s.WarmUp = r.ReadBoolean(); s.BotSeed = r.ReadUInt32(); s.FirstServer = r.ReadInt32();
                 s.Opponent0 = r.ReadString(); if (s.Opponent0.Length == 0) s.Opponent0 = null; s.Difficulty0 = r.ReadSingle();
+                s.Lets = version >= 2 && r.ReadBoolean();
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)
                 {

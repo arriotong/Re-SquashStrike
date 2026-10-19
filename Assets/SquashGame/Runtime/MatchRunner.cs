@@ -163,13 +163,16 @@ namespace SquashGame
             InSetup = ShowSetup;
         }
 
+        /// <summary>The Lets setting (Settings > Gameplay): taken by each new match, and recorded with it.</summary>
+        public static bool Lets = true;
+
         /// <summary>The setup a match is built from (and recorded with).</summary>
         ReplaySetup SetupOf(MatchSettings s)
         {
             return new ReplaySetup
             {
                 TwoPlayer = s.TwoPlayer && Input2 != null, Opponent = s.Opponent, Difficulty = s.Difficulty, Scoring = s.Scoring,
-                GamesToWin = Mathf.Max(1, s.GamesToWin), WarmUp = s.WarmUp, BotSeed = BotSeed, FirstServer = 0,
+                GamesToWin = Mathf.Max(1, s.GamesToWin), WarmUp = s.WarmUp, BotSeed = BotSeed, FirstServer = 0, Lets = Lets,
             };
         }
 

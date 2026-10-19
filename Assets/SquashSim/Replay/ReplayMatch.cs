@@ -31,6 +31,7 @@ namespace SquashSim.Replays
             m.GamesToWin = Math.Max(1, s.GamesToWin);
             m.WarmUpEnabled = s.WarmUp;
             m.AutoNextGame = true;
+            m.AppealsEnabled = s.Lets;               // P2-M7: the Lets setting, recorded with the match
         }
 
         /// <summary>The match itself (Configure first): the opponent in slot 1 unless two play; everyone plays the simple

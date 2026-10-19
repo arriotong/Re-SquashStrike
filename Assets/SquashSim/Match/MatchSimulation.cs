@@ -174,6 +174,17 @@ namespace SquashSim
         /// sideways step off the striker's corridor into the move. Deterministic, from sim state only.</summary>
         readonly double[] _steerX = new double[2], _steerZ = new double[2];
 
+        /// <summary>The reason given when the referee stops play himself (P2-M7).</summary>
+        public const string SwingStopReason = "Stroke - opponent in the swing (play stopped)";
+
+        /// <summary>The striker plays the ball with the opponent in its swing: the referee stops play for safety (a stroke),
+        /// as a real one would, with no appeal. Lets on only.</summary>
+        bool RefereeStopsSwing(int i)
+        {
+            return PhysicsConfig.Current.Match.AppealsEnabled && Phase == MatchPhase.Rally && Referee.Outcome == null &&
+                   Referee.Shots > 0 && Interference.Striker == i && Interference.Current == ObstructionKind.Swing;
+        }
+
         /// <summary>The move player <paramref name="i"/> steered this step (its input, or the Assisted give-way blend):
         /// what the referee counts as trying to move (Interference clearing).</summary>
         public void SteeredMove(int i, out double x, out double z) { x = _steerX[i]; z = _steerZ[i]; }
@@ -345,7 +356,7 @@ namespace SquashSim
                 else SetUpServe();
             }
 
-            // ---- appeals: the player going for the ball stops and asks for a let (off in the game for now) ----
+            // ---- appeals: the player going for the ball stops and asks for a let (the Lets setting) ----
             if (Phase == MatchPhase.Rally && Referee.Outcome == null && PhysicsConfig.Current.Match.AppealsEnabled)
             {
                 for (int i = 0; i < 2; i++)
@@ -365,6 +376,7 @@ namespace SquashSim
                 if (Intents[i].SplitStepPressed) SplitStep.Press(i, Time, Players[i].Player);
 
             // ---- both athletes: movement, prediction, swing, racket, contact ----
+            int stopped = -1;
             for (int i = 0; i < 2; i++)
             {
                 var c = Players[i];
@@ -383,9 +395,12 @@ namespace SquashSim
                     StepEvents.Add(contact);
                     if (Phase == MatchPhase.WarmUp) WarmUpShots++;
                     else if (Referee.Shots > 0) RallyContacts[i]++;
+                    if (RefereeStopsSwing(i)) { stopped = i; continue; }
                     OnRacketContact(i, contact);
                 }
             }
+            if (stopped >= 0 && Referee.OnAppeal(stopped, new InterferenceDecision { Call = InterferenceCall.Stroke, Reason = SwingStopReason }, Time))
+                FinishRally();
             Intents[0].ClearEdges();
             Intents[1].ClearEdges();
 

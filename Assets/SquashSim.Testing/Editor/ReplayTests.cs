@@ -124,6 +124,7 @@ namespace SquashSim.Tests
             Assert.That(back.Setup.Opponent, Is.EqualTo("wallbot"));
             Assert.That(back.Setup.Scoring, Is.EqualTo("english"));
             Assert.That(back.Setup.BotSeed, Is.EqualTo(5u));
+            Assert.That(back.Setup.Lets, Is.True, "the Lets setting (format 2)");
             Assert.That(back.Rallies.Count, Is.EqualTo(f.Rallies.Count));
             Assert.That(back.Retired, Is.True, "stopped before the end: left");
             Assert.That(ReplaySim.Verify(back).Ok, Is.True, "a match left part-way replays too");

@@ -137,7 +137,7 @@ namespace SquashGame.Tests
         }
 
         /// <summary>The front end itself, drawn into a texture (batch mode has no screen to grab).</summary>
-        static IEnumerator CaptureUI(FrontEnd fe, string file)
+        internal static IEnumerator CaptureUI(FrontEnd fe, string file)
         {
             var ps = fe.Doc.panelSettings;
             var rt = new RenderTexture(1920, 1080, 24);

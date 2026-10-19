@@ -27,6 +27,9 @@ sealed class HumanStyle : IAthleteBrain
     /// <summary>Aim high (lobs and high drives) instead of around the middle.</summary>
     public bool AimHigh;
     public double ReleaseJitter = 0.15;
+    /// <summary>P2-M7: a person sees LET? (the referee would give something) and asks this often, once a turn.</summary>
+    public double AppealChance = 0.5;
+    bool _askedThisTurn;
     double _arrival, _releaseOffset = -1;
     double _oppContact = -9, _errX, _errZ, _pressAt = -1, _releaseAt = -1;
     long _turn = -1;
@@ -53,6 +56,16 @@ sealed class HumanStyle : IAthleteBrain
             _turn = turn;
             if (m.TurnLastHitter != me) _oppContact = t;
             _errX = (R() * 2 - 1) * PosError; _errZ = (R() * 2 - 1) * PosError; _pressAt = -1;
+            _askedThisTurn = false;
+        }
+        // LET? is showing (the HUD's rule): ask, sometimes, as the ball comes
+        it.AppealPressed = false;
+        var itf = m.Interference;
+        if (!_askedThisTurn && PhysicsConfig.Current.Match.AppealsEnabled && m.Phase == MatchPhase.Rally && m.Referee.Outcome == null &&
+            itf.Striker == me && itf.ThisTurn != ObstructionKind.None && itf.TimeToBall < 0.4 && itf.Decide().Call != InterferenceCall.NoLet)
+        {
+            _askedThisTurn = true;
+            if (R() < AppealChance) it.AppealPressed = true;
         }
         bool mine = m.GoingForBall(me);
         bool serving = m.Phase == MatchPhase.Rally && m.TurnShots == 0 && m.Score.Server == me;
@@ -105,6 +118,8 @@ sealed class HumanStyle : IAthleteBrain
 static class PressAudit
 {
     public static bool AimHigh;
+    /// <summary>P2-M7: play the balance with lets off (Settings > Gameplay > Lets), to see what lets change.</summary>
+    public static bool NoLets;
 
     public static double LastWinRate;
     public static bool Quiet;
@@ -146,6 +161,7 @@ static class PressAudit
         {
             PhysicsConfig.ResetToDefaults();
             if (gameProfile) PhysicsConfig.UseGameProfile();
+            if (NoLets) PhysicsConfig.Current.Match.AppealsEnabled = false;
             var m = new MatchSimulation(0);
             var h = new HumanStyle((uint)(500 + g)) { Arcade = gameProfile, AimHigh = AimHigh };
             m.Bots[0] = h;

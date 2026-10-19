@@ -37,6 +37,7 @@ namespace SquashGame.Profile
         public float CallTextScale = 1f;
         // ---- gameplay ----
         public bool Popups = true;
+        public bool Lets = true;                 // P2-M7: appeals and the referee's calls on interference
 
         public GameSettings Clone() { return (GameSettings)MemberwiseClone(); }
     }
@@ -230,6 +231,7 @@ namespace SquashGame.Profile
             IntentSource.InvertMouseY = s.InvertMouseY;
             IntentSource.Assisted = s.Assisted;
             ArcadePopups.Enabled = s.Popups;
+            MatchRunner.Lets = s.Lets;
             AimTargetView.RingColourIndex = s.RingColour;
             Audio.AudioDirector.SfxVolume = s.SfxVolume;
             Audio.AudioDirector.RefereeVolume = s.RefereeVolume;

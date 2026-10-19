@@ -142,6 +142,13 @@ namespace SquashSim
             // Getting out of the way (P2-M7 L2)
             public const double StrikerKeep = 0.85;        // share of the striker's closing speed kept on body contact (live rally)
             public const double AssistGiveWay = 0.6;       // Assisted, non-striker in the way: sideways steer blended into the move
+            // AI appeals (P2-M7 L3): the personality's tendency, scaled by level - rare at Easy
+            public const double AppealAtEasy = 0.3;        // x the tendency at Easy (0.0), rising to 1 at Hard
+            public const double AppealFullAt = 0.42;       // the level at which the full tendency applies
+            public const double AppealHampered = 0.25;     // s obstructed before it thinks of asking
+            public const double AppealShare = 0.25;        // in the line / swing: of the shots it would be given, the share it stops for
+            public const double AppealShareWay = 0.8;      // blocked on the way: asked far more freely (people ask for those lets)
+            public const double AppealNearBall = 0.6;      // s: an Access obstruction this close to the ball is worth asking about
         }
 
         public static class Ai

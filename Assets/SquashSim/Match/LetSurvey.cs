@@ -22,6 +22,8 @@ namespace SquashSim
         public int Games, Rallies, Turns, FlaggedTurns, Appeals, BodyHitsLive;
         public double LiveSeconds;
         public readonly Dictionary<string, int> FlaggedBy = new Dictionary<string, int>();
+        /// <summary>What the referee would have called on each flagged turn (had the striker asked at its end).</summary>
+        public readonly Dictionary<string, int> WouldCall = new Dictionary<string, int>();
         public readonly Dictionary<string, int> Calls = new Dictionary<string, int>();
         public readonly List<int> Shots = new List<int>();
 
@@ -55,6 +57,7 @@ namespace SquashSim
                     double dt = PhysicsConfig.Current.Sim.FixedDt;
                     int seen = 0, lastShots = -1;
                     ObstructionKind worst = ObstructionKind.None;
+                    string would = null;
                     bool inTurn = false;
                     while (m.Phase != MatchPhase.MatchOver && m.Phase != MatchPhase.GameOver && m.StepCount < 240L * 1800)
                     {
@@ -66,10 +69,11 @@ namespace SquashSim
                             foreach (var e in m.StepEvents) if (e.Type == SimEventType.BodyHit) r.BodyHitsLive++;
                             if (m.Referee.Shots != lastShots)
                             {
-                                if (inTurn) { r.Turns++; if (worst != ObstructionKind.None) { r.FlaggedTurns++; Add(r.FlaggedBy, worst.ToString()); } }
-                                lastShots = m.Referee.Shots; worst = ObstructionKind.None; inTurn = m.Referee.Shots > 0;
+                                if (inTurn) { r.Turns++; if (worst != ObstructionKind.None) { r.FlaggedTurns++; Add(r.FlaggedBy, worst.ToString()); Add(r.WouldCall, would ?? "?"); } }
+                                lastShots = m.Referee.Shots; worst = ObstructionKind.None; inTurn = m.Referee.Shots > 0; would = null;
                             }
                             if (m.Interference.ThisTurn > worst) worst = m.Interference.ThisTurn;
+                            if (m.Interference.ThisTurn != ObstructionKind.None && m.Referee.Outcome == null) would = m.Interference.Decide().Reason;
                         }
                         if (m.History.Count != seen)
                         {
@@ -95,6 +99,8 @@ namespace SquashSim
             sb.AppendLine("LET SURVEY  " + Games + " games, " + Rallies + " rallies, " + (LiveSeconds / 60).ToString("0") + " min of live rally, median " + MedianShots + " shots");
             sb.AppendLine("  flagged turns " + FlaggedTurns + " / " + Turns + " = " + (100 * FlaggedShare).ToString("0.0") + "%");
             foreach (var kv in FlaggedBy) sb.AppendLine("    " + kv.Key + " " + kv.Value);
+            sb.AppendLine("  the referee would have called (flagged turns)");
+            foreach (var kv in WouldCall) sb.AppendLine("    " + kv.Value.ToString().PadLeft(4) + "  " + kv.Key);
             sb.AppendLine("  appeals " + Appeals + " (" + (60.0 * Appeals / Math.Max(1, LiveSeconds)).ToString("0.00") + " a minute), ball hit a player in a live rally " + BodyHitsLive);
             sb.AppendLine("  interference calls " + InterferenceCalls + " = " + (100 * CallShare).ToString("0.0") + "% of rallies");
             var l = new List<KeyValuePair<string, int>>(Calls); l.Sort((a, b) => b.Value.CompareTo(a.Value));

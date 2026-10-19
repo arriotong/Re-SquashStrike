@@ -11,6 +11,8 @@
 //   flips         a point ticks with a flip; a won game flashes GAMES
 //   game over     the game result, the break countdown
 //   banners       referee review, controller disconnected
+//   LET?          over a local striker's head while the referee would
+//                 give a let or a stroke for asking (P2-M7), with the key
 //
 // Reads state only. Hidden behind menus (the pause screen keeps it).
 // ===========================================================
@@ -32,12 +34,26 @@ namespace SquashGame
         readonly Label _system = new Label(), _games = new Label(), _meta = new Label();
         readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label(), _promptKey = new Label();
         readonly VisualElement _third = new VisualElement(), _promptBox = new VisualElement();
+        readonly VisualElement _let = new VisualElement();
+        readonly Label _letKey = new Label();
+        float _letHold;
+        int _letFor = -1;
         readonly int[] _lastPoints = { -1, -1 };
         int _lastGames = -1;
 
         /// <summary>What the call says now (tests).</summary>
         public string BannerText { get { return _third.style.display == DisplayStyle.Flex ? _banner.text : null; } }
         public string PromptText { get { return _promptBox.style.display == DisplayStyle.Flex ? _prompt.text : null; } }
+        /// <summary>The player the LET? chip is over now, or -1 (tests).</summary>
+        public int LetPromptFor { get { return _let.style.display == DisplayStyle.Flex ? _letFor : -1; } }
+
+        /// <summary>Would the referee give player <paramref name="i"/> a let or a stroke for asking now?</summary>
+        public static bool WouldGrant(MatchSimulation m, int i)
+        {
+            var it = m.Interference;
+            return PhysicsConfig.Current.Match.AppealsEnabled && m.Phase == MatchPhase.Rally && m.Referee.Outcome == null &&
+                   it.Striker == i && it.ThisTurn != ObstructionKind.None && it.Decide().Call != InterferenceCall.NoLet;
+        }
 
         public HudLayer()
         {
@@ -68,7 +84,11 @@ namespace SquashGame
             _promptBox.AddToClassList("hud-strip"); _promptBox.pickingMode = PickingMode.Ignore;
             _promptKey.AddToClassList("hud-strip-key"); _prompt.AddToClassList("hud-strip-text");
             _promptBox.Add(_promptKey); _promptBox.Add(_prompt); Add(_promptBox);
-            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta }) l.pickingMode = PickingMode.Ignore;
+            _let.AddToClassList("hud-let"); _let.pickingMode = PickingMode.Ignore;
+            var letWord = new Label("LET?"); letWord.AddToClassList("hud-let-word"); letWord.pickingMode = PickingMode.Ignore;
+            _letKey.AddToClassList("hud-let-key");
+            _let.Add(letWord); _let.Add(_letKey); _let.style.display = DisplayStyle.None; Add(_let);
+            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey }) l.pickingMode = PickingMode.Ignore;
         }
 
         static void Show(Label l, string text)
@@ -152,6 +172,30 @@ namespace SquashGame
             _promptBox.style.display = strip ? DisplayStyle.Flex : DisplayStyle.None;
             if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
             _banner.style.fontSize = 40 * CallTextScale;
+            LetChip(r, m, twoPlayer);
+        }
+
+        /// <summary>LET? over the local striker while asking would be granted; held a moment after it stops being so.</summary>
+        void LetChip(MatchRunner r, MatchSimulation m, bool twoPlayer)
+        {
+            int who = -1;
+            if (!r.ReplayActive)
+                for (int i = 0; i < 2; i++)
+                    if ((i == r.HumanIndex || twoPlayer) && WouldGrant(m, i)) who = i;
+            if (who >= 0) { _letFor = who; _letHold = 0.5f; }
+            else if (_letHold > 0 && m.Phase == MatchPhase.Rally && m.Referee.Outcome == null) _letHold -= Time.unscaledDeltaTime;
+            else _letHold = 0;
+            bool on = _letHold > 0 && _letFor >= 0;
+            _let.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!on || panel == null) return;
+            _letKey.text = twoPlayer && _letFor == 1 ? "Y" : "Q / Y";
+            var cam = Camera.main;
+            if (cam == null || _letFor >= r.View.Count) return;
+            Vector3 head = r.View.Athlete(_letFor).Pos + Vector3.up * 2.25f;
+            if (cam.WorldToScreenPoint(head).z <= 0) return;
+            Vector2 p = RuntimePanelUtils.CameraTransformWorldToPanel(panel, head, cam);
+            float w = float.IsNaN(_let.resolvedStyle.width) ? 0 : _let.resolvedStyle.width, h = float.IsNaN(_let.resolvedStyle.height) ? 0 : _let.resolvedStyle.height;
+            _let.style.left = p.x - w * 0.5f; _let.style.top = p.y - h;      // centred over the head
         }
     }
 }

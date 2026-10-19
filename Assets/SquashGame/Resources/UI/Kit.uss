@@ -740,6 +740,15 @@
 .hud-strip-key { padding: 3px 10px; margin-right: 12px; border-radius: 6px; font-size: 13px; color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .hud-strip-text { font-size: 15px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
+/* ---------- LET? over the striker (P2-M7) ---------- */
+.hud-let {
+    position: absolute; flex-direction: row; align-items: center;
+    padding: 4px 6px 4px 12px; border-radius: 16px; background-color: rgba(12, 13, 16, 0.88);
+    border-width: 2px; border-color: rgb(200, 255, 61);
+}
+.hud-let-word { font-size: 20px; color: rgb(200, 255, 61); margin-right: 8px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-let-key { padding: 2px 8px; border-radius: 6px; font-size: 12px; color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
 /* ---------- the arcade marquee ---------- */
 .ah-panel { width: 440px; padding: 14px 18px; border-left-width: 6px; border-left-color: rgb(200, 255, 61); }
 .ah-top { flex-direction: row; align-items: center; justify-content: space-between; }

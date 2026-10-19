@@ -283,7 +283,7 @@ namespace SquashSim
         public int GamesToWin;
         public double TX, TZ;               // where players recover to (the T)
         public double StartTemperature;     // ball temperature at the first serve when the warm-up is skipped
-        public bool AppealsEnabled = true;  // "let, please" (players and AI); the game turns it off for now
+        public bool AppealsEnabled = true;  // "let, please" (players and AI) and the referee's own swing call; the Lets setting
         public bool WarmUpEnabled;          // knock-up before the first serve (the ball starts cold)
         public double WarmUpSecondsEach;    // each player's half of the knock-up (real squash: 150 s)
         public double WarmUpRefeedSeconds;  // a dead ball is fed again after this long
@@ -502,7 +502,7 @@ namespace SquashSim
             UseGameAim();
             UseGameSwing();
             UseArcadeHit();
-            Current.Match.AppealsEnabled = false;                     // let calls: to be reworked
+            Current.Match.AppealsEnabled = true;                      // P2-M7: lets are back (Settings > Gameplay > Lets turns them off)
             // Presentation only: the drawn ball is bigger than the real one (physics radius unchanged).
             Current.Render.BallVisualScale = GameTuning.Ball.VisualScale;
         }

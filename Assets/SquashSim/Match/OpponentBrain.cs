@@ -74,6 +74,8 @@ namespace SquashSim
             p.TriggerJitter = 0.06 - 0.045 * d;
             p.SplitStepError = 0.15 - 0.11 * d;
             p.AimSlew = 0.05 + 0.04 * d;
+            p.AppealTendency = AppealTendency * (GameTuning.Interference.AppealAtEasy +
+                (1 - GameTuning.Interference.AppealAtEasy) * System.Math.Min(1.0, d / GameTuning.Interference.AppealFullAt));   // rare at Easy
             p.Name = Name + " (" + (d < 0.34 ? "easy" : d < 0.67 ? "medium" : "hard") + ")";
             return p;
         }
@@ -92,7 +94,7 @@ namespace SquashSim
         {
             var p = Base("Retriever");
             p.RiskAppetite = 0.2; p.WPressure = 1.0; p.WLength = 1.0; p.WWidth = 0.6; p.WLow = 0.1; p.WShort = 0.0;
-            p.TouchPreference = 0.1; p.DeceptionChance = 0.05; p.Discipline = 0.95;
+            p.TouchPreference = 0.1; p.DeceptionChance = 0.05; p.Discipline = 0.95; p.AppealTendency = 0.7;
             return p;
         }
 
@@ -101,7 +103,7 @@ namespace SquashSim
         {
             var p = Base("Attacker");
             p.RiskAppetite = 0.7; p.WPressure = 1.6; p.WLength = 0.3; p.WWidth = 0.4; p.WLow = 1.0; p.WShort = 0.2;
-            p.TouchPreference = 0.2; p.DeceptionChance = 0.15; p.PreparedPreference = 0.8;
+            p.TouchPreference = 0.2; p.DeceptionChance = 0.15; p.PreparedPreference = 0.8; p.AppealTendency = 0.6;
             return p;
         }
 
@@ -110,7 +112,7 @@ namespace SquashSim
         {
             var p = Base("Shot-maker");
             p.RiskAppetite = 0.6; p.WPressure = 1.3; p.WLength = 0.3; p.WWidth = 0.4; p.WLow = 0.4; p.WShort = 0.9;
-            p.TouchPreference = 0.8; p.DeceptionChance = 0.35;
+            p.TouchPreference = 0.8; p.DeceptionChance = 0.35; p.AppealTendency = 0.8;
             return p;
         }
 
@@ -119,7 +121,7 @@ namespace SquashSim
         {
             var p = Base("Grinder");
             p.RiskAppetite = 0.3; p.WPressure = 0.8; p.WLength = 1.2; p.WWidth = 1.0; p.WLow = 0.2; p.WShort = 0.0;
-            p.TouchPreference = 0.0; p.DeceptionChance = 0.1; p.Discipline = 1.0;
+            p.TouchPreference = 0.0; p.DeceptionChance = 0.1; p.Discipline = 1.0; p.AppealTendency = 0.95;   // asks for everything it is due
             return p;
         }
 
@@ -178,6 +180,7 @@ namespace SquashSim
         double _stickX, _stickY, _stickTX, _stickTY;
         double _splitAt = -1;
         double _obstructedFor, _lastObstructed = -1e9;
+        int _wastedAppealGame = -1;
         double _holdFor;
         bool _notedLanding;
         MatchPhase _lastPhase = MatchPhase.MatchOver;
@@ -438,23 +441,37 @@ namespace SquashSim
             // A player knows the rules: they ask when they would get a let or a stroke, and
             // otherwise play on. Their read of the situation is imperfect (Misjudge). They ask
             // about the obstruction that is hampering them now (or just did), not a brush early
-            // in the turn they have since moved past.
+            // in the turn they have since moved past. P2-M7 rules, like a person:
+            //   - never when it was not trying (it knows it was not)
+            //   - after one appeal for nothing in a game, it only asks when it is sure
+            //   - the tendency is the personality's, rare at Easy (AiProfile.WithDifficulty)
             if (!warmUp && myTurn && m.TurnShots > 0 && !_appealed && m.Interference.Striker == me &&
-                m.Interference.ThisTurn != ObstructionKind.None)
+                m.Interference.ThisTurn != ObstructionKind.None && PhysicsConfig.Current.Match.AppealsEnabled)
             {
                 var kind = m.Interference.Current;
                 if (kind != ObstructionKind.None) { _obstructedFor += dt; _lastObstructed = t; }
                 bool aboutToStrike = canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Time < 0.45;
                 bool cannotPlay = !ctrl.Prediction.Valid && _read.Valid && _read.Time < 0.6 && t - _lastObstructed < 0.8;
-                bool hampered = _obstructedFor > 0.25 &&
-                    ((kind != ObstructionKind.None && kind != ObstructionKind.Access && aboutToStrike) || cannotPlay);
+                bool blockedNearBall = kind == ObstructionKind.Access && m.Interference.TimeToBall < GameTuning.Interference.AppealNearBall;
+                // In the line or the swing as it is about to play (those already persist, Interference); blocked on the
+                // way with the ball close; or, for a while, it cannot get to the ball at all.
+                bool hampered = ((kind == ObstructionKind.Line || kind == ObstructionKind.Swing) && aboutToStrike) || blockedNearBall ||
+                    (_obstructedFor > GameTuning.Interference.AppealHampered && cannotPlay);
                 if (hampered)
                 {
                     _appealed = true;
-                    var verdict = m.Interference.Decide().Call;
-                    bool expectsIt = verdict != InterferenceCall.NoLet;
-                    if (Uniform() < Profile.Misjudge) expectsIt = !expectsIt;
-                    if (expectsIt && Uniform() < Profile.AppealTendency) intent.AppealPressed = true;
+                    var d = m.Interference.Decide();
+                    bool trying = !d.Reason.Contains("every effort");
+                    int game = m.Score.Games[0] + m.Score.Games[1];
+                    bool expectsIt = d.Call != InterferenceCall.NoLet;
+                    bool misread = trying && _wastedAppealGame != game && Uniform() < Profile.Misjudge;
+                    if (misread) expectsIt = !expectsIt;
+                    double share = kind == ObstructionKind.Access || cannotPlay ? GameTuning.Interference.AppealShareWay : GameTuning.Interference.AppealShare;
+                    if (trying && expectsIt && Uniform() < Profile.AppealTendency * share)
+                    {
+                        intent.AppealPressed = true;
+                        if (d.Call == InterferenceCall.NoLet) _wastedAppealGame = game;   // that one was for nothing
+                    }
                 }
             }
 

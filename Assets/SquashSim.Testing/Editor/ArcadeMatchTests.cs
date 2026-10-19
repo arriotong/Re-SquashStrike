@@ -395,9 +395,9 @@ namespace SquashSim.Tests
             Assert.That(me.Player.Speed, Is.GreaterThan(PhysicsConfig.Current.Player.AdjustSpeed + 1), "full speed near the ball");
         }
 
-        [Test] public void NoLetAppealsInTheGame()
+        [Test] public void LetAppealsAreOnInTheGame()
         {
-            Assert.That(PhysicsConfig.Current.Match.AppealsEnabled, Is.False);
+            Assert.That(PhysicsConfig.Current.Match.AppealsEnabled, Is.True, "P2-M7: lets are back (the Lets setting turns them off per match)");
             PhysicsConfig.ResetToDefaults();
             Assert.That(PhysicsConfig.Current.Match.AppealsEnabled, Is.True, "the lab keeps them");
         }

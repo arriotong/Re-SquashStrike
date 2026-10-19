@@ -72,7 +72,7 @@ public static class Program
         if (Array.IndexOf(args, "--career-calibrate") >= 0) { CareerBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
         if (Array.IndexOf(args, "--let-survey") >= 0) { Console.Write(SquashSim.LetSurvey.Run(Arg(args, "--games") != null ? games : 48, Array.IndexOf(args, "--no-appeals") < 0)); return 0; }
         if (Array.IndexOf(args, "--make-replays") >= 0) { ReplayTool.Make(Arg(args, "--out") ?? "../../Assets/SquashGame/Resources/Replays"); return 0; }
-        if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
+        if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.NoLets = Array.IndexOf(args, "--no-lets") >= 0; PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {
             PressAudit.AimHigh = Array.IndexOf(args, "--aim-high") >= 0;
