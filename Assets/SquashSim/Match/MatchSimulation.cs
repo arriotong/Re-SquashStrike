@@ -153,6 +153,23 @@ namespace SquashSim
         }
 
         /// <summary>Skip the rest of the knock-up (both players ready).</summary>
+        /// <summary>The referee's scenario suite (P2-M7 tests): a live rally at a chosen moment. Athlete 0 served, athlete 1
+        /// has just struck a legal return from <paramref name="ballPos"/> with <paramref name="ballVel"/>; athlete 0 plays next.
+        /// The athletes stand where given. Everything after this is the real sim.</summary>
+        public void StageRally(V3 ballPos, V3 ballVel, double x0, double z0, double x1, double z1)
+        {
+            Phase = MatchPhase.Rally; PhaseTime = 0;
+            Referee.BeginRally(0, 1);
+            Referee.OnRacketContact(new SimEvent { Type = SimEventType.RacketContact, PlayerIndex = 0, Point = new V3(0, 1, 5) }, new V3(2.4, 0, 5.06));
+            Referee.OnImpact(new SimEvent { Type = SimEventType.Impact, SurfaceClass = "frontWall", SurfaceId = "frontWall", Point = new V3(0.5, 3, 0) });
+            Referee.OnImpact(new SimEvent { Type = SimEventType.Impact, SurfaceClass = "floor", SurfaceId = "floor", Point = new V3(-1.6, 0, 7.5) });
+            Referee.OnRacketContact(new SimEvent { Type = SimEventType.RacketContact, PlayerIndex = 1, Point = ballPos.Clone() }, new V3(ballPos.X, 0, ballPos.Z + 0.4));
+            Ball.Reset(ballPos, ballVel, null, PhysicsConfig.Current.Match.StartTemperature);
+            Players[0].Player.Pos.Set(x0, 0, z0); Players[0].Player.Vel.Set(0, 0, 0);
+            Players[1].Player.Pos.Set(x1, 0, z1); Players[1].Player.Vel.Set(0, 0, 0);
+            Interference.Reset();
+        }
+
         public void SkipWarmUp()
         {
             if (Phase != MatchPhase.WarmUp) return;

@@ -16,7 +16,12 @@
 // It DETECTS every step and keeps what a referee weighs for the turn:
 //   reach     could the striker have got to the ball? (an intercept read)
 //   effort    was the striker moving to the ball?
-//   clearing  was the opponent moving out of the way while obstructing?
+//   clearing  did the opponent get off the striker's corridor (metres)?
+//
+// P2-M7 (v3): only obstruction that MATTERS counts - a referee would not
+// notice the rest. Access must hold (0.15 s), be on the stretch of path
+// just ahead of a striker who is running that way; line and swing count
+// only within 0.45 s of the strike. Numbers: GameTuning.Interference.
 // An appeal is then decided (interference v2):
 //   no obstruction, couldn't reach, or no effort        -> No let
 //   in the swing, or in the line to the front wall      -> Stroke
@@ -38,42 +43,54 @@ namespace SquashSim
 
     public sealed class Interference
     {
-        public double AccessClearance = 0.10;    // extra metres beside the two bodies on the path
-        public double SwingClearance = 0.95;     // racket arc around the hitting point
-        public double LineHalfWidth = 0.20;      // corridor to the front wall (plus the body radius): the ball's path, not a lane
-        public double LineMaxDistance = 3.5;     // the line test only applies near the hitting point
-        public double EffortMinSpeed = 1.0;      // mean speed toward the ball that counts as "every effort" (m/s)
-        public double EffortCloseEnough = 1.2;   // already this close to the ball: no running needed
-        public double ClearMinSpeed = 1.0;       // obstructor's mean speed out of the way that counts as clearing
-        public double ClearGrace = 0.20;         // an obstruction shorter than this was cleared in time
-        public double ReachSlack = 0.15;         // seconds short of the intercept a referee still calls reachable
-        public double ReactionGrace = 0.15;      // effort is judged after the striker has had time to react
+        public double AccessClearance = GameTuning.Interference.AccessClearance;
+        public double SwingClearance = GameTuning.Interference.SwingClearance;
+        public double LineHalfWidth = GameTuning.Interference.LineHalfWidth;
+        public double LineMaxDistance = GameTuning.Interference.LineMaxDistance;
+        public double EffortMinSpeed = GameTuning.Interference.EffortMinSpeed;
+        public double EffortCloseEnough = GameTuning.Interference.EffortCloseEnough;
+        public double ClearMinDistance = GameTuning.Interference.ClearMinDistance;
+        public double ClearGrace = GameTuning.Interference.ClearGrace;
+        public double ReachSlack = GameTuning.Interference.ReachSlack;
+        public double ReactionGrace = GameTuning.Interference.ReactionGrace;
+        public double AccessPersist = GameTuning.Interference.AccessPersist;
+        public double AccessAhead = GameTuning.Interference.AccessAhead;
+        public double AccessMinApproach = GameTuning.Interference.AccessMinApproach;
+        public double AccessTransitSpeed = GameTuning.Interference.AccessTransitSpeed;
+        public double StrikeWindow = GameTuning.Interference.StrikeWindow;
+        public double NearPersist = GameTuning.Interference.NearPersist;
 
         /// <summary>The player now going for the ball (-1 when nobody is).</summary>
         public int Striker { get; private set; } = -1;
+        /// <summary>The obstruction that counts now (P2-M7: it matters - see Update).</summary>
         public ObstructionKind Current { get; private set; }
-        /// <summary>The most serious obstruction seen this turn (latched until the next racket contact).</summary>
+        /// <summary>Raw geometry this step, before it is weighed (debug, the overlay).</summary>
+        public ObstructionKind Raw { get; private set; }
+        /// <summary>The most serious obstruction counted this turn (latched until the next racket contact).</summary>
         public ObstructionKind ThisTurn { get; private set; }
         public double ObstructedSeconds { get; private set; }
         public double TargetX { get; private set; }
         public double TargetZ { get; private set; }
+        /// <summary>Seconds until the ball is playable where the striker is going.</summary>
+        public double TimeToBall { get; private set; }
 
         readonly BallReader _read = new BallReader { RefreshSteps = 4 };
         int _turnKey = -1;
-        double _turnTime, _effortSum, _effortTime, _clearSum, _clearTime;
+        double _turnTime, _effortSum, _effortTime, _weighedFor;
         bool _reachableAtObstruction, _reachableNow;
-        double _distAtObstruction;
+        double _distAtObstruction, _cleared;
 
         /// <summary>Mean speed of the striker toward the ball this turn (after the reaction grace).</summary>
         public double StrikerEffort { get { return _effortTime > 0 ? _effortSum / _effortTime : 0; } }
-        /// <summary>Mean speed of the obstructor out of the way while obstructing.</summary>
-        public double ObstructorClearing { get { return _clearTime > 0 ? _clearSum / _clearTime : 0; } }
+        /// <summary>How far (m) the obstructor ran off the striker's corridor while in the way, under its own steam (being
+        /// pushed by the striker's body does not count): clearing.</summary>
+        public double ObstructorClearing { get { return _cleared; } }
         public bool Reachable { get { return _reachableAtObstruction || _reachableNow; } }
 
         public void Reset()
         {
             Striker = -1;
-            Current = ObstructionKind.None;
+            Current = ObstructionKind.None; Raw = ObstructionKind.None;
             ThisTurn = ObstructionKind.None;
             ObstructedSeconds = 0;
             _turnKey = -1;
@@ -95,47 +112,71 @@ namespace SquashSim
                 ThisTurn = ObstructionKind.None;
                 ObstructedSeconds = 0;
                 _read.Invalidate();
-                _turnTime = 0; _effortSum = 0; _effortTime = 0; _clearSum = 0; _clearTime = 0;
-                _reachableAtObstruction = false; _reachableNow = false; _distAtObstruction = 0;
+                _turnTime = 0; _effortSum = 0; _effortTime = 0; _weighedFor = 0;
+                _reachableAtObstruction = false; _reachableNow = false; _distAtObstruction = 0; _cleared = 0;
             }
             _turnTime += dt;
             Striker = striker;
-            Current = ObstructionKind.None;
+            Current = ObstructionKind.None; Raw = ObstructionKind.None;
             if (striker < 0 || r.Shots == 0) return;          // nobody going for it, or the serve
 
             if (!_read.Read(m.Ball, m.Surfaces, m.Players[striker].Player)) return;   // where the striker would hit
             TargetX = _read.X;
             TargetZ = _read.Z;
+            TimeToBall = _read.Time;
             _reachableNow = _read.ShortBy <= ReachSlack;
 
             TestPlayer s = m.Players[striker].Player;
             TestPlayer o = m.Players[1 - striker].Player;
-            Current = Detect(s.Pos.X, s.Pos.Z, o.Pos.X, o.Pos.Z, TargetX, TargetZ);
+            Raw = Detect(s.Pos.X, s.Pos.Z, o.Pos.X, o.Pos.Z, TargetX, TargetZ);
 
             // Effort: the striker's speed toward the hitting point.
             double tx = TargetX - s.Pos.X, tz = TargetZ - s.Pos.Z;
             double td = System.Math.Sqrt(tx * tx + tz * tz);
+            double approach = td > 1e-6 ? (s.Vel.X * tx + s.Vel.Z * tz) / td : 0;
             if (_turnTime > ReactionGrace && td > 1e-6)
             {
-                _effortSum += System.Math.Max(0, (s.Vel.X * tx + s.Vel.Z * tz) / td) * dt;
+                _effortSum += System.Math.Max(0, approach) * dt;
                 _effortTime += dt;
             }
+
+            // The obstructor's distance off the striker's corridor (feet -> hitting point).
+            double u = td < 1e-6 ? 0 : System.Math.Max(0, System.Math.Min(1, ((o.Pos.X - s.Pos.X) * tx + (o.Pos.Z - s.Pos.Z) * tz) / (td * td)));
+            double ax = o.Pos.X - (s.Pos.X + tx * u), az = o.Pos.Z - (s.Pos.Z + tz * u);
+            double off = System.Math.Sqrt(ax * ax + az * az);
+
+            // P2-M7: weigh it - does this obstruction matter? (a referee would not notice the rest)
+            ObstructionKind weighed = ObstructionKind.None;
+            double across = td < 1e-6 ? 0 : System.Math.Abs(o.Vel.X * -tz + o.Vel.Z * tx) / td;   // the obstructor's speed across the path
+            if (Raw == ObstructionKind.Access)
+            {
+                bool ahead = u * td <= AccessAhead;                      // in the stretch of path just ahead
+                bool running = approach >= AccessMinApproach || td <= EffortCloseEnough;
+                bool transit = across >= AccessTransitSpeed;             // passing straight through: not in the way
+                if (ahead && running && !transit) weighed = ObstructionKind.Access;
+            }
+            else if (Raw == ObstructionKind.Line || Raw == ObstructionKind.Swing)
+            {
+                if (TimeToBall <= StrikeWindow) weighed = Raw;           // only near the strike
+                else if (u * td <= AccessAhead && approach >= AccessMinApproach && Detect(s.Pos.X, s.Pos.Z, o.Pos.X, o.Pos.Z, TargetX, TargetZ, true) == ObstructionKind.Access)
+                    weighed = ObstructionKind.Access;                    // earlier, it can still be in the way to the ball
+            }
+            _weighedFor = weighed == ObstructionKind.None ? 0 : _weighedFor + dt;
+            double persist = weighed == ObstructionKind.Access ? AccessPersist : NearPersist;
+            if (weighed != ObstructionKind.None && _weighedFor >= persist) Current = weighed;
 
             if (Current != ObstructionKind.None)
             {
                 if (ObstructedSeconds == 0) { _reachableAtObstruction = _reachableNow; _distAtObstruction = td; }
                 ObstructedSeconds += dt;
                 if (Severity(Current) > Severity(ThisTurn)) ThisTurn = Current;
-
-                // Clearing: the obstructor's speed away from the striker's corridor / hitting point.
-                double px = TargetX - s.Pos.X, pz = TargetZ - s.Pos.Z, len2 = px * px + pz * pz;
-                double u = len2 < 1e-9 ? 0 : System.Math.Max(0, System.Math.Min(1, ((o.Pos.X - s.Pos.X) * px + (o.Pos.Z - s.Pos.Z) * pz) / len2));
-                double ax = o.Pos.X - (s.Pos.X + px * u), az = o.Pos.Z - (s.Pos.Z + pz * u);
-                double ad = System.Math.Sqrt(ax * ax + az * az);
-                if (ad < 1e-6) { ax = -pz; az = px; ad = System.Math.Sqrt(ax * ax + az * az); }
-                double away = ad < 1e-9 ? 0 : (o.Vel.X * ax + o.Vel.Z * az) / ad;
-                _clearSum += System.Math.Max(0, away) * dt;
-                _clearTime += dt;
+            }
+            if (Current != ObstructionKind.None || (ObstructedSeconds > 0 && Raw != ObstructionKind.None))
+            {
+                // clearing: the obstructor's own speed away from the corridor (velocity: pushes move the body, not this)
+                if (off < 1e-6) { ax = -tz; az = tx; off = System.Math.Sqrt(ax * ax + az * az); }
+                double away = off < 1e-9 ? 0 : (o.Vel.X * ax + o.Vel.Z * az) / off;
+                _cleared += System.Math.Max(0, away) * dt;
             }
         }
 
@@ -151,18 +192,22 @@ namespace SquashSim
         }
 
         /// <summary>Pure geometry, exposed for tests and for the AI's clearing logic.</summary>
-        public ObstructionKind Detect(double sx, double sz, double ox, double oz, double tx, double tz)
+        public ObstructionKind Detect(double sx, double sz, double ox, double oz, double tx, double tz) { return Detect(sx, sz, ox, oz, tx, tz, false); }
+
+        /// <summary>Geometry; accessOnly: just the path test.</summary>
+        public ObstructionKind Detect(double sx, double sz, double ox, double oz, double tx, double tz, bool accessOnly)
         {
             double R = PhysicsConfig.Current.Player.Radius;
-
-            // Line: opponent between the hitting point and the front wall, close to the straight line.
             double dtx = ox - tx, dtz = oz - tz;
             double fromTarget = System.Math.Sqrt(dtx * dtx + dtz * dtz);
-            if (oz < tz && System.Math.Abs(ox - tx) < LineHalfWidth + R && fromTarget < LineMaxDistance)
-                return ObstructionKind.Line;
-
-            // Swing: opponent inside the racket arc around the hitting point.
-            if (fromTarget < SwingClearance) return ObstructionKind.Swing;
+            if (!accessOnly)
+            {
+                // Line: opponent between the hitting point and the front wall, close to the straight line.
+                if (oz < tz && System.Math.Abs(ox - tx) < LineHalfWidth + R && fromTarget < LineMaxDistance)
+                    return ObstructionKind.Line;
+                // Swing: opponent inside the racket arc around the hitting point.
+                if (fromTarget < SwingClearance) return ObstructionKind.Swing;
+            }
 
             // Access: opponent's body on the striker's path to the ball.
             double px = tx - sx, pz = tz - sz;
@@ -176,13 +221,14 @@ namespace SquashSim
             return ObstructionKind.None;
         }
 
-        /// <summary>The referee's decision on an appeal by the current striker (interference v2).</summary>
+        /// <summary>The referee's decision on an appeal by the current striker.</summary>
         public InterferenceDecision Decide()
         {
             return Judge(ThisTurn, Reachable, StrikerEffort, _distAtObstruction, ObstructedSeconds, ObstructorClearing);
         }
 
-        /// <summary>The decision itself, from what was observed this turn (pure: unit-tested).</summary>
+        /// <summary>The decision itself, from what was observed this turn (pure: unit-tested). clearing: metres the
+        /// obstructor got off the striker's corridor while in the way.</summary>
         public InterferenceDecision Judge(ObstructionKind worst, bool reachable, double effort, double distAtObstruction,
                                           double obstructedSeconds, double clearing)
         {
@@ -196,7 +242,7 @@ namespace SquashSim
                 return new InterferenceDecision { Call = InterferenceCall.Stroke, Reason = "Stroke - opponent in the line to the front wall" };
             if (worst == ObstructionKind.Swing)
                 return new InterferenceDecision { Call = InterferenceCall.Stroke, Reason = "Stroke - opponent in the swing" };
-            bool cleared = obstructedSeconds < ClearGrace || clearing >= ClearMinSpeed;
+            bool cleared = obstructedSeconds < ClearGrace || clearing >= ClearMinDistance;
             return cleared
                 ? new InterferenceDecision { Call = InterferenceCall.Let, Reason = "Let - opponent was clearing" }
                 : new InterferenceDecision { Call = InterferenceCall.Stroke, Reason = "Stroke - opponent did not clear" };

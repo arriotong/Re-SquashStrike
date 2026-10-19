@@ -120,6 +120,27 @@ namespace SquashSim
         }
 
         /// <summary>The opponents (MatchBench --balance 2026-10-18: the human-style model wins ~61 / 44 / 27% of rallies).</summary>
+        /// <summary>The referee's view of interference (Interference). P2-M7: only obstruction that matters counts.</summary>
+        public static class Interference
+        {
+            public const double AccessClearance = 0.10;    // m beside the two bodies on the striker's path
+            public const double SwingClearance = 0.95;     // m: the racket arc around the hitting point
+            public const double LineHalfWidth = 0.20;      // m (plus the body radius): the corridor to the front wall
+            public const double LineMaxDistance = 3.5;     // m: the line test applies near the hitting point
+            public const double EffortMinSpeed = 1.0;      // m/s toward the ball that counts as "every effort"
+            public const double EffortCloseEnough = 1.2;   // m: already this close, no running needed
+            public const double ClearMinDistance = 0.25;   // m moved off the striker's corridor while in the way = clearing
+            public const double ClearGrace = 0.20;         // s: an obstruction shorter than this was cleared in time
+            public const double ReachSlack = 0.15;         // s short of the intercept a referee still calls reachable
+            public const double ReactionGrace = 0.15;      // s: effort is judged after the striker could react
+            public const double AccessPersist = 0.15;      // s: in the way this long before it counts (a crossing is free)
+            public const double AccessAhead = 1.8;         // m: only the stretch of path just ahead of the striker
+            public const double AccessMinApproach = 0.8;   // m/s: the striker is actually running that way
+            public const double AccessTransitSpeed = 2.5;  // m/s across the path: passing through, not standing in the way
+            public const double StrikeWindow = 0.45;       // s before the ball is playable: line and swing count only then
+            public const double NearPersist = 0.05;        // s: line / swing must hold this long (a few steps)
+        }
+
         public static class Ai
         {
             // difficulty d (0..1): reaction, aim noise, run speed and pace
