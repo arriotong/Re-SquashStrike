@@ -139,6 +139,9 @@ namespace SquashSim
             public const double AccessTransitSpeed = 2.5;  // m/s across the path: passing through, not standing in the way
             public const double StrikeWindow = 0.45;       // s before the ball is playable: line and swing count only then
             public const double NearPersist = 0.05;        // s: line / swing must hold this long (a few steps)
+            // Getting out of the way (P2-M7 L2)
+            public const double StrikerKeep = 0.85;        // share of the striker's closing speed kept on body contact (live rally)
+            public const double AssistGiveWay = 0.6;       // Assisted, non-striker in the way: sideways steer blended into the move
         }
 
         public static class Ai

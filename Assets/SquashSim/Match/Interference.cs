@@ -173,10 +173,13 @@ namespace SquashSim
             }
             if (Current != ObstructionKind.None || (ObstructedSeconds > 0 && Raw != ObstructionKind.None))
             {
-                // clearing: the obstructor's own speed away from the corridor (velocity: pushes move the body, not this)
+                // clearing: the obstructor's own speed away from the corridor - what it is moving AND trying to move
+                // (being bumped aside by the striker carries the body, and is not an effort to clear)
                 if (off < 1e-6) { ax = -tz; az = tx; off = System.Math.Sqrt(ax * ax + az * az); }
                 double away = off < 1e-9 ? 0 : (o.Vel.X * ax + o.Vel.Z * az) / off;
-                _cleared += System.Math.Max(0, away) * dt;
+                m.SteeredMove(1 - striker, out double wx, out double wz);
+                double wants = off < 1e-9 ? 0 : PhysicsConfig.Current.Player.MaxSpeed * (wx * ax + wz * az) / off;
+                _cleared += System.Math.Max(0, System.Math.Min(away, wants)) * dt;
             }
         }
 

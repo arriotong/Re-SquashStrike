@@ -139,6 +139,47 @@ namespace SquashSim.Tests
             Assert.That(r.Worst, Is.EqualTo(ObstructionKind.None), "a crossing a referee would not notice");
         }
 
+        /// <summary>The striker runs at the hitting point through a standing opponent (L2: getting out of the way);
+        /// returns the closest the striker got and how far the opponent was moved.</summary>
+        static void RunThrough(bool assisted, bool runs, out double closest, out double moved)
+        {
+            var t = Target();
+            var m = Match();
+            m.StageRally(From, Drive, t.X + 3.0, t.Z + 0.2, t.X + 1.5, t.Z + 0.25);
+            m.Players[1].Arcade.Assisted = assisted;
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            double ox = m.Players[1].Player.Pos.X, oz = m.Players[1].Player.Pos.Z;
+            closest = double.MaxValue;
+            for (int i = 0; i < 240 && m.Referee.Outcome == null; i++)
+            {
+                var me = m.Players[0].Player; var a = m.Intents[0];
+                double dx = t.X - me.Pos.X, dz = t.Z - me.Pos.Z, d = Math.Sqrt(dx * dx + dz * dz);
+                closest = Math.Min(closest, d);
+                if (runs && d > 0.3) { a.Move.X = dx / d; a.Move.Z = dz / d; a.MoveMagnitude = 1; } else a.MoveMagnitude = 0;
+                m.Intents[1].MoveMagnitude = 0;
+                m.Step(dt);
+            }
+            double mx = m.Players[1].Player.Pos.X - ox, mz = m.Players[1].Player.Pos.Z - oz;
+            moved = Math.Sqrt(mx * mx + mz * mz);
+        }
+
+        [Test] public void TheNonStrikerGivesWayOnContact()
+        {
+            RunThrough(false, true, out double closest, out double moved);
+            UnityEngine.Debug.Log("[P2M7] give way: striker got within " + closest.ToString("0.00") + " m, opponent moved " + moved.ToString("0.00") + " m");
+            Assert.That(closest, Is.LessThan(0.6), "the striker slides past and reaches the ball");
+            Assert.That(moved, Is.GreaterThan(0.3), "the standing opponent was moved aside");
+        }
+
+        [Test] public void AssistedNonStrikerIsSteeredOutOfTheWay()
+        {
+            RunThrough(true, false, out _, out double assisted);
+            RunThrough(false, false, out _, out double manual);
+            UnityEngine.Debug.Log("[P2M7] Assisted give-way: moved " + assisted.ToString("0.00") + " m (Non-assisted " + manual.ToString("0.00") + ")");
+            Assert.That(manual, Is.LessThan(0.05), "Non-assisted: you steer yourself");
+            Assert.That(assisted, Is.GreaterThan(0.4), "Assisted: stepped off the corridor with no input");
+        }
+
         [Test] public void TheSurveyIsWithinItsTargets()
         {
             var s = LetSurvey.Run(12);

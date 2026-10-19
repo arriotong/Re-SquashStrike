@@ -12,6 +12,9 @@
 //   Body vs body   Athletes cannot pass through each other. Overlap is
 //                  pushed apart symmetrically and part of the closing
 //                  speed is removed, so contact feels firm, not sticky.
+//                  In a live rally (P2-M7) the one NOT going for the ball
+//                  gives way: it takes the push, sideways off the
+//                  striker's run, and the striker keeps most of its speed.
 //                  Emits PlayerContact on the step contact begins
 //                  (the future interference system reads it).
 //
@@ -101,7 +104,7 @@ namespace SquashSim
         /// <summary>Keep two athletes apart. Returns a PlayerContact event on the step they
         /// first touch (wasTouching = whether they touched last step), else null.</summary>
         public static SimEvent BodyVsBody(TestPlayer a, int ia, TestPlayer b, int ib, bool wasTouching,
-                                          out bool touching, double time)
+                                          out bool touching, double time, int striker = -1)
         {
             touching = false;
             var cfg = PhysicsConfig.Current.PlayerContact;
@@ -116,6 +119,17 @@ namespace SquashSim
 
             double nx, nz;
             if (d < 1e-9) { nx = 1; nz = 0; } else { nx = dx / d; nz = dz / d; }
+            if (striker == ia || striker == ib)
+            {
+                bool sa = striker == ia;
+                GiveWay(sa ? a : b, sa ? b : a, sa ? nx : -nx, sa ? nz : -nz, min - d, R);
+                if (wasTouching) return null;
+                return new SimEvent
+                {
+                    Type = SimEventType.PlayerContact, PlayerIndex = ia, OtherIndex = ib,
+                    Point = new V3((a.Pos.X + b.Pos.X) * 0.5, 1.0, (a.Pos.Z + b.Pos.Z) * 0.5), Time = time
+                };
+            }
             double push = (min - d) * 0.5;
             a.Pos.X -= nx * push; a.Pos.Z -= nz * push;
             b.Pos.X += nx * push; b.Pos.Z += nz * push;
@@ -141,6 +155,46 @@ namespace SquashSim
                 ImpactSpeed = -rel,
                 Time = time
             };
+        }
+
+        /// <summary>The non-striker <paramref name="o"/> gives way to the striker <paramref name="s"/> (n: from s to o).
+        /// It takes the whole push, turned sideways off the striker's run so the two slide past; whatever a wall stops
+        /// goes back to the striker. The striker keeps most of its closing speed; the non-striker is carried off at it.</summary>
+        static void GiveWay(TestPlayer s, TestPlayer o, double nx, double nz, double overlap, double R)
+        {
+            // Sideways: the push direction minus its part along the striker's run (o is moved off the line, not ahead of s).
+            double sv = System.Math.Sqrt(s.Vel.X * s.Vel.X + s.Vel.Z * s.Vel.Z);
+            double px = nx, pz = nz;
+            if (sv > 0.5)
+            {
+                double ux = s.Vel.X / sv, uz = s.Vel.Z / sv, along = nx * ux + nz * uz;
+                if (along > 0)
+                {
+                    double qx = nx - along * ux, qz = nz - along * uz, q = System.Math.Sqrt(qx * qx + qz * qz);
+                    if (q < 1e-6) { qx = -uz; qz = ux; q = 1; }        // dead ahead: step to the striker's left
+                    qx /= q; qz /= q;
+                    double cos = qx * nx + qz * nz;                    // enough sideways to clear the overlap along n
+                    if (cos > 0.3) { px = qx / cos; pz = qz / cos; }
+                }
+            }
+            o.Pos.X += px * overlap; o.Pos.Z += pz * overlap;
+            ClampToCourt(o, R);
+            // What a wall took back: the striker gives up the rest.
+            double ddx = o.Pos.X - s.Pos.X, ddz = o.Pos.Z - s.Pos.Z, dd = System.Math.Sqrt(ddx * ddx + ddz * ddz);
+            if (dd < 2 * R)
+            {
+                double rx = dd < 1e-9 ? -nx : -ddx / dd, rz = dd < 1e-9 ? -nz : -ddz / dd;
+                s.Pos.X += rx * (2 * R - dd); s.Pos.Z += rz * (2 * R - dd);
+                ClampToCourt(s, R);
+            }
+            // Closing speed: the striker keeps most; the non-striker is carried off at that speed.
+            double sn = s.Vel.X * nx + s.Vel.Z * nz, on = o.Vel.X * nx + o.Vel.Z * nz;
+            if (sn > on)
+            {
+                double sn2 = on + (sn - on) * GameTuning.Interference.StrikerKeep;
+                s.Vel.X += nx * (sn2 - sn); s.Vel.Z += nz * (sn2 - sn);
+                o.Vel.X += nx * (sn2 - on); o.Vel.Z += nz * (sn2 - on);
+            }
         }
 
         static void ClampToCourt(TestPlayer p, double r)

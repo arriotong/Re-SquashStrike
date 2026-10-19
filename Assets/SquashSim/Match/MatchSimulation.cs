@@ -170,6 +170,34 @@ namespace SquashSim
             Interference.Reset();
         }
 
+        /// <summary>Assisted give-way: when player <paramref name="i"/> is in the striker's way (the raw geometry), blend a
+        /// sideways step off the striker's corridor into the move. Deterministic, from sim state only.</summary>
+        readonly double[] _steerX = new double[2], _steerZ = new double[2];
+
+        /// <summary>The move player <paramref name="i"/> steered this step (its input, or the Assisted give-way blend):
+        /// what the referee counts as trying to move (Interference clearing).</summary>
+        public void SteeredMove(int i, out double x, out double z) { x = _steerX[i]; z = _steerZ[i]; }
+
+        bool GiveWayNudge(int i, InputIntent mv)
+        {
+            var it = Interference;
+            if (Phase != MatchPhase.Rally || Referee.Outcome != null || it.Striker != 1 - i || it.Raw == ObstructionKind.None) return false;
+            var me = Players[i].Player.Pos; var s = Players[1 - i].Player.Pos;
+            double px = it.TargetX - s.X, pz = it.TargetZ - s.Z, len2 = px * px + pz * pz;
+            double u = len2 < 1e-9 ? 0 : PhysicsConfig.Clamp(((me.X - s.X) * px + (me.Z - s.Z) * pz) / len2, 0, 1);
+            double ax = me.X - (s.X + px * u), az = me.Z - (s.Z + pz * u), ad = System.Math.Sqrt(ax * ax + az * az);
+            if (ad < 1e-6) { ax = -pz; az = px; ad = System.Math.Sqrt(ax * ax + az * az); if (ad < 1e-9) return false; }
+            ax /= ad; az /= ad;
+            double k = GameTuning.Interference.AssistGiveWay;
+            double mx = mv.Move.X * mv.MoveMagnitude, mz = mv.Move.Z * mv.MoveMagnitude;
+            if (mx * ax + mz * az >= k) return false;              // already stepping out
+            mx += ax * k; mz += az * k;
+            double m = System.Math.Sqrt(mx * mx + mz * mz);
+            if (m < 1e-9) return false;
+            mv.Move.X = mx / m; mv.Move.Z = mz / m; mv.MoveMagnitude = System.Math.Min(1.0, System.Math.Max(m, k));
+            return true;
+        }
+
         public void SkipWarmUp()
         {
             if (Phase != MatchPhase.WarmUp) return;
@@ -342,7 +370,13 @@ namespace SquashSim
                 var c = Players[i];
                 c.ContactEnabled = CanStrike(i);
                 c.ServeStroke = Phase == MatchPhase.Rally && Referee.Shots == 0;
-                SimEvent contact = c.Step(Intents[i], Ball, Surfaces, dt);
+                // Assisted, a local non-striker in the way: steered sideways off the striker's corridor (P2-M7).
+                var mv = Intents[i];
+                double keepX = mv.Move.X, keepZ = mv.Move.Z, keepM = mv.MoveMagnitude;
+                bool nudged = Bots[i] == null && c.Arcade.Assisted && GiveWayNudge(i, mv);
+                _steerX[i] = mv.Move.X * mv.MoveMagnitude; _steerZ[i] = mv.Move.Z * mv.MoveMagnitude;
+                SimEvent contact = c.Step(mv, Ball, Surfaces, dt);
+                if (nudged) { mv.Move.X = keepX; mv.Move.Z = keepZ; mv.MoveMagnitude = keepM; }   // the input itself is untouched
                 if (contact != null)
                 {
                     contact.Time = Time;
@@ -369,8 +403,9 @@ namespace SquashSim
             }
 
             // ---- bodies cannot overlap ----
+            int giveWayTo = Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.Shots > 0 ? Interference.Striker : -1;
             SimEvent pc = BodyCollision.BodyVsBody(Players[0].Player, 0, Players[1].Player, 1,
-                _bodiesTouching, out _bodiesTouching, Time);
+                _bodiesTouching, out _bodiesTouching, Time, giveWayTo);
             if (pc != null) StepEvents.Add(pc);
 
             // ---- the ball ----

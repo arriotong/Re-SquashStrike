@@ -681,10 +681,12 @@ namespace SquashSim
             if (it.Striker != 1 - me) return;
             var p = m.Players[me].Player;
             var o = m.Players[1 - me].Player;
-            // Look a quarter-second ahead: start clearing before actually being in the way.
+            // Look a quarter-second ahead, for both of us: start clearing before actually being in the way.
             double lx = p.Pos.X + p.Vel.X * 0.25, lz = p.Pos.Z + p.Vel.Z * 0.25;
+            double sx = o.Pos.X + o.Vel.X * 0.25, sz = o.Pos.Z + o.Vel.Z * 0.25;
             if (it.Detect(o.Pos.X, o.Pos.Z, p.Pos.X, p.Pos.Z, it.TargetX, it.TargetZ) == ObstructionKind.None &&
-                it.Detect(o.Pos.X, o.Pos.Z, lx, lz, it.TargetX, it.TargetZ) == ObstructionKind.None) return;
+                it.Detect(o.Pos.X, o.Pos.Z, lx, lz, it.TargetX, it.TargetZ) == ObstructionKind.None &&
+                it.Detect(sx, sz, lx, lz, it.TargetX, it.TargetZ) == ObstructionKind.None) return;
 
             // Move away from the hitting point, and sideways out of the line to the front wall.
             double ax = p.Pos.X - it.TargetX, az = p.Pos.Z - it.TargetZ;
