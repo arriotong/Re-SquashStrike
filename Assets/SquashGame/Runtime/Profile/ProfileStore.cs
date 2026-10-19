@@ -30,7 +30,7 @@ namespace SquashGame.Profile
         public int FrameCap = 0;                 // 0 = none, else fps
         public int Quality = -1;                 // QualitySettings level; -1 = leave
         // ---- audio ----
-        public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f;
+        public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f;
         // ---- accessibility ----
         public float BallScale = 1f;             // x the game's drawn ball (render only)
         public int RingColour = 0;               // 0 white, 1 yellow, 2 cyan
@@ -39,6 +39,7 @@ namespace SquashGame.Profile
         public bool Popups = true;
         public bool Lets = true;                 // P2-M7: appeals and the referee's calls on interference
         public int Camera = 0;                   // match camera: 0 back wall, 1 high, 2 low glass
+        public bool LandingMarker = true;        // a light square where the ball will land
         // ---- controls: rebound keys (Input System overrides JSON; "" = the defaults) ----
         public string Bindings = "";
 
@@ -238,10 +239,12 @@ namespace SquashGame.Profile
             ArcadePopups.Enabled = s.Popups;
             MatchRunner.Lets = s.Lets;
             GameplayCameraRig.Preset = s.Camera;
+            LandingMarkerView.Enabled = s.LandingMarker;
             if (IntentSource.Overrides != (s.Bindings ?? "")) IntentSource.SetOverrides(s.Bindings);
             AimTargetView.RingColourIndex = s.RingColour;
             Audio.AudioDirector.SfxVolume = s.SfxVolume;
             Audio.AudioDirector.RefereeVolume = s.RefereeVolume;
+            Audio.MenuMusic.Volume = Mathf.Clamp01(s.MusicVolume);
             AudioListener.volume = Mathf.Clamp01(s.MasterVolume);
             BallView.UserScale = Mathf.Clamp(s.BallScale, 0.75f, 1.6f);
             HudLayer.CallTextScale = Mathf.Clamp(s.CallTextScale, 0.8f, 1.5f);

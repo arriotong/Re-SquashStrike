@@ -68,6 +68,10 @@ namespace SquashGame
             aim.Build(Base, 0, Palette, new Color(1f, 0.78f, 0.22f));
             aim.gameObject.AddComponent<TimingFeedbackView>().Build(Base, aim, 0);
 
+            var landing = new GameObject("LandingMarker").AddComponent<LandingMarkerView>();   // where the ball will land
+            landing.transform.SetParent(transform, false);
+            landing.Build(Base, Palette);
+
             var popups = new GameObject("ArcadePopups").AddComponent<ArcadePopups>();
             popups.transform.SetParent(transform, false);
             popups.Build(Base);

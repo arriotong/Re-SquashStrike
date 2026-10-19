@@ -11,6 +11,11 @@
 //   R        reset ball      Ctrl+R  reset full   F  feed     G  repeat feed
 //   [ ]      previous / next preset               H  contact assist
 //   F3       freeze on collision
+//
+// Hidden from players (playtest 2026-10-19: F1 / ` were easy to hit by
+// accident): all of it - the keys and the status line - works only in
+// developer mode: the Unity editor, a build started with -dev, or
+// Ctrl+Shift+F12 pressed in the game (toggles it).
 // ===========================================================
 
 using System.Collections.Generic;
@@ -28,6 +33,9 @@ namespace SquashGame
         LabSimRunner Lab { get { return Runner as LabSimRunner; } }
         TestPlayerController Human { get { var a = Runner.Athletes; int h = Runner.HumanIndex; return a[h < a.Length ? h : 0]; } }
         public bool PanelVisible;
+
+        /// <summary>Developer mode: the lab keys and readouts (the editor, "-dev" on the command line, or Ctrl+Shift+F12).</summary>
+        public static bool DevMode = Application.isEditor || System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-dev") >= 0;
         public bool DebugView;   // off by default: normal play shows no aim target (lab invariant 11)
 
         GreyboxPalette _palette;
@@ -93,6 +101,9 @@ namespace SquashGame
             if (kb == null) return;
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
 
+            bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            if (ctrl && shift && kb.f12Key.wasPressedThisFrame) { DevMode = !DevMode; Debug.Log("[Dev] developer mode " + (DevMode ? "on" : "off")); }
+            if (!DevMode) { PanelVisible = false; DebugView = false; return; }
             if (kb.f1Key.wasPressedThisFrame || kb.backquoteKey.wasPressedThisFrame) PanelVisible = !PanelVisible;
             if (kb.f2Key.wasPressedThisFrame || kb.backslashKey.wasPressedThisFrame) DebugView = !DebugView;
             if (kb.f3Key.wasPressedThisFrame) Runner.FreezeOnCollision = !Runner.FreezeOnCollision;
@@ -217,7 +228,7 @@ namespace SquashGame
 
         void OnGUI()
         {
-            if (Runner == null || Runner.Clock == null) return;
+            if (Runner == null || Runner.Clock == null || !DevMode) return;
             EnsureStyles();
             var clock = Runner.Clock;
 

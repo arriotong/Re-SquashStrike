@@ -148,6 +148,7 @@ namespace SquashGame.UI
             Row(a, Volume("Master", () => S.MasterVolume, x => S.MasterVolume = x), "Everything.");
             Row(a, Volume("Sound effects", () => S.SfxVolume, x => S.SfxVolume = x), "The ball, the walls, the shoes, the menus.");
             Row(a, Volume("Referee", () => S.RefereeVolume, x => S.RefereeVolume = x), "The calls.");
+            Row(a, Volume("Music", () => S.MusicVolume, x => S.MusicVolume = x), "The menus' music.");
 
             // ---- ACCESSIBILITY ----
             var acc = Panel("ACCESSIBILITY");
@@ -166,6 +167,7 @@ namespace SquashGame.UI
             var g = Panel("GAMEPLAY");
             Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
             Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (" + IntentSource.Keys("Appeal") + ") when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
+            Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
             Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Back wall: the TV view. High: looking down on the court. Low glass: close behind the glass.");
             Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
         }

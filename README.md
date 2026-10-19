@@ -41,7 +41,7 @@ It runs on Windows 10 or 11 (64-bit), with a keyboard and mouse or a gamepad. No
 | Dive | Space | B |
 | Sprint | Shift | LB |
 | Serve | tap for a lob serve, hold for a hard serve | |
-| Ask for a let | Q (when LET? shows) | Y |
+| Ask for a let | right click (when LET? shows) | Y |
 | Replay the last call | V | View |
 | Coach tray (practice) | Tab | View |
 | Pause | Esc | Start |

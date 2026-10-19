@@ -145,9 +145,12 @@ namespace SquashGame.Audio
                     }
                     case SimEventType.RacketContact:
                     {
-                        float v = Mathf.Clamp01(0.25f + (float)e.HeadSpeed / 28f);
+                        // v3: louder and weightier; a hard hit adds the power layer (the faster, the bigger)
+                        float v = Mathf.Clamp01(0.45f + (float)e.HeadSpeed / 36f);
                         bool frame = e.OffCentreNorm > 0.65;
-                        Play(frame ? "frame" : "ping", at, v, Vary(0.05f) * (e.Stroke == "touch" ? 1.06f : 1f));
+                        float hard = Mathf.Clamp01(((float)e.BallSpeedOut - 20f) / 14f);
+                        Play(frame ? "frame" : "ping", at, v, Vary(0.04f) * (e.Stroke == "touch" ? 1.06f : 1f) * (1f - 0.05f * hard));
+                        if (!frame && hard > 0.05f) Play("power", at, 0.35f + 0.65f * hard, Vary(0.03f) * (1f - 0.08f * hard));
                         break;
                     }
                     case SimEventType.BodyHit:
@@ -178,12 +181,13 @@ namespace SquashGame.Audio
                 _squeakCooldown[i] -= dt;
                 float decel = (pv.magnitude - v.magnitude) / dt;
                 float turn = Vector3.Angle(pv, v);
-                bool hardStop = pv.magnitude > 2.2f && decel > 9f;
-                bool hardTurn = pv.magnitude > 2.5f && v.magnitude > 1.5f && turn > 50f;
+                // v3 (the squeal annoyed): only real hard stops and cuts, rarer, and quiet
+                bool hardStop = pv.magnitude > 3.0f && decel > 14f;
+                bool hardTurn = pv.magnitude > 3.2f && v.magnitude > 2.0f && turn > 70f;
                 if ((hardStop || hardTurn) && _squeakCooldown[i] <= 0 && !Runner.ReplayActive)
                 {
-                    _squeakCooldown[i] = 0.45f;
-                    Play("squeak", a.Pos, Mathf.Clamp01(0.35f + decel / 40f), Vary(0.08f));
+                    _squeakCooldown[i] = 1.0f;
+                    Play("squeak", a.Pos, Mathf.Min(0.35f, 0.12f + decel / 120f), Vary(0.08f));
                 }
             }
 

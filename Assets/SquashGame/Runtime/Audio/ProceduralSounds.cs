@@ -16,7 +16,9 @@
 //   variants     three takes of each impact (detuned modes, new noise),
 //                picked at random, so a rally is not a machine gun
 //
-//   ping       racket strings on the sweet spot      frame    the frame
+//   ping       the racket on the ball (crack, pock, strings, thump)
+//   power      layered on a hard, fast hit (boom and whack)
+//   frame      the frame
 //   front      front wall                            side     side wall
 //   glass      the glass back wall                   tin      the tin
 //   floor      a floor bounce                        nick     the nick
@@ -38,7 +40,7 @@ namespace SquashGame.Audio
         public const int Rate = 44100;
         public const int Variants = 3;
 
-        public static readonly string[] Names = { "ping", "frame", "front", "side", "glass", "tin", "floor", "nick", "body", "squeak", "call", "gameCall" };
+        public static readonly string[] Names = { "ping", "power", "frame", "front", "side", "glass", "tin", "floor", "nick", "body", "squeak", "call", "gameCall" };
 
         /// <summary>One sound's samples (mono, -1..1). <paramref name="variant"/> 0..Variants-1.</summary>
         public static float[] Samples(string name, int variant = 0)
@@ -47,9 +49,10 @@ namespace SquashGame.Audio
             double d = 1 + 0.035 * (variant - 1);                     // each take detuned a little
             switch (name)
             {
-                // strings: a short crisp pock, the string bed's twang, the frame's low knock
-                case "ping": return Impact(seed, 0.09, 0.0035, 0.55, 0.0025, 0.75,
-                    new[] { M(540 * d, 0.030, 0.9), M(1250 * d, 0.014, 0.55), M(2650 * d, 0.006, 0.35), M(190 * d, 0.020, 0.35) }, 0.16, 0.85);
+                // the hit (v3, 2026-10-19 "make it powerful, satisfying"): a crack, the ball's pock, the strings, a low thump
+                case "ping": return Hit(seed, d, false);
+                // a hard, fast hit: layered on top of the ping - a deeper boom and a whack
+                case "power": return Hit(seed, d, true);
                 // the frame: harder, drier, hollow clack
                 case "frame": return Impact(seed, 0.08, 0.0015, 0.9, 0.0020, 0.9,
                     new[] { M(830 * d, 0.022, 0.8), M(2350 * d, 0.010, 0.6), M(3900 * d, 0.006, 0.4), M(310 * d, 0.015, 0.3) }, 0.14, 0.8);
@@ -210,32 +213,64 @@ namespace SquashGame.Audio
             return ToFloat(o);
         }
 
-        /// <summary>A shoe on the court: rubber dragged on varnish - a resonant squeal on noise, rising, with judder.</summary>
-        static float[] Squeak(uint seed, double d)
+        /// <summary>The racket on the ball. Layers: a sharp broadband crack (the strings snapping back), the ball's hollow
+        /// pock, the string bed's twang, and a low thump with a falling pitch for weight; a little saturation glues them.
+        /// The power take drops the twang for a deeper boom and a mid "whack".</summary>
+        static float[] Hit(uint seed, double d, bool power)
         {
-            double seconds = 0.16;
+            double seconds = power ? 0.22 : 0.14;
             int n = (int)(seconds * Rate);
             var o = new double[n];
             uint r = seed;
-            double y1 = 0, y2 = 0, phase = 0;
+            double lp = 0, ph = 0;
+            double y1 = 0, y2 = 0;                                          // the ball's pock (a resonator on the crack)
+            double pf = (power ? 760 : 1050) * d, pw = 2 * System.Math.PI * pf / Rate, prad = System.Math.Exp(-1.0 / (0.014 * Rate));
+            for (int i = 0; i < n; i++)
+            {
+                double t = (double)i / Rate;
+                r = r * 1664525u + 1013904223u;
+                double white = (r / 4294967296.0) * 2 - 1;
+                lp += (white - lp) * 0.55;
+                double crack = (white * 0.6 + lp * 0.4) * System.Math.Exp(-t / (power ? 0.0022 : 0.0015));
+                double pock = 2 * prad * System.Math.Cos(pw) * y1 - prad * prad * y2 + crack * 0.35;
+                y2 = y1; y1 = pock;
+                double twang = power ? 0 : (0.55 * System.Math.Sin(2 * System.Math.PI * 520 * d * t) + 0.25 * System.Math.Sin(2 * System.Math.PI * 1180 * d * t)) * System.Math.Exp(-t / 0.032);
+                double f = power ? 55 + 95 * System.Math.Exp(-t / 0.03) : 92 + 80 * System.Math.Exp(-t / 0.018);
+                ph += 2 * System.Math.PI * f / Rate;
+                double thump = System.Math.Sin(ph) * System.Math.Exp(-t / (power ? 0.085 : 0.042)) * (power ? 1.25 : 0.85);
+                double whack = power ? lp * System.Math.Exp(-t / 0.03) * 0.5 : 0;
+                double v = crack * 0.9 + pock * 3.2 + twang + thump + whack;
+                double attack = System.Math.Min(1.0, t / 0.0004);
+                double tail = System.Math.Min(1.0, (n - i) / (0.01 * Rate));
+                o[i] = System.Math.Tanh(v * 1.6) * attack * tail;            // weight: soft saturation
+            }
+            return Normalise(Room(o, power ? 0.24 : 0.17), power ? 0.95f : 0.92f);
+        }
+
+        /// <summary>A shoe on the court, light (v3, 2026-10-19: the squeal annoyed): a short soft rubber chirp - mostly
+        /// band-limited noise with a hint of pitch, not a whistle.</summary>
+        static float[] Squeak(uint seed, double d)
+        {
+            double seconds = 0.075;
+            int n = (int)(seconds * Rate);
+            var o = new double[n];
+            uint r = seed;
+            double y1 = 0, y2 = 0;
             for (int i = 0; i < n; i++)
             {
                 double t = (double)i / Rate, u = t / seconds;
-                double f = (1900 + 900 * u) * d + 70 * System.Math.Sin(2 * System.Math.PI * 31 * t);
-                double w = 2 * System.Math.PI * f / Rate, rad = 0.995;                     // a high-Q resonator on noise: rubber, not a whistle
+                double f = (2600 + 500 * u) * d;
+                double w = 2 * System.Math.PI * f / Rate, rad = 0.975;                     // a broad band: a scuff with a little chirp
                 r = r * 1664525u + 1013904223u;
                 double white = (r / 4294967296.0) * 2 - 1;
-                double yy = 2 * rad * System.Math.Cos(w) * y1 - rad * rad * y2 + white * 0.02;
+                double yy = 2 * rad * System.Math.Cos(w) * y1 - rad * rad * y2 + white * 0.05;
                 y2 = y1; y1 = yy;
-                phase += 2 * System.Math.PI * f / Rate;
-                double judder = 0.65 + 0.35 * System.Math.Abs(System.Math.Sin(2 * System.Math.PI * 47 * t));
-                double env = System.Math.Sin(System.Math.PI * System.Math.Min(1, u * 1.15));
-                env = env < 0 ? 0 : env * env;
-                o[i] = env * judder * (yy + 0.12 * System.Math.Sin(phase));
+                double env = System.Math.Sin(System.Math.PI * u);
+                o[i] = env * env * yy;
             }
             double pk = 1e-9; for (int i = 0; i < n; i++) pk = System.Math.Max(pk, System.Math.Abs(o[i]));
             for (int i = 0; i < n; i++) o[i] /= pk;
-            return Normalise(Room(o, 0.18), 0.55f);
+            return Normalise(Room(o, 0.08), 0.32f);
         }
 
         static float[] Tones(double[] hz, double each)

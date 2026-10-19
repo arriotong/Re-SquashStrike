@@ -56,7 +56,11 @@ namespace SquashGame
         public bool Boasting { get; private set; }
         public int SideWall { get; private set; }
         public Vector3 SideMarker { get; private set; }
-        Transform _side, _line;
+        Transform _side, _line, _charge;
+        Material _chargeMat;
+        /// <summary>The charge fill is shown, and how full (0..1) - tests.</summary>
+        public bool ChargeShown { get; private set; }
+        public float ChargeLevel { get; private set; }
         /// <summary>The shot-line dot is shown, and where (sim x on the front wall) - tests.</summary>
         public bool LineShown { get; private set; }
         public double LineX { get; private set; }
@@ -171,6 +175,11 @@ namespace SquashGame
             _side.gameObject.SetActive(false);
             _line = Greybox.MeshObject("ShotLine", transform, Greybox.Torus(0.5f, 0.5f, 24, 6), _mat).transform;   // a solid dot
             _line.gameObject.SetActive(false);
+            // Charging (playtest 2026-10-19: "show me I'm charging"): a filled ring grows inside the aim ring as you hold,
+            // lime when full, and pulses there.
+            _chargeMat = palette.Clear(new Color(0.78f, 1f, 0.24f, 0.85f));
+            _charge = Greybox.MeshObject("Charge", transform, Greybox.Torus(1f, 0.32f, 48, 6), _chargeMat).transform;
+            _charge.gameObject.SetActive(false);
         }
 
         bool Visible()
@@ -193,7 +202,7 @@ namespace SquashGame
             _dot.gameObject.SetActive(false);                      // plain: no centre dot
             Boasting = Shown && Runner.Athletes[Athlete].ArcadeHitEnabled && Runner.Athletes[Athlete].Arcade.BoastArmed;
             _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
-            if (!Shown) { _hasPos = false; LineShown = false; _line.gameObject.SetActive(false); if (_flash != null) _flash.gameObject.SetActive(false); return; }
+            if (!Shown) { _hasPos = false; LineShown = false; _line.gameObject.SetActive(false); ChargeShown = false; _charge.gameObject.SetActive(false); if (_flash != null) _flash.gameObject.SetActive(false); return; }
 
             var athletes = Runner.Athletes;
             Preview.Update(athletes[Athlete], src.Intent, Runner.Ball, Runner.Surfaces);
@@ -262,6 +271,24 @@ namespace SquashGame
                 _line.localScale = new Vector3(d, d, d);
             }
             _line.gameObject.SetActive(LineShown && Fade > 0.01f);
+
+            // The charge: grows from a point to the ring while held; full = lime and a pulse.
+            var arc = ctrl.ArcadeHitEnabled ? ctrl.Arcade : null;
+            ChargeShown = DrawRing && arc != null && arc.Charging && Fade > 0.01f;
+            ChargeLevel = ChargeShown ? (float)arc.ChargeRatio : 0f;
+            _charge.gameObject.SetActive(ChargeShown);
+            if (ChargeShown)
+            {
+                float cl = ChargeLevel;
+                bool full = cl >= 0.999f;
+                float pulse = full ? 1f + 0.12f * Mathf.Sin(Time.unscaledTime * 16f) : 1f;
+                float r = _radius * (0.3f + 1.3f * cl) * pulse;            // grows out past the ring: easy to read
+                _charge.position = _ring.position + (wall == 0 ? new Vector3(0f, 0f, 0.002f) : Vector3.zero);
+                _charge.rotation = _ring.rotation;
+                _charge.localScale = new Vector3(r, r, 1f);
+                _chargeMat.color = full ? new Color(0.78f, 1f, 0.24f, 0.95f) : Color.Lerp(new Color(1f, 1f, 1f, 0.55f), new Color(0.78f, 1f, 0.24f, 0.9f), cl);
+                _ring.localScale = new Vector3(_radius * (1f + 0.12f * cl), _radius * (1f + 0.12f * cl), 1f);   // the ring opens a little too
+            }
 
             // Plain: one colour, no words (the shot type is still worked out for tests / later UI).
             Color c = RingColours[Mathf.Clamp(RingColourIndex, 0, RingColours.Length - 1)];

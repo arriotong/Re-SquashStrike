@@ -188,7 +188,7 @@ namespace SquashSim.Academy
 
             // P2-M7: four staged moments, then you make the call on three more (the referee's own call is the answer)
             var lets = L("lets", Chapter.Rules, "Lets & strokes", "When a player is in the way - and when to ask.");
-            lets.Steps.Add(Staged(Card("In the way: you are going for the ball and your opponent stands on your path. Ask (Q / Y): a stroke - they did not clear."), InterferenceStage.InTheWay()));
+            lets.Steps.Add(Staged(Card("In the way: you are going for the ball and your opponent stands on your path. Ask (right click / Y): a stroke - they did not clear."), InterferenceStage.InTheWay()));
             lets.Steps.Add(Staged(Card("In the swing: they are where your racket goes. The referee stops play himself - a stroke, for safety."), InterferenceStage.InTheSwing()));
             lets.Steps.Add(Staged(Card("In the line: they stand between you and the front wall, where your shot would go. A stroke."), InterferenceStage.InTheLine()));
             lets.Steps.Add(Staged(Card("Not trying: you stood still. Ask now and it is no let - the point goes to them. LET? over your head means asking will be granted."), InterferenceStage.NotTrying()));

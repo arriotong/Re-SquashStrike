@@ -406,6 +406,32 @@ namespace SquashGame.Athlete
             PoseMath.SolveFreeArm(Rig, transform.TransformPoint(_out.HandL), transform.TransformDirection(_out.ElbowL));
 
             Rig.UpdateBlends();
+            KeepInsideTheCourt();
+        }
+
+        /// <summary>How far the drawn figure was moved back off the walls this frame (tests).</summary>
+        public Vector3 WallPush { get; private set; }
+        const float WallMargin = 0.06f;
+
+        /// <summary>The sim keeps the body's 0.3 m circle inside the walls, but a lunge, a stroke or a dive reaches further
+        /// than that: near a wall the limbs went through it (playtest 2026-10-19). After posing, any joint past a wall
+        /// moves the whole drawn figure back in by that much. Drawing only - the sim's athlete is where it was.</summary>
+        void KeepInsideTheCourt()
+        {
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
+            foreach (var b in Rig.Bones.Values)
+            {
+                Vector3 p = b.position;
+                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
+            }
+            float hw = (float)SquashSim.CourtDimensions.HALF_W - WallMargin, front = WallMargin, back = (float)SquashSim.CourtDimensions.LENGTH - WallMargin;
+            float dx = maxX > hw ? hw - maxX : (minX < -hw ? -hw - minX : 0f);
+            float dz = minZ < front ? front - minZ : (maxZ > back ? back - maxZ : 0f);
+            WallPush = new Vector3(dx, 0f, dz);
+            if (dx == 0f && dz == 0f) return;
+            transform.position += WallPush;
+            DrawnRacketHead += WallPush;
         }
 
         Vector3 right0() { return Vector3.Cross(Vector3.up, DrawnForward).normalized; }

@@ -65,6 +65,11 @@ namespace SquashGame
             popups.transform.SetParent(transform, false);
             popups.Build(Runner);
 
+            // Where the ball will land: a light square on the floor (playtest 2026-10-19).
+            var landing = new GameObject("LandingMarker").AddComponent<LandingMarkerView>();
+            landing.transform.SetParent(transform, false);
+            landing.Build(Runner, Palette);
+
             // P2-M7: the referee review's drawing on the floor.
             var obstruction = new GameObject("ObstructionOverlay").AddComponent<ObstructionOverlay>();
             obstruction.transform.SetParent(transform, false);

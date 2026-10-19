@@ -239,7 +239,7 @@ namespace SquashGame
             _boast.AddBinding("<Gamepad>/rightShoulder");
 
             _appeal = _map.AddAction("Appeal", InputActionType.Button);
-            _appeal.AddBinding("<Keyboard>/q");                 // "let, please" (P2-M7: right mouse dropped - too easy to press by accident)
+            _appeal.AddBinding("<Mouse>/rightButton").WithGroup("Mouse");   // "let, please": right click (playtest 2026-10-19), rebindable
             _appeal.AddBinding("<Gamepad>/buttonNorth");
 
             _pause = _map.AddAction("Pause", InputActionType.Button);

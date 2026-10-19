@@ -44,6 +44,8 @@ namespace SquashGame.UI
         public CoachFeeder Coach { get; private set; }
         /// <summary>Free play's hints and counts on the practice court.</summary>
         public PracticeHud PracticeHud { get; private set; }
+        /// <summary>The menus' music (chill, the home page's).</summary>
+        public Audio.MenuMusic Music { get; private set; }
         public ArcadeHud ArcadeHud { get; private set; }
         public LessonHud LessonHud { get; private set; }
         /// <summary>A screen to open over the main menu when the match scene loads (back from the arcade).</summary>
@@ -112,6 +114,7 @@ namespace SquashGame.UI
             _root.Add(_menus);
 
             _input = new MenuInput();
+            Music = gameObject.AddComponent<Audio.MenuMusic>();
             // UI redesign: live 3D pictures for cards
             var vig = gameObject.AddComponent<Vignettes>();
             vig.Runner = runner;
@@ -415,12 +418,21 @@ namespace SquashGame.UI
             }
             // a developer's look at the UI kit (F12 on the main menu)
             var kbd = UnityEngine.InputSystem.Keyboard.current;
-            if (kbd != null && kbd.f12Key.wasPressedThisFrame && Top is MainMenuScreen) Push(new GalleryScreen());
+            if (DebugOverlay.DevMode && kbd != null && kbd.f12Key.wasPressedThisFrame && Top is MainMenuScreen) Push(new GalleryScreen());   // developers only
             UpdateFlags();
             if (Hud != null) Hud.Refresh(Match, Top == null || Top is PauseScreen);
             if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);
             if (LessonHud != null) LessonHud.Refresh(Academy, Top == null || Top is AcademyPauseScreen);
             if (PracticeHud != null) PracticeHud.Refresh(Top == null);
+            if (Music != null) Music.Want = MusicWanted();
+        }
+
+        /// <summary>The home page's music: full on the title and the menus, low while watching a replay, off in play.</summary>
+        float MusicWanted()
+        {
+            if (Match == null) return 0f;                                   // the practice court, the Academy, the arcade: play
+            if (Top is TheatrePlayerScreen || Top is MatchReplayScreen) return 0.3f;
+            return Match.Demo || Match.InSetup || Top is TitleScreen ? 1f : 0f;
         }
 
         void MatchScreens(float dt)

@@ -30,6 +30,7 @@ namespace SquashGame.Tests
         public IEnumerator TheLetPromptShowsAndQAsks()
         {
             var kb = InputSystem.AddDevice<Keyboard>();
+            var mouse = InputSystem.AddDevice<Mouse>();
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
@@ -52,7 +53,7 @@ namespace SquashGame.Tests
             Assert.That(fe.Hud.LetPromptFor, Is.EqualTo(0), "LET? over the player while asking would be granted");
             yield return FrontEndTests.CaptureUI(fe, "P2M7_LetPrompt.png");
 
-            Press(kb.qKey); yield return null; Release(kb.qKey);
+            Press(mouse.rightButton); yield return null; Release(mouse.rightButton);   // right click asks
             t0 = Time.realtimeSinceStartup;
             while (m.Referee.Outcome == null && Time.realtimeSinceStartup - t0 < 2f) yield return null;
             RallyOutcome o = m.Referee.Outcome;
