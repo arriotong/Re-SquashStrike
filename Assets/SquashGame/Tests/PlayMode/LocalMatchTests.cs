@@ -46,6 +46,9 @@ namespace SquashGame.Tests
             ProfileStore.Folder = Path.Combine(Path.GetTempPath(), "reSquashStrikeTests");
             if (File.Exists(Path.Combine(ProfileStore.Folder, ProfileStore.FileName))) File.Delete(Path.Combine(ProfileStore.Folder, ProfileStore.FileName));
             ProfileStore.Reset();
+            string replays = Path.Combine(ProfileStore.Folder, "Replays");                 // P2-M6: no replays from earlier tests
+            if (Directory.Exists(replays)) Directory.Delete(replays, true);
+            Replays.ReplayLibrary.Reset();
             ProfileStore.Current.Settings = new GameSettings();
             ProfileStore.Current.Academy.Suggested = !newPlayer;
             FrontEnd.StartAtTitle = true;

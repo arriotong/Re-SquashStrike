@@ -14,10 +14,16 @@
 // (Enter / pad Y) skips the knock-up or the break; no debug keys needed.
 // After every let / no let / stroke call the referee's view is replayed
 // automatically (V replays the last rally on demand).
+//
+// P2-M6: every match is built from a ReplaySetup (SquashSim.Replays), and
+// a real match (not the menus' demo) is recorded by a MatchRecorder: the
+// sim steps on the quantised copy of each person's input. When the
+// match ends - or is left - ReplayFinished hands the file on.
 // ===========================================================
 
 using System.Collections.Generic;
 using SquashSim;
+using SquashSim.Replays;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -75,6 +81,7 @@ namespace SquashGame
         /// <summary>Play the menus' demo: two AIs, on and on (a new match when one ends).</summary>
         public void BeginDemo()
         {
+            EndRecording(true);
             Settings = new MatchSettings { Opponent = "attacker", Difficulty = 0.42f, GamesToWin = 1, Scoring = "par", WarmUp = false };
             Input.UseDevices(null);
             if (Input2 != null) { Input2.Dispose(); Input2 = null; }
@@ -103,6 +110,47 @@ namespace SquashGame
 
         public MatchSimulation Sim { get; private set; }
 
+        /// <summary>P2-M6: the match being recorded (null in the demo and the setup panel).</summary>
+        public MatchRecorder Recorder { get; private set; }
+        /// <summary>A recording ended: the match was played out, or left (file.Retired). Raised once per match.</summary>
+        public static event System.Action<ReplayFile> ReplayFinished;
+        ReplaySetup _setup;
+        IAthleteBrain _autopilot;
+        InputIntent _autoIntent;
+
+        /// <summary>Tests: an AI plays for athlete 0 through the same input path a person's input takes (so it is recorded).</summary>
+        public void SetAutopilot(IAthleteBrain brain)
+        {
+            _autopilot = brain != null ? new PersonStandIn(brain) : null;
+            if (brain == null || Demo || InSetup) return;
+            _autoIntent = new InputIntent();
+            Recorder = new MatchRecorder(Sim, _setup, new[] { _autoIntent, Settings.TwoPlayer && Input2 != null ? Input2.Intent : null },
+                                         Application.version, System.DateTime.Now.Ticks);
+        }
+
+        /// <summary>The recording ends (the match was left, or a new one starts): hand it on if it holds anything.</summary>
+        void EndRecording(bool left)
+        {
+            var rec = Recorder;
+            Recorder = null;
+            _autopilot = null;
+            if (rec == null) return;
+            bool was = rec.Finished;
+            rec.Finish(left);
+            if (was) return;
+            var d = DescribeReplay; if (d != null) d(rec.File, this);
+            Publish(rec);
+        }
+
+        static void Publish(MatchRecorder rec)
+        {
+            if (rec.Invalid || rec.File.Rallies.Count == 0) return;
+            var h = ReplayFinished; if (h != null) h(rec.File);
+        }
+
+        /// <summary>Meta for the replay's library card (names, mode, kits): set by the front end when a match starts.</summary>
+        public static System.Action<ReplayFile, MatchRunner> DescribeReplay;
+
         public override BallState Ball { get { return Sim.Ball; } }
         public override TestPlayerController[] Athletes { get { return Sim.Players; } }
         public override IReadOnlyList<SimEvent> StepEvents { get { return Sim.StepEvents; } }
@@ -115,43 +163,37 @@ namespace SquashGame
             InSetup = ShowSetup;
         }
 
-        void ApplyConfig(MatchSettings s)
+        /// <summary>The setup a match is built from (and recorded with).</summary>
+        ReplaySetup SetupOf(MatchSettings s)
         {
-            PhysicsConfig.ResetToDefaults();
-            PhysicsConfig.UseGameProfile();          // the game's double yellow at PSA pace
-            var m = PhysicsConfig.Current.Match;
-            m.Scoring = s.Scoring;
-            m.GamesToWin = Mathf.Max(1, s.GamesToWin);
-            m.WarmUpEnabled = s.WarmUp;
-            m.AutoNextGame = true;
+            return new ReplaySetup
+            {
+                TwoPlayer = s.TwoPlayer && Input2 != null, Opponent = s.Opponent, Difficulty = s.Difficulty, Scoring = s.Scoring,
+                GamesToWin = Mathf.Max(1, s.GamesToWin), WarmUp = s.WarmUp, BotSeed = BotSeed, FirstServer = 0,
+            };
         }
+
+        void ApplyConfig(MatchSettings s) { ReplayMatch.Configure(SetupOf(s)); }
 
         void NewMatch()
         {
             if (Sim != null) Sim.RallyEnded -= OnRallyEnded;
-            Sim = new MatchSimulation(0);
+            _setup = SetupOf(Settings);
+            Sim = ReplayMatch.Build(_setup);                 // the config, the opponent, who plays the simple system
             Sim.Intents[0] = Input.Intent;
-            if (Settings.TwoPlayer && Input2 != null)
+            if (_setup.TwoPlayer)
             {
                 Sim.Intents[1] = Input2.Intent;
-                Sim.Bots[1] = null;
                 OpponentName = "PLAYER 2";
                 Names[0] = "PLAYER 1"; Names[1] = "PLAYER 2";
             }
             else
             {
-                Sim.Bots[1] = MakeOpponent();
+                OpponentName = Settings.Opponent == "wallbot" ? "WALL-BOT" : AiProfile.ByName(Settings.Opponent).WithDifficulty(Settings.Difficulty).Name.ToUpperInvariant();
                 if (!string.IsNullOrEmpty(Settings.P2Name)) OpponentName = Settings.P2Name;
                 Names[0] = string.IsNullOrEmpty(Settings.P1Name) ? "YOU" : Settings.P1Name; Names[1] = OpponentName;
             }
             Sim.RallyEnded += OnRallyEnded;
-            // Everyone plays the simple hitting system, aiming at a point on the front wall - the AI too (playtest
-            // 2026-10-18: same game on both sides). The wall-bot keeps the physical swing.
-            bool p2Arcade = Settings.TwoPlayer || Sim.Bots[1] is OpponentBrain;
-            Sim.Players[0].WallAimEnabled = true;
-            Sim.Players[1].WallAimEnabled = p2Arcade;
-            Sim.Players[0].ArcadeHitEnabled = true;
-            Sim.Players[1].ArcadeHitEnabled = p2Arcade;
         }
 
         // ---------------- devices ----------------
@@ -182,6 +224,7 @@ namespace SquashGame
         /// <summary>Start a match with these settings (from the setup panel, or a test).</summary>
         public void BeginMatch(MatchSettings s)
         {
+            EndRecording(true);
             Settings = s.Clone();
             if (Settings.TwoPlayer && !CanPlayTwoPlayer) Settings.TwoPlayer = false;
             if (Settings.TwoPlayer)
@@ -195,9 +238,11 @@ namespace SquashGame
                 Input.UseDevices(null);
                 if (Input2 != null) { Input2.Dispose(); Input2 = null; }
             }
-            ApplyConfig(Settings);
             BotSeed = BotSeed * 1664525u + 1013904223u;   // a different (still deterministic) bot each match
+            ApplyConfig(Settings);
             NewMatch();
+            Recorder = new MatchRecorder(Sim, _setup, new[] { Input.Intent, _setup.TwoPlayer ? Input2.Intent : null },
+                                         Application.version, System.DateTime.Now.Ticks);
             ClearDebugHistory();
             Demo = false;
             InSetup = false;
@@ -211,6 +256,7 @@ namespace SquashGame
         /// <summary>Back to the pre-match panel.</summary>
         public void ReturnToSetup()
         {
+            EndRecording(true);
             InSetup = true;
             if (ReplayActive) StopReplay();
         }
@@ -231,17 +277,24 @@ namespace SquashGame
         protected override void OnDestroy()
         {
             if (Input2 != null) Input2.Dispose();
+            EndRecording(true);
             base.OnDestroy();
         }
 
-        protected override void SimStep(double dt) { Sim.Step(dt); }
-
-        IAthleteBrain MakeOpponent()
+        protected override void SimStep(double dt)
         {
-            if (Settings.Opponent == "wallbot") { OpponentName = "WALL-BOT"; return new WallBot(BotSeed); }
-            var profile = AiProfile.ByName(Settings.Opponent).WithDifficulty(Settings.Difficulty);
-            OpponentName = profile.Name.ToUpperInvariant();
-            return new OpponentBrain(profile, BotSeed);
+            var rec = Recorder;
+            if (rec == null) { Sim.Step(dt); return; }
+            if (_autopilot != null && _autoIntent != null) _autopilot.Fill(_autoIntent, Sim, 0, dt);
+            rec.BeforeStep();
+            Sim.Step(dt);
+            bool was = rec.Finished;
+            rec.AfterStep();
+            if (!was && rec.Finished)
+            {
+                var d = DescribeReplay; if (d != null) d(rec.File, this);
+                Publish(rec);
+            }
         }
 
         void OnRallyEnded(RallyOutcome o)
@@ -305,8 +358,8 @@ namespace SquashGame
             if (Input2 != null) ready |= Input2.ConsumeReady();
             if (ready && !ReplayActive)
             {
-                if (Sim.Phase == MatchPhase.WarmUp) { Sim.SkipWarmUp(); SnapViews(); }
-                else if (Sim.Phase == MatchPhase.GameOver) { Sim.NextGame(); SnapViews(); }
+                if (Sim.Phase == MatchPhase.WarmUp) { if (Recorder != null) Recorder.Command(ReplayCommand.SkipWarmUp); Sim.SkipWarmUp(); SnapViews(); }
+                else if (Sim.Phase == MatchPhase.GameOver) { if (Recorder != null) Recorder.Command(ReplayCommand.NextGame); Sim.NextGame(); SnapViews(); }
                 // (match over: the post-match screen takes it from here)
             }
             base.Update();

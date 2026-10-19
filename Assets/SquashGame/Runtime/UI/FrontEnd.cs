@@ -112,6 +112,10 @@ namespace SquashGame.UI
             var vig = gameObject.AddComponent<Vignettes>();
             vig.Runner = runner;
 
+            // P2-M6: finished matches go into the replay library, described for its cards
+            Replays.ReplayLibrary.Hook();
+            Replays.ReplayMeta.Hook();
+
             if (Match != null)
             {
                 Match.BeginDemo();
