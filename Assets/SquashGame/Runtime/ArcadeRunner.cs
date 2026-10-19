@@ -29,6 +29,9 @@ namespace SquashGame
 
     public sealed class ArcadeRunner : SimRunnerBase
     {
+        /// <summary>The Target Arcade is about hitting the exact spot: no shot lines here.</summary>
+        protected override bool ShotLines { get { return false; } }
+
         public Challenge Challenge { get; private set; }
         public ArcadeSession Session { get; private set; }
         public InputLog Log { get; private set; }

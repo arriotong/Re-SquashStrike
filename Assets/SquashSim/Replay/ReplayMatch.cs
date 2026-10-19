@@ -165,7 +165,7 @@ namespace SquashSim.Replays
             {
                 if (_live[i] == null) continue;
                 if (_sim.Bots[i] != null) Invalid = true;
-                var q = IntentCodec.Encode(_live[i], _sim.Players[i].Arcade.Assisted);
+                var q = IntentCodec.Encode(_live[i], _sim.Players[i].Arcade.Assisted, _sim.Players[i].Arcade.ShotLines);
                 IntentCodec.Decode(q, _fed[i]);
                 var track = File.Tracks[i];
                 if (track.Count > 0 && _last[i].Equals(q)) { var r = track[track.Count - 1]; r.Count++; track[track.Count - 1] = r; }
@@ -252,6 +252,7 @@ namespace SquashSim.Replays
                 var q = track[_run[i]].Frame;
                 IntentCodec.Decode(q, _fed[i]);
                 Sim.Players[i].Arcade.Assisted = q.Assisted;
+                Sim.Players[i].Arcade.ShotLines = q.Lines;       // as the person played
                 if (--_left[i] <= 0) { _run[i]++; _left[i] = _run[i] < track.Count ? track[_run[i]].Count : 0; }
             }
             Sim.Step(_dt);

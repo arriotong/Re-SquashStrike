@@ -91,6 +91,7 @@ namespace SquashSim.Tests
                 {
                     m.Players[0].Arcade.Assisted = (m.History.Count / 5) % 2 == 0;           // the control mode changed now and then (pause -> settings)
                     m.Players[1].Arcade.Assisted = true;
+                    m.Players[0].Arcade.ShotLines = true; m.Players[1].Arcade.ShotLines = (m.History.Count / 3) % 2 == 0;   // shot lines, recorded too
                     if (m.Phase == MatchPhase.GameOver && m.PhaseTime > 1.0) { r.Command(ReplayCommand.NextGame); m.NextGame(); nexts++; }   // "play now"
                 });
             Assert.That(nexts, Is.GreaterThan(0), "a break was cut short");

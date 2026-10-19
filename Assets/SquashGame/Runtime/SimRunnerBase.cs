@@ -166,6 +166,10 @@ namespace SquashGame
         public abstract List<Surface> Surfaces { get; }
         /// <summary>Index of the athlete the local player controls (aim recentring, HUD).</summary>
         public virtual int HumanIndex { get { return 0; } }
+        /// <summary>Shot lines for the people here (off where the exact spot is the game: the Target Arcade).</summary>
+        protected virtual bool ShotLines { get { return ShotLinesEnabled; } }
+        /// <summary>Tests that check the exact aim switch shot lines off here.</summary>
+        public bool ShotLinesEnabled = true;
 
         // ---- debug state (presentation only) ----
         public bool FreezeOnCollision;
@@ -368,7 +372,11 @@ namespace SquashGame
             WatchDives(rawDt);
             var ath = Athletes;
             for (int i = 0; ath != null && i < ath.Length; i++)
-                if (SourceFor(i) != null && ath[i].ArcadeHitEnabled) ath[i].Arcade.Assisted = IntentSource.Assisted;   // the control mode
+                if (SourceFor(i) != null && ath[i].ArcadeHitEnabled)
+                {
+                    ath[i].Arcade.Assisted = IntentSource.Assisted;   // the control mode
+                    ath[i].Arcade.ShotLines = ShotLines;               // a person: the shot plays its line
+                }
             Clock.Advance(rawDt);
 
             float alpha = Interpolate ? (float)Clock.Alpha : 1f;

@@ -103,7 +103,7 @@ namespace SquashSim.Academy
             move.Steps.Add(S(GoalKind.Dive, "Dive - it throws you the way you're moving. Dive twice.", "Space / B", count: 2));
             _all.Add(move);
 
-            var aim = L("aim", Chapter.Controls, "Aim", "The ring on the wall is where your shot goes.");
+            var aim = L("aim", Chapter.Controls, "Aim", "Your side of the front wall: straight. The other side: cross-court. The height picks the shot.");
             aim.Steps.Add(S(GoalKind.ReticleRings, "Put your ring inside the target and hold it there.", "mouse / right stick", count: 3)
                 .Ring(-1.5, 2.5, 0.45).Ring(1.8, 1.2, 0.45).Ring(0.0, 3.4, 0.45));
             _all.Add(aim);
@@ -137,7 +137,7 @@ namespace SquashSim.Academy
             early.Steps.Add(S(GoalKind.GreatHits, "Two great hits: get set early, let go as it arrives.", "watch the ring flash", StepSetup.Feed, 2));
             _all.Add(early);
 
-            var mode = L("mode", Chapter.Controls, "Assisted or not", "Non-assisted: exactly where you aim. Assisted: the game keeps your drives clean.");
+            var mode = L("mode", Chapter.Controls, "Assisted or not", "Both play your shot's line. Assisted also keeps your drives clean off the walls.");
             var na = S(GoalKind.ModeDrive, "Non-assisted: hit a straight drive down your side wall.", "aim right by the side wall", StepSetup.Feed); na.Assisted = false; mode.Steps.Add(na);
             var aa = S(GoalKind.ModeDrive, "Assisted: the same shot - the game keeps it off the wall.", "aim right by the side wall", StepSetup.Feed); aa.Assisted = true; mode.Steps.Add(aa);
             mode.Steps.Add(Card("Pick the one you like - you can change it any time in Settings > Controls."));

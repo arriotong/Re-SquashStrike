@@ -120,6 +120,8 @@ static class PressAudit
     public static bool AimHigh;
     /// <summary>P2-M7: play the balance with lets off (Settings > Gameplay > Lets), to see what lets change.</summary>
     public static bool NoLets;
+    /// <summary>Play the balance without shot lines (the exact aim), to see what they change.</summary>
+    public static bool NoLines;
 
     public static double LastWinRate;
     public static bool Quiet;
@@ -169,6 +171,7 @@ static class PressAudit
                                               : new OpponentBrain(AiProfile.ByName(opponent).WithDifficulty(difficulty), (uint)(40 + g));
             m.Players[0].WallAimEnabled = gameProfile;
             m.Players[0].ArcadeHitEnabled = gameProfile;
+            m.Players[0].Arcade.ShotLines = gameProfile && !NoLines;   // a person: the shot plays its line
             Program.ArcadeAi(m);
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             var c = m.Players[0];

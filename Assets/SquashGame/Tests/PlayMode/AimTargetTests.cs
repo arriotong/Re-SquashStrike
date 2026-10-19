@@ -28,6 +28,7 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var court = Object.FindFirstObjectByType<WarmUpCourt>();
             LabSimRunner r = court.Runner;
+            r.ShotLinesEnabled = false;                     // this checks the reticle against the exact aim (no shot lines)
             AimTargetView aim = GameObject.Find("AimTarget0").GetComponent<AimTargetView>();
             yield return null;
             Assert.That(aim.Shown, Is.True, "the target is always on in practice");

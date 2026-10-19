@@ -21,6 +21,8 @@ namespace SquashSim.Replays
         public ushort Flags;
 
         public bool Assisted { get { return (Flags & IntentCodec.FAssisted) != 0; } }
+        /// <summary>Shot lines were on (a person in a match).</summary>
+        public bool Lines { get { return (Flags & IntentCodec.FLines) != 0; } }
 
         public bool Equals(QFrame o)
         {
@@ -38,7 +40,7 @@ namespace SquashSim.Replays
         public const double SecondScale = 1000;     // hold times: milliseconds
 
         public const ushort FHasAim = 1 << 0, FHitP = 1 << 1, FHitR = 1 << 2, FHitH = 1 << 3, FTouchP = 1 << 4, FTouchR = 1 << 5, FTouchH = 1 << 6,
-                            FFocus = 1 << 7, FSplit = 1 << 8, FAppeal = 1 << 9, FDive = 1 << 10, FSprint = 1 << 11, FBoast = 1 << 12, FAssisted = 1 << 13;
+                            FFocus = 1 << 7, FSplit = 1 << 8, FAppeal = 1 << 9, FDive = 1 << 10, FSprint = 1 << 11, FBoast = 1 << 12, FAssisted = 1 << 13, FLines = 1 << 14;
 
         static short S(double v, double scale)
         {
@@ -57,7 +59,7 @@ namespace SquashSim.Replays
         }
 
         /// <summary>Quantise an intent (and the athlete's control mode) into a frame.</summary>
-        public static QFrame Encode(InputIntent i, bool assisted)
+        public static QFrame Encode(InputIntent i, bool assisted, bool lines = false)
         {
             ushort f = 0;
             if (i.HasAimPoint) f |= FHasAim;
@@ -66,6 +68,7 @@ namespace SquashSim.Replays
             if (i.MomentumFocus) f |= FFocus; if (i.SplitStepPressed) f |= FSplit; if (i.AppealPressed) f |= FAppeal;
             if (i.DivePressed) f |= FDive; if (i.Sprint) f |= FSprint; if (i.BoastPressed) f |= FBoast;
             if (assisted) f |= FAssisted;
+            if (lines) f |= FLines;
             return new QFrame
             {
                 MoveX = S(i.Move.X, UnitScale), MoveZ = S(i.Move.Z, UnitScale), MoveMag = S(i.MoveMagnitude, UnitScale),

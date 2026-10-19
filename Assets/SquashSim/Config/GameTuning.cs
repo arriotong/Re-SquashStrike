@@ -62,6 +62,15 @@ namespace SquashSim
         /// <summary>The simple hitting system: reach, timing, spread, the dive and sprint.</summary>
         public static class Hit
         {
+            // Shot lines (2026-10-19, "the game should know I'm going for a drive"): for a person, the half of the
+            // front wall aimed at picks straight or cross; the line itself comes from the shot. Per shot: how far off
+            // the side wall it lands and how deep (m) - straight, then cross.
+            public const double LineSnapAssisted = 1.0, LineSnapNonAssisted = 0.8;   // 1 = the line exactly, 0 = the aim
+            public const double LineMidBall = 0.35;                // a ball this near the middle: the aim's side is the corner
+            public const double DriveStraightOff = 0.40, DriveStraightDepth = 7.4, DriveCrossOff = 1.0, DriveCrossDepth = 6.6;
+            public const double KillStraightOff = 0.30, KillStraightDepth = 3.0, KillCrossOff = 1.1, KillCrossDepth = 3.2;
+            public const double LobStraightOff = 0.50, LobStraightDepth = 8.6, LobCrossOff = 0.9, LobCrossDepth = 8.4;
+            public const double DropStraightOff = 0.35, DropStraightDepth = 1.0, DropCrossOff = 0.45, DropCrossDepth = 1.1;
             public const double Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6;
             public const double Grace = 0.22;                      // released this early, it still connects as the ball comes in
             public const double ChargeFull = 0.9, ChargeBonus = 0.6;

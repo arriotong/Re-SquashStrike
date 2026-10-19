@@ -366,6 +366,12 @@ namespace SquashSim
             if (touch && shot != "drop") speed = c.TouchSpeed;
             bool boast = _boast && !ctrl.ServeStroke && wall == 0;
             _boast = false;
+            // Shot lines: you choose the shot (its height) and straight or cross (the half of the wall); it plays that line.
+            if (ShotLines && !boast && !ctrl.ServeStroke && wall == 0)
+            {
+                double k = Assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted;
+                tx += (LineFor(ball, surfaces, shot, tx, ty, speed) - tx) * k;
+            }
             int side = 0;
             if (boast)
             {
@@ -510,6 +516,10 @@ namespace SquashSim
         /// serves nudged onto a line that lands deep and legal. Off = the shot goes exactly where you aim.</summary>
         public bool Assisted;
 
+        /// <summary>Shot lines (a person's setting, both control modes; off for the AI and the Target Arcade, where the
+        /// exact spot is the point): the shot you pick plays its line - see ShotLine.</summary>
+        public bool ShotLines;
+
         /// <summary>The last serve launched (or previewed) lands legally in the receiver's back quarter.</summary>
         public bool LastServeLegal { get; private set; }
         /// <summary>Where the last serve met the front wall, x (Assisted may have moved it off the ring).</summary>
@@ -584,6 +594,65 @@ namespace SquashSim
         /// Assisted: a straight drive (ball and aim on the same side) that would touch its side wall before the first bounce
         /// is aimed a little further in, step by step (up to 1.2 m), until it runs clean down the wall.
         /// </summary>
+        /// <summary>
+        /// The front-wall x of the textbook line for this shot: straight when aimed on the ball's half of the front wall,
+        /// cross when aimed across (a ball near the middle goes to the corner on the aim's side). The line is the straight
+        /// path from the ball to the mirror image (behind the front wall) of where that shot should land - so it comes
+        /// back deep down the wall, or into the far corner, whatever the exact aim.
+        /// </summary>
+        public static double ShotLine(double bx, double bz, string shot, double tx, double landing = -1)
+        {
+            bool mid = System.Math.Abs(bx) <= GameTuning.Hit.LineMidBall;
+            int side = mid ? (tx >= 0 ? 1 : -1) : (bx > 0 ? 1 : -1);
+            bool straight = mid || tx * side >= 0;
+            double off, depth;
+            switch (shot)
+            {
+                case "kill": off = straight ? GameTuning.Hit.KillStraightOff : GameTuning.Hit.KillCrossOff; depth = straight ? GameTuning.Hit.KillStraightDepth : GameTuning.Hit.KillCrossDepth; break;
+                case "lob": off = straight ? GameTuning.Hit.LobStraightOff : GameTuning.Hit.LobCrossOff; depth = straight ? GameTuning.Hit.LobStraightDepth : GameTuning.Hit.LobCrossDepth; break;
+                case "drop": off = straight ? GameTuning.Hit.DropStraightOff : GameTuning.Hit.DropCrossOff; depth = straight ? GameTuning.Hit.DropStraightDepth : GameTuning.Hit.DropCrossDepth; break;
+                default: off = straight ? GameTuning.Hit.DriveStraightOff : GameTuning.Hit.DriveCrossOff; depth = straight ? GameTuning.Hit.DriveStraightDepth : GameTuning.Hit.DriveCrossDepth; break;
+            }
+            if (landing > 0) depth = landing;
+            int to = straight ? side : -side;
+            double lx = to * (CourtDimensions.HALF_W - off);
+            double z = System.Math.Max(0.2, bz);
+            return bx + (lx - bx) * z / (z + depth);
+        }
+
+        /// <summary>The shot line from here, checked in flight: the line is aimed (ShotLine), flown once through the real
+        /// ball physics, and aimed again with where this shot really lands - a drive struck from near the front lands
+        /// deeper than one from the back, and a cross from there must be aimed wider to reach the far side.</summary>
+        public double LineFor(BallState ball, List<Surface> surfaces, string shot, double tx, double ty, double speed)
+        {
+            double x = ShotLine(ball.Pos.X, ball.Pos.Z, shot, tx);
+            if (shot == "lob") return x;                                   // a lob's arc is its own search
+            bool keep = _dip;
+            _dip = PhysicsConfig.Current.ArcadeHit.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill");   // as it will fly
+            Solve(ball, surfaces, x, ty, 0, 0, speed);
+            double z = FirstBounceZ(ball, surfaces);
+            _dip = keep;
+            return z > 0.5 ? ShotLine(ball.Pos.X, ball.Pos.Z, shot, tx, z) : x;
+        }
+
+        /// <summary>Where the launch in hand (_vel) first bounces after the front wall (z), or -1.</summary>
+        double FirstBounceZ(BallState ball, List<Surface> surfaces)
+        {
+            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
+            bool front = false;
+            for (int i = 0; i < 480; i++)
+            {
+                _events.Clear();
+                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
+                foreach (var e in _events)
+                {
+                    if (e.SurfaceClass == "frontWall") front = true;
+                    else if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return front && e.SurfaceClass == "floor" ? e.Point.Z : -1;
+                }
+            }
+            return -1;
+        }
+
         public double StraightAssist(BallState ball, List<Surface> surfaces, double tx, double ty, double speed, bool kill = false)
         {
             int side = ball.Pos.X > 0 ? 1 : -1;
