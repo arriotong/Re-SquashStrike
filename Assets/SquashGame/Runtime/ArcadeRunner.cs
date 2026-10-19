@@ -22,6 +22,9 @@ namespace SquashGame
         public static string LessonId;
         /// <summary>Free practice: open the Coach panel at once.</summary>
         public static bool OpenCoach;
+        /// <summary>P2-M6: play this saved best back instead of being played (its score, to show).</summary>
+        public static InputLog Watch;
+        public static int WatchScore;
     }
 
     public sealed class ArcadeRunner : SimRunnerBase
@@ -42,6 +45,8 @@ namespace SquashGame
         protected override void CreateSimulation()
         {
             Challenge = Challenges.Find(SessionLaunch.ChallengeId) ?? Challenges.All()[0];
+            Watching = SessionLaunch.Watch; WatchingScore = SessionLaunch.WatchScore;
+            SessionLaunch.Watch = null;
             NewSession();
         }
 
@@ -49,7 +54,8 @@ namespace SquashGame
         {
             PhysicsConfig.ResetToDefaults();
             PhysicsConfig.UseGameProfile();
-            uint seed = (uint)System.Environment.TickCount ^ 0x5EEDu;
+            uint seed = Watching != null ? Watching.Seed : (uint)System.Environment.TickCount ^ 0x5EEDu;
+            _watchAt = 0;
             Session = new ArcadeSession(Challenge, seed);
             _athletes = new[] { Session.Player };
             Log = new InputLog { ChallengeId = Challenge.Id, Seed = seed };
@@ -71,16 +77,23 @@ namespace SquashGame
         public void Play(Challenge c)
         {
             Challenge = c;
+            Watching = null;
             Restart();
         }
 
         /// <summary>A bot plays instead of the player (tests; later the title screen's attract mode).</summary>
         public ArcadeBot Autopilot;
 
+        /// <summary>P2-M6: a saved best being played back (its log feeds every step), or null.</summary>
+        public InputLog Watching { get; private set; }
+        public int WatchingScore { get; private set; }
+        int _watchAt;
+
         protected override void SimStep(double dt)
         {
             if (Session.Over) { Input.Intent.ClearEdges(); return; }          // the play is over: nothing more to record
-            if (Autopilot != null) Autopilot.Fill(Input.Intent, Session, dt);
+            if (Watching != null) { if (_watchAt < Watching.Frames.Count) Watching.Frames[_watchAt++].Into(Input.Intent); else Input.Intent.ClearEdges(); }
+            else if (Autopilot != null) Autopilot.Fill(Input.Intent, Session, dt);
             Log.Record(Input.Intent);
             Session.Step(Input.Intent, dt);
             var h = Judged;

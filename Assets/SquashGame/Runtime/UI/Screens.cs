@@ -38,6 +38,50 @@ namespace SquashGame.UI
             Add(new ButtonItem("START", () => Fe.Replace(new MainMenuScreen()), true));
         }
         public override void Back() { }                                   // nowhere to go back to
+
+        // ---- P2-M6: real rallies behind the logo - your pinned match (or the latest), else a bundled one ----
+        Replays.TheatreSession _attract;
+        int _source;
+        /// <summary>What plays behind the logo now (tests).</summary>
+        public Replays.TheatreSession Attract { get { return _attract; } }
+
+        public override void OnShow() { base.OnShow(); StartAttract(); }
+        public override void OnHide() { StopAttract(); }
+
+        void StartAttract()
+        {
+            if (Fe.Match == null) return;
+            var f = Pick(out var entry);
+            if (f == null) return;
+            try { _attract = Replays.TheatreSession.Open(entry, f, Fe.Match); _attract.PlayReel(); }
+            catch (Exception e) { Debug.LogWarning("[Title] no highlights: " + e.Message); _attract = null; }
+        }
+
+        void StopAttract() { if (_attract != null) { _attract.Close(); _attract = null; } }
+
+        SquashSim.Replays.ReplayFile Pick(out Replays.ReplayEntry entry)
+        {
+            entry = null;
+            if (_source == 0)
+            {
+                var lib = Replays.ReplayLibrary.Entries;
+                entry = lib.Find(x => x.Pinned && x.SameVersion) ?? lib.Find(x => x.SameVersion && x.Tagged > 0);
+                if (entry != null) { try { return Replays.ReplayLibrary.Load(entry); } catch { entry = null; } }
+            }
+            var bundled = Resources.LoadAll<TextAsset>("Replays");
+            if (bundled.Length == 0) return null;
+            var t = bundled[(_source + (int)(Time.realtimeSinceStartup * 7)) % bundled.Length];
+            try { return SquashSim.Replays.ReplayFile.FromBytes(t.bytes); } catch { return null; }
+        }
+
+        public override void Tick(float dt)
+        {
+            var a = _attract;
+            if (a == null) return;
+            a.Tick(dt);
+            if (a.Reel != null && !a.Playing && a.Reel.Count > 0 && a.Builder.Clips[a.Reel[0]].Ready) a.PlayReel(a.Reel);   // its first rally is ready now
+            if (a.Playing && a.Paused) { StopAttract(); _source++; StartAttract(); }                                     // the reel is over: the next
+        }
     }
 
     // ---------------- match setup ----------------

@@ -23,11 +23,12 @@ namespace SquashGame.Tests
     public class ChoiceBudgetTests : InputTestFixture
     {
         public const int Budget = 6;
+        public static int Count(MenuScreen s) { return Choices(s); }
 
         static int Choices(MenuScreen s)
         {
             int n = 0;
-            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode)) n++;
+            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode)) n++;
             return n;
         }
 

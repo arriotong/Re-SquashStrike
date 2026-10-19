@@ -762,3 +762,69 @@
 .toast-words { flex-shrink: 1; }
 .toast-kicker { font-size: 10px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .toast-text { font-size: 22px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* ================= P2-M6: the replay theatre ================= */
+
+/* ---------- library ---------- */
+.k-rl-row { align-items: flex-start; }
+.k-card--replay { width: 318px; height: 470px; margin-right: 20px; }
+.k-card--replay .k-card-title { font-size: 28px; }
+
+/* ---------- a match ---------- */
+.k-rp-head { flex-direction: row; align-items: center; margin-bottom: 18px; }
+.k-rp-result { padding: 4px 16px; margin-right: 18px; border-radius: 8px; font-size: 30px; color: rgb(255, 255, 255); background-color: rgba(255, 255, 255, 0.1); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-rp-result--won { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-rp-head > .k-ft-chips { margin: 0 18px 0 0; }
+.k-rp-meta { font-size: 13px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-old { margin-left: 18px; padding: 3px 10px; border-radius: 10px; font-size: 11px; color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-progress { flex-grow: 1; -unity-text-align: middle-right; font-size: 12px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-card { width: 620px; min-height: 300px; margin: 0 0 24px 0; }
+.k-rp-score { flex-direction: row; align-items: center; margin-bottom: 6px; }
+.k-rp-before { font-size: 40px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-arrow { font-size: 28px; margin: 0 16px; color: rgb(200, 255, 61); }
+.k-rp-after { font-size: 48px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-call { font-size: 26px; margin-bottom: 12px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-rp-facts { flex-direction: row; margin-bottom: 12px; }
+.k-rp-fact { margin-right: 10px; padding: 4px 10px; border-radius: 6px; font-size: 13px; background-color: rgba(255, 255, 255, 0.06); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-tags { flex-direction: row; flex-wrap: wrap; }
+.k-rp-tag { margin: 0 8px 8px 0; padding: 3px 10px; border-radius: 12px; font-size: 11px; letter-spacing: 1px; color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rp-strip { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
+.k-rp-scroll { height: 74px; }
+.k-rp-nodes { flex-direction: row; align-items: center; height: 60px; padding: 0 8px; }
+.k-rnode { width: 26px; height: 48px; margin-right: 4px; align-items: center; justify-content: center; border-radius: 6px; transition-property: scale; transition-duration: 0.1s; }
+.k-rnode.fe-item--focused { background-color: rgba(200, 255, 61, 0.18); scale: 1.3 1.3; }
+.k-rnode-dot { width: 16px; height: 16px; border-radius: 8px; }
+.k-rnode-dot--p0 { background-color: rgb(200, 255, 61); }
+.k-rnode-dot--p1 { background-color: rgb(255, 90, 74); }
+.k-rnode-dot--let { background-color: rgba(255, 255, 255, 0.4); }
+.k-rnode-tag { width: 6px; height: 6px; border-radius: 3px; margin-top: 6px; background-color: rgb(255, 184, 59); }
+.k-rnode--wait { opacity: 0.3; }
+.k-rnode-gap { width: 26px; height: 40px; border-left-width: 2px; border-left-color: rgba(255, 255, 255, 0.25); margin-left: 12px; }
+
+/* ---------- watching: a minimal overlay ---------- */
+.k-theatre { position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: auto; padding: 0; background-image: none; transition-property: opacity; transition-duration: 0.2s; }
+.k-theatre .fe-title, .k-theatre .fe-kicker { display: none; }
+.k-th-bug { position: absolute; left: 40px; top: 36px; width: 380px; padding: 8px 14px; border-radius: 10px; background-color: rgba(12, 13, 16, 0.9); border-left-width: 5px; border-left-color: rgb(200, 255, 61); }
+.k-th-row { flex-direction: row; align-items: center; height: 36px; }
+.k-th-serve { width: 10px; height: 10px; border-radius: 5px; margin-right: 10px; }
+.k-th-serve--on { background-color: rgb(200, 255, 61); }
+.k-th-name { flex-grow: 1; font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-th-games { width: 30px; font-size: 16px; color: rgba(255, 255, 255, 0.6); -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-th-points { width: 44px; font-size: 26px; color: rgb(200, 255, 61); -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-th-top { position: absolute; left: 50%; top: 36px; translate: -50% 0; align-items: center; }
+.k-th-rally { padding: 6px 14px; border-radius: 8px; font-size: 13px; letter-spacing: 2px; background-color: rgba(12, 13, 16, 0.9); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-th-tagbox { margin-top: 10px; }
+.k-th-third { bottom: 170px; left: 40px; }
+.k-th-bar {
+    position: absolute; left: 40px; right: 40px; bottom: 70px; height: 64px; flex-direction: row; align-items: center; padding: 0 20px;
+    border-radius: 14px; background-color: rgba(12, 13, 16, 0.92);
+}
+.k-th-play { width: 40px; font-size: 22px; color: rgb(200, 255, 61); -unity-text-align: middle-center; }
+.k-th-track { flex-grow: 1; height: 12px; margin: 0 20px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.12); }
+.k-th-fill { height: 12px; border-radius: 6px; background-color: rgb(200, 255, 61); }
+.k-th-ticks { position: absolute; left: 0; right: 0; top: -6px; height: 24px; }
+.k-th-tick { position: absolute; top: 0; width: 3px; height: 24px; margin-left: -1px; border-radius: 1px; background-color: rgba(200, 255, 61, 0.9); }
+.k-th-tick--p1 { background-color: rgba(255, 90, 74, 0.9); }
+.k-th-time { width: 110px; font-size: 14px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-th-chip { margin-left: 10px; padding: 4px 12px; border-radius: 12px; font-size: 12px; letter-spacing: 1px; background-color: rgba(255, 255, 255, 0.1); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-th-prompts { left: 40px; bottom: 22px; padding: 6px 14px; border-radius: 10px; background-color: rgba(12, 13, 16, 0.85); }

@@ -38,6 +38,7 @@ namespace SquashGame.UI
             { "QUICK MATCH", 0 }, { "LOCAL VERSUS", 1 }, { "CONTINUE CAREER", 2 }, { "START A CAREER", 2 }, { "NEW CAREER", 2 },
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
+            { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
         };
 
         protected override void Compose()
@@ -83,6 +84,20 @@ namespace SquashGame.UI
                 .Line(() => ProfileStore.Current.Progress.Stats.MatchesWon + " matches won"));
             AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
                 .Badge(() => Done() + " / " + Achievements.All().Count));
+
+            // ---- REPLAYS (P2-M6) ----
+            var rep = Kit.Box(Page("REPLAYS"), "k-row");
+            var last = AddTo(rep, new CardItem("LAST MATCH", "REPLAY THEATRE", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e)); }, CardSize.Hero)
+                .Vignette("versus")
+                .Line(() => { var e = Replays.ReplayLibrary.Latest; return e == null ? "" : e.Result + "  " + e.Scores + "  ·  " + ReplayText.Title(e) + "  ·  " + e.Tagged + " highlights"; })
+                .Badge(() => { var e = Replays.ReplayLibrary.Latest; return e != null ? ReplayText.When(e) : ""; }, true));
+            last.Locked = () => Replays.ReplayLibrary.Latest == null; last.LockLine = () => "every match you play is kept here";
+            var reel = AddTo(rep, new CardItem("HIGHLIGHTS", "LAST MATCH", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e, true)); })
+                .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(255, 184, 59, 255))
+                .Line("The best rallies, back to back"));
+            reel.Locked = () => Replays.ReplayLibrary.Latest == null; reel.LockLine = () => "play a match first";
+            AddTo(rep, new CardItem("LIBRARY", "REPLAY THEATRE", () => Fe.Push(new ReplayLibraryScreen())).Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
+                .Line(() => { var l = Replays.ReplayLibrary.Entries; int p = l.FindAll(x => x.Pinned).Count; return l.Count + " replays  ·  " + p + " pinned"; }));
 
             // ---- settings: a small button top right, and Y ----
             var gear = new ActionItem("Settings", () => Fe.Push(new SettingsScreen()), PromptBar.Btn.Y);
@@ -365,6 +380,12 @@ namespace SquashGame.UI
                     Fe.Push(two ? (MenuScreen)new LocalVersusScreen() : new QuickMatchScreen());
                 }));
                 AddTo(more, new ActionItem("Main menu", () => Fe.QuitToMenu()));
+                AddTo(more, new ActionItem("Watch highlights", () =>
+                {
+                    var e = Replays.ReplayLibrary.Latest;
+                    Fe.QuitToMenu();
+                    if (e != null) Fe.Push(new MatchReplayScreen(e, true));
+                }, "▶"));
             }
         }
 

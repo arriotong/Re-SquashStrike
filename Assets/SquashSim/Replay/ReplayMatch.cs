@@ -39,6 +39,8 @@ namespace SquashSim.Replays
         {
             var sim = new MatchSimulation(s.FirstServer);
             sim.Bots[1] = s.TwoPlayer ? null : Opponent(s);
+            if (!string.IsNullOrEmpty(s.Opponent0))
+                sim.Bots[0] = new OpponentBrain(AiProfile.ByName(s.Opponent0).WithDifficulty(s.Difficulty0), s.BotSeed ^ 0x9E3779B9u);
             bool p2Arcade = s.TwoPlayer || sim.Bots[1] is OpponentBrain;
             sim.Players[0].WallAimEnabled = true;
             sim.Players[1].WallAimEnabled = p2Arcade;
@@ -54,7 +56,7 @@ namespace SquashSim.Replays
         }
 
         /// <summary>The athletes a person plays (recorded): athlete 0, and athlete 1 when two play.</summary>
-        public static bool Human(ReplaySetup s, int i) { return i == 0 || s.TwoPlayer; }
+        public static bool Human(ReplaySetup s, int i) { return i == 0 ? string.IsNullOrEmpty(s.Opponent0) : s.TwoPlayer; }
     }
 
     /// <summary>Watches a match step by step for what happens in each rally: when its serve began, the fastest shot,

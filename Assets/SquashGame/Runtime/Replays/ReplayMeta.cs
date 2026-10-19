@@ -48,7 +48,11 @@ namespace SquashGame.Replays
         public static Loadout Kit(ReplayFile f, int i)
         {
             string json = f.Get(i == 0 ? Kit0 : Kit1, null);
-            if (string.IsNullOrEmpty(json)) return null;
+            if (string.IsNullOrEmpty(json))
+            {
+                string sig = f.Get(i == 0 ? "sig0" : "sig1", null);          // a demo match: the personalities' own kits
+                return string.IsNullOrEmpty(sig) ? null : Cosmetics.Signature(sig);
+            }
             try { return JsonUtility.FromJson<Loadout>(json); } catch { return null; }
         }
     }

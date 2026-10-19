@@ -170,8 +170,16 @@ namespace SquashGame.Tests
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return Wait(0.5f, () => false);
+            // P2-M6: real rallies behind the logo (a bundled match: this profile has none of its own)
+            yield return Wait(3f, () => fe.Match.FramesActive);
+            var title = (TitleScreen)fe.Top;
+            Assert.That(title.Attract, Is.Not.Null, "highlights behind the title");
+            Assert.That(fe.Match.FramesActive, Is.True, "a replayed rally is showing");
+            yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P2M1_UI_1_Title.png");
             yield return Tap(kb.enterKey);
+            Assert.That(Replays.TheatreSession.Active, Is.Null, "the title's highlights stop with it");
+            Assert.That(fe.Match.Demo, Is.True);
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
             foreach (var tab in new[] { "CAREER", "ACADEMY", "LOCKER" })

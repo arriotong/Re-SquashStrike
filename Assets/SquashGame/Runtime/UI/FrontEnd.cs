@@ -324,6 +324,15 @@ namespace SquashGame.UI
             SceneManager.LoadScene(PracticeScene);
         }
 
+        /// <summary>P2-M6: watch the saved best play of a Target Arcade level.</summary>
+        public static void WatchArcadeBest(string id)
+        {
+            var log = Replays.ArcadeBests.Load(id, out int score);
+            if (log == null) return;
+            SessionLaunch.Watch = log; SessionLaunch.WatchScore = score;
+            LaunchChallenge(id);
+        }
+
         public static void LaunchFreePractice(bool coach = false)
         {
             ProfileStore.Save();

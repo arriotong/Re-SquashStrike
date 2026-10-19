@@ -129,8 +129,8 @@ namespace SquashSim.Replays
             return reel;
         }
 
-        /// <summary>How many rallies have at least one tag (the library card's count).</summary>
-        public static int Count(ReplayFile f, int you = 0) { int n = 0; foreach (var t in Tag(f, you)) if (t != RallyTag.None) n++; return n; }
+        /// <summary>The highlights a match has: its reel's length (the library card's count).</summary>
+        public static int Count(ReplayFile f, int you = 0) { return f.Rallies.Count == 0 ? 0 : Reel(f, 5, you).Count; }
 
         /// <summary>Game scores as "11-7 9-11 11-5" (each game's last rally).</summary>
         public static string GameScores(ReplayFile f)

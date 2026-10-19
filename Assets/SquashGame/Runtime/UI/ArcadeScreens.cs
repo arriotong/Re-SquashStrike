@@ -165,6 +165,7 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         VisualElement _detail;
         CardItem _shown;
+        ActionItem _watch;
         readonly CardItem[] _cards = new CardItem[3];
 
         protected override void Compose()
@@ -196,6 +197,14 @@ namespace SquashGame.UI
             _detail.Clear();
             Kit.L(_detail, c.LevelName.ToUpperInvariant() + "  ·  THE STARS", "k-panel-title");
             Stars.Ladder(_detail, c);
+            if (Replays.ArcadeBests.Has(c.Id))
+            {
+                // P2-M6: watch your best play of this level again
+                if (_watch != null) { Items.Remove(_watch); }
+                var cc = c;
+                _watch = AddTo(_detail, new ActionItem("Watch best", () => FrontEnd.WatchArcadeBest(cc.Id), "▶"));
+                _watch.Refresh();
+            }
         }
     }
 
@@ -322,16 +331,22 @@ namespace SquashGame.UI
             _c = r.Challenge;
             _score = _s.Score;
             _stars = _s.Stars;
+            IsReplay = r.Watching != null;
             var rec = ProfileStore.Record(_c.Id);
+            if (IsReplay) { _prev = rec != null ? rec.Best : int.MinValue; ReplayScore = r.WatchingScore; return; }   // watching a best: nothing to submit
             _prev = rec != null ? rec.Best : int.MinValue;
             int starsBefore = rec != null ? rec.Stars : 0;
             _best = ProfileStore.Submit(_c.Id, _score, _stars);
+            if (_best && _c.Mode != ArcadeMode.Drill) Replays.ArcadeBests.Save(r.Log, _score);          // P2-M6: "Watch best"
             // P2-M5: XP, new stars, the arcade achievements
             Reward = Progression.Rewards.Arcade(_c.Id, _c.Mode == ArcadeMode.Drill, starsBefore, _stars, _score, _c.Mode == ArcadeMode.Streak);
         }
 
         /// <summary>This play set a new best (tests).</summary>
         public bool NewBest { get { return _best; } }
+        /// <summary>P2-M6: this was a saved best played back (and the score it was saved with).</summary>
+        public bool IsReplay { get; private set; }
+        public int ReplayScore { get; private set; }
         public Progression.RewardResult Reward { get; private set; }
         /// <summary>Stars shown so far (they pop in one by one).</summary>
         public int StarsShown { get; private set; }
@@ -343,6 +358,17 @@ namespace SquashGame.UI
 
         protected override void Compose()
         {
+            if (IsReplay)
+            {
+                AddTo(Root, new PrimaryItem("Target Arcade", () => Fe.BackToArcadeMenu()));
+                var rc = Kit.Box(Content, "k-cr-result"); rc.AddToClassList("k-cr-result--card");
+                var st = new Stamp("YOUR BEST, AGAIN", 0.2f); st.AddToClassList("k-stamp--good"); rc.Add(st);
+                Kit.L(rc, _score.ToString("N0"), "k-ta-score");
+                Kit.L(rc, _score == ReplayScore ? "Played back exactly: the same " + _score.ToString("N0") + "." : "Saved as " + ReplayScore.ToString("N0") + " - this version plays it differently.", "k-ta-res-best");
+                var again = Kit.Box(rc, "k-cr-pv-acts");
+                AddTo(again, new ActionItem("Watch again", () => { Fe.Clear(); Fe.Arcade.Restart(); }));
+                return;
+            }
             AddTo(Root, new PrimaryItem("Retry", () => { Fe.Clear(); Fe.Arcade.Restart(); }));
             var col = Kit.Box(Content, "k-cr-result");
             var top = Kit.Box(col, "k-ta-res-top");

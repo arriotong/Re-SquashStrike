@@ -38,6 +38,9 @@ namespace SquashSim.Replays
         public bool WarmUp;
         public uint BotSeed;
         public int FirstServer;
+        /// <summary>An AI for athlete 0 too (a demo match: bundled replays, the title screen); null = a person.</summary>
+        public string Opponent0;
+        public float Difficulty0 = 0.5f;
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -130,7 +133,7 @@ namespace SquashSim.Replays
                 w.Write(Meta.Count); foreach (var kv in Meta) { w.Write(kv.Key); w.Write(kv.Value ?? ""); }
                 var s = Setup;
                 w.Write(s.TwoPlayer); w.Write(s.Opponent ?? ""); w.Write(s.Difficulty); w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin);
-                w.Write(s.WarmUp); w.Write(s.BotSeed); w.Write(s.FirstServer);
+                w.Write(s.WarmUp); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Opponent0 ?? ""); w.Write(s.Difficulty0);
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -191,6 +194,7 @@ namespace SquashSim.Replays
                 var s = f.Setup;
                 s.TwoPlayer = r.ReadBoolean(); s.Opponent = r.ReadString(); s.Difficulty = r.ReadSingle(); s.Scoring = r.ReadString(); s.GamesToWin = r.ReadInt32();
                 s.WarmUp = r.ReadBoolean(); s.BotSeed = r.ReadUInt32(); s.FirstServer = r.ReadInt32();
+                s.Opponent0 = r.ReadString(); if (s.Opponent0.Length == 0) s.Opponent0 = null; s.Difficulty0 = r.ReadSingle();
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)
                 {
@@ -243,9 +247,15 @@ namespace SquashSim.Replays
         {
             var sb = new StringBuilder();
             Walk(sb, "cfg", cfg, 0);
-            foreach (var t in typeof(GameTuning).GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
-                foreach (var f in t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
-                    Value(sb, t.Name + "." + f.Name, f.IsLiteral ? f.GetRawConstantValue() : f.GetValue(null));
+            // reflection gives no order (and .NET and Mono differ): everything by name
+            var types = typeof(GameTuning).GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic);
+            Array.Sort(types, (a, b) => string.CompareOrdinal(a.Name, b.Name));
+            foreach (var t in types)
+            {
+                var fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                Array.Sort(fields, (a, b) => string.CompareOrdinal(a.Name, b.Name));
+                foreach (var f in fields) Value(sb, t.Name + "." + f.Name, f.IsLiteral ? f.GetRawConstantValue() : f.GetValue(null));
+            }
             ulong h = 14695981039346656037UL;
             foreach (char c in sb.ToString()) { h ^= c; h *= 1099511628211UL; }
             return h;
