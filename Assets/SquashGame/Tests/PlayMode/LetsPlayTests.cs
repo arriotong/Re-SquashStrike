@@ -60,6 +60,30 @@ namespace SquashGame.Tests
             Assert.That(o, Is.Not.Null);
             Assert.That(o.Kind, Is.EqualTo(RallyEnd.Stroke), o.ToString());
             Assert.That(o.Winner, Is.EqualTo(0));
+
+            // L4: a stroke is reviewed at once, with the obstruction drawn on the floor; any key skips it.
+            t0 = Time.realtimeSinceStartup;
+            while (!r.ReplayActive && Time.realtimeSinceStartup - t0 < 1f) yield return null;
+            Assert.That(r.ReplayActive && r.ReviewingCall, Is.True, "a stroke is reviewed automatically");
+            Assert.That(r.LastCall, Is.Not.Null);
+            Assert.That(r.LastCall.Obstruction, Is.EqualTo(ObstructionKind.Line));
+            var overlay = Object.FindFirstObjectByType<ObstructionOverlay>();
+            t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 0.6f) yield return null;
+            Assert.That(overlay.Showing, Is.True, "the corridor and the obstructor drawn");
+            Debug.Log("[P2M7] review: " + fe.Hud.BannerText + " / " + fe.Hud.BannerSub);
+            Assert.That(fe.Hud.BannerSub, Does.Contain("in the line to the front wall"));
+            yield return FrontEndTests.CaptureUI(fe, "P2M7_StrokeReview.png");
+            Press(kb.spaceKey); yield return null; Release(kb.spaceKey); yield return null; yield return null;
+            Assert.That(r.ReplayActive, Is.False, "any key skips the review");
+            Assert.That(overlay.Showing, Is.False);
+
+            // The call on the lower third: the decision big, why in plain words, the point.
+            Debug.Log("[P2M7] call: " + fe.Hud.BannerText + " / " + fe.Hud.BannerSub);
+            Assert.That(fe.Hud.BannerText, Is.EqualTo("STROKE"));
+            Assert.That(fe.Hud.BannerSub, Does.StartWith("Retriever was in the line to the front wall"));
+            Assert.That(fe.Hud.BannerSub, Does.Contain("POINT  YOU"));
+            yield return FrontEndTests.CaptureUI(fe, "P2M7_StrokeCall.png");
         }
 
         [UnityTest]

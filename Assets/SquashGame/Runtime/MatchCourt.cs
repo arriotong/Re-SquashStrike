@@ -65,6 +65,11 @@ namespace SquashGame
             popups.transform.SetParent(transform, false);
             popups.Build(Runner);
 
+            // P2-M7: the referee review's drawing on the floor.
+            var obstruction = new GameObject("ObstructionOverlay").AddComponent<ObstructionOverlay>();
+            obstruction.transform.SetParent(transform, false);
+            obstruction.Build(Runner, Palette);
+
             // P2-M1: the front end (menus over the live court, the HUD, pause, post-match).
             var fe = new GameObject("FrontEnd").AddComponent<UI.FrontEnd>();
             fe.transform.SetParent(transform, false);

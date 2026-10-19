@@ -60,8 +60,26 @@ namespace SquashGame
         public MatchSettings Settings = new MatchSettings();
         [Tooltip("Seed for the opponent's choices (deterministic).")]
         public uint BotSeed = 12345;
-        [Tooltip("Seconds of play shown in a referee replay, and its speed.")]
+        [Tooltip("Seconds of play shown in a referee replay (V), and its speed.")]
         public float ReplaySeconds = 3.5f, ReplaySpeed = 0.5f;
+        [Tooltip("Seconds of play in the automatic review of a stroke.")]
+        public float ReviewSeconds = 2f;
+
+        /// <summary>P2-M7: where everyone was when an interference call was made (the review's floor drawing).</summary>
+        public sealed class CallGeometry
+        {
+            public RallyEnd Kind;
+            public ObstructionKind Obstruction;
+            public int Striker;
+            public double StrikerX, StrikerZ, TargetX, TargetZ, ObstructorX, ObstructorZ;
+        }
+        /// <summary>The last rally's call on interference (null when it ended any other way, or on the ball hitting a player).</summary>
+        public CallGeometry LastCall { get; private set; }
+        /// <summary>The review on screen is of LastCall (an automatic stroke review, or V after a call).</summary>
+        public bool ReviewingCall { get; private set; }
+        /// <summary>Who was going for the ball when the last call was made (-1: no call).</summary>
+        public int LastCallStriker { get; private set; } = -1;
+        int _reviewFrames;
 
         public static readonly string[] Opponents = { "retriever", "attacker", "shotmaker", "grinder", "wallbot" };
         public string OpponentName { get; private set; }
@@ -302,8 +320,42 @@ namespace SquashGame
 
         void OnRallyEnded(RallyOutcome o)
         {
-            // Interference calls are reviewed on the referee camera.
-            if (o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet || o.Kind == RallyEnd.Stroke) { _replayRequested = true; _replayCaption = o.Reason; }
+            LastCall = null; LastCallStriker = -1;
+            if (!UI.CallWords.IsCall(o)) return;
+            // The interference state is still the call's (it moves on at the end of this step).
+            var it = Sim.Interference;
+            LastCallStriker = it.Striker;
+            if (it.Striker >= 0 && !o.Reason.Contains("ball hit"))
+            {
+                var s = Sim.Players[it.Striker].Player.Pos; var ob = Sim.Players[1 - it.Striker].Player.Pos;
+                LastCall = new CallGeometry
+                {
+                    Kind = o.Kind, Obstruction = it.ThisTurn, Striker = it.Striker,
+                    StrikerX = s.X, StrikerZ = s.Z, TargetX = it.TargetX, TargetZ = it.TargetZ, ObstructorX = ob.X, ObstructorZ = ob.Z,
+                };
+            }
+            // P2-M7: strokes are reviewed automatically on the referee camera; any call on V.
+            if (o.Kind == RallyEnd.Stroke) { _replayRequested = true; _replayCaption = CallCaption(o); }
+        }
+
+        /// <summary>"STROKE: Retriever was in the line to the front wall".</summary>
+        public string CallCaption(RallyOutcome o)
+        {
+            if (!UI.CallWords.IsCall(o)) return o.Reason;
+            return UI.CallWords.Decision(o) + ": " + UI.CallWords.Reason(o, Names, LastCallStriker, Settings.TwoPlayer ? -1 : HumanIndex);
+        }
+
+        /// <summary>Anything pressed this frame (skips a review).</summary>
+        static bool AnyPress()
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.anyKey.wasPressedThisFrame) return true;
+            var ms = Mouse.current;
+            if (ms != null && (ms.leftButton.wasPressedThisFrame || ms.rightButton.wasPressedThisFrame)) return true;
+            foreach (var g in Gamepad.all)
+                if (g.buttonSouth.wasPressedThisFrame || g.buttonEast.wasPressedThisFrame || g.buttonNorth.wasPressedThisFrame ||
+                    g.buttonWest.wasPressedThisFrame || g.startButton.wasPressedThisFrame || g.selectButton.wasPressedThisFrame) return true;
+            return false;
         }
 
         /// <summary>A local player's pad went away (unplugged, battery): pause until it is back.</summary>
@@ -346,15 +398,24 @@ namespace SquashGame
             }
 
             WatchDevices();
+            // A review is skipped with any key (not on the frame it started).
+            if (ReplayActive) { if (_reviewFrames++ > 0 && AnyPress()) StopReplay(); }
+            else { _reviewFrames = 0; ReviewingCall = false; }
             if (_replayRequested && !ReplayActive)
             {
                 _replayRequested = false;
-                StartReplay(ReplaySeconds, ReplaySpeed, _replayCaption);
+                StartReplay(ReviewSeconds, ReplaySpeed, _replayCaption);
+                ReviewingCall = ReplayActive; _reviewFrames = 0;
             }
             var kb = Keyboard.current;
-            if (kb != null && kb.vKey.wasPressedThisFrame && !ReplayActive && Sim.LastOutcome != null &&
+            var pad = Gamepad.current;
+            bool view = (kb != null && kb.vKey.wasPressedThisFrame) || (pad != null && pad.selectButton.wasPressedThisFrame);
+            if (view && !ReplayActive && _reviewFrames == 0 && Sim.LastOutcome != null &&
                 (Sim.Phase == MatchPhase.RallyOver || Sim.Phase == MatchPhase.AwaitToss))
-                StartReplay(ReplaySeconds + 1.5f, ReplaySpeed, Sim.LastOutcome.Reason);
+            {
+                StartReplay(ReplaySeconds + 1.5f, ReplaySpeed, CallCaption(Sim.LastOutcome));
+                ReviewingCall = ReplayActive && UI.CallWords.IsCall(Sim.LastOutcome); _reviewFrames = 0;
+            }
 
             // Ready (Enter / pad Y) from either player. Consumed every frame so a Y pressed
             // as an appeal in a rally never skips the next break.

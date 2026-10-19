@@ -54,6 +54,17 @@ namespace SquashSim.Tests
             Assert.That(Highlights.GameScores(f), Is.EqualTo("11-8 11-3"));
         }
 
+        [Test] public void CallsAreTagged()
+        {
+            var f = Match();
+            f.Rallies[6].Kind = (byte)RallyEnd.Stroke; f.Rallies[7].Kind = (byte)RallyEnd.Let;
+            var t = Highlights.Tag(f);
+            Assert.That(t[6] & RallyTag.Stroke, Is.Not.EqualTo(RallyTag.None), "P2-M7: a stroke");
+            Assert.That(t[7] & RallyTag.Let, Is.Not.EqualTo(RallyTag.None), "a let");
+            Assert.That(t[5] & (RallyTag.Let | RallyTag.Stroke), Is.EqualTo(RallyTag.None));
+            Assert.That(Highlights.Name(RallyTag.Stroke), Is.EqualTo("Stroke"));
+        }
+
         [Test] public void TheReelHasTheBestInPlayOrderAndTheMatchBall()
         {
             var f = Match();

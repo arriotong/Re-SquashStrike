@@ -1,8 +1,8 @@
 // ===========================================================
 // Assets/SquashGame/Tests/PlayMode/AppealReplayTests.cs
 // M3 in the real Match scene against the AI: the player appeals with
-// pad Y on their turn, the referee rules Let or No let, the referee
-// replay plays from the overhead camera, then play carries on.
+// pad Y on their turn, the referee rules Let or No let; pad View plays
+// the review from the overhead camera (P2-M7), then play carries on.
 // Writes Captures/M3_RefereeReplay.png.
 // ===========================================================
 
@@ -60,9 +60,12 @@ namespace SquashGame.Tests
             Debug.Log("[Pop] shown: " + string.Join(" ", pops.Shown));
             Assert.That(pops.Shown.TrueForAll(w => w == "Hit!"), Is.True, "plain pop-ups: only Hit! (the HUD shows the call)");
 
-            // The call is reviewed automatically on the referee camera.
+            // P2-M7: a let or no let is not reviewed automatically (strokes are); pad View (V) reviews it.
             yield return null; yield return null;
-            Assert.That(r.ReplayActive, Is.True, "an interference call should start the referee replay");
+            Assert.That(r.ReplayActive, Is.False, "only strokes are reviewed automatically");
+            Press(pad.selectButton); yield return null; Release(pad.selectButton); yield return null;
+            Assert.That(r.ReplayActive, Is.True, "View should start the referee review");
+            Assert.That(r.ReviewingCall, Is.True);
             long stepsAtReplay = r.Clock.TotalSteps;
             float tr = Time.realtimeSinceStartup;
             while (r.ReplayActive && Time.realtimeSinceStartup - tr < 0.8f) yield return null;

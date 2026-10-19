@@ -26,12 +26,13 @@ namespace SquashSim.Replays
     public enum RallyTag
     {
         None = 0, Longest = 1, Marathon = 2, Rocket = 4, Nick = 8, Winner = 16, GameBall = 32, MatchBall = 64, Comeback = 128, GreatHit = 256, Dive = 512,
+        Let = 1024, Stroke = 2048,    // P2-M7: the rally ended on a call
     }
 
     public static class Highlights
     {
         public static readonly RallyTag[] All =
-            { RallyTag.MatchBall, RallyTag.GameBall, RallyTag.Nick, RallyTag.Marathon, RallyTag.Longest, RallyTag.Rocket, RallyTag.Comeback, RallyTag.Winner, RallyTag.GreatHit, RallyTag.Dive };
+            { RallyTag.MatchBall, RallyTag.GameBall, RallyTag.Nick, RallyTag.Marathon, RallyTag.Longest, RallyTag.Rocket, RallyTag.Comeback, RallyTag.Winner, RallyTag.GreatHit, RallyTag.Dive, RallyTag.Stroke, RallyTag.Let };
 
         public static string Name(RallyTag t)
         {
@@ -41,6 +42,7 @@ namespace SquashSim.Replays
                 case RallyTag.Nick: return "Nick"; case RallyTag.Winner: return "Winner"; case RallyTag.GameBall: return "Game ball";
                 case RallyTag.MatchBall: return "Match ball"; case RallyTag.Comeback: return "Comeback"; case RallyTag.GreatHit: return "Great hit";
                 case RallyTag.Dive: return "Dive";
+                case RallyTag.Let: return "Let"; case RallyTag.Stroke: return "Stroke";
             }
             return "";
         }
@@ -52,6 +54,7 @@ namespace SquashSim.Replays
                 case RallyTag.MatchBall: return 6; case RallyTag.Nick: return 5; case RallyTag.Marathon: return 5; case RallyTag.Longest: return 4;
                 case RallyTag.Rocket: return 4; case RallyTag.Comeback: return 4; case RallyTag.GameBall: return 3; case RallyTag.Winner: return 2;
                 case RallyTag.Dive: return 2; case RallyTag.GreatHit: return 1;
+                case RallyTag.Stroke: return 2; case RallyTag.Let: return 1;
             }
             return 0;
         }
@@ -73,6 +76,8 @@ namespace SquashSim.Replays
                 if (r.Winner == you && r.LastStriker == you && r.Kind == (byte)RallyEnd.NotUp) tags[i] |= RallyTag.Winner;
                 if ((you == 0 ? r.Great0 : r.Great1) > 0) tags[i] |= RallyTag.GreatHit;
                 if (r.Dives > 0) tags[i] |= RallyTag.Dive;
+                if (r.Kind == (byte)RallyEnd.Let) tags[i] |= RallyTag.Let;
+                if (r.Kind == (byte)RallyEnd.Stroke) tags[i] |= RallyTag.Stroke;
 
                 int prevGames = i == 0 ? 0 : rs[i - 1].Games0 + rs[i - 1].Games1;
                 bool gameEnded = r.Games0 + r.Games1 > prevGames;

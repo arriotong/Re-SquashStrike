@@ -43,6 +43,7 @@ namespace SquashGame
 
         /// <summary>What the call says now (tests).</summary>
         public string BannerText { get { return _third.style.display == DisplayStyle.Flex ? _banner.text : null; } }
+        public string BannerSub { get { return _third.style.display == DisplayStyle.Flex ? _sub.text : null; } }
         public string PromptText { get { return _promptBox.style.display == DisplayStyle.Flex ? _prompt.text : null; } }
         /// <summary>The player the LET? chip is over now, or -1 (tests).</summary>
         public int LetPromptFor { get { return _let.style.display == DisplayStyle.Flex ? _letFor : -1; } }
@@ -139,13 +140,23 @@ namespace SquashGame
             if (r.ReplayActive)
             {
                 banner = "REFEREE REVIEW";
-                sub = r.ReplayCaption + "   ·   replay " + r.ReplaySpeed.ToString("0.0") + "x   ·   Esc skips";
+                sub = r.ReplayCaption + "   ·   " + r.ReplaySpeed.ToString("0.0") + "x   ·   any key skips";
             }
             else if (m.Phase == MatchPhase.RallyOver && m.LastOutcome != null)
             {
                 RallyOutcome o = m.LastOutcome;
-                banner = o.Reason;
-                sub = (o.Kind == RallyEnd.Let || o.Winner < 0 ? "" : "POINT  " + names[o.Winner] + "   ·   ") + "V  replay";
+                string point = o.Kind == RallyEnd.Let || o.Winner < 0 ? "" : "POINT  " + names[o.Winner] + "   ·   ";
+                if (UI.CallWords.IsCall(o))
+                {
+                    // P2-M7: the decision big, why in plain words, who gets the point
+                    banner = UI.CallWords.Decision(o);
+                    sub = UI.CallWords.Reason(o, names, r.LastCallStriker, twoPlayer ? -1 : r.HumanIndex) + "   ·   " + point + "V  review";
+                }
+                else
+                {
+                    banner = o.Reason;
+                    sub = point + "V  replay";
+                }
             }
             if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused)
             {
