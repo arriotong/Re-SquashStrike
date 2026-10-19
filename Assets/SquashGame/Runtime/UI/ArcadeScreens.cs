@@ -399,22 +399,39 @@ namespace SquashGame.UI
         static CoachChoices C { get { return ProfileStore.Current.Coach; } }
         CoachFeeder Feeder { get { return Fe.Coach; } }
 
+        readonly VisualElement[] _pages = new VisualElement[2];
+        TabBar _tabs;
+
         protected override void Build()
         {
-            Add(new CarouselItem("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v));
-            Add(new SelectorItem("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v));
-            Add(new SelectorItem("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v));
-            Add(new SelectorItem("Feeding", new[] { "Automatic", "On F" }, () => C.Auto ? 0 : 1, v => C.Auto = v == 0));
-            Add(new SelectorItem("Every", CoachFeeder.IntervalNames, () => C.Interval, v => C.Interval = v)).Enabled = () => C.Auto;
-            Add(new SelectorItem("Slow-mo", CoachFeeder.SlowNames, () => C.Slow, v => C.Slow = v));
-            Add(new SelectorItem("Trail", new[] { "Short", "Long" }, () => C.LongTrail ? 1 : 0, v => { C.LongTrail = v == 1; Feeder.Apply(); }));
-            Add(new SelectorItem("Ball", new[] { "Cold", "Warm" }, () => C.WarmBall ? 1 : 0, v => C.WarmBall = v == 1));
+            // two short pages (Q / E, LB / RB): the feed, and how you see it - a few choices at a time
+            _tabs = new TabBar("FEED", "VIEW");
+            _tabs.Changed += Page;
+            Content.Add(_tabs);
+            _pages[0] = Kit.Box(Content, "k-tray-page");
+            AddTo(_pages[0], new CarouselItem("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v));
+            AddTo(_pages[0], new SelectorItem("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v));
+            AddTo(_pages[0], new SelectorItem("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v));
+            AddTo(_pages[0], new SelectorItem("Feeding", new[] { "Automatic", "On F" }, () => C.Auto ? 0 : 1, v => C.Auto = v == 0));
+            AddTo(_pages[0], new SelectorItem("Every", CoachFeeder.IntervalNames, () => C.Interval, v => C.Interval = v)).Enabled = () => C.Auto;
+            _pages[1] = Kit.Box(Content, "k-tray-page");
+            AddTo(_pages[1], new SelectorItem("Slow-mo", CoachFeeder.SlowNames, () => C.Slow, v => C.Slow = v));
+            AddTo(_pages[1], new SelectorItem("Trail", new[] { "Short", "Long" }, () => C.LongTrail ? 1 : 0, v => { C.LongTrail = v == 1; Feeder.Apply(); }));
+            AddTo(_pages[1], new SelectorItem("Ball", new[] { "Cold", "Warm" }, () => C.WarmBall ? 1 : 0, v => C.WarmBall = v == 1));
             Add(new ActionItem("Feed now", () => { Fe.Pop(); Feeder.FeedNow(); }, "▶"));
-            Add(new ActionItem("Close", () => Fe.Pop()));
             var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
-            prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Close"));
+            prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Page"), (PromptBar.Btn.B, "Close"));
             Root.Add(prompts);
+            Page(0);
         }
+
+        void Page(int i)
+        {
+            for (int k = 0; k < 2; k++) _pages[k].style.display = k == i ? DisplayStyle.Flex : DisplayStyle.None;
+            Root.schedule.Execute(FocusFirstShown);
+        }
+
+        public override void OnTab(int d) { _tabs.Step(d); }
 
         public override void OnShow() { base.OnShow(); Fe.Runner.Clock.Pause(); }
         public override void OnHide()

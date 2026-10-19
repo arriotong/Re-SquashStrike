@@ -64,19 +64,16 @@ namespace SquashGame.Tests
             while (fe.Top.Focused.Name != "Settings") yield return Tap(kb.downArrowKey);
             yield return Tap(kb.enterKey);
             Assert.That(fe.Top, Is.InstanceOf<SettingsScreen>());
-            yield return Tap(kb.enterKey);                                   // Controls (first row)
-            Assert.That(fe.Top, Is.InstanceOf<ControlSettingsScreen>());
+            yield return null; yield return null;
+            Assert.That(((SettingsScreen)fe.Top).Tabs.Current, Is.EqualTo("CONTROLS"));
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Control mode"));
             bool before = IntentSource.Assisted;
             yield return Tap(kb.rightArrowKey);
             Assert.That(IntentSource.Assisted, Is.EqualTo(!before), "the control mode changes at once");
 
-            yield return Tap(kb.escapeKey);                                  // back to Settings
-            Assert.That(fe.Top, Is.InstanceOf<SettingsScreen>());
-            Assert.That(r.Clock.Paused, Is.True, "Esc in a menu must not un-pause the game");
             yield return Tap(kb.escapeKey);                                  // back to Pause
             Assert.That(fe.Top, Is.InstanceOf<PauseScreen>());
-            Assert.That(r.Clock.Paused, Is.True);
+            Assert.That(r.Clock.Paused, Is.True, "Esc in a menu must not un-pause the game");
             yield return Tap(kb.escapeKey);                                  // resume
             yield return null;
             Assert.That(r.Clock.Paused, Is.False, "Esc on the pause screen resumes");
@@ -189,8 +186,21 @@ namespace SquashGame.Tests
             yield return Tap(kb.escapeKey);
             yield return Tap(kb.rKey);                                  // Y / R: settings
             Assert.That(fe.Top, Is.InstanceOf<SettingsScreen>());
-            yield return Tap(kb.enterKey);
-            yield return CaptureUI(fe, "P2M1_UI_4_Controls.png");
+            foreach (var tab in new[] { "CONTROLS", "VIDEO", "AUDIO", "ACCESSIBILITY", "GAMEPLAY" })
+            {
+                yield return Wait(0.3f, () => false);
+                Assert.That(((SettingsScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));
+                yield return CaptureUI(fe, "U5_Settings_" + tab + ".png");
+                yield return Tap(kb.eKey);
+            }
+            yield return Tap(kb.escapeKey);
+            fe.Push(new ConfirmScreen("Quit re:SquashStrike?", () => { }));
+            yield return Wait(0.3f, () => false);
+            yield return CaptureUI(fe, "U5_Confirm.png");
+            fe.Pop();
+            fe.Push(new ControlsHelpScreen());
+            yield return CaptureUI(fe, "U5_Controls.png");
+            fe.Pop();
             fe.StartMatch(MatchSettings.QuickGame());
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "P2M1_UI_5_Hud.png");
@@ -198,6 +208,12 @@ namespace SquashGame.Tests
             yield return null;
             yield return CaptureUI(fe, "P2M1_UI_6_Pause.png");
             Assert.That(fe.Top, Is.InstanceOf<PauseScreen>());
+            yield return Tap(kb.escapeKey);
+            yield return Wait(0.3f, () => false);
+            fe.Toast("ACHIEVEMENT  ·  GOLD", "World No. 1", 2);
+            fe.Toast("ACHIEVEMENT  ·  BRONZE", "First win", 0);
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "U5_HudToasts.png");
         }
 
         static void Capture(string file)

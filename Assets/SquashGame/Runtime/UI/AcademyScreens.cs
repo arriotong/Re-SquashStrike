@@ -197,18 +197,14 @@ namespace SquashGame.UI
         }
     }
 
-    public sealed class AcademySuggestScreen : MenuScreen
+    public sealed class AcademySuggestScreen : DialogScreen
     {
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
         protected override string Kicker { get { return "WELCOME"; } }
         protected override string Title { get { return "New to re:SquashStrike?"; } }
-        protected override void Build()
-        {
-            Text("Start with the Academy: short lessons on the controls, then the rules of squash.");
-            Add(new ButtonItem("Start the Academy", () => { Fe.Pop(); Fe.Push(new AcademyScreen()); }, true));
-            Add(new ButtonItem("Not now", () => Fe.Pop()));
-        }
+        protected override string Line { get { return "Start with the Academy: short lessons on the controls, then the rules of squash."; } }
+        protected override string YesLabel { get { return "Start the Academy"; } }
+        protected override string NoLabel { get { return "Not now"; } }
+        protected override void OnYes() { Fe.Pop(); Fe.Push(new AcademyScreen()); }
     }
 
     public sealed class AcademyPauseScreen : MenuScreen

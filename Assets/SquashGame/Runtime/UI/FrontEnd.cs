@@ -149,7 +149,7 @@ namespace SquashGame.UI
 
         // ---------------- P2-M5: achievement toasts ----------------
 
-        readonly List<(Label label, float age)> _toasts = new List<(Label, float)>();
+        readonly List<(VisualElement box, float age)> _toasts = new List<(VisualElement, float)>();
         VisualElement _toastBox;
         /// <summary>The toasts shown so far (tests).</summary>
         public readonly List<string> ToastLog = new List<string>();
@@ -157,29 +157,42 @@ namespace SquashGame.UI
         public void ToastAchievements(Progression.RewardResult r)
         {
             if (r == null) return;
-            foreach (var a in r.Achieved) Toast("ACHIEVEMENT  ·  " + a.Tier.ToString().ToUpperInvariant(), a.Name);
+            foreach (var a in r.Achieved) Toast("ACHIEVEMENT  ·  " + a.Tier.ToString().ToUpperInvariant(), a.Name, (int)a.Tier);
         }
 
-        readonly Queue<(string kicker, string text)> _toastQueue = new Queue<(string, string)>();
+        readonly Queue<(string kicker, string text, int tier)> _toastQueue = new Queue<(string, string, int)>();
         public const int MaxToasts = 3;
 
-        public void Toast(string kicker, string text)
+        /// <summary>A toast top right; tier 0-2 shows an achievement medallion (bronze / silver / gold).</summary>
+        public void Toast(string kicker, string text, int tier = -1)
         {
             ToastLog.Add(text);
-            if (_toasts.Count >= MaxToasts) { _toastQueue.Enqueue((kicker, text)); return; }     // three at a time; the rest wait
-            ShowToast(kicker, text);
+            if (_toasts.Count >= MaxToasts) { _toastQueue.Enqueue((kicker, text, tier)); return; }     // three at a time; the rest wait
+            ShowToast(kicker, text, tier);
         }
 
-        void ShowToast(string kicker, string text)
+        void ShowToast(string kicker, string text, int tier)
         {
             if (_toastBox == null)
             {
                 _toastBox = new VisualElement(); _toastBox.AddToClassList("toasts"); _toastBox.pickingMode = PickingMode.Ignore;
                 _root.Add(_toastBox);
             }
-            var l = new Label(kicker + "\n" + text); l.AddToClassList("toast");
-            _toastBox.Add(l);
-            _toasts.Add((l, 0f));
+            var box = new VisualElement(); box.AddToClassList("toast"); box.AddToClassList("toast--in"); box.pickingMode = PickingMode.Ignore;
+            if (tier >= 0)
+            {
+                var medal = new Label(tier == 2 ? "III" : tier == 1 ? "II" : "I"); medal.AddToClassList("toast-medal");
+                medal.style.backgroundColor = MedalItem.TierColours[Mathf.Clamp(tier, 0, 2)];
+                box.Add(medal);
+            }
+            var words = new VisualElement(); words.AddToClassList("toast-words");
+            var k = new Label(kicker); k.AddToClassList("toast-kicker");
+            var t = new Label(text); t.AddToClassList("toast-text");
+            words.Add(k); words.Add(t); box.Add(words);
+            _toastBox.Add(box);
+            box.schedule.Execute(() => box.RemoveFromClassList("toast--in")).StartingIn(30);
+            if (tier >= 0) Sounds.Play("star");
+            _toasts.Add((box, 0f));
         }
 
         void TickToasts(float dt)
@@ -192,7 +205,7 @@ namespace SquashGame.UI
                 if (age > 5f) { l.RemoveFromHierarchy(); _toasts.RemoveAt(i); }
                 else _toasts[i] = (l, age);
             }
-            while (_toasts.Count < MaxToasts && _toastQueue.Count > 0) { var (k, t) = _toastQueue.Dequeue(); ShowToast(k, t); }
+            while (_toasts.Count < MaxToasts && _toastQueue.Count > 0) { var (k, t, tier) = _toastQueue.Dequeue(); ShowToast(k, t, tier); }
         }
 
         public void Push(MenuScreen s)

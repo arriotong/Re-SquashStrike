@@ -24,6 +24,9 @@ namespace SquashGame.Progression
         /// <summary>The opponent's kit shown instead (the versus screen's pick, on the menus' demo athlete); null = theirs.</summary>
         public static Loadout OpponentPreview;
 
+        /// <summary>A celebration shown on your athlete in the menus (the Locker Room, browsing celebrations); null = none.</summary>
+        public static string PreviewPose;
+
         static readonly Loadout PlayerTwo = new Loadout { Shirt = "shirt_sky", Shorts = "shorts_navy", Socks = "socks_navy", Shoes = "shoes_white", Skin = "skin_2", Frame = "frame_royal", Grip = "grip_white" };
 
         static MatchSettings _for;
@@ -34,6 +37,7 @@ namespace SquashGame.Progression
         /// celebration), the loser hangs their head. Null otherwise (and in the menus' demo).</summary>
         public static string Moment(MatchRunner r, int i)
         {
+            if (r != null && r.Demo && i == 0 && PreviewPose != null) return PreviewPose;
             if (r == null || r.Sim == null || r.Demo || r.Sim.Phase != SquashSim.MatchPhase.MatchOver) return null;
             int w = r.Sim.Score.MatchWinner;
             if (w < 0) return null;

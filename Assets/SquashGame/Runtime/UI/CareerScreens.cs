@@ -985,17 +985,13 @@ namespace SquashGame.UI
         public override void OnHide() { CareerStore.Save(); }
     }
 
-    public sealed class RetireScreen : MenuScreen
+    public sealed class RetireScreen : DialogScreen
     {
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
         protected override string Kicker { get { return "CAREER MATCH"; } }
         protected override string Title { get { return "Retire from the match?"; } }
-        protected override void Build()
-        {
-            Text("Leaving counts as a loss.");
-            Add(new ButtonItem("No", () => Fe.Pop(), true));
-            Add(new ButtonItem("Retire", () => { Fe.Clear(); Fe.Runner.Clock.Resume(); Career.Record(Fe, false, true); }));
-        }
+        protected override string Line { get { return "Leaving counts as a loss."; } }
+        protected override string YesLabel { get { return "Retire"; } }
+        protected override string NoLabel { get { return "Play on"; } }
+        protected override void OnYes() { Fe.Clear(); Fe.Runner.Clock.Resume(); Career.Record(Fe, false, true); }
     }
 }

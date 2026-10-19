@@ -89,10 +89,8 @@ namespace SquashGame.Tests
             yield return HubNav.Open(fe, kb, Tap, "LOCKER", "YOUR KIT");
             Assert.That(fe.Top, Is.InstanceOf<LockerRoomScreen>());
             yield return Wait(1.5f, () => false);
-            yield return CaptureUI(fe, "P2M5_UI_1_LockerRoom.png");
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Kit"));
-            yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<KitScreen>());
+            var locker = (LockerRoomScreen)fe.Top;
+            Assert.That(locker.Tabs.Current, Is.EqualTo("CLOTHES"));
             var row = (LockerRow)fe.Top.Focused;
             Assert.That(row.Slot, Is.EqualTo(Slot.Shirt));
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_charcoal"), "the worn shirt first");
@@ -111,35 +109,51 @@ namespace SquashGame.Tests
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_lime"));
             Assert.That(row.Owned, Is.False);
             yield return Wait(1.0f, () => false);
-            yield return CaptureUI(fe, "P2M5_UI_2_Kit.png");
+            yield return CaptureUI(fe, "P2M5_UI_1_LockerRoom.png");
             yield return Tap(kb.enterKey);
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "a locked item is not worn");
 
+            // LOOK: a celebration plays on the athlete as you browse
+            yield return Tap(kb.eKey);
+            yield return null; yield return null;
+            Assert.That(locker.Tabs.Current, Is.EqualTo("LOOK"));
+            yield return FocusRow(kb, fe, "Celebration");
+            yield return null;
+            Assert.That(KitDirector.PreviewPose, Is.Not.Null, "the celebration is shown");
+            yield return Wait(1.0f, () => false);
+            yield return CaptureUI(fe, "P2M5_UI_2_Kit.png");
+            yield return Tap(kb.eKey);                                                 // RACKET
+            yield return Wait(1.0f, () => false);
+            Assert.That(((LockerRow)fe.Top.Focused).Slot, Is.EqualTo(Slot.Frame));
+            Assert.That(KitDirector.PreviewPose, Is.Null);
+            yield return CaptureUI(fe, "P2M5_UI_3_Racket.png");
+            yield return Tap(kb.eKey);                                                 // CARD
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "U5_Locker_Card.png");
+
             yield return Tap(kb.escapeKey);
-            Assert.That(fe.Top, Is.InstanceOf<LockerRoomScreen>());
+            Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
             Assert.That(KitDirector.Preview, Is.Null, "the preview ends with the screen");
+            Assert.That(KitDirector.PreviewPose, Is.Null);
             yield return null; yield return null;
             Assert.That(You().Worn.Shirt, Is.EqualTo("shirt_white"), "still wearing the chosen shirt");
             ProfileStore.Reset();
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "saved");
 
-            yield return FocusRow(kb, fe, "Racket");
-            yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<RacketScreen>());
-            yield return Wait(1.0f, () => false);
-            yield return CaptureUI(fe, "P2M5_UI_3_Racket.png");
-            yield return Tap(kb.escapeKey);
-            yield return FocusRow(kb, fe, "Stats");
-            yield return Tap(kb.enterKey);
+            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "STATS");
             Assert.That(fe.Top, Is.InstanceOf<StatsScreen>());
+            yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_4_Stats.png");
+            yield return Tap(kb.eKey);
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "U5_Stats_Shots.png");
             yield return Tap(kb.escapeKey);
-            yield return FocusRow(kb, fe, "Achievements");
-            yield return Tap(kb.enterKey);
+            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "ACHIEVEMENTS");
             Assert.That(fe.Top, Is.InstanceOf<AchievementsScreen>());
+            yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_5_Achievements.png");
             yield return Tap(kb.escapeKey);
-            Assert.That(fe.Top, Is.InstanceOf<LockerRoomScreen>());
+            Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
         }
 
         [UnityTest]

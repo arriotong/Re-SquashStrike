@@ -55,172 +55,147 @@ namespace SquashGame.UI
         public static readonly string[] ControlLabels = { "Non-assisted", "Assisted" };
     }
 
-    // ---------------- settings ----------------
+    // ---------------- settings (UI redesign U5: one screen, five tabs) ----------------
 
-    public sealed class SettingsScreen : MenuScreen
+    /// <summary>Every setting, by tab: big selectors with a line on what each does; live previews where they help.
+    /// Every change applies at once and is saved on leaving.</summary>
+    public sealed class SettingsScreen : GameScreen
     {
+        static GameSettings S { get { return ProfileStore.Current.Settings; } }
         protected override string Kicker { get { return "SETTINGS"; } }
         protected override string Title { get { return "Settings"; } }
+        protected override bool ShowChip { get { return false; } }
         public override bool Dims { get { return Fe.Match == null || !Fe.Match.Demo; } }
-        protected override void Build()
-        {
-            Add(new ButtonItem("Controls", () => Fe.Push(new ControlSettingsScreen())));
-            Add(new ButtonItem("Video", () => Fe.Push(new VideoSettingsScreen())));
-            Add(new ButtonItem("Audio", () => Fe.Push(new AudioSettingsScreen())));
-            Add(new ButtonItem("Accessibility", () => Fe.Push(new AccessibilitySettingsScreen())));
-            Add(new ButtonItem("Gameplay", () => Fe.Push(new GameplaySettingsScreen())));
-            Add(new ButtonItem("Back", () => Fe.Pop()));
-        }
-        public override void OnHide() { ProfileStore.Save(); }
-    }
-
-    /// <summary>A settings page: every change applies at once and is saved on leaving.</summary>
-    public abstract class SettingsPage : MenuScreen
-    {
-        protected static GameSettings S { get { return ProfileStore.Current.Settings; } }
-        protected override string Kicker { get { return "SETTINGS"; } }
-        public override bool Dims { get { return Fe.Match == null || !Fe.Match.Demo; } }
-        protected virtual bool AppliesVideo { get { return false; } }
-        protected void Changed() { ProfileStore.Apply(S, AppliesVideo); }
-        protected OptionItem Choice(string label, string[] names, Func<int> get, Action<int> set)
-        {
-            return Add(new OptionItem(label, () => names[Mathf.Clamp(get(), 0, names.Length - 1)],
-                d => { set(OptionItem.Step(get(), d, names.Length)); Changed(); }));
-        }
-        protected OptionItem OnOff(string label, Func<bool> get, Action<bool> set)
-        {
-            return Add(new OptionItem(label, () => get() ? "On" : "Off", d => { set(!get()); Changed(); }));
-        }
-        protected OptionItem Steps(string label, float[] values, string[] names, Func<float> get, Action<float> set)
-        {
-            Func<int> idx = () =>
-            {
-                int best = 0; float bd = float.MaxValue;
-                for (int i = 0; i < values.Length; i++) { float d = Mathf.Abs(values[i] - get()); if (d < bd) { bd = d; best = i; } }
-                return best;
-            };
-            return Add(new OptionItem(label, () => names[idx()], d => { set(values[OptionItem.Step(idx(), d, values.Length)]); Changed(); }));
-        }
-        protected OptionItem Percent(string label, Func<float> get, Action<float> set)
-        {
-            var v = new float[11]; var n = new string[11];
-            for (int i = 0; i <= 10; i++) { v[i] = i / 10f; n[i] = (i * 10) + "%"; }
-            return Steps(label, v, n, get, set);
-        }
-        protected void BackRow() { Add(new ButtonItem("Back", () => Fe.Pop())); }
-        public override void OnHide() { ProfileStore.Save(); }
-    }
-
-    public sealed class ControlSettingsScreen : SettingsPage
-    {
-        protected override string Title { get { return "Controls"; } }
-        protected override void Build()
-        {
-            Choice("Control mode", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => S.Assisted = i == 1);
-            Text("Assisted: straight drives stay off the side wall, cross-courts don't rattle, serves land deep and legal.");
-            Steps("Aim speed", IntentSource.SensitivitySteps, new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" },
-                () => S.AimSpeed, v => S.AimSpeed = v);
-            OnOff("Invert mouse Y", () => S.InvertMouseY, v => S.InvertMouseY = v);
-            Add(new ButtonItem("View controls", () => Fe.Push(new ControlsHelpScreen())));
-            BackRow();
-        }
-    }
-
-    public sealed class VideoSettingsScreen : SettingsPage
-    {
-        protected override string Title { get { return "Video"; } }
-        protected override bool AppliesVideo { get { return true; } }
         readonly List<Vector2Int> _sizes = new List<Vector2Int>();
-        protected override void Build()
+        VisualElement _ball, _ring;
+        Label _call;
+
+        protected override void Compose()
         {
-            foreach (var r in Screen.resolutions)
-            {
-                var v = new Vector2Int(r.width, r.height);
-                if (!_sizes.Contains(v)) _sizes.Add(v);
-            }
+            // ---- CONTROLS ----
+            var c = Panel("CONTROLS");
+            Row(c, new SelectorItem("Control mode", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => { S.Assisted = i == 1; Changed(false); }),
+                "Assisted: straight drives stay off the side wall, cross-courts don't rattle, serves land deep and legal.");
+            Row(c, new SelectorItem("Aim speed", new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" }, () => Nearest(IntentSource.SensitivitySteps, S.AimSpeed),
+                i => { S.AimSpeed = IntentSource.SensitivitySteps[i]; Changed(false); }, true), "How fast the ring moves with the mouse or the right stick.");
+            Row(c, new SelectorItem("Invert mouse Y", new[] { "Off", "On" }, () => S.InvertMouseY ? 1 : 0, i => { S.InvertMouseY = i == 1; Changed(false); }), "Mouse up moves the ring down.");
+            AddTo(c, new ActionItem("View the controls", () => Fe.Push(new ControlsHelpScreen()), "▶"));
+
+            // ---- VIDEO ----
+            var v = Panel("VIDEO");
+            foreach (var r in Screen.resolutions) { var s = new Vector2Int(r.width, r.height); if (!_sizes.Contains(s)) _sizes.Add(s); }
             var names = new List<string> { "Current" };
-            foreach (var v in _sizes) names.Add(v.x + " x " + v.y);
-            Choice("Resolution", names.ToArray(),
+            foreach (var s in _sizes) names.Add(s.x + " x " + s.y);
+            Row(v, new CarouselItem("Resolution", names.ToArray(),
                 () => { int i = _sizes.IndexOf(new Vector2Int(S.ResolutionW, S.ResolutionH)); return i < 0 ? 0 : i + 1; },
-                i => { if (i == 0) { S.ResolutionW = 0; S.ResolutionH = 0; } else { S.ResolutionW = _sizes[i - 1].x; S.ResolutionH = _sizes[i - 1].y; } });
-            Choice("Display", new[] { "Borderless", "Fullscreen", "Windowed" }, () => S.DisplayMode, i => S.DisplayMode = i);
-            OnOff("VSync", () => S.VSync, v => S.VSync = v);
+                i => { if (i == 0) { S.ResolutionW = 0; S.ResolutionH = 0; } else { S.ResolutionW = _sizes[i - 1].x; S.ResolutionH = _sizes[i - 1].y; } Changed(true); }),
+                "The game's size. \"Current\" keeps the desktop's.");
+            Row(v, new SelectorItem("Display", new[] { "Borderless", "Fullscreen", "Windowed" }, () => S.DisplayMode, i => { S.DisplayMode = i; Changed(true); }), "Borderless switches windows fastest.");
+            Row(v, new SelectorItem("VSync", new[] { "Off", "On" }, () => S.VSync ? 1 : 0, i => { S.VSync = i == 1; Changed(true); }), "On: no tearing, a little more input delay.");
             var caps = new[] { 0, 60, 120, 144, 240 };
-            Choice("Frame cap", new[] { "Off", "60", "120", "144", "240" }, () => Math.Max(0, Array.IndexOf(caps, S.FrameCap)), i => S.FrameCap = caps[i]);
+            Row(v, new SelectorItem("Frame cap", new[] { "Off", "60", "120", "144", "240" }, () => Math.Max(0, Array.IndexOf(caps, S.FrameCap)), i => { S.FrameCap = caps[i]; Changed(true); }), "The most frames a second (with VSync off).");
             var q = new List<string> { "Default" }; q.AddRange(QualitySettings.names);
-            Choice("Quality", q.ToArray(), () => S.Quality + 1, i => S.Quality = i - 1);
-            BackRow();
-        }
-    }
+            Row(v, new CarouselItem("Quality", q.ToArray(), () => S.Quality + 1, i => { S.Quality = i - 1; Changed(true); }), "Shadows and smoothing. The ball plays the same at every setting.");
 
-    public sealed class AudioSettingsScreen : SettingsPage
-    {
-        protected override string Title { get { return "Audio"; } }
-        protected override void Build()
-        {
-            Percent("Master", () => S.MasterVolume, v => S.MasterVolume = v);
-            Percent("Sound effects", () => S.SfxVolume, v => S.SfxVolume = v);
-            Percent("Referee", () => S.RefereeVolume, v => S.RefereeVolume = v);
-            BackRow();
-        }
-    }
+            // ---- AUDIO ----
+            var a = Panel("AUDIO");
+            Row(a, Volume("Master", () => S.MasterVolume, x => S.MasterVolume = x), "Everything.");
+            Row(a, Volume("Sound effects", () => S.SfxVolume, x => S.SfxVolume = x), "The ball, the walls, the shoes, the menus.");
+            Row(a, Volume("Referee", () => S.RefereeVolume, x => S.RefereeVolume = x), "The calls.");
 
-    public sealed class AccessibilitySettingsScreen : SettingsPage
-    {
-        protected override string Title { get { return "Accessibility"; } }
-        protected override void Build()
-        {
-            Steps("Ball size", new[] { 0.85f, 1f, 1.2f, 1.4f }, new[] { "Small", "Normal", "Large", "Larger" }, () => S.BallScale, v => S.BallScale = v);
-            Text("Only how the ball is drawn - the ball in play is the same for everyone.");
-            Choice("Ring colour", new[] { "White", "Yellow", "Cyan" }, () => S.RingColour, i => S.RingColour = i);
-            Steps("Call text", new[] { 1f, 1.2f, 1.4f }, new[] { "Normal", "Large", "Larger" }, () => S.CallTextScale, v => S.CallTextScale = v);
-            BackRow();
-        }
-    }
+            // ---- ACCESSIBILITY ----
+            var acc = Panel("ACCESSIBILITY");
+            float[] balls = { 0.85f, 1f, 1.2f, 1.4f }, calls = { 1f, 1.2f, 1.4f };
+            Row(acc, new SelectorItem("Ball size", new[] { "Small", "Normal", "Large", "Larger" }, () => Nearest(balls, S.BallScale), i => { S.BallScale = balls[i]; Changed(false); }),
+                "Only how the ball is drawn - the ball in play is the same for everyone.");
+            Row(acc, new SelectorItem("Ring colour", new[] { "White", "Yellow", "Cyan" }, () => S.RingColour, i => { S.RingColour = i; Changed(false); }), "The aim ring on the wall.");
+            Row(acc, new SelectorItem("Call text", new[] { "Normal", "Large", "Larger" }, () => Nearest(calls, S.CallTextScale), i => { S.CallTextScale = calls[i]; Changed(false); }), "The referee's calls on screen.");
+            var pv = Kit.Panel(acc.parent, "PREVIEW"); pv.AddToClassList("k-set-preview");
+            var pvRow = Kit.Box(pv, "k-set-pv-row");
+            var ballBox = Kit.Box(pvRow, "k-set-pv-box"); ballBox.AddToClassList("k-set-pv-box--ball"); _ball = Kit.Box(ballBox, "k-set-ball"); Kit.L(ballBox, "BALL", "k-cr-tile-n");
+            var ringBox = Kit.Box(pvRow, "k-set-pv-box"); _ring = Kit.Box(ringBox, "k-set-ring"); Kit.L(ringBox, "RING", "k-cr-tile-n");
+            _call = Kit.L(pv, "NOT UP   —   point YOU", "k-set-call");
 
-    public sealed class GameplaySettingsScreen : SettingsPage
-    {
-        protected override string Title { get { return "Gameplay"; } }
-        protected override void Build()
-        {
-            OnOff("\"Hit!\" pop-ups", () => S.Popups, v => S.Popups = v);
-            BackRow();
+            // ---- GAMEPLAY ----
+            var g = Panel("GAMEPLAY");
+            Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
         }
+
+        VisualElement Panel(string tab)
+        {
+            var page = Kit.Box(Page(tab), "k-set-page");
+            var p = Kit.Panel(page, tab); p.AddToClassList("k-set-panel");
+            return p;
+        }
+
+        void Row(VisualElement panel, MenuItem item, string hint)
+        {
+            var box = Kit.Box(panel, "k-set-row");
+            AddTo(box, item);
+            Kit.L(box, hint, "k-set-hint");
+        }
+
+        static SelectorItem Volume(string label, Func<float> get, Action<float> set)
+        {
+            var steps = new string[11]; for (int i = 0; i <= 10; i++) steps[i] = (i * 10) + "%";
+            return new SelectorItem(label, steps, () => Mathf.Clamp(Mathf.RoundToInt(get() * 10), 0, 10), i => { set(i / 10f); ProfileStore.Apply(S, false); }, true);
+        }
+
+        static int Nearest(float[] values, float v) { int best = 0; for (int i = 1; i < values.Length; i++) if (Mathf.Abs(values[i] - v) < Mathf.Abs(values[best] - v)) best = i; return best; }
+
+        static void Changed(bool video) { ProfileStore.Apply(S, video); }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.B, "Back"), (PromptBar.Btn.Tabs, "Tabs")); }
+
+        public override void Tick(float dt)
+        {
+            if (_ball == null) return;
+            float d = 44f * S.BallScale;
+            _ball.style.width = d; _ball.style.height = d; _ball.style.borderTopLeftRadius = _ball.style.borderTopRightRadius = _ball.style.borderBottomLeftRadius = _ball.style.borderBottomRightRadius = d * 0.5f;
+            var rc = S.RingColour == 1 ? new Color(1f, 0.85f, 0.2f) : S.RingColour == 2 ? new Color(0.3f, 0.9f, 1f) : Color.white;
+            _ring.style.borderTopColor = _ring.style.borderBottomColor = _ring.style.borderLeftColor = _ring.style.borderRightColor = rc;
+            _call.style.fontSize = 28 * S.CallTextScale;
+        }
+
+        public override void OnHide() { ProfileStore.Save(); }
     }
 
     // ---------------- controls reference ----------------
 
-    public sealed class ControlsHelpScreen : MenuScreen
+    public sealed class ControlsHelpScreen : GameScreen
     {
         protected override string Kicker { get { return "HOW TO PLAY"; } }
         protected override string Title { get { return "Controls"; } }
+        protected override bool ShowChip { get { return false; } }
         public override bool Dims { get { return Fe.Match == null || !Fe.Match.Demo; } }
         static readonly string[,] Rows =
         {
-            { "Move", "WASD   ·   left stick" },
-            { "Aim", "mouse   ·   right stick  (high = lob, low = drop)" },
-            { "Hit", "hold LMB / A to charge, let go as the ball arrives" },
-            { "Kill", "aim low and charge" },
-            { "Boast", "tap E   ·   RB  (arms the next shot)" },
-            { "Dive", "Space   ·   B" },
-            { "Sprint", "Shift   ·   LB" },
-            { "Serve", "tap: lob serve   ·   hold: hard serve" },
-            { "Replay last call", "V" },
-            { "Pause", "Esc   ·   Start" },
+            { "Move", "WASD", "left stick" },
+            { "Aim", "mouse", "right stick" },
+            { "Hit", "hold LMB, let go as it arrives", "hold A, let go" },
+            { "Height picks the shot", "high = lob, middle = drive, low = drop", "" },
+            { "Kill", "aim low and charge", "" },
+            { "Boast", "tap E", "RB" },
+            { "Dive", "Space", "B" },
+            { "Sprint", "Shift", "LB" },
+            { "Serve", "tap: lob serve, hold: hard serve", "" },
+            { "Replay the last call", "V", "" },
+            { "Pause", "Esc", "Start" },
         };
-        protected override void Build()
+        protected override void Compose()
         {
+            var grid = Kit.Box(Content, "k-ctl-grid");
             for (int i = 0; i < Rows.GetLength(0); i++)
             {
-                var row = new VisualElement(); row.AddToClassList("ctl-row");
-                var a = new Label(Rows[i, 0]); a.AddToClassList("ctl-action");
-                var k = new Label(Rows[i, 1]); k.AddToClassList("ctl-keys");
-                row.Add(a); row.Add(k);
-                Content.Add(row);
+                var row = Kit.Box(grid, "k-ctl");
+                Kit.L(row, Rows[i, 0], "k-ctl-action");
+                var keys = Kit.Box(row, "k-ctl-keys");
+                Kit.L(keys, Rows[i, 1], "k-ctl-key");
+                if (Rows[i, 2].Length > 0) { Kit.L(keys, "·", "k-ctl-or"); var pad = Kit.L(keys, Rows[i, 2], "k-ctl-key"); pad.AddToClassList("k-ctl-key--pad"); }
             }
-            Text("Get set early and let go on time: the ring pulses on a great hit.");
-            Add(new ButtonItem("Back", () => Fe.Pop()));
+            Kit.L(Content, "Get set early and let go on time: the ring flashes on a great hit.", "k-cr-note");
         }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.B, "Back")); }
     }
 
     // ---------------- pause (the practice court; the match: HubScreens.cs) ----------------
@@ -251,18 +226,39 @@ namespace SquashGame.UI
 
     // ---------------- confirm ----------------
 
-    public sealed class ConfirmScreen : MenuScreen
+    /// <summary>A small centred panel: the question, a line, two choices side by side (yes has the focus).</summary>
+    public abstract class DialogScreen : MenuScreen
+    {
+        protected virtual string YesLabel { get { return "Yes"; } }
+        protected virtual string NoLabel { get { return "No"; } }
+        protected virtual string Line { get { return null; } }
+        /// <summary>The yes choice.</summary>
+        protected abstract void OnYes();
+        ActionItem _yesItem;
+        protected override bool Sidebar { get { return false; } }
+        protected override string RootClass { get { return "k-confirm"; } }
+        public override bool Spatial { get { return true; } }
+        public override bool Dims { get { return true; } }
+        protected override string Hint { get { return null; } }
+        protected override void Build()
+        {
+            if (!string.IsNullOrEmpty(Line)) Kit.L(Content, Line, "k-confirm-text");
+            var row = Kit.Box(Content, "k-confirm-row");
+            AddTo(row, new ActionItem(NoLabel, () => Back()));
+            _yesItem = AddTo(row, new ActionItem(YesLabel, OnYes, "▶"));
+            var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--confirm");
+            prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, NoLabel));
+            Root.Add(prompts);
+        }
+        public override void OnShow() { base.OnShow(); if (_yesItem != null) Focus(_yesItem); }
+    }
+
+    public sealed class ConfirmScreen : DialogScreen
     {
         readonly string _question;
         readonly Action _yes;
         public ConfirmScreen(string question, Action yes) { _question = question; _yes = yes; }
-        protected override bool Centred { get { return true; } }
-        public override bool Dims { get { return true; } }
         protected override string Title { get { return _question; } }
-        protected override void Build()
-        {
-            Add(new ButtonItem("No", () => Fe.Pop()));
-            Add(new ButtonItem("Yes", () => { Fe.Pop(); _yes(); }, true));
-        }
+        protected override void OnYes() { Fe.Pop(); _yes(); }
     }
 }

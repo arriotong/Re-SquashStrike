@@ -5,8 +5,10 @@
 //
 //   score bug     YOU 7 | PAR 11 · GAMES 1-0 | OPPONENT 5 - lime
 //                 digits, a dot by the server; under it the box
-//   call banner   the referee's call with its reason; "point X"
-//   serve prompt  when it is a local player's serve
+//   call          the referee's call as a broadcast lower third: the
+//                 call big, "point X" under it; slides in (U5)
+//   serve prompt  a glyph strip when it is a local player's serve
+//   flips         a point ticks with a flip; a won game flashes GAMES
 //   game over     the game result, the break countdown
 //   banners       referee review, controller disconnected
 //
@@ -28,11 +30,14 @@ namespace SquashGame
         readonly VisualElement[] _serve = new VisualElement[2];
         readonly Label[] _name = new Label[2], _points = new Label[2];
         readonly Label _system = new Label(), _games = new Label(), _meta = new Label();
-        readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label();
+        readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label(), _promptKey = new Label();
+        readonly VisualElement _third = new VisualElement(), _promptBox = new VisualElement();
+        readonly int[] _lastPoints = { -1, -1 };
+        int _lastGames = -1;
 
-        /// <summary>What the banner says now (tests).</summary>
-        public string BannerText { get { return _banner.style.display == DisplayStyle.Flex ? _banner.text : null; } }
-        public string PromptText { get { return _prompt.style.display == DisplayStyle.Flex ? _prompt.text : null; } }
+        /// <summary>What the call says now (tests).</summary>
+        public string BannerText { get { return _third.style.display == DisplayStyle.Flex ? _banner.text : null; } }
+        public string PromptText { get { return _promptBox.style.display == DisplayStyle.Flex ? _prompt.text : null; } }
 
         public HudLayer()
         {
@@ -56,11 +61,14 @@ namespace SquashGame
             }
             Add(_bug);
             _meta.AddToClassList("sb-meta"); Add(_meta);
-            _banner.AddToClassList("hud-banner"); Add(_banner);
-            _sub.AddToClassList("hud-sub"); Add(_sub);
+            _third.AddToClassList("hud-third"); _third.pickingMode = PickingMode.Ignore;
+            _banner.AddToClassList("hud-third-call"); _sub.AddToClassList("hud-third-sub");
+            _third.Add(_banner); _third.Add(_sub); Add(_third);
             _centre.AddToClassList("hud-centre"); Add(_centre);
-            _prompt.AddToClassList("hud-prompt"); Add(_prompt);
-            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _meta }) l.pickingMode = PickingMode.Ignore;
+            _promptBox.AddToClassList("hud-strip"); _promptBox.pickingMode = PickingMode.Ignore;
+            _promptKey.AddToClassList("hud-strip-key"); _prompt.AddToClassList("hud-strip-text");
+            _promptBox.Add(_promptKey); _promptBox.Add(_prompt); Add(_promptBox);
+            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta }) l.pickingMode = PickingMode.Ignore;
         }
 
         static void Show(Label l, string text)
@@ -85,7 +93,19 @@ namespace SquashGame
             {
                 _serve[p].EnableInClassList("sb-serve--on", s.Server == p);
                 _name[p].text = names[p];
+                if (_lastPoints[p] != s.Points[p])
+                {
+                    var l = _points[p];
+                    if (_lastPoints[p] >= 0) { l.AddToClassList("sb-score--flip"); l.schedule.Execute(() => l.RemoveFromClassList("sb-score--flip")).StartingIn(160); }
+                    _lastPoints[p] = s.Points[p];
+                }
                 _points[p].text = s.Points[p].ToString();
+            }
+            int games = s.Games[0] + s.Games[1];
+            if (games != _lastGames)
+            {
+                if (_lastGames >= 0 && games > _lastGames) { _games.AddToClassList("sb-games--flash"); _games.schedule.Execute(() => _games.RemoveFromClassList("sb-games--flash")).StartingIn(900); }
+                _lastGames = games;
             }
             _system.text = s.System == ScoringSystem.Par ? "PAR " + PhysicsConfig.Current.Match.ParPoints : "ENGLISH " + s.GameTarget;
             _games.text = "GAMES " + s.Games[0] + "-" + s.Games[1];
@@ -94,34 +114,44 @@ namespace SquashGame
             _meta.text = server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box";
 
             // ---- banners ----
-            string banner = null, sub = null, centre = null, prompt = null;
+            string banner = null, sub = null, centre = null, prompt = null, key = null;
             if (r.DeviceLost != null) centre = r.DeviceLost;
             if (r.ReplayActive)
             {
-                banner = "REFEREE REVIEW   " + r.ReplayCaption;
-                sub = "replay " + r.ReplaySpeed.ToString("0.0") + "x   (Esc skips)";
+                banner = "REFEREE REVIEW";
+                sub = r.ReplayCaption + "   ·   replay " + r.ReplaySpeed.ToString("0.0") + "x   ·   Esc skips";
             }
             else if (m.Phase == MatchPhase.RallyOver && m.LastOutcome != null)
             {
                 RallyOutcome o = m.LastOutcome;
-                banner = o.Kind == RallyEnd.Let || o.Winner < 0 ? o.Reason : o.Reason + "   —   point " + names[o.Winner];
-                sub = "V: replay";
+                banner = o.Reason;
+                sub = (o.Kind == RallyEnd.Let || o.Winner < 0 ? "" : "POINT  " + names[o.Winner] + "   ·   ") + "V  replay";
             }
             if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused)
             {
                 string who = twoPlayer ? names[s.Server] + " to serve" : "Your serve";
-                string hit = twoPlayer && s.Server == 1 ? "A" : "LMB / A";
-                prompt = who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box.   " + hit + ":  tap for a lob serve, hold for a hard serve.";
+                key = twoPlayer && s.Server == 1 ? "A" : "LMB / A";
+                prompt = who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box   ·   tap: lob serve   ·   hold: hard serve";
             }
             if (m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver)
             {
                 int w = s.GameWinner;
                 centre = (m.Phase == MatchPhase.MatchOver ? "MATCH  " : "GAME  ") + names[w] + "  " + s.Points[w] + "-" + s.Points[1 - w];
                 if (m.Phase == MatchPhase.GameOver)
-                    prompt = "Next game in " + Mathf.CeilToInt((float)m.BreakRemaining) + " s   (games " + s.Games[0] + "-" + s.Games[1] + ")   Enter / Y: play now";
+                {
+                    key = "Enter / Y";
+                    prompt = "play now   ·   next game in " + Mathf.CeilToInt((float)m.BreakRemaining) + " s   ·   games " + s.Games[0] + "-" + s.Games[1];
+                }
             }
-            Show(_banner, banner); Show(_sub, sub); Show(_centre, centre); Show(_prompt, prompt);
-            _banner.style.fontSize = 28 * CallTextScale;
+            bool call = !string.IsNullOrEmpty(banner);
+            if (call) { _banner.text = banner; _sub.text = sub ?? ""; }
+            _third.style.display = call ? DisplayStyle.Flex : DisplayStyle.None;
+            _third.EnableInClassList("hud-third--in", call);
+            Show(_centre, centre);
+            bool strip = !string.IsNullOrEmpty(prompt);
+            _promptBox.style.display = strip ? DisplayStyle.Flex : DisplayStyle.None;
+            if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
+            _banner.style.fontSize = 40 * CallTextScale;
         }
     }
 }
