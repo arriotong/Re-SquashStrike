@@ -52,6 +52,42 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
+        public IEnumerator ACallIsDrawnInTheTheatre()
+        {
+            // A bundled match has rallies that ended on a call (recorded with them, format 3): the theatre draws the
+            // obstruction on the floor near the end of such a rally.
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return Wait(5f, () => Object.FindFirstObjectByType<FrontEnd>() != null);
+            yield return null; yield return null;
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            SquashSim.Replays.ReplayFile file = null; int rally = -1;
+            foreach (var ta in Resources.LoadAll<TextAsset>("Replays"))
+            {
+                var f = SquashSim.Replays.ReplayFile.FromBytes(ta.bytes);
+                int k = f.Rallies.FindIndex(r => r.Call != null && r.Call.Obstruction != ObstructionKind.None);
+                if (k >= 0) { file = f; rally = k; break; }
+            }
+            Assert.That(file, Is.Not.Null, "a bundled match with a call in it");
+            var t = TheatreSession.Open(null, file, fe.Match);
+            float t0 = Time.realtimeSinceStartup;
+            while (!t.Builder.Clips[rally].Ready && Time.realtimeSinceStartup - t0 < 20f) { t.Tick(0.016f); yield return null; }
+            Assert.That(t.Play(rally), Is.True);
+            t.Camera = TheatreCam.Overhead;
+            var overlay = Object.FindFirstObjectByType<ObstructionOverlay>();
+            t.Cursor = 0; yield return null; yield return null;
+            Assert.That(overlay.Showing, Is.False, "not at the start of the rally");
+            t.Cursor = t.Clip.EndFrame - 20; t.Paused = true;
+            yield return null; yield return null;
+            Debug.Log("[Theatre] rally " + rally + " ended " + (SquashSim.RallyEnd)file.Rallies[rally].Kind + " (" + file.Rallies[rally].Call.Obstruction + "), overlay " + overlay.Showing);
+            Assert.That(overlay.Showing, Is.True, "the call drawn near its end");
+            yield return Capture(fe, "Theatre_CallOverlay.png");
+            t.Close();
+        }
+
+        [UnityTest]
         public IEnumerator ARallyPlaysBackSlowWithSoundFromFiveCameras()
         {
             LocalMatchTests.FreshProfile();
@@ -103,6 +139,8 @@ namespace SquashGame.Tests
             Debug.Log("[P2M6] playback: " + at1.ToString("0.0") + " frames/s at 1x, " + at025.ToString("0.0") + " at 0.25x");
             Assert.That(at1, Is.EqualTo(SimRunnerBase.FrameRate).Within(12), "1x: 60 frames a second");
             Assert.That(at1 / at025, Is.EqualTo(4).Within(0.8), "0.25x takes 4 times as long");
+            // a clip opens on the serve set-up (the toss can be a second away): play on a little for the first sound
+            if (audio != null) { t.SetSpeed(0); yield return Wait(3f, () => audio.PlayedTotal > sounds); }
             if (audio != null) Assert.That(audio.PlayedTotal, Is.GreaterThan(sounds), "the rally has its sound");
 
             // ---- scrubbing ----

@@ -34,12 +34,12 @@ namespace SquashSim
         public double MedianShots { get { if (Shots.Count == 0) return 0; var l = new List<int>(Shots); l.Sort(); return l[l.Count / 2]; } }
 
         /// <summary>Play <paramref name="games"/> one-game matches across the personalities and levels.</summary>
-        public static LetSurvey Run(int games, bool appeals = true)
+        public static LetSurvey Run(int games, bool appeals = true, double[] levelsOverride = null)
         {
             var keep = PhysicsConfig.Current;
             var r = new LetSurvey { Games = games };
             string[] opps = { "retriever", "attacker", "shotmaker", "grinder" };
-            double[] levels = GameTuning.Ai.Levels;
+            double[] levels = levelsOverride ?? GameTuning.Ai.Levels;
             try
             {
                 for (int g = 0; g < games; g++)

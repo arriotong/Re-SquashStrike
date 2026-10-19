@@ -27,6 +27,7 @@
 // sim steps is therefore never lost.
 // ===========================================================
 
+using System.Collections.Generic;
 using SquashSim;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -100,6 +101,104 @@ namespace SquashGame
         /// <summary>Hit is held right now (charging).</summary>
         public bool StrokeHeld { get { return _hit.IsPressed() || _touch.IsPressed(); } }
 
+        // ---------------- rebinding (Settings > Controls > Change keys) ----------------
+
+        /// <summary>The actions a player may rebind, and their names on screen.</summary>
+        public static readonly string[] Rebindable = { "Hit", "Boast", "Dive", "Sprint", "Appeal" };
+        public static readonly string[] RebindableNames = { "Hit", "Boast", "Dive", "Sprint", "Ask for a let" };
+        static readonly List<IntentSource> _live = new List<IntentSource>();
+        static string _overrides = "";
+        /// <summary>Raised when a binding changes (the profile saves it; labels refresh).</summary>
+        public static event System.Action OverridesChanged;
+
+        /// <summary>Every source's bindings with these overrides (the profile's JSON; "" = the defaults).</summary>
+        public static void SetOverrides(string json)
+        {
+            _overrides = json ?? "";
+            foreach (var s in _live) s.ApplyOverrides();
+        }
+        public static string Overrides { get { return _overrides; } }
+
+        void ApplyOverrides()
+        {
+            bool on = _map.enabled;
+            if (on) _map.Disable();
+            _map.RemoveAllBindingOverrides();
+            if (_overrides.Length > 0) { try { _map.LoadBindingOverridesFromJson(_overrides); } catch (System.Exception e) { Debug.LogWarning("[Input] bad binding overrides: " + e.Message); } }
+            if (on) _map.Enable();
+        }
+
+        /// <summary>The binding of an action for the keyboard and mouse (pad = false) or the pad.</summary>
+        static int BindingIndex(InputAction a, bool pad)
+        {
+            for (int i = 0; i < a.bindings.Count; i++)
+            {
+                var b = a.bindings[i];
+                if (b.isComposite || b.isPartOfComposite) continue;
+                string path = b.path ?? "";
+                if (pad == path.StartsWith("<Gamepad>")) return i;
+            }
+            return -1;
+        }
+
+        /// <summary>What the action is bound to now, for screens and prompts ("LMB", "Space", "A").</summary>
+        public static string BindingLabel(string action, bool pad)
+        {
+            var src = _live.Count > 0 ? _live[0] : null;
+            var a = src != null ? src._map.FindAction(action) : null;
+            if (a == null) return "?";
+            int i = BindingIndex(a, pad);
+            if (i < 0) return "-";
+            string s = a.GetBindingDisplayString(i, InputBinding.DisplayStringOptions.DontIncludeInteractions);
+            if (s == "Left Button") return "LMB";
+            if (s == "Right Button") return "RMB";
+            if (s == "Middle Button") return "MMB";
+            return string.IsNullOrEmpty(s) ? "-" : s;
+        }
+
+        /// <summary>"LMB / A": both of an action's bindings, keyboard first.</summary>
+        public static string Keys(string action) { return BindingLabel(action, false) + " / " + BindingLabel(action, true); }
+
+        static InputActionRebindingExtensions.RebindingOperation _rebinding;
+        /// <summary>A rebinding is waiting for a press.</summary>
+        public static bool Rebinding { get { return _rebinding != null; } }
+
+        /// <summary>Wait for the next key / button and bind the action to it (Esc cancels). <paramref name="done"/>: true when changed.</summary>
+        public static void Rebind(string action, bool pad, System.Action<bool> done)
+        {
+            var src = _live.Count > 0 ? _live[0] : null;
+            var a = src != null ? src._map.FindAction(action) : null;
+            int i = a != null ? BindingIndex(a, pad) : -1;
+            if (i < 0 || _rebinding != null) { done?.Invoke(false); return; }
+            src._map.Disable();
+            var op = a.PerformInteractiveRebinding(i)
+                .WithCancelingThrough("<Keyboard>/escape")
+                .WithControlsExcluding("<Mouse>/position").WithControlsExcluding("<Mouse>/delta").WithControlsExcluding("<Mouse>/scroll")
+                .WithControlsExcluding("<Pointer>/position").WithControlsExcluding("<Pointer>/delta")
+                .OnMatchWaitForAnother(0.05f);
+            op = pad ? op.WithControlsHavingToMatchPath("<Gamepad>") : op.WithControlsExcluding("<Gamepad>");
+            void Finish(bool changed)
+            {
+                _rebinding.Dispose(); _rebinding = null;
+                src._map.Enable();
+                if (changed)
+                {
+                    _overrides = src._map.SaveBindingOverridesAsJson();
+                    foreach (var s in _live) if (s != src) s.ApplyOverrides();
+                    OverridesChanged?.Invoke();
+                }
+                done?.Invoke(changed);
+            }
+            _rebinding = op.OnComplete(o => Finish(true)).OnCancel(o => Finish(false)).Start();
+        }
+
+        /// <summary>Back to the default keys and buttons.</summary>
+        public static void ResetBindings()
+        {
+            SetOverrides("");
+            OverridesChanged?.Invoke();
+        }
+
         public IntentSource(InputDevice[] devices = null)
         {
             _map = new InputActionMap("Gameplay");
@@ -148,6 +247,8 @@ namespace SquashGame
             _pause.AddBinding("<Gamepad>/start");
 
             UseDevices(devices);
+            _live.Add(this);
+            ApplyOverrides();
             _map.Enable();
         }
 
@@ -182,7 +283,7 @@ namespace SquashGame
             return null;
         }
 
-        public void Dispose() { _map.Disable(); _map.Dispose(); }
+        public void Dispose() { _live.Remove(this); _map.Disable(); _map.Dispose(); }
 
         /// <summary>After a stroke. The original reticle stays where you left it, so nothing to do.</summary>
         public void BeginRecenter() { }

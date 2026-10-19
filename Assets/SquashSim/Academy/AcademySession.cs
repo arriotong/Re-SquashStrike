@@ -189,6 +189,7 @@ namespace SquashSim.Academy
             }
 
             if (st.Goal == GoalKind.ModeDrive) Player.Arcade.Assisted = st.Assisted;      // the lesson sets the mode for the shot
+            if (st.Line != null) Player.Arcade.ShotLines = true;                          // the lesson is about them
 
             if (_stage != null) { StepStage(st, dt); intent.ClearEdges(); return; }
 
@@ -290,6 +291,7 @@ namespace SquashSim.Academy
                     if (st.Goal == GoalKind.ShotType)
                     {
                         if (tech != st.Shot) Note("THAT WAS A " + (tech ?? "?").ToUpperInvariant(), e.Point);
+                        else if (st.Line != null && !OnLine(st.Line, e.Point)) Note(st.Line == "straight" ? "KEEP IT ON YOUR SIDE" : "SEND IT ACROSS", e.Point);
                         else if (e.Point.Z >= st.MinZ && e.Point.Z <= st.MaxZ) Count(e.Point);
                         else Note(st.MinZ > 0 ? "DEEPER" : "SHORTER", e.Point);
                     }
@@ -418,6 +420,14 @@ namespace SquashSim.Academy
         static void Copy(TestPlayer from, TestPlayer to)
         {
             to.Pos.CopyFrom(from.Pos); to.Vel.CopyFrom(from.Vel);
+        }
+
+        /// <summary>A straight shot lands on the side it was struck from (well off the middle); a cross on the other.</summary>
+        bool OnLine(string line, V3 bounce)
+        {
+            double from = _shot.Contact != null ? _shot.Contact.Point.X : Player.Player.Pos.X;
+            int side = from >= 0 ? 1 : -1;
+            return line == "straight" ? bounce.X * side > 1.2 : bounce.X * side < -0.8;
         }
 
         void QuizShot()

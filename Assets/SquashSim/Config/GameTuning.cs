@@ -154,6 +154,9 @@ namespace SquashSim
             // AI appeals (P2-M7 L3): the personality's tendency, scaled by level - rare at Easy
             public const double AppealAtEasy = 0.3;        // x the tendency at Easy (0.0), rising to 1 at Hard
             public const double AppealFullAt = 0.42;       // the level at which the full tendency applies
+            public const double AppealFadeAbove = 1.5, AppealFloor = 0.35;   // above that, x (1 - fade * (d - 0.42)), at least the floor:
+                                                           // strong players play long rallies; asking at every chance made half of them end in calls
+            public const double SwingStopDistance = 0.95;  // m: the referee stops play himself only with the opponent this near the ball at contact
             public const double AppealHampered = 0.25;     // s obstructed before it thinks of asking
             public const double AppealShare = 0.25;        // in the line / swing: of the shots it would be given, the share it stops for
             public const double AppealShareWay = 0.8;      // blocked on the way: asked far more freely (people ask for those lets)

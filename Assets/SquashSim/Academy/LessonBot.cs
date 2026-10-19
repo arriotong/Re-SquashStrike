@@ -62,7 +62,7 @@ namespace SquashSim.Academy
             // ---- the shots off the feed ----
             string shot = st.Shot ?? (st.Goal == GoalKind.Boast ? "boast" : "drive");
             double side = p.X >= 0 ? 1 : -1;
-            it.AimPointX = st.Goal == GoalKind.ModeDrive ? side * 2.95 : -side * 1.0;
+            it.AimPointX = st.Goal == GoalKind.ModeDrive ? side * 2.95 : st.Line == "straight" ? side * 1.0 : -side * 1.0;
             it.AimPointY = shot == "lob" ? 3.5 : shot == "drop" || shot == "kill" ? 0.85 : shot == "boast" ? 1.3 : 1.8;
             double charge = shot == "kill" ? 0.45 : st.Goal == GoalKind.PaceOver ? 0.6 : 0;
             var ctrl = s.Player;

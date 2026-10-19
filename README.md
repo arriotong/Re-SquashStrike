@@ -2,6 +2,8 @@
 
 A squash game for PC, built in Unity 6. Play a match against the AI or a friend, or climb a career tour. You can also warm up on your own, chase targets, learn the rules in the Academy, and watch your rallies back.
 
+![Main menu, a stroke called in a match, the Replay Theatre, the Locker Room](docs/screenshots.jpg)
+
 ## Download and play (Windows)
 
 1. Open **[Releases](../../releases/latest)** and download `Re-SquashStrike-Windows.zip`.
@@ -23,6 +25,7 @@ It runs on Windows 10 or 11 (64-bit), with a keyboard and mouse or a gamepad. No
 - **Replay Theatre**: every match is saved. Watch it back in slow motion from any camera, with highlights.
 - **Locker Room**: kit and racket colours you earn by playing. Cosmetic only.
 - **Lets and strokes**: a real referee. Ask for a let when you are blocked, or switch let calls off in Settings > Gameplay.
+- **Settings**: change your keys and pad buttons, pick the match camera (back wall, high, low glass), and more.
 
 ## Controls
 
@@ -43,13 +46,19 @@ It runs on Windows 10 or 11 (64-bit), with a keyboard and mouse or a gamepad. No
 | Coach tray (practice) | Tab | View |
 | Pause | Esc | Start |
 
-Get to the ball early and let go on time: the ring flashes on a great hit.
+Get to the ball early and let go on time: the ring flashes on a great hit. The small dot on the front wall shows the line your shot will take.
+
+You can change these keys and buttons in **Settings > Controls > Change keys**.
 
 ## Building from source
 
 - Unity **6000.3** (Unity 6 LTS) with the Universal Render Pipeline. Open this folder in Unity Hub.
 - The game scenes are in `Assets/Scenes`. A Windows build is made by `SquashGame.Editor.BuildPlayer.BuildWindows`.
 - The simulation (`Assets/SquashSim`) is plain C# with no UnityEngine references. It is deterministic, so replays are just recorded input.
-- Checks: EditMode and PlayMode tests in Unity, `Tools/SimParity` (.NET 8; bit-identical with the original HTML lab), and `Tools/MatchBench` for AI balance (`--balance`) and the let survey (`--let-survey`).
+- Checks: EditMode and PlayMode tests in Unity, `Tools/SimParity` (.NET 8; bit-identical with the original HTML lab), and `Tools/MatchBench` for AI balance (`--balance`), the let survey (`--let-survey`) and replay checks (`--verify-replays`). The simulation checks also run on GitHub Actions on every push (`.github/workflows/sim.yml`).
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
 
 The engine's build history is in [DEVLOG.md](DEVLOG.md).

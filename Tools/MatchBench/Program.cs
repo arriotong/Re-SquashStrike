@@ -70,7 +70,9 @@ public static class Program
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
         if (Array.IndexOf(args, "--season") >= 0) { CareerBench.Season(int.Parse(Arg(args, "--seasons") ?? "1")); return 0; }
         if (Array.IndexOf(args, "--career-calibrate") >= 0) { CareerBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
-        if (Array.IndexOf(args, "--let-survey") >= 0) { Console.Write(SquashSim.LetSurvey.Run(Arg(args, "--games") != null ? games : 48, Array.IndexOf(args, "--no-appeals") < 0)); return 0; }
+        if (Array.IndexOf(args, "--let-survey") >= 0) { Console.Write(SquashSim.LetSurvey.Run(Arg(args, "--games") != null ? games : 48, Array.IndexOf(args, "--no-appeals") < 0,
+                Arg(args, "--levels") != null ? Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse) : null)); return 0; }
+        if (Array.IndexOf(args, "--verify-replays") >= 0) return ReplayTool.Verify(Arg(args, "--verify-replays") ?? "Assets/SquashGame/Resources/Replays");
         if (Array.IndexOf(args, "--make-replays") >= 0) { ReplayTool.Make(Arg(args, "--out") ?? "../../Assets/SquashGame/Resources/Replays"); return 0; }
         if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.NoLets = Array.IndexOf(args, "--no-lets") >= 0; PressAudit.NoLines = Array.IndexOf(args, "--no-lines") >= 0; PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)

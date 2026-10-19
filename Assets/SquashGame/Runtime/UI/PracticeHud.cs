@@ -39,7 +39,7 @@ namespace SquashGame.UI
             style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
             if (!on) return;
             _strip.style.display = f.InHand ? DisplayStyle.Flex : DisplayStyle.None;
-            _key.text = "LMB / A";
+            _key.text = IntentSource.Keys("Hit");
             _text.text = "Ball in hand  ·  walk anywhere  ·  tap: drop and hit  ·  hold: harder  ·  TAB: coach";
             _hits.text = f.WallHits + "  TO THE WALL";
             _run.text = "RUN " + f.Streak + "   ·   BEST " + f.BestStreak;

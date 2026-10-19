@@ -41,6 +41,16 @@ namespace SquashSim
         public string Reason;
     }
 
+    /// <summary>Where everyone was when an interference call was made: the striker, where they were going, the obstructor
+    /// (the review's floor drawing, in the match and in recorded rallies).</summary>
+    public sealed class CallSnapshot
+    {
+        public RallyEnd Kind;
+        public ObstructionKind Obstruction;
+        public int Striker;
+        public double StrikerX, StrikerZ, TargetX, TargetZ, ObstructorX, ObstructorZ;
+    }
+
     public sealed class Interference
     {
         public double AccessClearance = GameTuning.Interference.AccessClearance;

@@ -29,6 +29,11 @@ namespace SquashGame.Tests
             var court = Object.FindFirstObjectByType<WarmUpCourt>();
             LabSimRunner r = court.Runner;
             r.ShotLinesEnabled = false;                     // this checks the reticle against the exact aim (no shot lines)
+            // The feeder (free play keeps the ball in hand): set here, not left to whatever profile an earlier test saved.
+            var fe = Object.FindFirstObjectByType<SquashGame.UI.FrontEnd>();
+            SquashGame.Profile.ProfileStore.Current.Coach.Feeder = true;
+            SquashGame.Profile.ProfileStore.Current.Coach.Auto = true;
+            if (fe != null && fe.Coach != null) { fe.Coach.Apply(); fe.Coach.FeedNow(); }
             AimTargetView aim = GameObject.Find("AimTarget0").GetComponent<AimTargetView>();
             yield return null;
             Assert.That(aim.Shown, Is.True, "the target is always on in practice");

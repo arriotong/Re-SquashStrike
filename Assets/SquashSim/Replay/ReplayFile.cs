@@ -70,6 +70,8 @@ namespace SquashSim.Replays
         public int Great0, Great1, Dives;
         public int LastStriker = -1;
         public string LastTech = "";
+        /// <summary>The call on interference that ended it, with where everyone was (format 3; null otherwise).</summary>
+        public CallSnapshot Call;
 
         public static RallyRec Of(MatchSimulation m)
         {
@@ -79,7 +81,7 @@ namespace SquashSim.Replays
                 EndStep = m.StepCount, Winner = o != null ? o.Winner : -1,
                 Points0 = m.Score.Points[0], Points1 = m.Score.Points[1], Games0 = m.Score.Games[0], Games1 = m.Score.Games[1],
                 Shots = m.ShotsPerRally.Count > 0 ? m.ShotsPerRally[m.ShotsPerRally.Count - 1] : 0,
-                Hash = StateHash(m), Kind = (byte)(o != null ? (int)o.Kind : 0),
+                Hash = StateHash(m), Kind = (byte)(o != null ? (int)o.Kind : 0), Call = m.LastCall,
             };
         }
 
@@ -104,7 +106,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 2;
+        public const int FormatVersion = 3;
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -151,6 +153,13 @@ namespace SquashSim.Replays
                     w.Write(r.EndStep); w.Write(r.Winner); w.Write(r.Points0); w.Write(r.Points1); w.Write(r.Games0); w.Write(r.Games1); w.Write(r.Shots); w.Write(r.Hash);
                     w.Write(r.ServeStep); w.Write(r.Kind); w.Write(r.TopPace); w.Write(r.TopPaceBy); w.Write(r.Nick); w.Write(r.Great0); w.Write(r.Great1); w.Write(r.Dives);
                     w.Write(r.LastStriker); w.Write(r.LastTech ?? "");
+                    w.Write(r.Call != null);
+                    if (r.Call != null)
+                    {
+                        var c = r.Call;
+                        w.Write((byte)c.Kind); w.Write((byte)c.Obstruction); w.Write(c.Striker);
+                        w.Write(c.StrikerX); w.Write(c.StrikerZ); w.Write(c.TargetX); w.Write(c.TargetZ); w.Write(c.ObstructorX); w.Write(c.ObstructorZ);
+                    }
                 }
                 w.Write(TotalSteps); w.Write(Winner); w.Write(Retired);
             }
@@ -210,13 +219,23 @@ namespace SquashSim.Replays
                 }
                 n = r.ReadInt32();
                 for (int i = 0; i < n; i++)
-                    f.Rallies.Add(new RallyRec
+                {
+                    var rec = new RallyRec
                     {
                         EndStep = r.ReadInt64(), Winner = r.ReadInt32(), Points0 = r.ReadInt32(), Points1 = r.ReadInt32(), Games0 = r.ReadInt32(), Games1 = r.ReadInt32(),
                         Shots = r.ReadInt32(), Hash = r.ReadUInt64(),
                         ServeStep = r.ReadInt64(), Kind = r.ReadByte(), TopPace = r.ReadDouble(), TopPaceBy = r.ReadInt32(), Nick = r.ReadBoolean(),
                         Great0 = r.ReadInt32(), Great1 = r.ReadInt32(), Dives = r.ReadInt32(), LastStriker = r.ReadInt32(), LastTech = r.ReadString(),
-                    });
+                    };
+                    if (version >= 3 && r.ReadBoolean())
+                        rec.Call = new CallSnapshot
+                        {
+                            Kind = (RallyEnd)r.ReadByte(), Obstruction = (ObstructionKind)r.ReadByte(), Striker = r.ReadInt32(),
+                            StrikerX = r.ReadDouble(), StrikerZ = r.ReadDouble(), TargetX = r.ReadDouble(), TargetZ = r.ReadDouble(),
+                            ObstructorX = r.ReadDouble(), ObstructorZ = r.ReadDouble(),
+                        };
+                    f.Rallies.Add(rec);
+                }
                 f.TotalSteps = r.ReadInt64(); f.Winner = r.ReadInt32(); f.Retired = r.ReadBoolean();
             }
             return f;

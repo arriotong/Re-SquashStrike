@@ -14,6 +14,11 @@
 // past the edge of the front wall) the ring sits on that side wall, at the
 // point the shot is solved to strike first, tagged BOAST.
 //
+// Shot lines (2026-10-19): a small solid dot on the front wall marks where
+// the shot's line will really strike (ArcadeStroke.ShotLine) - near your
+// side wall for a straight shot, across for a cross-court - so the choice
+// is visible without words. The ring stays exactly where you aim.
+//
 // One per local player (two colours in local 2P). Presentation only.
 // ===========================================================
 
@@ -51,7 +56,10 @@ namespace SquashGame
         public bool Boasting { get; private set; }
         public int SideWall { get; private set; }
         public Vector3 SideMarker { get; private set; }
-        Transform _side;
+        Transform _side, _line;
+        /// <summary>The shot-line dot is shown, and where (sim x on the front wall) - tests.</summary>
+        public bool LineShown { get; private set; }
+        public double LineX { get; private set; }
         /// <summary>The shot the reticle would play now: drive / drop / lob / kill.</summary>
         public string ShotType { get; private set; } = "drive";
 
@@ -161,6 +169,8 @@ namespace SquashGame
             _dot = Greybox.MeshObject("Dot", transform, Greybox.Torus(0.045f, 0.045f, 12, 6), _mat).transform;
             _side = Greybox.MeshObject("BoastMark", transform, Greybox.Torus(1f, 0.16f, 32, 6), _mat).transform;
             _side.gameObject.SetActive(false);
+            _line = Greybox.MeshObject("ShotLine", transform, Greybox.Torus(0.5f, 0.5f, 24, 6), _mat).transform;   // a solid dot
+            _line.gameObject.SetActive(false);
         }
 
         bool Visible()
@@ -183,7 +193,7 @@ namespace SquashGame
             _dot.gameObject.SetActive(false);                      // plain: no centre dot
             Boasting = Shown && Runner.Athletes[Athlete].ArcadeHitEnabled && Runner.Athletes[Athlete].Arcade.BoastArmed;
             _side.gameObject.SetActive(DrawRing && Boasting && Fade > 0.01f);
-            if (!Shown) { _hasPos = false; if (_flash != null) _flash.gameObject.SetActive(false); return; }
+            if (!Shown) { _hasPos = false; LineShown = false; _line.gameObject.SetActive(false); if (_flash != null) _flash.gameObject.SetActive(false); return; }
 
             var athletes = Runner.Athletes;
             Preview.Update(athletes[Athlete], src.Intent, Runner.Ball, Runner.Surfaces);
@@ -236,6 +246,22 @@ namespace SquashGame
             Quaternion face = wall == 0 ? Quaternion.identity : Quaternion.Euler(0f, 90f, 0f);
             _ring.rotation = face; _dot.rotation = face;
             _ring.localScale = new Vector3(_radius, _radius, 1f);
+
+            // The shot line's dot: where this shot will really meet the front wall.
+            LineShown = DrawRing && wall == 0 && !Boasting && !Serving && ctrl.ArcadeHitEnabled && ctrl.Arcade.ShotLines;
+            if (LineShown)
+            {
+                var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
+                double snap = ctrl.Arcade.Assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted;
+                LineX = aim.X + (ArcadeStroke.ShotLine(from.X, from.Z, ShotType, aim.X) - aim.X) * snap;
+                double ly = ShotType == "kill" ? CourtDimensions.TIN_H + GameTuning.Shots.KillHeightAboveTin + 0.1
+                          : ShotType == "drop" ? CourtDimensions.TIN_H + GameTuning.Shots.DropHeightAboveTin + 0.1 : aim.Y;
+                _line.position = SimToWorld.Pos(LineX, ly, 0.03);
+                _line.rotation = Quaternion.identity;
+                float d = radius * 0.75f;
+                _line.localScale = new Vector3(d, d, d);
+            }
+            _line.gameObject.SetActive(LineShown && Fade > 0.01f);
 
             // Plain: one colour, no words (the shot type is still worked out for tests / later UI).
             Color c = RingColours[Mathf.Clamp(RingColourIndex, 0, RingColours.Length - 1)];

@@ -20,6 +20,12 @@ namespace SquashGame
 
         public SimRunnerBase Runner;
         Camera _cam;
+
+        /// <summary>Settings > Gameplay > Camera: 0 back wall (the TV view), 1 high, 2 low glass.</summary>
+        public static int Preset;
+        public static readonly string[] PresetNames = { "Back wall", "High", "Low glass" };
+        // per preset: height, distance behind the back wall, field of view, look-at height, look-at depth (back wall = the config)
+        static readonly float[,] Presets = { { 0f, 0f, 0f, 0f, 0f }, { 6.4f, 3.6f, 56f, 0.7f, 4.4f }, { 1.7f, 3.4f, 60f, 1.5f, 2.2f } };
         float _lateral;
 
         void Awake()
@@ -59,7 +65,9 @@ namespace SquashGame
 
             // Projection: hold the horizontal field on narrow windows.
             float aspect = _cam.aspect;
-            float fov = (float)cfg.Fov;
+            int p = Mathf.Clamp(Preset, 0, PresetNames.Length - 1);
+            bool custom = p != 0 && !(Runner is MatchRunner mr0 && mr0.Demo);           // the menus' demo keeps its cinematics
+            float fov = custom ? Presets[p, 2] : (float)cfg.Fov;
             if (aspect < REFERENCE_ASPECT)
             {
                 float refTan = Mathf.Tan(fov * Mathf.Deg2Rad / 2f);
@@ -82,8 +90,10 @@ namespace SquashGame
             float k = 1f - Mathf.Exp(-(float)cfg.FollowSmoothing * Mathf.Max(0f, Time.unscaledDeltaTime));
             _lateral += (target - _lateral) * k;
 
-            transform.position = SimToWorld.Pos(_lateral, cfg.Height, CourtDimensions.LENGTH + cfg.Distance);
-            transform.LookAt(SimToWorld.Pos(_lateral * 0.5, cfg.LookAtHeight, cfg.LookAtDepth), Vector3.up);
+            double h = custom ? Presets[p, 0] : cfg.Height, dist = custom ? Presets[p, 1] : cfg.Distance;
+            double lh = custom ? Presets[p, 3] : cfg.LookAtHeight, ld = custom ? Presets[p, 4] : cfg.LookAtDepth;
+            transform.position = SimToWorld.Pos(_lateral, h, CourtDimensions.LENGTH + dist);
+            transform.LookAt(SimToWorld.Pos(_lateral * 0.5, lh, ld), Vector3.up);
         }
     }
 }

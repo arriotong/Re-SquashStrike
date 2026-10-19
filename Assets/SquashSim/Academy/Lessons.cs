@@ -46,6 +46,7 @@ namespace SquashSim.Academy
         public GoalKind Goal;
         public int Count = 1;
         public string Shot;                       // ShotType / PaceOver: the shot type the game must play
+        public string Line;                       // ShotType: "straight" (lands on the side it was struck) / "cross" (across); null = either
         public double MinZ = -1, MaxZ = 99;       // ShotType: where its first bounce must be
         public double Pace;                       // PaceOver
         public string ServeKind;                  // Serve: "lob serve" / "hard serve" (null = either)
@@ -117,6 +118,12 @@ namespace SquashSim.Academy
             var lob = S(GoalKind.ShotType, "Aim high: a lob that lands deep.", "ring above 3 m", StepSetup.Feed); lob.Shot = "lob"; lob.MinZ = 6.5; height.Steps.Add(lob);
             var drop = S(GoalKind.ShotType, "Aim low and let go quickly: a drop that lands short (a long hold makes it a kill).", "ring just above the tin, quick press", StepSetup.Feed); drop.Shot = "drop"; drop.MaxZ = 4.0; height.Steps.Add(drop);
             _all.Add(height);
+
+            // Shot lines (2026-10-19): the half of the front wall picks straight or cross; the dot shows the line.
+            var lines = L("lines", Chapter.Controls, "Straight or cross", "Your half of the front wall: straight. The other half: cross-court. The dot shows the line.");
+            var st1 = S(GoalKind.ShotType, "Straight drive: aim anywhere on your half of the front wall - it comes back down your wall.", "ring on your half", StepSetup.Feed); st1.Shot = "drive"; st1.Line = "straight"; lines.Steps.Add(st1);
+            var cr1 = S(GoalKind.ShotType, "Cross-court: aim on the other half - it goes to the far back corner.", "ring across", StepSetup.Feed); cr1.Shot = "drive"; cr1.Line = "cross"; lines.Steps.Add(cr1);
+            _all.Add(lines);
 
             var charge = L("charge", Chapter.Controls, "Charge", "Hold longer for more pace. Low and charged is a kill.");
             var hard = S(GoalKind.PaceOver, "Hold a little longer before you let go: a hard drive.", "hold LMB / A ~0.5 s", StepSetup.Feed); hard.Shot = "drive"; hard.Pace = 32; charge.Steps.Add(hard);

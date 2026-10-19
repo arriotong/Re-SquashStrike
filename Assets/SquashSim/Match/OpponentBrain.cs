@@ -74,8 +74,10 @@ namespace SquashSim
             p.TriggerJitter = 0.06 - 0.045 * d;
             p.SplitStepError = 0.15 - 0.11 * d;
             p.AimSlew = 0.05 + 0.04 * d;
-            p.AppealTendency = AppealTendency * (GameTuning.Interference.AppealAtEasy +
-                (1 - GameTuning.Interference.AppealAtEasy) * System.Math.Min(1.0, d / GameTuning.Interference.AppealFullAt));   // rare at Easy
+            double full = GameTuning.Interference.AppealFullAt;
+            double rise = GameTuning.Interference.AppealAtEasy + (1 - GameTuning.Interference.AppealAtEasy) * System.Math.Min(1.0, d / full);   // rare at Easy
+            double fade = d > full ? System.Math.Max(GameTuning.Interference.AppealFloor, 1 - GameTuning.Interference.AppealFadeAbove * (d - full)) : 1;
+            p.AppealTendency = AppealTendency * rise * fade;
             p.Name = Name + " (" + (d < 0.34 ? "easy" : d < 0.67 ? "medium" : "hard") + ")";
             return p;
         }

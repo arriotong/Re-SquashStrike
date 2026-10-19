@@ -161,7 +161,7 @@ namespace SquashGame
             if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused)
             {
                 string who = twoPlayer ? names[s.Server] + " to serve" : "Your serve";
-                key = twoPlayer && s.Server == 1 ? "A" : "LMB / A";
+                key = twoPlayer && s.Server == 1 ? IntentSource.BindingLabel("Hit", true) : IntentSource.Keys("Hit");
                 prompt = who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box   ·   tap: lob serve   ·   hold: hard serve";
             }
             if (m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver)
@@ -199,7 +199,7 @@ namespace SquashGame
             bool on = _letHold > 0 && _letFor >= 0;
             _let.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
             if (!on || panel == null) return;
-            _letKey.text = twoPlayer && _letFor == 1 ? "Y" : "Q / Y";
+            _letKey.text = twoPlayer && _letFor == 1 ? IntentSource.BindingLabel("Appeal", true) : IntentSource.Keys("Appeal");
             var cam = Camera.main;
             if (cam == null || _letFor >= r.View.Count) return;
             Vector3 head = r.View.Athlete(_letFor).Pos + Vector3.up * 2.25f;

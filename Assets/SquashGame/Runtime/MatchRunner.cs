@@ -65,16 +65,8 @@ namespace SquashGame
         [Tooltip("Seconds of play in the automatic review of a stroke.")]
         public float ReviewSeconds = 2f;
 
-        /// <summary>P2-M7: where everyone was when an interference call was made (the review's floor drawing).</summary>
-        public sealed class CallGeometry
-        {
-            public RallyEnd Kind;
-            public ObstructionKind Obstruction;
-            public int Striker;
-            public double StrikerX, StrikerZ, TargetX, TargetZ, ObstructorX, ObstructorZ;
-        }
-        /// <summary>The last rally's call on interference (null when it ended any other way, or on the ball hitting a player).</summary>
-        public CallGeometry LastCall { get; private set; }
+        /// <summary>The last rally's call on interference (the sim's MatchSimulation.LastCall; null when it ended any other way).</summary>
+        public CallSnapshot LastCall { get; private set; }
         /// <summary>The review on screen is of LastCall (an automatic stroke review, or V after a call).</summary>
         public bool ReviewingCall { get; private set; }
         /// <summary>Who was going for the ball when the last call was made (-1: no call).</summary>
@@ -325,15 +317,7 @@ namespace SquashGame
             // The interference state is still the call's (it moves on at the end of this step).
             var it = Sim.Interference;
             LastCallStriker = it.Striker;
-            if (it.Striker >= 0 && !o.Reason.Contains("ball hit"))
-            {
-                var s = Sim.Players[it.Striker].Player.Pos; var ob = Sim.Players[1 - it.Striker].Player.Pos;
-                LastCall = new CallGeometry
-                {
-                    Kind = o.Kind, Obstruction = it.ThisTurn, Striker = it.Striker,
-                    StrikerX = s.X, StrikerZ = s.Z, TargetX = it.TargetX, TargetZ = it.TargetZ, ObstructorX = ob.X, ObstructorZ = ob.Z,
-                };
-            }
+            LastCall = Sim.LastCall;
             // P2-M7: strokes are reviewed automatically on the referee camera; any call on V.
             if (o.Kind == RallyEnd.Stroke) { _replayRequested = true; _replayCaption = CallCaption(o); }
         }

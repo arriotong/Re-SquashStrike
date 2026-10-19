@@ -124,6 +124,8 @@ static class PressAudit
     public static bool NoLines;
 
     public static double LastWinRate;
+    /// <summary>Rally length in the last run: median and mean shots (the serve counts), share of rallies of 10+.</summary>
+    public static double LastMedianShots, LastMeanShots, LastLong;
     public static bool Quiet;
 
     /// <summary>The share of rallies the human-style player wins against each AI at each setup-panel difficulty.</summary>
@@ -136,6 +138,7 @@ static class PressAudit
         double[] levels = Levels;
         string[] names = { "retriever", "attacker", "shotmaker", "grinder" };
         var mean = new double[levels.Length];
+        var med = new double[levels.Length]; var longShare = new double[levels.Length];
         Console.WriteLine("BALANCE  human-style rallies won (targets: easy 60%, medium 45%, hard 30%)");
         foreach (var n in names)
         {
@@ -144,11 +147,14 @@ static class PressAudit
             {
                 Run(games, n, levels[i], true);
                 mean[i] += LastWinRate / names.Length;
+                med[i] += LastMeanShots / names.Length; longShare[i] += LastLong / names.Length;
                 line += (100 * LastWinRate).ToString("0").PadLeft(6) + "%";
             }
             Console.WriteLine(line);
         }
         Console.WriteLine("  " + "mean".PadRight(10) + string.Concat(System.Array.ConvertAll(mean, m => (100 * m).ToString("0").PadLeft(6) + "%")));
+        Console.WriteLine("  " + "shots/rally".PadRight(10) + string.Concat(System.Array.ConvertAll(med, m => m.ToString("0.0").PadLeft(7))));
+        Console.WriteLine("  " + "10+ shots".PadRight(10) + string.Concat(System.Array.ConvertAll(longShare, m => (100 * m).ToString("0").PadLeft(6) + "%")));
         Quiet = false;
     }
 
@@ -159,6 +165,7 @@ static class PressAudit
         int greatHits = 0;
         var outcome = new Dictionary<string, int>(); var whyWhiff = new Dictionary<string, int>(); var commitErr = new List<double>();
         int presses = 0, contacts = 0, rallies = 0, won = 0;
+        var shots = new List<int>();
         for (int g = 0; g < games; g++)
         {
             PhysicsConfig.ResetToDefaults();
@@ -231,6 +238,7 @@ static class PressAudit
                 if (m.History.Count != hist)
                 {
                     hist = m.History.Count; rallies++; if (m.LastOutcome.Winner == 0) won++;
+                    shots.Add(m.Referee.Shots);
                     if (m.LastOutcome.Winner == 0)
                     {
                         string k = "human won - " + (m.Referee.Shots <= 1 ? "[serve] " : "") + m.LastOutcome.Reason;
@@ -246,10 +254,15 @@ static class PressAudit
             }
         }
         LastWinRate = (double)won / Math.Max(1, rallies);
+        shots.Sort();
+        LastMedianShots = shots.Count > 0 ? shots[shots.Count / 2] : 0;
+        LastMeanShots = shots.Count > 0 ? shots.Average() : 0;
+        LastLong = shots.Count > 0 ? (double)shots.Count(x => x >= 10) / shots.Count : 0;
         if (Quiet) return;
         Console.WriteLine("PRESS AUDIT  human-style vs " + opponent + " (" + difficulty.ToString("0.0") + ")" + (gameProfile ? "  game profile" : "  lab") +
                           ":  " + presses + " rally presses, " + (100.0 * contacts / Math.Max(1, presses)).ToString("0") + "% connect, rallies won " + won + "/" + rallies +
                           " (" + (100.0 * won / Math.Max(1, rallies)).ToString("0") + "%)");
+        Console.WriteLine("  rally length: median " + LastMedianShots + " shots, mean " + LastMeanShots.ToString("0.0") + ", 10+ shots " + (100 * LastLong).ToString("0") + "%");
         foreach (var kv in lossWhy.OrderByDescending(k => k.Value).Take(12)) Console.WriteLine("    " + kv.Key + ": " + kv.Value);
         Console.WriteLine("  great hits (ring flash): " + greatHits + " of " + contacts + " contacts");
         Console.WriteLine("  rallies lost by the human: " + ownEnds + ", of them out off the back wall: " + outBack + " (" + (100.0 * outBack / Math.Max(1, ownEnds)).ToString("0") + "%)");

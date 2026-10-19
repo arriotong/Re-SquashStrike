@@ -740,6 +740,8 @@
 .hud-strip-key { padding: 3px 10px; margin-right: 12px; border-radius: 6px; font-size: 13px; color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .hud-strip-text { font-size: 15px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
+.fe-version { font-size: 12px; color: rgba(255, 255, 255, 0.45); margin-top: 18px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+
 /* ---------- free play counts (practice court) ---------- */
 .ph-count { position: absolute; top: 24px; right: 28px; padding: 10px 16px; border-radius: 10px; background-color: rgba(12, 13, 16, 0.85); align-items: flex-end; }
 .ph-hits { font-size: 30px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }

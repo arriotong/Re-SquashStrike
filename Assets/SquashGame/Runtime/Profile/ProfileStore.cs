@@ -38,6 +38,9 @@ namespace SquashGame.Profile
         // ---- gameplay ----
         public bool Popups = true;
         public bool Lets = true;                 // P2-M7: appeals and the referee's calls on interference
+        public int Camera = 0;                   // match camera: 0 back wall, 1 high, 2 low glass
+        // ---- controls: rebound keys (Input System overrides JSON; "" = the defaults) ----
+        public string Bindings = "";
 
         public GameSettings Clone() { return (GameSettings)MemberwiseClone(); }
     }
@@ -234,6 +237,8 @@ namespace SquashGame.Profile
             IntentSource.Assisted = s.Assisted;
             ArcadePopups.Enabled = s.Popups;
             MatchRunner.Lets = s.Lets;
+            GameplayCameraRig.Preset = s.Camera;
+            if (IntentSource.Overrides != (s.Bindings ?? "")) IntentSource.SetOverrides(s.Bindings);
             AimTargetView.RingColourIndex = s.RingColour;
             Audio.AudioDirector.SfxVolume = s.SfxVolume;
             Audio.AudioDirector.RefereeVolume = s.RefereeVolume;

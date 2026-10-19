@@ -53,7 +53,7 @@ namespace SquashGame.UI
             var vs = AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
                 .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
             AddTo(play, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen())).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
-                .Line("Feeder  ·  Coach  ·  Drills").Badge(() => "5 DRILLS"));
+                .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS"));
 
             // ---- CAREER ----
             var career = Kit.Box(Page("CAREER"), "k-row");

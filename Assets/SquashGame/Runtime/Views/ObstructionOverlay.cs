@@ -2,8 +2,10 @@
 // Assets/SquashGame/Runtime/Views/ObstructionOverlay.cs
 // P2-M7: the referee review's drawing on the floor - the striker's
 // corridor to where they would play the ball, the obstructor's body
-// circle, and (for a line call) the line to the front wall. Shown only
-// while a call is being reviewed (MatchRunner.ReviewingCall).
+// circle, and (for a line call) the line to the front wall. Shown while
+// a call is being reviewed (MatchRunner.ReviewingCall), and in the Replay
+// Theatre over the last two seconds of a rally that ended on a call (the
+// call is recorded with the rally: RallyRec.Call).
 // ===========================================================
 
 using SquashSim;
@@ -55,7 +57,7 @@ namespace SquashGame
 
         void LateUpdate()
         {
-            var c = _runner != null && _runner.ReplayActive && _runner.ReviewingCall ? _runner.LastCall : null;
+            var c = _runner != null && _runner.ReplayActive && _runner.ReviewingCall ? _runner.LastCall : TheatreCall();
             if (c == null || c.Obstruction == ObstructionKind.None) { if (Showing) Hide(); return; }
             Showing = true;
             double R = PhysicsConfig.Current.Player.Radius;
@@ -86,6 +88,16 @@ namespace SquashGame
                 _line.SetPosition(0, Floor(c.TargetX, c.TargetZ));
                 _line.SetPosition(1, Floor(c.TargetX, 0));
             }
+        }
+
+        /// <summary>The Replay Theatre: the playing rally's call, near its end (the last two seconds and after).</summary>
+        CallSnapshot TheatreCall()
+        {
+            var t = Replays.TheatreSession.Active;
+            if (t == null || _runner == null || !_runner.FramesActive) return null;
+            var clip = t.Clip;
+            if (clip == null || clip.Rec == null || clip.Rec.Call == null) return null;
+            return t.Cursor >= clip.EndFrame - 2 * SimRunnerBase.FrameRate ? clip.Rec.Call : null;
         }
 
         static Vector3 Floor(double x, double z) { return SimToWorld.Pos(x, Lift, z); }

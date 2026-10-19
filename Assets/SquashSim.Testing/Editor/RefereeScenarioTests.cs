@@ -182,13 +182,46 @@ namespace SquashSim.Tests
             Assert.That(assisted, Is.GreaterThan(0.4), "Assisted: stepped off the corridor with no input");
         }
 
+        // ---------------- the call is recorded with the rally (the theatre's overlay) ----------------
+
+        [Test] public void ARecordedCallKeepsWhereEveryoneWas()
+        {
+            var t = Target();
+            var s = new ReplaySetup { TwoPlayer = true, GamesToWin = 1 };
+            ReplayMatch.Configure(s);
+            var m = ReplayMatch.Build(s);
+            var live = new[] { new InputIntent(), new InputIntent() };
+            var rec = new MatchRecorder(m, s, live, "test", 0);
+            m.StageRally(From, Drive, t.X + 1.2, t.Z + 1.2, t.X, t.Z - 1.4);   // in the line
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            bool asked = false;
+            for (int i = 0; i < 240 * 3 && m.History.Count == 0; i++)
+            {
+                var me = m.Players[0].Player; var a = live[0];
+                double dx = t.X - me.Pos.X, dz = t.Z - me.Pos.Z, d = Math.Sqrt(dx * dx + dz * dz);
+                if (d > 0.5) { a.Move.X = dx / d; a.Move.Z = dz / d; a.MoveMagnitude = 1; } else a.MoveMagnitude = 0;
+                if (!asked && m.Interference.Striker == 0 && m.Interference.TimeToBall > 0 && m.Interference.TimeToBall <= 0.3) { a.AppealPressed = true; asked = true; }
+                rec.BeforeStep(); m.Step(dt); rec.AfterStep();
+            }
+            Assert.That(m.LastOutcome.Kind, Is.EqualTo(RallyEnd.Stroke));
+            var call = rec.File.Rallies[rec.File.Rallies.Count - 1].Call;
+            Assert.That(call, Is.Not.Null, "the call is in the rally's record");
+            Assert.That(call.Obstruction, Is.EqualTo(ObstructionKind.Line));
+            Assert.That(call.Striker, Is.EqualTo(0));
+            var back = ReplayFile.FromBytes(rec.File.ToBytes()).Rallies;
+            var c2 = back[back.Count - 1].Call;
+            Assert.That(c2, Is.Not.Null, "and saved with it (format 3)");
+            Assert.That(c2.TargetX, Is.EqualTo(call.TargetX)); Assert.That(c2.ObstructorZ, Is.EqualTo(call.ObstructorZ));
+            Assert.That(c2.Kind, Is.EqualTo(RallyEnd.Stroke));
+        }
+
         // ---------------- the referee stops a swing stroke himself (L3) ----------------
 
         [Test] public void PlayingWithTheOpponentInTheSwingIsStopped()
         {
             var t = Target();
             var m = Match();
-            m.StageRally(From, Drive, t.X + 1.6, t.Z + 0.6, t.X - 0.65, t.Z + 0.3);
+            m.StageRally(From, Drive, t.X + 1.6, t.Z + 0.6, t.X - 0.45, t.Z + 0.2);   // right by the ball: the racket would meet them
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             bool released = false;
             for (int i = 0; i < 240 * 3 && m.Referee.Outcome == null; i++)
@@ -201,6 +234,12 @@ namespace SquashSim.Tests
                 if (!released && m.Interference.Striker == 0 && m.Interference.TimeToBall > 0 && m.Interference.TimeToBall < 0.12) { released = true; a.Hit.Held = false; }   // ... and let go as it arrives
                 m.Intents[1].MoveMagnitude = 0;
                 m.Step(dt);
+                foreach (var e in m.StepEvents)
+                    if (e.Type == SimEventType.RacketContact)
+                    {
+                        var op = m.Players[1].Player.Pos;
+                        UnityEngine.Debug.Log("[P2M7] swing-stop contact: opponent " + Math.Sqrt((op.X - e.Point.X) * (op.X - e.Point.X) + (op.Z - e.Point.Z) * (op.Z - e.Point.Z)).ToString("0.00") + " m from the ball, interference " + m.Interference.Current + " (raw " + m.Interference.Raw + ")");
+                    }
             }
             var o = m.Referee.Outcome;
             UnityEngine.Debug.Log("[P2M7] played with the opponent in the swing: " + (o != null ? o.Kind + " - " + o.Reason : "play on"));

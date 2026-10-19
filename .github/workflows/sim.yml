@@ -1,0 +1,35 @@
+# The simulation's checks on every push (no Unity needed: SquashSim.Core is plain C#).
+#   SimParity        every lab trace replays bit-identically (on Linux, not just the PC it was recorded on)
+#   verify-replays   the bundled matches, recorded on Windows, re-simulate identically here
+#   let survey       a short AI-v-AI run (calls stay rare)
+#   balance          a short human-style-vs-AI run
+# Unity's EditMode / PlayMode tests run locally (they need a Unity licence).
+name: Simulation checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build the tools
+        run: |
+          dotnet build Tools/SimParity -c Release
+          dotnet build Tools/MatchBench -c Release
+      - name: SimParity (bit-identical to the HTML lab)
+        run: dotnet run --project Tools/SimParity -c Release --no-build
+      - name: Bundled replays re-simulate identically
+        run: dotnet run --project Tools/MatchBench -c Release --no-build -- --verify-replays Assets/SquashGame/Resources/Replays
+      - name: Let survey (short)
+        run: dotnet run --project Tools/MatchBench -c Release --no-build -- --let-survey --games 8
+      - name: Balance (short)
+        run: dotnet run --project Tools/MatchBench -c Release --no-build -- --balance --games 2

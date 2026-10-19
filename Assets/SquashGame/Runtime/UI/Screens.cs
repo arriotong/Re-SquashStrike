@@ -35,6 +35,7 @@ namespace SquashGame.UI
             Text("SQUASH", "fe-logo-squash");
             Text("STRIKE", "fe-logo-strike");
             Text("Real squash physics. Simple to play.", "fe-press");
+            Text("v" + Application.version, "fe-version");
             Add(new ButtonItem("START", () => Fe.Replace(new MainMenuScreen()), true));
         }
         public override void Back() { }                                   // nowhere to go back to
@@ -123,6 +124,7 @@ namespace SquashGame.UI
             Row(c, new SelectorItem("Aim speed", new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" }, () => Nearest(IntentSource.SensitivitySteps, S.AimSpeed),
                 i => { S.AimSpeed = IntentSource.SensitivitySteps[i]; Changed(false); }, true), "How fast the ring moves with the mouse or the right stick.");
             Row(c, new SelectorItem("Invert mouse Y", new[] { "Off", "On" }, () => S.InvertMouseY ? 1 : 0, i => { S.InvertMouseY = i == 1; Changed(false); }), "Mouse up moves the ring down.");
+            AddTo(c, new ActionItem("Change keys", () => Fe.Push(new RebindScreen()), "▶"));
             AddTo(c, new ActionItem("View the controls", () => Fe.Push(new ControlsHelpScreen()), "▶"));
 
             // ---- VIDEO ----
@@ -163,7 +165,9 @@ namespace SquashGame.UI
             // ---- GAMEPLAY ----
             var g = Panel("GAMEPLAY");
             Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
-            Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (Q / Y) when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
+            Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (" + IntentSource.Keys("Appeal") + ") when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
+            Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Back wall: the TV view. High: looking down on the court. Low glass: close behind the glass.");
+            Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
         }
 
         VisualElement Panel(string tab)
@@ -213,31 +217,41 @@ namespace SquashGame.UI
         protected override string Title { get { return "Controls"; } }
         protected override bool ShowChip { get { return false; } }
         public override bool Dims { get { return Fe.Match == null || !Fe.Match.Demo; } }
-        static readonly string[,] Rows =
+        static string K(string a) { return IntentSource.BindingLabel(a, false); }
+        static string P(string a) { return IntentSource.BindingLabel(a, true); }
+        /// <summary>The card, with your keys (Settings > Controls > Change keys).</summary>
+        static string[,] Rows
         {
-            { "Move", "WASD", "left stick" },
-            { "Aim", "mouse", "right stick" },
-            { "Hit", "hold LMB, let go as it arrives", "hold A, let go" },
-            { "Height picks the shot", "high = lob, middle = drive, low = drop", "" },
-            { "Kill", "aim low and charge", "" },
-            { "Boast", "tap E", "RB" },
-            { "Dive", "Space", "B" },
-            { "Sprint", "Shift", "LB" },
-            { "Serve", "tap: lob serve, hold: hard serve", "" },
-            { "Ask for a let", "Q (when LET? shows)", "Y" },
-            { "Replay the last call", "V", "" },
-            { "Pause", "Esc", "Start" },
-        };
+            get
+            {
+                return new string[,]
+                {
+                    { "Move", "WASD", "left stick" },
+                    { "Aim", "mouse", "right stick" },
+                    { "Hit", "hold " + K("Hit") + ", let go as it arrives", "hold " + P("Hit") + ", let go" },
+                    { "Height picks the shot", "high = lob, middle = drive, low = drop", "" },
+                    { "Straight or cross", "your half of the wall = straight, the other = cross", "" },
+                    { "Boast", "tap " + K("Boast"), P("Boast") },
+                    { "Dive", K("Dive"), P("Dive") },
+                    { "Sprint", K("Sprint"), P("Sprint") },
+                    { "Serve", "tap: lob serve, hold: hard serve", "" },
+                    { "Ask for a let", K("Appeal") + " (when LET? shows)", P("Appeal") },
+                    { "Replay the last call", "V", "View" },
+                    { "Pause", "Esc", "Start" },
+                };
+            }
+        }
         protected override void Compose()
         {
             var grid = Kit.Box(Content, "k-ctl-grid");
-            for (int i = 0; i < Rows.GetLength(0); i++)
+            var rows = Rows;
+            for (int i = 0; i < rows.GetLength(0); i++)
             {
                 var row = Kit.Box(grid, "k-ctl");
-                Kit.L(row, Rows[i, 0], "k-ctl-action");
+                Kit.L(row, rows[i, 0], "k-ctl-action");
                 var keys = Kit.Box(row, "k-ctl-keys");
-                Kit.L(keys, Rows[i, 1], "k-ctl-key");
-                if (Rows[i, 2].Length > 0) { Kit.L(keys, "·", "k-ctl-or"); var pad = Kit.L(keys, Rows[i, 2], "k-ctl-key"); pad.AddToClassList("k-ctl-key--pad"); }
+                Kit.L(keys, rows[i, 1], "k-ctl-key");
+                if (rows[i, 2].Length > 0) { Kit.L(keys, "·", "k-ctl-or"); var pad = Kit.L(keys, rows[i, 2], "k-ctl-key"); pad.AddToClassList("k-ctl-key--pad"); }
             }
             Kit.L(Content, "Get set early and let go on time: the ring flashes on a great hit.", "k-cr-note");
         }

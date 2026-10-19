@@ -181,8 +181,12 @@ namespace SquashSim
         /// as a real one would, with no appeal. Lets on only.</summary>
         bool RefereeStopsSwing(int i)
         {
-            return PhysicsConfig.Current.Match.AppealsEnabled && Phase == MatchPhase.Rally && Referee.Outcome == null &&
-                   Referee.Shots > 0 && Interference.Striker == i && Interference.Current == ObstructionKind.Swing;
+            if (!(PhysicsConfig.Current.Match.AppealsEnabled && Phase == MatchPhase.Rally && Referee.Outcome == null &&
+                  Referee.Shots > 0 && Interference.Striker == i && Interference.Current == ObstructionKind.Swing)) return false;
+            // only when the racket would really meet the opponent: them right by the ball (the rest is for an appeal)
+            var o = Players[1 - i].Player.Pos;
+            double dx = o.X - Ball.Pos.X, dz = o.Z - Ball.Pos.Z;
+            return System.Math.Sqrt(dx * dx + dz * dz) <= GameTuning.Interference.SwingStopDistance;
         }
 
         /// <summary>The move player <paramref name="i"/> steered this step (its input, or the Assisted give-way blend):
@@ -492,9 +496,26 @@ namespace SquashSim
             if (Referee.Outcome != null) FinishRally();
         }
 
+        /// <summary>The last rally's call on interference (an appeal or the referee's own stop), as it was made; null when the
+        /// rally ended any other way (the ball hitting a player included).</summary>
+        public CallSnapshot LastCall { get; private set; }
+
         void FinishRally()
         {
             LastOutcome = Referee.Outcome;
+            LastCall = null;
+            var o = LastOutcome;
+            if (o != null && (o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet || o.Kind == RallyEnd.Stroke) && Interference.Striker >= 0 &&
+                (o.Reason == null || !o.Reason.Contains("ball hit")))
+            {
+                int si = Interference.Striker;
+                var s = Players[si].Player.Pos; var ob = Players[1 - si].Player.Pos;
+                LastCall = new CallSnapshot
+                {
+                    Kind = o.Kind, Obstruction = Interference.ThisTurn, Striker = si,
+                    StrikerX = s.X, StrikerZ = s.Z, TargetX = Interference.TargetX, TargetZ = Interference.TargetZ, ObstructorX = ob.X, ObstructorZ = ob.Z,
+                };
+            }
             History.Add(LastOutcome);
             ShotsPerRally.Add(Referee.Shots);
             Stats.Add(new RallyStats
