@@ -10,6 +10,10 @@
 //   card steps      wait for the player to read on (NextCard)
 //   quiz steps      fly a real shot, then wait for the call (Answer);
 //                   2 of the lesson's 3 right to pass, else RetryQuiz
+//   staged steps    P2-M7: a two-athlete moment (InterferenceStage) runs
+//                   and is mirrored here - the athletes and the ball;
+//                   a card loops it, a quiz stops as the striker would
+//                   ask and wants your call
 // ===========================================================
 
 using System.Collections.Generic;
@@ -33,6 +37,13 @@ namespace SquashSim.Academy
         public readonly List<Surface> Surfaces = CourtSurfaces.Create();
         public readonly BallState Ball = new BallState();
         public readonly TestPlayerController Player = new TestPlayerController();
+        /// <summary>P2-M7: the opponent in a staged moment (shown only while Staged).</summary>
+        public readonly TestPlayerController Opponent = new TestPlayerController();
+        /// <summary>A two-athlete moment is on (the views show the opponent).</summary>
+        public bool Staged { get { return _stage != null; } }
+        public InterferenceStage Stage { get { return _stage; } }
+        InterferenceStage _stage;
+        double _stageHold;
         public readonly Lab.BallLauncher Launcher;
         public readonly List<SimEvent> StepEvents = new List<SimEvent>();
         public readonly List<AcademyEvent> Events = new List<AcademyEvent>();
@@ -121,6 +132,8 @@ namespace SquashSim.Academy
             }
             if (st.Setup == StepSetup.NoBall || st.Goal == GoalKind.Card) Park();
             if (st.Setup == StepSetup.Serve) BeginServe();
+            _stage = st.Stage ?? (st.Question != null && st.Question.Kind == QuizKind.Interference ? st.Question.Stage : null);
+            if (_stage != null) { _stage = _stage.Clone(); _stage.Begin(); _stageHold = 0; Mirror(); }
             if (st.Goal == GoalKind.Quiz) QuizShot();
             Events.Add(new AcademyEvent { Kind = AcademyEventKind.StepStarted, Note = st.Text });
         }
@@ -176,6 +189,8 @@ namespace SquashSim.Academy
             }
 
             if (st.Goal == GoalKind.ModeDrive) Player.Arcade.Assisted = st.Assisted;      // the lesson sets the mode for the shot
+
+            if (_stage != null) { StepStage(st, dt); intent.ClearEdges(); return; }
 
             // feeds
             if (st.Setup == StepSetup.Feed && !_advancing && !_live)
@@ -367,10 +382,49 @@ namespace SquashSim.Academy
 
         // ---------------- quiz ----------------
 
+        // ---------------- staged moments (P2-M7) ----------------
+
+        void StepStage(LessonStep st, double dt)
+        {
+            if (st.Goal == GoalKind.Quiz)
+            {
+                // Played up to where the striker would ask; then your call.
+                if (_quizResolved) return;
+                if (_stage.AboutToAsk || !_stage.Step(dt, false)) { ResolveQuiz(); return; }
+                Mirror();
+                return;
+            }
+            // A card: the moment over and over (the call, a breath, again).
+            if (_stageHold > 0)
+            {
+                _stageHold -= dt;
+                if (_stageHold <= 0) { _stage.Begin(); Mirror(); }
+                return;
+            }
+            if (!_stage.Step(dt, true)) _stageHold = 1.2;
+            Mirror();
+        }
+
+        /// <summary>Show the staged moment: its athletes and ball are the session's.</summary>
+        void Mirror()
+        {
+            var m = _stage.Sim;
+            Copy(m.Players[0].Player, Player.Player);
+            Copy(m.Players[1].Player, Opponent.Player);
+            Ball.Pos.CopyFrom(m.Ball.Pos); Ball.Vel.CopyFrom(m.Ball.Vel); Ball.Omega.CopyFrom(m.Ball.Omega);
+            Ball.Asleep = false;
+        }
+
+        static void Copy(TestPlayer from, TestPlayer to)
+        {
+            to.Pos.CopyFrom(from.Pos); to.Vel.CopyFrom(from.Vel);
+        }
+
         void QuizShot()
         {
             var q = Current.Question;
             if (q.Kind == QuizKind.Scoring) { ResolveQuiz(); return; }
+            if (q.Kind == QuizKind.Interference) return;                     // staged: StepStage plays it
             var p = Player.Player;
             p.Pos.X = -2.4; p.Pos.Z = 8.6; p.Vel.X = 0; p.Vel.Z = 0;          // out of the way, watching
             RulesQuiz.Aim(Launcher, q);

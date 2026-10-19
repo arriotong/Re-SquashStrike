@@ -21,6 +21,9 @@ namespace SquashGame.UI
             public int Drives, Lobs, Drops, Kills, Boasts, Nicks, Aces, WinningBoasts, Tins, Outs, NotUps, Faults;
             public int GreatThisGame, MostGreatInAGame, TinRun, MostTinsInARow;
             public bool HitSelf, CameBack;
+            // P2-M7: calls given to this player (a let or a stroke for asking, a stroke on the ball) and refused (no let)
+            public int Lets, Strokes, NoLets;
+            public bool WonAfterLet;
             public double TSeconds;
             public double TopPace, PaceSum;
             public double AvgPace { get { return Contacts > 0 ? PaceSum / Contacts : 0; } }
@@ -30,6 +33,7 @@ namespace SquashGame.UI
         public int Rallies, LongestRally;
         public double PlaySeconds;
         int _lastStriker = -1, _server = -1;
+        bool _afterLet;
         string _lastTech;
         bool _down05;
         /// <summary>Each finished game's points (P1, P2).</summary>
@@ -56,7 +60,7 @@ namespace SquashGame.UI
             Players[0] = new Side(); Players[1] = new Side();
             Rallies = 0; LongestRally = 0; PlaySeconds = 0;
             Games.Clear();
-            _lastStriker = -1; _server = -1; _lastTech = null; _down05 = false;
+            _lastStriker = -1; _server = -1; _lastTech = null; _down05 = false; _afterLet = false;
         }
 
         void Watch(MatchSimulation sim)
@@ -124,8 +128,20 @@ namespace SquashGame.UI
             int shots = _sim.Referee.Shots;
             if (shots > LongestRally) LongestRally = shots;
             if (o.Winner >= 0 && o.Winner <= 1) Players[o.Winner].Rallies++;
+            if (_afterLet && o.Winner >= 0 && o.Winner <= 1) Players[o.Winner].WonAfterLet = true;
+            _afterLet = o.Kind == RallyEnd.Let;
+            int asker = _sim.Interference.Striker;               // still the call's (P2-M7)
             switch (o.Kind)
             {
+                case RallyEnd.Let:
+                    if (asker >= 0 && asker <= 1) Players[asker].Lets++;
+                    break;
+                case RallyEnd.Stroke:
+                    if (o.Winner >= 0 && o.Winner <= 1) Players[o.Winner].Strokes++;
+                    break;
+                case RallyEnd.NoLet:
+                    if (o.Loser >= 0 && o.Loser <= 1) Players[o.Loser].NoLets++;
+                    break;
                 case RallyEnd.NotUp:
                     if (o.Winner >= 0 && o.Winner <= 1)
                     {
@@ -160,7 +176,9 @@ namespace SquashGame.UI
         public Progression.MatchFacts Facts(MatchRunner r)
         {
             var me = Players[0];
+            var them = Players[1];
             var s = r.Settings;
+            var last = r.Sim.LastOutcome;
             var f = new Progression.MatchFacts
             {
                 Won = r.Sim.Score.MatchWinner == 0, Career = s.Career, TwoPlayer = s.TwoPlayer,
@@ -173,6 +191,10 @@ namespace SquashGame.UI
                 Drives = me.Drives, Lobs = me.Lobs, Drops = me.Drops, Kills = me.Kills, Boasts = me.Boasts,
                 CameBackFrom0_5 = me.CameBack, HitSelf = me.HitSelf, TopPaceKmh = me.TopPace * 3.6,
                 TSeconds = me.TSeconds, Seconds = PlaySeconds,
+                Lets = me.Lets, Strokes = me.Strokes, NoLets = me.NoLets,
+                LetsAgainst = them.Lets, StrokesAgainst = them.Strokes, NoLetsAgainst = them.NoLets,
+                WonAfterLet = me.WonAfterLet,
+                MatchPointOnAStroke = r.Sim.Score.MatchWinner == 0 && last != null && last.Kind == RallyEnd.Stroke && last.Winner == 0,
             };
             foreach (var g in Games) f.Games.Add(new[] { g[0], g[1] });
             return f;

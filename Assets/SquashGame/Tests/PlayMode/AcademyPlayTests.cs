@@ -174,6 +174,34 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheLetsLessonStagesTheMoments()
+        {
+            // P2-M7: two athletes and a live ball on the cards; the quiz asks at the moment you would appeal
+            LocalMatchTests.FreshProfile();
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            FrontEnd.LaunchLesson("lets");
+            yield return Loaded("WarmUpCourt");
+            var r = Object.FindFirstObjectByType<WarmUpCourt>().Academy;
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            var s = r.Session;
+            yield return Wait(1.2f, () => false);
+            Assert.That(s.Staged, Is.True);
+            Assert.That(r.View.Count, Is.EqualTo(2), "the opponent is drawn");
+            yield return CaptureUI(fe, "P2M7_Academy_Card.png");
+            for (int k = 0; k < 4; k++) yield return Tap(kb.enterKey);
+            Assert.That(s.Current.Goal, Is.EqualTo(GoalKind.Quiz));
+            yield return Wait(8f, () => fe.Top is QuizScreen);
+            Assert.That(fe.Top, Is.InstanceOf<QuizScreen>(), "asked as the striker would appeal");
+            yield return CaptureUI(fe, "P2M7_Academy_Quiz.png");
+            var question = s.Current.Question;
+            Assert.That(question.Kind, Is.EqualTo(QuizKind.Interference));
+            yield return Choose(kb, fe, System.Array.IndexOf(question.Choices, RulesQuiz.Answer(question)));
+            Assert.That(fe.Top, Is.InstanceOf<QuizRevealScreen>());
+            Assert.That(((QuizRevealScreen)fe.Top).Right, Is.True);
+        }
+
+        [UnityTest]
         public IEnumerator ARulesLessonCardsAndQuiz()
         {
             LocalMatchTests.FreshProfile();

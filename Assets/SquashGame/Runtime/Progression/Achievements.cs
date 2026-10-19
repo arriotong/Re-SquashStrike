@@ -40,6 +40,9 @@ namespace SquashGame.Progression
         public double TSeconds, Seconds;        // your time on the T; the match's playing time
         public bool CameBackFrom0_5, HitSelf;
         public double TopPaceKmh;
+        // P2-M7: calls (given to you; "Against": to the opponent)
+        public int Lets, Strokes, NoLets, LetsAgainst, StrokesAgainst, NoLetsAgainst;
+        public bool WonAfterLet, MatchPointOnAStroke;
     }
 
     public static class Achievements
@@ -81,6 +84,9 @@ namespace SquashGame.Progression
             A("Shots", "boasts3", "Boast master", "Win 3 rallies with a boast in one match.", AchTier.Silver, "grip_orange");
             A("Shots", "rocket", "Rocket", "Hit the ball at " + RocketKmh.ToString("0") + " km/h.", AchTier.Gold, "strings_red");
             A("Shots", "winners10", "Sharpshooter", "10 winners in one match.", AchTier.Silver, "title_sharpshooter");
+            // ---- the referee (P2-M7) ----
+            A("Rallies", "fair_play", "Fair play", "Win the rally after a let.", AchTier.Bronze);
+            A("Rallies", "stroke_genius", "Stroke of genius", "Win a match point on a stroke.", AchTier.Silver);
             // ---- Target Arcade ----
             A("Target Arcade", "arcade3", "Three stars", "Three stars on any Target Arcade level.", AchTier.Bronze);
             A("Target Arcade", "arcade_easy", "Easy does it", "Three stars on every Easy level.", AchTier.Silver, "shoes_gold");
@@ -135,6 +141,8 @@ namespace SquashGame.Progression
             if (f.Winners >= 10) l.Add("winners10");
             if (f.HitSelf) l.Add("hitself");
             if (f.TinsInARow >= 3) l.Add("tin3");
+            if (f.WonAfterLet) l.Add("fair_play");
+            if (f.MatchPointOnAStroke) l.Add("stroke_genius");
             return l;
         }
     }

@@ -128,13 +128,16 @@ namespace SquashGame.Athlete
         {
             if (Runner == null || Runner.Clock == null || Rig == null) return;
             Dress();
-            if (Index >= Runner.View.Count) return;
+            bool shown = Index < Runner.View.Count;            // P2-M7: an athlete who is not there now (the Academy's opponent)
+            if (shown != _shown) { _shown = shown; foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = shown; }
+            if (!shown) return;
             AthleteSnapshot v = Runner.View.Athlete(Index);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             Pose(v, Runner.View.BallPos, dt);
         }
 
         float _diveW;
+        bool _shown = true;
         /// <summary>P2-M5: the pose of a match moment to hold (the celebration), or null - polled every frame.</summary>
         public System.Func<string> MomentSource;
         AthletePose _moment;

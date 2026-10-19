@@ -25,6 +25,8 @@ namespace SquashGame.Progression
         public int Drives, Lobs, Drops, Kills, Boasts;
         public double TSeconds, PlaySeconds;
         public int ArcadePlays, LessonsPassed, CareerTitles, CareerBestRank;
+        // P2-M7: calls - given to you, and to your opponents
+        public int Lets, Strokes, NoLets, LetsAgainst, StrokesAgainst, NoLetsAgainst;
 
         public int Shots { get { return Drives + Lobs + Drops + Kills + Boasts; } }
         public float TShare { get { return PlaySeconds > 0 ? (float)(TSeconds / PlaySeconds) : 0f; } }
@@ -44,6 +46,8 @@ namespace SquashGame.Progression
             s.Nicks += f.Nicks; s.GreatHits += f.GreatHits; s.Aces += f.Aces;
             s.Drives += f.Drives; s.Lobs += f.Lobs; s.Drops += f.Drops; s.Kills += f.Kills; s.Boasts += f.Boasts;
             s.TSeconds += f.TSeconds; s.PlaySeconds += f.Seconds;
+            s.Lets += f.Lets; s.Strokes += f.Strokes; s.NoLets += f.NoLets;
+            s.LetsAgainst += f.LetsAgainst; s.StrokesAgainst += f.StrokesAgainst; s.NoLetsAgainst += f.NoLetsAgainst;
         }
     }
 }

@@ -413,6 +413,10 @@ namespace SquashGame.UI
             we.Add(new StatBars().Row("WINNERS  ·  ERRORS", s.Winners, s.Errors));
             int max = Mathf.Max(1, Mathf.Max(Mathf.Max(s.Tins, s.Outs), Mathf.Max(s.NotUps, s.Faults)));
             Count(we, "Down (tin)", s.Tins, max); Count(we, "Out", s.Outs, max); Count(we, "Not up", s.NotUps, max); Count(we, "Faults", s.Faults, max);
+            // P2-M7: the referee's calls, for you and against you
+            we.Add(new StatBars().Row("LETS  ·  YOU / THEM", s.Lets, s.LetsAgainst));
+            we.Add(new StatBars().Row("STROKES  ·  YOU / THEM", s.Strokes, s.StrokesAgainst));
+            we.Add(new StatBars().Row("NO LETS  ·  YOU / THEM", s.NoLets, s.NoLetsAgainst));
             var t3 = Kit.Box(e, "k-st-tiles");
             int stars = 0; foreach (var r in ProfileStore.Current.Arcade) stars += r.Stars;
             Career.Tile(t3, "ARCADE STARS", stars + " / 54");

@@ -14,7 +14,7 @@ namespace SquashGame
     {
         public Lesson Lesson { get; private set; }
         public AcademySession Session { get; private set; }
-        TestPlayerController[] _athletes;
+        TestPlayerController[] _athletes, _staged;
 
         /// <summary>The session's events (progress, notes, quiz) as they happen, one fixed step at a time.</summary>
         public event System.Action<AcademyEvent> Judged;
@@ -22,7 +22,8 @@ namespace SquashGame
         public LessonBot Autopilot;
 
         public override BallState Ball { get { return Session.Ball; } }
-        public override TestPlayerController[] Athletes { get { return _athletes; } }
+        /// <summary>P2-M7: the opponent too while the lesson stages a two-athlete moment.</summary>
+        public override TestPlayerController[] Athletes { get { return Session.Staged ? _staged : _athletes; } }
         public override IReadOnlyList<SimEvent> StepEvents { get { return Session.StepEvents; } }
         public override List<Surface> Surfaces { get { return Session.Surfaces; } }
 
@@ -38,6 +39,7 @@ namespace SquashGame
             PhysicsConfig.UseGameProfile();
             Session = new AcademySession(Lesson, (uint)System.Environment.TickCount);
             _athletes = new[] { Session.Player };
+            _staged = new[] { Session.Player, Session.Opponent };
         }
 
         /// <summary>The lesson from the start.</summary>

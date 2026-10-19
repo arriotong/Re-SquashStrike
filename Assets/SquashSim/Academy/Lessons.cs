@@ -21,7 +21,7 @@ namespace SquashSim.Academy
         ReachSpots, SprintTo, Dive, ReticleRings, FrontWallHits, ShotType, PaceOver, Boast, Serve, FaultThenServe,
         GreatHits, ModeDrive, Card, Quiz
     }
-    public enum QuizKind { Wall, Serve, RallyEnd, Scoring }
+    public enum QuizKind { Wall, Serve, RallyEnd, Scoring, Interference }
 
     public sealed class QuizQuestion
     {
@@ -35,6 +35,8 @@ namespace SquashSim.Academy
         // scoring: the system and who won the rally
         public bool English, ServerWins;
         public string Explain;
+        /// <summary>Interference: the staged moment (P2-M7); the answer is the referee's call on it.</summary>
+        public InterferenceStage Stage;
     }
 
     public sealed class LessonStep
@@ -53,6 +55,8 @@ namespace SquashSim.Academy
         public readonly List<Target> Targets = new List<Target>();
         public string Highlight;                  // rules cards: court lines to light up
         public QuizQuestion Question;
+        /// <summary>P2-M7: a staged two-athlete moment shown during this step (a card) - see InterferenceStage.</summary>
+        public InterferenceStage Stage;
 
         public LessonStep Spot(double x, double z, double r = 0.55) { Targets.Add(Target.StandOn(x, z, r)); return this; }
         public LessonStep Ring(double x, double y, double r) { Targets.Add(Target.Ring(x, y, r)); return this; }
@@ -77,6 +81,8 @@ namespace SquashSim.Academy
         {
             return new LessonStep { Goal = goal, Text = text, Keys = keys, Setup = setup, Count = count };
         }
+
+        static LessonStep Staged(LessonStep st, InterferenceStage stage) { st.Stage = stage; return st; }
 
         static LessonStep Card(string text, string highlight = null) { return new LessonStep { Goal = GoalKind.Card, Text = text, Highlight = highlight }; }
 
@@ -173,10 +179,15 @@ namespace SquashSim.Academy
             scoring.Steps.Add(Q(new QuizQuestion { Intended = "Server", Kind = QuizKind.Scoring, Text = "English: the server wins the rally. Who scores?", Choices = new[] { "Server", "Receiver", "Nobody" }, English = true, ServerWins = true, Explain = "Only the server scores in English." }));
             _all.Add(scoring);
 
-            var lets = L("lets", Chapter.Rules, "Lets & strokes", "When a player is in the way.");
-            lets.Steps.Add(Card("Interference: your opponent is in the way of your swing or your shot."));
-            lets.Steps.Add(Card("A let: the rally is played again. A stroke: you win the point, because they stopped a winning shot."));
-            lets.Steps.Add(Card("In re:SquashStrike lets are switched off for now - they come back with the referee's rework."));
+            // P2-M7: four staged moments, then you make the call on three more (the referee's own call is the answer)
+            var lets = L("lets", Chapter.Rules, "Lets & strokes", "When a player is in the way - and when to ask.");
+            lets.Steps.Add(Staged(Card("In the way: you are going for the ball and your opponent stands on your path. Ask (Q / Y): a stroke - they did not clear."), InterferenceStage.InTheWay()));
+            lets.Steps.Add(Staged(Card("In the swing: they are where your racket goes. The referee stops play himself - a stroke, for safety."), InterferenceStage.InTheSwing()));
+            lets.Steps.Add(Staged(Card("In the line: they stand between you and the front wall, where your shot would go. A stroke."), InterferenceStage.InTheLine()));
+            lets.Steps.Add(Staged(Card("Not trying: you stood still. Ask now and it is no let - the point goes to them. LET? over your head means asking will be granted."), InterferenceStage.NotTrying()));
+            lets.Steps.Add(Q(new QuizQuestion { Intended = "Let", Kind = QuizKind.Interference, Text = "They are in your way, but moving off it. Your call?", Choices = new[] { "Let", "No let", "Stroke" }, Stage = InterferenceStage.Clearing(), Explain = "They were clearing: the rally is played again." }));
+            lets.Steps.Add(Q(new QuizQuestion { Intended = "No let", Kind = QuizKind.Interference, Text = "Nobody in your way. Your call?", Choices = new[] { "Let", "No let", "Stroke" }, Stage = InterferenceStage.OpponentClear(), Explain = "They were clear: no let, their point." }));
+            lets.Steps.Add(Q(new QuizQuestion { Intended = "Stroke", Kind = QuizKind.Interference, Text = "They stand on your path and stay there. Your call?", Choices = new[] { "Let", "No let", "Stroke" }, Stage = InterferenceStage.InTheWay(), Explain = "They did not clear: a stroke, your point." }));
             _all.Add(lets);
 
             return _all;

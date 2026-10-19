@@ -100,6 +100,19 @@ namespace SquashGame.Tests
             Assert.That(Rewards.Owns("title_marathon"), Is.True);
         }
 
+        [Test] public void TheRefereesCallsCount()
+        {
+            // P2-M7: "Fair play", "Stroke of genius", and calls for / against in the lifetime stats
+            var f = new MatchFacts { Won = true, GamesToWin = 1, Lets = 2, Strokes = 1, NoLets = 1, LetsAgainst = 1, StrokesAgainst = 3, WonAfterLet = true, MatchPointOnAStroke = true };
+            var got = Achievements.FromMatch(f);
+            Assert.That(got, Does.Contain("fair_play"));
+            Assert.That(got, Does.Contain("stroke_genius"));
+            Assert.That(Achievements.FromMatch(new MatchFacts { Won = true, GamesToWin = 1 }), Has.No.Member("fair_play"));
+            var s = new LifetimeStats();
+            LifetimeStats.AddMatch(s, f); LifetimeStats.AddMatch(s, f);
+            Assert.That(s.Lets, Is.EqualTo(4)); Assert.That(s.StrokesAgainst, Is.EqualTo(6)); Assert.That(s.NoLets, Is.EqualTo(2));
+        }
+
         [Test] public void LevellingUpUnlocksTheLevelTable()
         {
             var r = Rewards.Match(new MatchFacts { Rallies = 100, RalliesWon = 60, GamesToWin = 1 });       // 200 + 180 XP: level 2

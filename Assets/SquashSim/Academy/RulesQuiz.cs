@@ -24,6 +24,7 @@ namespace SquashSim.Academy
         public static string Answer(QuizQuestion q)
         {
             if (q.Kind == QuizKind.Scoring) return Scorer(q);
+            if (q.Kind == QuizKind.Interference) return q.Stage != null ? q.Stage.Call() : null;   // P2-M7: the referee's call
             var surfaces = CourtSurfaces.Create();
             var ball = new BallState();
             var launcher = new Lab.BallLauncher(ball);
