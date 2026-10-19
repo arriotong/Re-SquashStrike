@@ -163,7 +163,7 @@ namespace SquashGame.UI
             // ---- GAMEPLAY ----
             var g = Panel("GAMEPLAY");
             Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
-            Row(g, new SelectorItem("Lets", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "Ask for a let when you are in the way: Q / Y. Off: play through (from the next match).");
+            Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (Q / Y) when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
         }
 
         VisualElement Panel(string tab)

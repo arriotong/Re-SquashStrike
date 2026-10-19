@@ -41,6 +41,7 @@ namespace SquashGame.Tests
         {
             yield return LoadCourt();
             LabSimRunner runner = Runner();
+            if (runner.Free != null) { runner.SetFreePlay(false); runner.FeedSingle(); }   // a fed ball (free play keeps it in hand)
             long start = runner.Clock.TotalSteps;
             Vector3 ballStart = SimToWorld.Pos(runner.Sim.Ball.Pos);
 

@@ -24,6 +24,9 @@ namespace SquashGame
         public static readonly string[] SpeedNames = { "Slow", "Medium", "Fast" };
         public static readonly float[] SpeedScale = { 0.85f, 1f, 1.15f };
         public static readonly string[] IntervalNames = { "2 s", "3 s", "4 s", "5 s" };
+        /// <summary>The Feeding selector: every N seconds, or on your button.</summary>
+        public static readonly string[] FeedingNames = { "Every 2 s", "Every 3 s", "Every 4 s", "Every 5 s", "On F" };
+        public static readonly string[] ModeNames = { "Free play", "Feeder" };
         public static readonly float[] Intervals = { 2f, 3f, 4f, 5f };
         public static readonly string[] SlowNames = { "1x", "0.5x", "0.25x" };
         public static readonly float[] Slow = { 1f, 0.5f, 0.25f };
@@ -43,7 +46,7 @@ namespace SquashGame
             Runner.Sim.Launcher.SetRepeat(false);              // the coach feeds from now on
             Runner.Stepped += OnStepped;
             Apply();
-            FeedNow();
+            if (C.Feeder) FeedNow();
         }
 
         void OnDestroy() { if (Runner != null) Runner.Stepped -= OnStepped; }
@@ -53,13 +56,14 @@ namespace SquashGame
         /// <summary>The panel's slow motion and trail (call after a change).</summary>
         public void Apply()
         {
+            Runner.SetFreePlay(!C.Feeder);                     // free play: no feeds, the ball in your hand
             Runner.Clock.TimeScale = SimRunnerBase.GameSpeed * Slow[Mathf.Clamp(C.Slow, 0, Slow.Length - 1)];
             BallView.LongTrail = C.LongTrail;
         }
 
         void OnStepped(System.Collections.Generic.IReadOnlyList<SimEvent> events)
         {
-            if (!C.Auto) return;
+            if (!C.Auto || !C.Feeder) return;
             _timer += PhysicsConfig.Current.Sim.FixedDt;
             if (_timer >= Intervals[Mathf.Clamp(C.Interval, 0, Intervals.Length - 1)]) FeedNow();
         }
@@ -67,6 +71,7 @@ namespace SquashGame
         /// <summary>Fire the next feed as the panel says.</summary>
         public void FeedNow()
         {
+            if (!C.Feeder) return;
             _timer = 0;
             _count++;
             int side;

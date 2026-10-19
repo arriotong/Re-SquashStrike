@@ -42,6 +42,8 @@ namespace SquashGame.UI
         public AcademyRunner Academy { get { return Runner as AcademyRunner; } }
         /// <summary>Free practice's feeder (the Coach panel drives it).</summary>
         public CoachFeeder Coach { get; private set; }
+        /// <summary>Free play's hints and counts on the practice court.</summary>
+        public PracticeHud PracticeHud { get; private set; }
         public ArcadeHud ArcadeHud { get; private set; }
         public LessonHud LessonHud { get; private set; }
         /// <summary>A screen to open over the main menu when the match scene loads (back from the arcade).</summary>
@@ -97,6 +99,8 @@ namespace SquashGame.UI
             {
                 Coach = gameObject.AddComponent<CoachFeeder>();
                 Coach.Build(lab);
+                PracticeHud = new PracticeHud(lab);
+                _root.Add(PracticeHud);
             }
             _dim = new VisualElement();
             _dim.AddToClassList("fe-layer"); _dim.AddToClassList("fe-dim");
@@ -416,6 +420,7 @@ namespace SquashGame.UI
             if (Hud != null) Hud.Refresh(Match, Top == null || Top is PauseScreen);
             if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);
             if (LessonHud != null) LessonHud.Refresh(Academy, Top == null || Top is AcademyPauseScreen);
+            if (PracticeHud != null) PracticeHud.Refresh(Top == null);
         }
 
         void MatchScreens(float dt)

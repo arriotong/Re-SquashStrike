@@ -23,6 +23,8 @@ namespace SquashGame
         public bool MatchBall = true;
 
         public LabSimulation Sim { get; private set; }
+        /// <summary>Free play (no feeder, ball in hand): the practice court's main mode. Null = the lab / the feeder.</summary>
+        public FreePlay Free { get; private set; }
         public string CurrentPreset { get; private set; }
         TestPlayerController[] _athletes;
 
@@ -44,7 +46,22 @@ namespace SquashGame
             Sim.Launcher.SetRepeat(StartWithRepeatFeed);
         }
 
-        protected override void SimStep(double dt) { Sim.Step(Input.Intent, dt); }
+        protected override void SimStep(double dt)
+        {
+            if (Free != null) Free.Step(Sim, Input.Intent, dt);
+            else Sim.Step(Input.Intent, dt);
+        }
+
+        /// <summary>Free play on (the ball in your hand) or off (the feeder / the lab).</summary>
+        public void SetFreePlay(bool on)
+        {
+            if (on == (Free != null)) return;
+            Trail.Clear();
+            if (on) { Free = new FreePlay(); Free.Begin(Sim); }
+            else { Free = null; Sim.Ball.Asleep = false; }
+            Clock.Flush();
+            SnapViews();
+        }
 
         // ---------------- lab actions ----------------
 

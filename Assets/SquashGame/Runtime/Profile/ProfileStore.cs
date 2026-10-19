@@ -64,6 +64,8 @@ namespace SquashGame.Profile
     {
         public int Feed = 0, Side = 2, Speed = 1, Interval = 1, Slow = 0;
         public bool Auto = true, LongTrail = false, WarmBall = true;
+        /// <summary>The feeder (else free play: no feeds, the ball in your hand - the default).</summary>
+        public bool Feeder;
     }
 
     /// <summary>P2-M3: the Academy - lessons passed, and the one-time suggestion to a new player.</summary>

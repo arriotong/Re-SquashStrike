@@ -12,6 +12,9 @@
 //   shoes          a squeak when an athlete stops hard (from the drawn
 //                  velocity, so it follows what you see)
 //   referee        a chime on every call, a longer one at the end of a game
+//   takes          each sound has several takes (ProceduralSounds), or
+//                  recordings dropped in Resources/Audio/ - one is picked
+//                  at random each time
 //
 // Presentation only: it never writes simulation state, and random pitch
 // variation uses Unity's RNG, never the sim's.
@@ -36,7 +39,7 @@ namespace SquashGame.Audio
         public int PlayedTotal { get; private set; }
         public string LastSound { get; private set; }
 
-        Dictionary<string, AudioClip> _clips;
+        Dictionary<string, AudioClip[]> _clips;
         readonly List<AudioSource> _pool = new List<AudioSource>();
         int _next;
         readonly Vector3[] _lastVel = new Vector3[2];
@@ -48,6 +51,15 @@ namespace SquashGame.Audio
         {
             Runner = runner;
             _clips = ProceduralSounds.AllClips();
+            // A recording wins over the synthesised takes: Resources/Audio/<name> (wav / ogg), or <name>_1, _2 ... for takes.
+            foreach (var n in ProceduralSounds.Names)
+            {
+                var takes = new List<AudioClip>();
+                var one = Resources.Load<AudioClip>("Audio/" + n);
+                if (one != null) takes.Add(one);
+                for (int k = 1; k <= 8; k++) { var c = Resources.Load<AudioClip>("Audio/" + n + "_" + k); if (c != null) takes.Add(c); }
+                if (takes.Count > 0) _clips[n] = takes.ToArray();
+            }
             for (int i = 0; i < Voices; i++)
             {
                 var go = new GameObject("Voice" + i);
@@ -87,7 +99,8 @@ namespace SquashGame.Audio
         /// <summary>Play a sound at a world point. Volume 0..1; pitch around 1.</summary>
         public void Play(string name, Vector3 at, float volume, float pitch = 1f)
         {
-            if (_clips == null || volume <= 0.01f || !_clips.TryGetValue(name, out AudioClip clip)) return;
+            if (_clips == null || volume <= 0.01f || !_clips.TryGetValue(name, out AudioClip[] takes) || takes.Length == 0) return;
+            AudioClip clip = takes[Random.Range(0, takes.Length)];      // a different take each time (presentation only)
             // Steal the next voice in turn (the oldest sound is the least missed).
             AudioSource src = _pool[_next];
             _next = (_next + 1) % _pool.Count;

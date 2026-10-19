@@ -224,10 +224,11 @@ namespace SquashGame.UI
             // ---- FREE PRACTICE ----
             var free = Kit.Box(Page("FREE PRACTICE"), "k-ta-free");
             var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => FrontEnd.LaunchFreePractice(), CardSize.Hero).Vignette("court")
-                .Line("The feeder sends them, you hit. Change the feed any time from the Coach tray."));
+                .Line("Just you and the wall: walk anywhere with the ball in your hand, drop it and hit, keep it going. Miss, and it is back in your hand. Want feeds? Switch the Coach tray to the feeder."));
             hero.Root.AddToClassList("k-card--free");
             var tray = Kit.Panel(free, "THE COACH TRAY  ·  TAB / VIEW WHILE YOU PLAY");
             tray.AddToClassList("k-ta-traypanel");
+            Line(tray, "MODE", "free play (ball in hand, the default)  ·  feeder");
             Line(tray, "FEED", string.Join("  ·  ", CoachFeeder.FeedNames));
             Line(tray, "SIDE", string.Join("  ·  ", CoachFeeder.SideNames));
             Line(tray, "SPEED", string.Join("  ·  ", CoachFeeder.SpeedNames));
@@ -435,16 +436,17 @@ namespace SquashGame.UI
             _tabs.Changed += Page;
             Content.Add(_tabs);
             _pages[0] = Kit.Box(Content, "k-tray-page");
-            AddTo(_pages[0], new CarouselItem("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v));
-            AddTo(_pages[0], new SelectorItem("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v));
-            AddTo(_pages[0], new SelectorItem("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v));
-            AddTo(_pages[0], new SelectorItem("Feeding", new[] { "Automatic", "On F" }, () => C.Auto ? 0 : 1, v => C.Auto = v == 0));
-            AddTo(_pages[0], new SelectorItem("Every", CoachFeeder.IntervalNames, () => C.Interval, v => C.Interval = v)).Enabled = () => C.Auto;
+            AddTo(_pages[0], new SelectorItem("Mode", CoachFeeder.ModeNames, () => C.Feeder ? 1 : 0, v => C.Feeder = v == 1));
+            AddTo(_pages[0], new CarouselItem("Feed", CoachFeeder.FeedNames, () => C.Feed, v => C.Feed = v)).Enabled = () => C.Feeder;
+            AddTo(_pages[0], new SelectorItem("Side", CoachFeeder.SideNames, () => C.Side, v => C.Side = v)).Enabled = () => C.Feeder;
+            AddTo(_pages[0], new SelectorItem("Speed", CoachFeeder.SpeedNames, () => C.Speed, v => C.Speed = v)).Enabled = () => C.Feeder;
+            AddTo(_pages[0], new SelectorItem("Feeding", CoachFeeder.FeedingNames, () => C.Auto ? C.Interval : CoachFeeder.FeedingNames.Length - 1,
+                v => { C.Auto = v < CoachFeeder.FeedingNames.Length - 1; if (C.Auto) C.Interval = v; })).Enabled = () => C.Feeder;
             _pages[1] = Kit.Box(Content, "k-tray-page");
             AddTo(_pages[1], new SelectorItem("Slow-mo", CoachFeeder.SlowNames, () => C.Slow, v => C.Slow = v));
             AddTo(_pages[1], new SelectorItem("Trail", new[] { "Short", "Long" }, () => C.LongTrail ? 1 : 0, v => { C.LongTrail = v == 1; Feeder.Apply(); }));
             AddTo(_pages[1], new SelectorItem("Ball", new[] { "Cold", "Warm" }, () => C.WarmBall ? 1 : 0, v => C.WarmBall = v == 1));
-            Add(new ActionItem("Feed now", () => { Fe.Pop(); Feeder.FeedNow(); }, "▶"));
+            Add(new ActionItem("Feed now", () => { Fe.Pop(); C.Feeder = true; Feeder.Apply(); Feeder.FeedNow(); }, "▶"));
             var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
             prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Page"), (PromptBar.Btn.B, "Close"));
             Root.Add(prompts);

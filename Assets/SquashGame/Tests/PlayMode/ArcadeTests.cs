@@ -162,11 +162,28 @@ namespace SquashGame.Tests
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             Assert.That(court.Runner, Is.Not.Null, "free practice is the lab");
             Assert.That(fe.Coach, Is.Not.Null);
+            // Free play is the court's main mode: no feeds, the ball in your hand; a click drops and hits it.
+            var free = court.Runner.Free;
+            Assert.That(free, Is.Not.Null, "free play by default");
+            Assert.That(free.InHand, Is.True);
+            yield return null;
+            Assert.That(fe.PracticeHud.HintText, Does.Contain("Ball in hand"));
+            yield return CaptureUI(fe, "Practice_FreePlay.png");
+            var mouse = Mouse.current;
+            Press(mouse.leftButton); yield return null; yield return null; Release(mouse.leftButton);
+            float tf = Time.realtimeSinceStartup;
+            while (free.InHand && Time.realtimeSinceStartup - tf < 1f) yield return null;
+            Assert.That(free.InHand, Is.False, "dropped and hit");
+            Assert.That(fe.Coach.Fed, Is.EqualTo(0), "no feeds in free play");
             int fed = fe.Coach.Fed;
             yield return Tap(kb.tabKey);
             Assert.That(fe.Top, Is.InstanceOf<CoachScreen>(), "Tab opens the Coach panel");
             Assert.That(court.Runner.Clock.Paused, Is.True, "the game waits");
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Mode"));
+            yield return Tap(kb.rightArrowKey);                             // Free play -> Feeder
+            Assert.That(ProfileStore.Current.Coach.Feeder, Is.True);
             yield return CaptureUI(fe, "P2M2_UI_5_Coach.png");
+            yield return Tap(kb.downArrowKey);
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Feed"));
             yield return Tap(kb.rightArrowKey);
             yield return Tap(kb.rightArrowKey);                             // Warm-up -> Length -> Drop
@@ -176,6 +193,7 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.Null, "feeding closes the panel");
             Assert.That(court.Runner.Clock.Paused, Is.False);
             Assert.That(fe.Coach.Fed, Is.EqualTo(fed + 1));
+            Assert.That(court.Runner.Free, Is.Null, "the feeder took over");
             var cfg = court.Runner.Sim.Launcher.Config;
             Assert.That(cfg.Position.Z, Is.EqualTo(6.0).Within(1e-6), "the drop feed comes from closer in");
         }

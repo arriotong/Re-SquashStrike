@@ -1,23 +1,31 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Audio/ProceduralSounds.cs
-// The M5 sound set, synthesised at start-up: no audio files, no new
-// packages. Each sound is a few damped partials plus shaped noise,
-// tuned by ear to what a glass court sounds like:
+// The on-court sound set, synthesised at start-up (no audio files, no
+// packages). v2 (2026-10-19, "they sound pretty bad"): the first set was
+// plain decaying sine tones, which read as beeps. Now each sound is made
+// the way the real one is:
 //
-//   ping       racket strings on the sweet spot (bright, short)
-//   frame      off-centre / frame contact (dry clack, hollow)
-//   front      front wall (plaster: low thud with a slap)
-//   side       side wall (a little higher, shorter)
-//   glass      back wall glass (thud + glassy ring)
-//   tin        the tin (inharmonic metallic clang, long tail)
-//   floor      floor bounce (soft, wooden)
-//   nick       the nick (sharp crack, dead)
-//   body       ball or player hitting a body (dull)
-//   squeak     shoe squeak on a hard stop (chirp with vibrato)
-//   call       referee call chime (two soft tones)
-//   gameCall   end of game chime (three tones)
+//   excitation   the contact itself - a half-sine pulse as long as the
+//                ball is squashed against the surface (short = bright,
+//                long = dull), plus a burst of filtered noise (the slap)
+//   body         a bank of resonators (two-pole filters) driven by it:
+//                the surface's own modes - a wall's low thump, the glass
+//                panel's ring, the tin's metal, the strings' twang
+//   the court    a small baked-in room (early reflections + a short
+//                diffuse tail): a squash court is a hard, live box
+//   variants     three takes of each impact (detuned modes, new noise),
+//                picked at random, so a rally is not a machine gun
 //
-// Pure functions of a seed: the same samples every run (EditMode-testable).
+//   ping       racket strings on the sweet spot      frame    the frame
+//   front      front wall                            side     side wall
+//   glass      the glass back wall                   tin      the tin
+//   floor      a floor bounce                        nick     the nick
+//   body       the ball or a player into a body      squeak   shoes
+//   call       referee chime                         gameCall end of game
+//
+// A recording can replace any of them: put "<name>.wav" (or .ogg) in
+// Assets/SquashGame/Resources/Audio/ and it is used instead (AudioDirector).
+// Pure functions of the name and the take: the same samples every run.
 // ===========================================================
 
 using System.Collections.Generic;
@@ -28,93 +36,206 @@ namespace SquashGame.Audio
     public static class ProceduralSounds
     {
         public const int Rate = 44100;
+        public const int Variants = 3;
 
         public static readonly string[] Names = { "ping", "frame", "front", "side", "glass", "tin", "floor", "nick", "body", "squeak", "call", "gameCall" };
 
-        /// <summary>One sound's samples (mono, -1..1).</summary>
-        public static float[] Samples(string name)
+        /// <summary>One sound's samples (mono, -1..1). <paramref name="variant"/> 0..Variants-1.</summary>
+        public static float[] Samples(string name, int variant = 0)
         {
+            uint seed = (uint)(System.Array.IndexOf(Names, name) + 1) * 2654435761u + (uint)variant * 7919u + 17u;
+            double d = 1 + 0.035 * (variant - 1);                     // each take detuned a little
             switch (name)
             {
-                case "ping":     return Mix(0.075, new[] { P(1150, 0.018, 0.9), P(2380, 0.010, 0.45), P(4200, 0.005, 0.25) }, N(0.008, 0.6, 0.35), 1);
-                case "frame":    return Mix(0.070, new[] { P(640, 0.020, 0.7), P(3500, 0.004, 0.6), P(1730, 0.008, 0.3) }, N(0.004, 0.9, 0.5), 2);
-                case "front":    return Mix(0.160, new[] { P(118, 0.045, 1.0), P(240, 0.022, 0.45), P(1300, 0.004, 0.2) }, N(0.012, 0.25, 0.45), 3);
-                case "side":     return Mix(0.120, new[] { P(165, 0.032, 0.9), P(390, 0.016, 0.4) }, N(0.010, 0.3, 0.4), 4);
-                case "glass":    return Mix(0.300, new[] { P(140, 0.035, 0.8), P(930, 0.090, 0.30), P(1710, 0.070, 0.22), P(2890, 0.050, 0.12) }, N(0.010, 0.4, 0.3), 5);
-                case "tin":      return Mix(0.700, new[] { P(523, 0.250, 0.55), P(1311, 0.180, 0.45), P(2207, 0.120, 0.35), P(3397, 0.080, 0.25), P(170, 0.040, 0.5) }, N(0.006, 0.8, 0.4), 6);
-                case "floor":    return Mix(0.110, new[] { P(210, 0.026, 0.8), P(470, 0.012, 0.35) }, N(0.008, 0.2, 0.4), 7);
-                case "nick":     return Mix(0.140, new[] { P(95, 0.030, 0.9), P(2600, 0.003, 0.7) }, N(0.003, 1.0, 0.8), 8);
-                case "body":     return Mix(0.120, new[] { P(88, 0.040, 0.9), P(180, 0.020, 0.3) }, N(0.020, 0.12, 0.5), 9);
-                case "squeak":   return Squeak();
-                case "call":     return Tones(new[] { 784.0, 659.3 }, 0.22);
+                // strings: a short crisp pock, the string bed's twang, the frame's low knock
+                case "ping": return Impact(seed, 0.09, 0.0035, 0.55, 0.0025, 0.75,
+                    new[] { M(540 * d, 0.030, 0.9), M(1250 * d, 0.014, 0.55), M(2650 * d, 0.006, 0.35), M(190 * d, 0.020, 0.35) }, 0.16, 0.85);
+                // the frame: harder, drier, hollow clack
+                case "frame": return Impact(seed, 0.08, 0.0015, 0.9, 0.0020, 0.9,
+                    new[] { M(830 * d, 0.022, 0.8), M(2350 * d, 0.010, 0.6), M(3900 * d, 0.006, 0.4), M(310 * d, 0.015, 0.3) }, 0.14, 0.8);
+                // front wall: a solid thump and the ball's pock, the court answers
+                case "front": return Impact(seed, 0.16, 0.0040, 0.45, 0.0030, 0.55,
+                    new[] { M(92 * d, 0.055, 1.0), M(205 * d, 0.030, 0.55), M(640 * d, 0.010, 0.30), M(1750 * d, 0.004, 0.25) }, 0.30, 0.95);
+                case "side": return Impact(seed, 0.13, 0.0035, 0.5, 0.0025, 0.55,
+                    new[] { M(125 * d, 0.040, 0.9), M(270 * d, 0.022, 0.5), M(760 * d, 0.008, 0.3), M(1900 * d, 0.004, 0.2) }, 0.28, 0.9);
+                // the glass: a deeper boom with the panel's ring
+                case "glass": return Impact(seed, 0.30, 0.0045, 0.35, 0.0030, 0.45,
+                    new[] { M(78 * d, 0.070, 1.0), M(150 * d, 0.050, 0.6), M(690 * d, 0.110, 0.16), M(1240 * d, 0.080, 0.12), M(2210 * d, 0.050, 0.07) }, 0.30, 0.9);
+                // the tin: a hollow sheet-metal bonk that rings
+                case "tin": return Impact(seed, 0.60, 0.0020, 0.7, 0.0020, 0.6,
+                    new[] { M(232 * d, 0.24, 0.8), M(611 * d, 0.18, 0.55), M(1103 * d, 0.13, 0.4), M(1722 * d, 0.09, 0.28), M(2561 * d, 0.06, 0.18), M(110 * d, 0.05, 0.5) }, 0.22, 0.9);
+                // the floor: softer, wooden, short
+                case "floor": return Impact(seed, 0.12, 0.0050, 0.4, 0.0030, 0.35,
+                    new[] { M(135 * d, 0.032, 0.9), M(320 * d, 0.016, 0.45), M(880 * d, 0.006, 0.2) }, 0.24, 0.85);
+                // the nick: a sharp crack that dies at once
+                case "nick": return Impact(seed, 0.12, 0.0015, 0.9, 0.0015, 0.9,
+                    new[] { M(105 * d, 0.025, 0.9), M(480 * d, 0.008, 0.4), M(2900 * d, 0.003, 0.5) }, 0.28, 0.95);
+                // a body: dull, padded
+                case "body": return Impact(seed, 0.12, 0.0080, 0.15, 0.0060, 0.2,
+                    new[] { M(78 * d, 0.040, 1.0), M(165 * d, 0.020, 0.35) }, 0.12, 0.8);
+                case "squeak": return Squeak(seed, d);
+                case "call": return Tones(new[] { 784.0, 659.3 }, 0.22);
                 case "gameCall": return Tones(new[] { 659.3, 784.0, 1046.5 }, 0.26);
                 default: return new float[1];
             }
         }
 
-        public static AudioClip Clip(string name)
+        /// <summary>Does this sound come in takes (Variants)?</summary>
+        public static bool Varies(string name) { return name != "call" && name != "gameCall"; }
+
+        public static AudioClip Clip(string name, int variant = 0)
         {
-            float[] s = Samples(name);
-            var clip = AudioClip.Create("sq_" + name, s.Length, 1, Rate, false);
+            float[] s = Samples(name, variant);
+            var clip = AudioClip.Create("sq_" + name + "_" + variant, s.Length, 1, Rate, false);
             clip.SetData(s, 0);
             return clip;
         }
 
-        public static Dictionary<string, AudioClip> AllClips()
+        /// <summary>Every sound's takes, by name.</summary>
+        public static Dictionary<string, AudioClip[]> AllClips()
         {
-            var d = new Dictionary<string, AudioClip>();
-            foreach (var n in Names) d[n] = Clip(n);
+            var d = new Dictionary<string, AudioClip[]>();
+            foreach (var n in Names)
+            {
+                int k = Varies(n) ? Variants : 1;
+                var a = new AudioClip[k];
+                for (int v = 0; v < k; v++) a[v] = Clip(n, v);
+                d[n] = a;
+            }
             return d;
         }
 
         // ---------------- building blocks ----------------
 
-        struct Partial { public double F, Decay, Amp; }
-        struct Noise { public double Decay, Brightness, Amp; }
+        struct Mode { public double F, Decay, Gain; }
+        static Mode M(double hz, double decaySeconds, double gain) { return new Mode { F = hz, Decay = decaySeconds, Gain = gain }; }
 
-        static Partial P(double hz, double decaySeconds, double amp) { return new Partial { F = hz, Decay = decaySeconds, Amp = amp }; }
-        static Noise N(double decaySeconds, double brightness, double amp) { return new Noise { Decay = decaySeconds, Brightness = brightness, Amp = amp }; }
-
-        /// <summary>Damped partials + one-pole-filtered noise burst, with a 1 ms attack and peak-normalised.</summary>
-        static float[] Mix(double seconds, Partial[] partials, Noise noise, uint seed)
+        /// <summary>A contact: a half-sine pulse of <paramref name="contact"/> s and a noise slap (<paramref name="noiseDecay"/> s,
+        /// <paramref name="brightness"/> 0..1) ring the surface's modes, with a little of the raw contact on top for the
+        /// attack; then the room (<paramref name="wet"/>). <paramref name="seconds"/>: the dry sound (the room adds its tail).</summary>
+        static float[] Impact(uint seed, double seconds, double contact, double noiseAmp, double noiseDecay, double brightness,
+                              Mode[] modes, double wet, double peak)
         {
             int n = (int)(seconds * Rate);
-            var o = new float[n];
-            uint r = 0x9E3779B9u * seed + 1;
+            var x = new double[n];
+            uint r = seed;
             double lp = 0;
-            double a = Mathf.Clamp01((float)noise.Brightness);       // 0 = dark, 1 = bright
+            double a = 0.08 + 0.9 * brightness;
+            int pulse = System.Math.Max(2, (int)(contact * Rate));
             for (int i = 0; i < n; i++)
             {
                 double t = (double)i / Rate;
-                double v = 0;
-                foreach (var p in partials) v += p.Amp * System.Math.Exp(-t / p.Decay) * System.Math.Sin(2 * System.Math.PI * p.F * t);
+                double v = i < pulse ? System.Math.Sin(System.Math.PI * i / pulse) : 0;      // the squash of the ball
                 r = r * 1664525u + 1013904223u;
                 double white = (r / 4294967296.0) * 2 - 1;
-                lp += (white - lp) * (0.05 + 0.95 * a);
-                v += noise.Amp * System.Math.Exp(-t / noise.Decay) * lp;
-                double attack = System.Math.Min(1.0, t / 0.001);
-                double tail = System.Math.Min(1.0, (seconds - t) / 0.01);   // no click at the end
-                o[i] = (float)(v * attack * tail);
+                lp += (white - lp) * a;                                                     // darker or brighter
+                v += noiseAmp * System.Math.Exp(-t / noiseDecay) * lp;
+                x[i] = v;
             }
-            return Normalise(o, 0.9f);
+            // the surface's modes, rung by the contact (two-pole resonators)
+            var y = new double[n];
+            foreach (var m in modes)
+            {
+                double w = 2 * System.Math.PI * m.F / Rate;
+                double rad = System.Math.Exp(-1.0 / (m.Decay * Rate));
+                double c1 = 2 * rad * System.Math.Cos(w), c2 = -rad * rad;
+                double g = m.Gain * (1 - rad) * 4;                                          // roughly even loudness across decays
+                double y1 = 0, y2 = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    double yy = c1 * y1 + c2 * y2 + g * x[i];
+                    y2 = y1; y1 = yy;
+                    y[i] += yy;
+                }
+            }
+            double dryPeak = 1e-9, xPeak = 1e-9;
+            for (int i = 0; i < n; i++) { dryPeak = System.Math.Max(dryPeak, System.Math.Abs(y[i])); xPeak = System.Math.Max(xPeak, System.Math.Abs(x[i])); }
+            for (int i = 0; i < n; i++)
+            {
+                double tail = System.Math.Min(1.0, (n - i) / (0.012 * Rate));
+                y[i] = (y[i] / dryPeak + 0.18 * x[i] / xPeak) * tail;
+            }
+            return Normalise(Room(y, wet), (float)peak);
         }
 
-        static float[] Squeak()
+        /// <summary>The court: a few early reflections off the walls, then a short dark diffuse tail (Schroeder).</summary>
+        static float[] Room(double[] dry, double wet)
         {
-            double seconds = 0.13;
+            int tailN = wet > 0 ? (int)(0.42 * Rate) : 0;
+            int n = dry.Length + tailN;
+            var o = new double[n];
+            for (int i = 0; i < dry.Length; i++) o[i] = dry[i];
+            if (wet <= 0) return ToFloat(o);
+            // early reflections (ms, gain): the side walls, the front, the floor
+            double[] er = { 7.1, 0.42, 11.3, 0.33, 16.9, 0.27, 23.2, 0.2, 31.7, 0.14 };
+            var early = new double[n];
+            for (int k = 0; k < er.Length; k += 2)
+            {
+                int off = (int)(er[k] * 0.001 * Rate);
+                for (int i = 0; i < dry.Length && i + off < n; i++) early[i + off] += dry[i] * er[k + 1];
+            }
+            // diffuse tail: four damped combs in parallel, two allpasses in series
+            var tail = new double[n];
+            foreach (int len in new[] { 1116, 1188, 1277, 1356 })
+            {
+                var buf = new double[len]; int p = 0; double store = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    double input = (i < dry.Length ? dry[i] : 0) * 0.25;
+                    double outv = buf[p];
+                    store = outv * 0.55 + store * 0.45;
+                    buf[p] = input + store * 0.72;
+                    p = (p + 1) % len;
+                    tail[i] += outv;
+                }
+            }
+            foreach (int len in new[] { 556, 441 })
+            {
+                var buf = new double[len]; int p = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    double bo = buf[p], inp = tail[i];
+                    buf[p] = inp + bo * 0.5;
+                    tail[i] = bo - inp;
+                    p = (p + 1) % len;
+                }
+            }
+            for (int i = 0; i < n; i++)
+            {
+                double fade = i < dry.Length ? 1 : System.Math.Exp(-(i - dry.Length) / (0.11 * Rate));
+                o[i] += wet * (early[i] + 0.6 * tail[i]) * fade;
+            }
+            int end = (int)(0.01 * Rate);
+            for (int i = n - end; i < n; i++) o[i] *= (double)(n - i) / end;
+            return ToFloat(o);
+        }
+
+        /// <summary>A shoe on the court: rubber dragged on varnish - a resonant squeal on noise, rising, with judder.</summary>
+        static float[] Squeak(uint seed, double d)
+        {
+            double seconds = 0.16;
             int n = (int)(seconds * Rate);
-            var o = new float[n];
-            double phase = 0;
+            var o = new double[n];
+            uint r = seed;
+            double y1 = 0, y2 = 0, phase = 0;
             for (int i = 0; i < n; i++)
             {
                 double t = (double)i / Rate, u = t / seconds;
-                double f = 1750 + 850 * u + 90 * System.Math.Sin(2 * System.Math.PI * 38 * t);   // rubber chirp with judder
+                double f = (1900 + 900 * u) * d + 70 * System.Math.Sin(2 * System.Math.PI * 31 * t);
+                double w = 2 * System.Math.PI * f / Rate, rad = 0.995;                     // a high-Q resonator on noise: rubber, not a whistle
+                r = r * 1664525u + 1013904223u;
+                double white = (r / 4294967296.0) * 2 - 1;
+                double yy = 2 * rad * System.Math.Cos(w) * y1 - rad * rad * y2 + white * 0.02;
+                y2 = y1; y1 = yy;
                 phase += 2 * System.Math.PI * f / Rate;
-                double env = System.Math.Sin(System.Math.PI * u);
-                env *= env;
-                o[i] = (float)(env * (0.7 * System.Math.Sin(phase) + 0.25 * System.Math.Sin(2 * phase + 0.4) + 0.1 * System.Math.Sin(3 * phase)));
+                double judder = 0.65 + 0.35 * System.Math.Abs(System.Math.Sin(2 * System.Math.PI * 47 * t));
+                double env = System.Math.Sin(System.Math.PI * System.Math.Min(1, u * 1.15));
+                env = env < 0 ? 0 : env * env;
+                o[i] = env * judder * (yy + 0.12 * System.Math.Sin(phase));
             }
-            return Normalise(o, 0.6f);
+            double pk = 1e-9; for (int i = 0; i < n; i++) pk = System.Math.Max(pk, System.Math.Abs(o[i]));
+            for (int i = 0; i < n; i++) o[i] /= pk;
+            return Normalise(Room(o, 0.18), 0.55f);
         }
 
         static float[] Tones(double[] hz, double each)
@@ -128,8 +249,12 @@ namespace SquashGame.Audio
                     double env = System.Math.Min(1.0, t / 0.01) * System.Math.Exp(-t / 0.16);
                     o[k * per + i] += (float)(env * (System.Math.Sin(2 * System.Math.PI * hz[k] * t) + 0.3 * System.Math.Sin(4 * System.Math.PI * hz[k] * t)));
                 }
+            int end = Rate / 50;                                       // fade out: no click at the end
+            for (int i = o.Length - end; i < o.Length; i++) o[i] *= (float)(o.Length - i) / end;
             return Normalise(o, 0.5f);
         }
+
+        static float[] ToFloat(double[] d) { var o = new float[d.Length]; for (int i = 0; i < d.Length; i++) o[i] = (float)d[i]; return o; }
 
         static float[] Normalise(float[] o, float peak)
         {
