@@ -154,26 +154,28 @@ namespace SquashSim
             public const double StrikerKeep = 0.85;        // share of the striker's closing speed kept on body contact (live rally)
             public const double AssistGiveWay = 0.6;       // Assisted, non-striker in the way: sideways steer blended into the move
             // AI appeals (P2-M7 L3): the personality's tendency, scaled by level - rare at Easy
-            public const double AppealAtEasy = 0.3;        // x the tendency at Easy (0.0), rising to 1 at Hard
-            public const double AppealFullAt = 0.42;       // the level at which the full tendency applies
-            public const double AppealFadeAbove = 1.5, AppealFloor = 0.35;   // above that, x (1 - fade * (d - 0.42)), at least the floor:
+            public const double AppealAtEasy = 0.2;        // x the tendency at 0, rising to 1 at Hard (0.3 before the 2026-10-20 levels)
+            public const double AppealFullAt = 0.29;       // the level at which the full tendency applies: Hard (was 0.42, Hard's old value)
+            public const double AppealFadeAbove = 2.5, AppealFloor = 0.2;   // above that, x (1 - fade * (d - full)), at least the floor:
                                                            // strong players play long rallies; asking at every chance made half of them end in calls
             public const double SwingStopDistance = 0.95;  // m: the referee stops play himself only with the opponent this near the ball at contact
             public const double AppealHampered = 0.25;     // s obstructed before it thinks of asking
             public const double AppealShare = 0.25;        // in the line / swing: of the shots it would be given, the share it stops for
-            public const double AppealShareWay = 0.8;      // blocked on the way: asked far more freely (people ask for those lets)
+            public const double AppealShareWay = 0.3;      // blocked on the way: asked more freely (people ask for those lets); 0.8 until the
+                                                           // AI stopped gifting balls (2026-10-20) and rallies doubled - then calls at Career strengths went 3% -> 16%
             public const double AppealNearBall = 0.6;      // s: an Access obstruction this close to the ball is worth asking about
         }
 
         public static class Ai
         {
+            public const double MinReleaseLead = 0.025;   // s: the AI lets go at least this long before the contact (> the prediction's 1/60 s refresh)
             // difficulty d (0..1): reaction, aim noise, run speed and pace
             public const double Reaction0 = 0.50, ReactionSpan = 0.36, Noise0 = 0.80, NoiseSpan = 0.55;
             public const double Move0 = 0.60, Pace0 = 0.30, PaceSpan = 0.40;
             // the simple hitting system's shot choice
             public const double AimNoiseScale = 1.0, GapWeight = 0.25, ChoiceNoise = 2.5;
             /// <summary>Quick Match: Easy, Medium, Hard.</summary>
-            public static readonly double[] Levels = { 0.0, 0.12, 0.42 };
+            public static readonly double[] Levels = { 0.045, 0.15, 0.29 };   // 2026-10-20 (was 0, 0.12, 0.42 before the release fix)
         }
 
         /// <summary>The game's clock.</summary>

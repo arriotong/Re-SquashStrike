@@ -5,24 +5,25 @@
 // each rally won with a probability from the strength gap:
 //
 //   pro vs pro    p = 1 / (1 + exp(-K  * (sA - sB)))     K  = 1.52
-//   you vs pro    p = 1 / (1 + exp(-KH * (r  - s )))     KH = 3.0
+//   you vs pro    p = 1 / (1 + exp(-KH * (r  - s )))     KH = 4.7
 //
 // K: MatchBench --career-calibrate (2026-10-18), AI vs AI on the game's
 // simple hitting system: gaps 0.15 / 0.30 / 0.45 / 0.60 won 56 / 62 /
 // 66 / 71% of rallies; the fit is within 0.5% at every gap. The
 // personalities' matchups at equal strength were within the bench's
 // noise, so there is no matchup term.
-// KH: MatchBench --balance - the human-style model wins 57 / 44 / 28 /
-// 18% of rallies at 0.00 / 0.12 / 0.42 / 0.60: a steeper curve, with
-// that model at r ~ 0.09. Your r is a rating, moved by your real
-// rallies (Rate).
+// KH: MatchBench --balance - the human-style model wins 59 / 45 / 31%
+// of rallies at 0.045 / 0.15 / 0.29 (2026-10-20, after the AI's release
+// fix; was 3.0): a steeper curve, with that model at r ~ 0.12. Your r is
+// a rating, moved by your real rallies (Rate). The matchups at equal
+// strength now spread a little (grinder 35-45%); still no matchup term.
 // ===========================================================
 
 namespace SquashSim.Career
 {
     public static class RallyModel
     {
-        public const double K = 1.52, KH = 3.0;
+        public const double K = 1.52, KH = 4.7;
         public const double RatingStep = 0.006;      // per rally: r += step * (won - expected)
 
         public static double ProRally(double sA, double sB) { return 1.0 / (1.0 + System.Math.Exp(-K * (sA - sB))); }

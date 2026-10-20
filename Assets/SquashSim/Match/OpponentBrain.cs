@@ -65,7 +65,8 @@ namespace SquashSim
             d = d < 0 ? 0 : (d > 1 ? 1 : d);
             var p = Clone();
             // Tuned (MatchBench --balance) so a human-style player wins about 60% / 45% / 30% of rallies
-            // at Easy (0.0) / Medium (0.12) / Hard (0.42) - the setup panel's values.
+            // at Easy / Medium / Hard (GameTuning.Ai.Levels - the setup panel's values; 0.045 / 0.15 / 0.29 since the
+            // release fix of 2026-10-20, which made the AI stop gifting about one ball in five).
             p.ReactionTime = DiffReaction0 - DiffReactionSpan * d;
             p.AimNoise = DiffNoise0 - DiffNoiseSpan * d;
             p.MoveSpeed = DiffMove0 + (1 - DiffMove0) * d;
@@ -533,7 +534,10 @@ namespace SquashSim
                 {
                     ChooseArcadeShot(m, ctrl, me);
                     _decided = true; _boastTapped = false;
-                    _releaseLead = 0.05 + Gauss() * Profile.TriggerJitter;
+                    // Its timing error: early or late around the contact - but never later than the contact itself. A
+                    // lead under the prediction's refresh step was never reached, so it held on until the ball died:
+                    // the "it just stood there and let it bounce twice" of the back corners (2026-10-20, ~20% of turns).
+                    _releaseLead = System.Math.Max(GameTuning.Ai.MinReleaseLead, 0.05 + Gauss() * Profile.TriggerJitter);
                 }
                 if (_decided)
                 {

@@ -64,7 +64,9 @@ namespace SquashSim.Tests
             // the bench numbers it was fitted to (MatchBench --career-calibrate, 2026-10-18)
             Assert.That(RallyModel.ProRally(0.30, 0.0), Is.EqualTo(0.616).Within(0.01));
             Assert.That(RallyModel.ProRally(0.60, 0.0), Is.EqualTo(0.710).Within(0.01));
-            Assert.That(RallyModel.YouRally(0.09, 0.60), Is.EqualTo(0.18).Within(0.02), "human-style model vs 0.60");
+            // the human-style model (r ~ 0.12) against the levels (MatchBench --balance, 2026-10-20): 59% / 31%
+            Assert.That(RallyModel.YouRally(0.12, 0.045), Is.EqualTo(0.59).Within(0.02), "human-style model vs Easy");
+            Assert.That(RallyModel.YouRally(0.12, 0.29), Is.EqualTo(0.31).Within(0.02), "human-style model vs Hard");
         }
 
         [Test] public void DrawsAreSeededAndRepeatable()

@@ -102,7 +102,7 @@ sealed class HumanStyle : IAthleteBrain
         if (_pressAt > 0 && t >= _pressAt && !_held)
         {
             it.Hit.Pressed = true; it.Hit.Held = true; _held = true;
-            if (Arcade) { _releaseAt = double.MaxValue; _releaseOffset = -0.12 + R() * 0.30; }   // let go as the ball arrives: 0.18 s early .. 0.12 s late
+            if (Arcade) { _releaseAt = double.MaxValue; _releaseOffset = Math.Max(GameTuning.Ai.MinReleaseLead, -0.12 + R() * 0.30); }   // let go as the ball arrives: up to 0.18 s early; a "late" one lets go at the contact (a lead the prediction never reaches held on until the ball died - the AI's bug too, 2026-10-20)
             else _releaseAt = t + (R() < HoldChance ? 0.2 + R() * 0.4 : 0.06);
             _pressAt = double.MaxValue;
             if (m.Phase == MatchPhase.Rally && m.TurnShots > 0) Presses++;
