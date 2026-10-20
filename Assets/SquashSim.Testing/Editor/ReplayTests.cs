@@ -118,7 +118,7 @@ namespace SquashSim.Tests
         [Test] public void TheFileKeepsItsSetupAndMeta()
         {
             var s = new ReplaySetup { Opponent = "wallbot", GamesToWin = 1, Scoring = "english", WarmUp = false, BotSeed = 5 };
-            var f = Play(s, new OpponentBrain(AiProfile.ByName("retriever").WithDifficulty(0.8), 2), maxSeconds: 60);
+            var f = Play(s, new OpponentBrain(AiProfile.ByName("retriever").WithDifficulty(0.8), 2), maxSeconds: 20);   // left part-way
             f.Meta["p1"] = "TESTER"; f.Meta["mode"] = "quick";
             var back = RoundTrip(f, out _);
             Assert.That(back.Meta["p1"], Is.EqualTo("TESTER"));

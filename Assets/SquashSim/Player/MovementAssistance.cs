@@ -99,11 +99,11 @@ namespace SquashSim
                     ma.Active = true;
                 }
 
-                // Never stand on the ball: hard push-out.
+                // Never stand on the ball: hard push-out (the game: only as it arrives - PushOutWithin).
                 double bx = player.Pos.X - pred.Point.X;
                 double bz = player.Pos.Z - pred.Point.Z;
                 double bd = DMath.Hypot(bx, bz);
-                if (bd > 1e-4 && bd < cfg.MinSpacing)
+                if (bd > 1e-4 && bd < cfg.MinSpacing && (cfg.PushOutWithin <= 0 || pred.Time <= cfg.PushOutWithin))
                 {
                     double push = (cfg.MinSpacing - bd);
                     player.Pos.X += (bx / bd) * push;

@@ -221,14 +221,14 @@ namespace SquashSim.Tests
         {
             var t = Target();
             var m = Match();
-            m.StageRally(From, Drive, t.X + 1.6, t.Z + 0.6, t.X - 0.45, t.Z + 0.2);   // right by the ball: the racket would meet them
+            PhysicsConfig.Current.MovementAssist.Enabled = false;          // staged: nobody nudged off their spot (as the ball-hits-player tests)
+            m.StageRally(From, Drive, t.X + 0.85, t.Z - 0.6, t.X - 0.6, t.Z - 0.6);   // the striker set at the hitting spot, the opponent just past the ball: in the swing
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             bool released = false;
             for (int i = 0; i < 240 * 3 && m.Referee.Outcome == null; i++)
             {
-                var me = m.Players[0].Player; var a = m.Intents[0];
-                double dx = t.X - me.Pos.X, dz = t.Z - me.Pos.Z, d = Math.Sqrt(dx * dx + dz * dz);
-                if (d > 0.5) { a.Move.X = dx / d; a.Move.Z = dz / d; a.MoveMagnitude = 1; } else a.MoveMagnitude = 0;
+                var a = m.Intents[0];
+                a.MoveMagnitude = 0;                                       // already set
                 if (i == 0) a.Hit.Pressed = true;                       // charge from the start ...
                 a.Hit.Held = !released;
                 if (!released && m.Interference.Striker == 0 && m.Interference.TimeToBall > 0 && m.Interference.TimeToBall < 0.12) { released = true; a.Hit.Held = false; }   // ... and let go as it arrives
@@ -238,7 +238,7 @@ namespace SquashSim.Tests
                     if (e.Type == SimEventType.RacketContact)
                     {
                         var op = m.Players[1].Player.Pos;
-                        UnityEngine.Debug.Log("[P2M7] swing-stop contact: opponent " + Math.Sqrt((op.X - e.Point.X) * (op.X - e.Point.X) + (op.Z - e.Point.Z) * (op.Z - e.Point.Z)).ToString("0.00") + " m from the ball, interference " + m.Interference.Current + " (raw " + m.Interference.Raw + ")");
+                        UnityEngine.Debug.Log("[P2M7] swing-stop contact: opponent " + Math.Sqrt((op.X - e.Point.X) * (op.X - e.Point.X) + (op.Z - e.Point.Z) * (op.Z - e.Point.Z)).ToString("0.00") + " m from the ball, interference " + m.Interference.Current + " (raw " + m.Interference.Raw + "), contact (" + e.Point.X.ToString("0.00") + ", " + e.Point.Z.ToString("0.00") + ") target (" + t.X.ToString("0.00") + ", " + t.Z.ToString("0.00") + ") opponent (" + op.X.ToString("0.00") + ", " + op.Z.ToString("0.00") + ")");
                     }
             }
             var o = m.Referee.Outcome;

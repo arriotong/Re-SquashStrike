@@ -49,6 +49,9 @@ namespace SquashSim
             public const double Stretch = 1.45;                    // reach from the body at prediction time (lab 1.55)
             public const double LungeArmReach = 0.95, LungeMaxStep = 0.55;
             public const double AssistRadius = 0.25, AssistMaxCorrection = 0.12;   // the contact assist's pull (lab 0.42 / 0.30)
+            // the "never stand on the ball" push-out: only as the ball arrives (playtest 2026-10-20: it held you off the
+            // predicted contact - the landing square - the whole time the ball was in the air, an invisible wall)
+            public const double PushOutWithin = 0.15;
         }
 
         /// <summary>The reticle on the front wall.</summary>

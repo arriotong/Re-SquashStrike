@@ -154,6 +154,9 @@ namespace SquashSim
     {
         public bool Enabled;
         public double Range, MaxSpeed, MaxTravel, Strength, Responsiveness, PreferredSpacing, MinSpacing;
+        /// <summary>The "never stand on the ball" push-out only in the last this-many seconds before the contact;
+        /// 0 = always (the lab).</summary>
+        public double PushOutWithin;
     }
 
     public sealed class BalanceCost { public double Normal, Lunge, DeepLunge, Stretch; }
@@ -585,6 +588,7 @@ namespace SquashSim
             var p = Current.Player;
             p.Acceleration *= GameTuning.Movement.AccelerationScale;
             p.Braking *= GameTuning.Movement.BrakingScale;
+            Current.MovementAssist.PushOutWithin = GameTuning.Movement.PushOutWithin;
         }
 
         /// <summary>
