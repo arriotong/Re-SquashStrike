@@ -152,42 +152,16 @@ namespace SquashSim.Tests
             Assert.That(clipOff, Is.GreaterThan(0), "the test should include drives that clip without help");
         }
 
-        [Test] public void AssistedCrossCourtsDoNotRattleOffTheSideWalls()
+        [Test] public void AssistedStraightKillsClipTheirWallLess()
         {
-            var c = PhysicsConfig.Current.ArcadeHit;
-            var surfaces = CourtSurfaces.Create();
-            int n = 0, rattleOff = 0, rattleOn = 0;
-            foreach (double side in new[] { 1.0, -1.0 })
-                foreach (double bz in new[] { 3.5, 6.0, 8.5 })
-                    foreach (double tx in new[] { -1.0, -2.6 })
-                        foreach (double charge in new[] { 0.0, 1.0 })
-                        {
-                            var ball = new BallState(); ball.Reset(new V3(side * 2.2, 0.8, bz), new V3(0, 0, 0), null, 42);
-                            var s = new ArcadeStroke(3);
-                            double speed = c.DriveSpeed * (1 + c.ChargeBonus * charge);
-                            n++;
-                            s.Solve(ball, surfaces, side * tx, 1.8, 0, 0, speed);
-                            if (!s.CleanCross(ball, surfaces)) rattleOff++;
-                            double x = s.CrossAssist(ball, surfaces, side * tx, 1.8, ref speed);
-                            s.Solve(ball, surfaces, x, 1.8, 0, 0, speed);
-                            if (!s.CleanCross(ball, surfaces)) rattleOn++;
-                        }
-            UnityEngine.Debug.Log("[Assist] cross-courts rattling off the side walls: non-assisted " + rattleOff + "/" + n + ", assisted " + rattleOn + "/" + n);
-            Assert.That(rattleOn, Is.EqualTo(0));
-            Assert.That(rattleOff, Is.GreaterThan(0), "the test should include crosses that rattle without help");
-        }
-
-        [Test] public void AssistedKillsTakeACleanLine()
-        {
-            // Playtest 2026-10-18: a kill gets the assist too - still low and dying early, but on a clean line: straight,
-            // down its own wall without touching it before the second bounce; cross, no side wall before it bounces.
+            // A kill gets the straight assist too (2026-10-20: a safety of at most 0.3 m, not the perfect line): a kill
+            // aimed tight down its own wall touches it before the second bounce less often - not never.
             var c = PhysicsConfig.Current.ArcadeHit;
             var surfaces = CourtSurfaces.Create();
             double ky = CourtDimensions.TIN_H + c.KillHeightAboveTin, speed = c.DriveSpeed * (1 + c.ChargeBonus);
-            int n = 0, clipOff = 0, clipOn = 0, crossN = 0, rattleOff = 0, rattleOn = 0;
+            int n = 0, clipOff = 0, clipOn = 0;
             foreach (double side in new[] { 1.0, -1.0 })
                 foreach (double bz in new[] { 3.5, 5.0, 6.5 })
-                {
                     foreach (double tx in new[] { 2.7, 3.05 })
                     {
                         var ball = new BallState(); ball.Reset(new V3(side * 2.5, 0.7, bz), new V3(0, 0, 0), null, 42);
@@ -196,27 +170,12 @@ namespace SquashSim.Tests
                         s.Solve(ball, surfaces, side * tx, ky, 0, 0, speed);
                         if (s.ClipsSide(ball, surfaces, (int)side, 2)) clipOff++;
                         double x = s.StraightAssist(ball, surfaces, side * tx, ky, speed, true);
+                        Assert.That(System.Math.Abs(x - side * tx), Is.LessThanOrEqualTo(GameTuning.Assist.StraightMaxShift + 1e-9), "a small safety, not a new line");
                         s.Solve(ball, surfaces, x, ky, 0, 0, speed);
                         if (s.ClipsSide(ball, surfaces, (int)side, 2)) clipOn++;
                     }
-                    foreach (double tx in new[] { -2.2, -3.0 })
-                    {
-                        var ball = new BallState(); ball.Reset(new V3(side * 2.0, 0.7, bz), new V3(0, 0, 0), null, 42);
-                        var s = new ArcadeStroke(3);
-                        double sp = speed;
-                        crossN++;
-                        s.Solve(ball, surfaces, side * tx, ky, 0, 0, sp);
-                        if (!s.CleanCrossKill(ball, surfaces)) rattleOff++;
-                        double x = s.CrossAssist(ball, surfaces, side * tx, ky, ref sp, true);
-                        s.Solve(ball, surfaces, x, ky, 0, 0, sp);
-                        if (!s.CleanCrossKill(ball, surfaces)) rattleOn++;
-                    }
-                }
-            UnityEngine.Debug.Log("[Assist] straight kills touching their wall before the 2nd bounce: non-assisted " + clipOff + "/" + n + ", assisted " + clipOn + "/" + n +
-                                  "; cross kills off a side wall early: non-assisted " + rattleOff + "/" + crossN + ", assisted " + rattleOn + "/" + crossN);
-            Assert.That(clipOn, Is.EqualTo(0));
-            Assert.That(rattleOn, Is.EqualTo(0));
-            Assert.That(clipOff + rattleOff, Is.GreaterThan(0), "the test should include kills that need the help");
+            UnityEngine.Debug.Log("[Assist] straight kills touching their wall before the 2nd bounce: non-assisted " + clipOff + "/" + n + ", assisted " + clipOn + "/" + n);
+            Assert.That(clipOn, Is.LessThan(clipOff));
         }
 
         [Test] public void ABadContactMayLoseTheAssistAGoodOneNever()

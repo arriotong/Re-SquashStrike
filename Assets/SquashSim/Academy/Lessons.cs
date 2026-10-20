@@ -144,9 +144,9 @@ namespace SquashSim.Academy
             early.Steps.Add(S(GoalKind.GreatHits, "Two great hits: get set early, let go as it arrives.", "watch the ring flash", StepSetup.Feed, 2));
             _all.Add(early);
 
-            var mode = L("mode", Chapter.Controls, "Assisted or not", "Both play your shot's line. Assisted also keeps your drives clean off the walls.");
+            var mode = L("mode", Chapter.Controls, "Assisted or not", "Assisted pulls your aim toward the shot's line and keeps straight drives off the wall. Non-assisted pulls only a little.");
             var na = S(GoalKind.ModeDrive, "Non-assisted: hit a straight drive down your side wall.", "aim right by the side wall", StepSetup.Feed); na.Assisted = false; mode.Steps.Add(na);
-            var aa = S(GoalKind.ModeDrive, "Assisted: the same shot - the game keeps it off the wall.", "aim right by the side wall", StepSetup.Feed); aa.Assisted = true; mode.Steps.Add(aa);
+            var aa = S(GoalKind.ModeDrive, "Assisted: the same shot - the game helps it off the wall.", "aim right by the side wall", StepSetup.Feed); aa.Assisted = true; mode.Steps.Add(aa);
             mode.Steps.Add(Card("Pick the one you like - you can change it any time in Settings > Controls."));
             _all.Add(mode);
 

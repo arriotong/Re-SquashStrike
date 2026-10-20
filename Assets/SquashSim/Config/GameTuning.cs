@@ -65,7 +65,10 @@ namespace SquashSim
             // Shot lines (2026-10-19, "the game should know I'm going for a drive"): for a person, the half of the
             // front wall aimed at picks straight or cross; the line itself comes from the shot. Per shot: how far off
             // the side wall it lands and how deep (m) - straight, then cross.
-            public const double LineSnapAssisted = 1.0, LineSnapNonAssisted = 0.8;   // 1 = the line exactly, 0 = the aim
+            // how far the shot is pulled from the aim onto its line (1 = the line exactly, 0 = the aim). 2026-10-20: was
+            // 1.0 / 0.8 - Assisted played the perfect shot whatever the aim; now it helps, and the aim still matters
+            public const double LineSnapAssisted = 0.6, LineSnapNonAssisted = 0.4;
+            public const double AssistSpreadScale = 0.75;          // Assisted: a contact's spread, a little tighter
             public const double LineMidBall = 0.35;                // a ball this near the middle: the aim's side is the corner
             public const double DriveStraightOff = 0.40, DriveStraightDepth = 7.4, DriveCrossOff = 1.0, DriveCrossDepth = 6.6;
             public const double KillStraightOff = 0.30, KillStraightDepth = 3.0, KillCrossOff = 1.1, KillCrossDepth = 3.2;
@@ -116,10 +119,9 @@ namespace SquashSim
         /// <summary>Assisted controls.</summary>
         public static class Assist
         {
-            // the straight line: aimed in 0.1 m at a time (up to 1.2 m) until it runs clean down the wall
-            public const double StraightStep = 0.1, StraightMinSide = 0.6, StraightInner = 0.5; public const int StraightSteps = 12;
-            // the cross: 0.2 m less wide at a time (up to 2.4 m), then 8% softer at a time (up to ~50%)
-            public const double CrossStep = 0.2, CrossSoften = 0.92; public const int CrossSteps = 12, CrossSoftens = 10;
+            // the straight drive that would clip its side wall: aimed in 0.1 m at a time, at most 0.3 m (2026-10-20: was
+            // 1.2 m - a safety now, not the perfect line)
+            public const double StraightStep = 0.1, StraightMinSide = 0.6, StraightInner = 0.5, StraightMaxShift = 0.3;
             // a bad contact (playtest 2026-10-18): jammed / stretched past 0.25 m (fully bad 0.35 m further), set less than
             // 0.3 s, or diving - a 25% (just bad) to 70% (fully bad) chance to lose the clean line, then 0.6-1.2 m off the aim
             public const double BadDistance = 0.25, BadSpan = 0.35, BadSetTime = 0.3;

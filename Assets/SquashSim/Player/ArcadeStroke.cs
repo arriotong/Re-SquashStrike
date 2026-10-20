@@ -369,8 +369,7 @@ namespace SquashSim
             // Shot lines: you choose the shot (its height) and straight or cross (the half of the wall); it plays that line.
             if (ShotLines && !boast && !ctrl.ServeStroke && wall == 0)
             {
-                double k = Assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted;
-                tx += (LineFor(ball, surfaces, shot, tx, ty, speed) - tx) * k;
+                tx = PullToLine(tx, LineFor(ball, surfaces, shot, tx, ty, speed), Assisted);
             }
             int side = 0;
             if (boast)
@@ -382,6 +381,7 @@ namespace SquashSim
             }
             double spread = missRatio * missRatio * c.MaxSpread * (charge > GameTuning.Hit.FullChargeAt ? GameTuning.Hit.FullChargeSpreadCut : 1.0);
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
+            if (Assisted) spread *= GameTuning.Hit.AssistSpreadScale;       // the easier mode: a little tighter
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
@@ -399,8 +399,10 @@ namespace SquashSim
             // Drives, kills and boasts leave the front wall heading down (lobs, drops and serves keep their arc).
             _dip = c.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill" || boast);
 
-            // Assisted controls: a drive or a kill takes a clean line - straight, off its side wall; cross, no rattle.
-            // A bad contact (jammed, stretched, late, diving) may lose it and go clearly off the aim instead.
+            // Assisted controls (reworked 2026-10-20: "it plays the shot for me"): help with the aim, not the perfect
+            // shot - the line pull above does most of it; here a straight drive or kill that would clip its own side
+            // wall is moved in a little (StraightMaxShift at most). A bad contact (jammed, stretched, late, diving) may
+            // lose the line and go clearly off the aim instead.
             LastAssistLost = false;
             if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill"))
             {
@@ -411,12 +413,7 @@ namespace SquashSim
                     tx = Clamp(tx + (Rnd() < 0.5 ? -off : off), -CourtDimensions.HALF_W + 0.1, CourtDimensions.HALF_W - 0.1);
                     ty += (Rnd() - 0.5) * off * 0.6;
                 }
-                else
-                {
-                    bool kill = shot == "kill";
-                    tx = StraightAssist(ball, surfaces, tx, ty, speed, kill);
-                    tx = CrossAssist(ball, surfaces, tx, ty, ref speed, kill);
-                }
+                else tx = StraightAssist(ball, surfaces, tx, ty, speed, shot == "kill");
             }
 
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
@@ -591,20 +588,35 @@ namespace SquashSim
         readonly BallState _preview = new BallState();
 
         /// <summary>
-        /// Assisted: a straight drive (ball and aim on the same side) that would touch its side wall before the first bounce
-        /// is aimed a little further in, step by step (up to 1.2 m), until it runs clean down the wall.
-        /// </summary>
-        /// <summary>
-        /// The front-wall x of the textbook line for this shot: straight when aimed on the ball's half of the front wall,
-        /// cross when aimed across (a ball near the middle goes to the corner on the aim's side). The line is the straight
-        /// path from the ball to the mirror image (behind the front wall) of where that shot should land - so it comes
-        /// back deep down the wall, or into the far corner, whatever the exact aim.
+        /// The front-wall x of the textbook line for this shot: straight or cross, whichever line the aim is nearer
+        /// (IsCross; a ball near the middle goes to the corner on the aim's side). The line is the straight path from the
+        /// ball to the mirror image (behind the front wall) of where that shot should land - so it comes back deep down
+        /// the wall, or into the far corner.
         /// </summary>
         public static double ShotLine(double bx, double bz, string shot, double tx, double landing = -1)
         {
             bool mid = System.Math.Abs(bx) <= GameTuning.Hit.LineMidBall;
             int side = mid ? (tx >= 0 ? 1 : -1) : (bx > 0 ? 1 : -1);
-            bool straight = mid || tx * side >= 0;
+            bool straight = mid || !IsCross(bx, bz, shot, tx);
+            return LineX(bx, bz, shot, straight, side, landing);
+        }
+
+        /// <summary>
+        /// Straight or cross (2026-10-20: a cross from the front was read as a drive). Not which half of the wall the aim
+        /// is on - a cross from near the front meets the front wall on the ball's own half - but which of the two lines,
+        /// the straight one and the cross one from this ball, the aim is nearer. A ball near the middle: never a cross
+        /// (the aim's side is the corner).
+        /// </summary>
+        public static bool IsCross(double bx, double bz, string shot, double tx)
+        {
+            if (System.Math.Abs(bx) <= GameTuning.Hit.LineMidBall) return false;
+            int side = bx > 0 ? 1 : -1;
+            double straightX = LineX(bx, bz, shot, true, side, -1), crossX = LineX(bx, bz, shot, false, side, -1);
+            return System.Math.Abs(tx - crossX) < System.Math.Abs(tx - straightX);
+        }
+
+        static double LineX(double bx, double bz, string shot, bool straight, int side, double landing)
+        {
             double off, depth;
             switch (shot)
             {
@@ -618,6 +630,13 @@ namespace SquashSim
             double lx = to * (CourtDimensions.HALF_W - off);
             double z = System.Math.Max(0.2, bz);
             return bx + (lx - bx) * z / (z + depth);
+        }
+
+        /// <summary>Where a shot aimed at tx really goes with this line: part of the way from the aim to the line - most of
+        /// it with Assisted, a little without (LineSnapAssisted / LineSnapNonAssisted). The ring's dot uses it too.</summary>
+        public static double PullToLine(double tx, double line, bool assisted)
+        {
+            return tx + (line - tx) * (assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted);
         }
 
         /// <summary>The shot line from here, checked in flight: the line is aimed (ShotLine), flown once through the real
@@ -653,12 +672,18 @@ namespace SquashSim
             return -1;
         }
 
+        /// <summary>
+        /// Assisted: a straight drive (IsCross says straight) that would touch its side wall before the first bounce is
+        /// aimed a little further in, 0.1 m at a time, up to StraightMaxShift - a safety, not a perfect line.
+        /// </summary>
         public double StraightAssist(BallState ball, List<Surface> surfaces, double tx, double ty, double speed, bool kill = false)
         {
             int side = ball.Pos.X > 0 ? 1 : -1;
-            if (System.Math.Abs(ball.Pos.X) < GameTuning.Assist.StraightMinSide || tx * side < GameTuning.Assist.StraightMinSide) return tx;   // not a straight shot
+            if (System.Math.Abs(ball.Pos.X) < GameTuning.Assist.StraightMinSide || tx * side <= 0
+                || IsCross(ball.Pos.X, ball.Pos.Z, kill ? "kill" : "drive", tx)) return tx;   // not a straight shot
             double x = tx;
-            for (int k = 0; k <= GameTuning.Assist.StraightSteps; k++)
+            int steps = (int)System.Math.Round(GameTuning.Assist.StraightMaxShift / GameTuning.Assist.StraightStep);
+            for (int k = 0; k <= steps; k++)
             {
                 x = tx - side * GameTuning.Assist.StraightStep * k;
                 if (x * side < GameTuning.Assist.StraightInner) break;
@@ -666,71 +691,6 @@ namespace SquashSim
                 if (!ClipsSide(ball, surfaces, side, kill ? 2 : 1)) return x;
             }
             return x;
-        }
-
-        /// <summary>
-        /// Assisted: a cross-court (aimed across the middle, away from the ball's side) that would rattle from side wall to
-        /// side wall is aimed a little less wide, step by step, until it is a clean cross (CleanCross) that dies in the
-        /// far back corner. If no line within 2.4 m does,
-        /// a little pace comes off too (up to ~50%).
-        /// </summary>
-        public double CrossAssist(BallState ball, List<Surface> surfaces, double tx, double ty, ref double speed, bool kill = false)
-        {
-            int side = ball.Pos.X >= 0 ? 1 : -1;
-            bool cross = tx * side < -0.2 || (System.Math.Abs(ball.Pos.X) < 0.6 && System.Math.Abs(tx) > 1.0);
-            if (!cross) return tx;
-            int toward = System.Math.Abs(ball.Pos.X) < 0.6 ? (tx > 0 ? -1 : 1) : side;     // less wide = toward the ball's side
-            // A less wide line first; if no line within 2.4 m is clean at this pace, a little softer too.
-            double pace = speed;
-            for (int f = 0; f < GameTuning.Assist.CrossSoftens; f++, pace *= GameTuning.Assist.CrossSoften)
-                for (int k = 0; k <= GameTuning.Assist.CrossSteps; k++)
-                {
-                    double x = tx + toward * GameTuning.Assist.CrossStep * k;
-                    Solve(ball, surfaces, x, ty, 0, 0, pace);
-                    if (kill ? CleanCrossKill(ball, surfaces) : CleanCross(ball, surfaces)) { speed = pace; return x; }
-                }
-            return tx;                                   // no clean line: leave the aim alone
-        }
-
-        /// <summary>A clean cross: at most one side wall in the air (before the first bounce), at most two before the second
-        /// bounce (the far wall, then the back corner) - no rattling from wall to wall.</summary>
-        public bool CleanCross(BallState ball, List<Surface> surfaces)
-        {
-            int total = SideWallHits(ball, surfaces);
-            return _sideHitsInAir <= 1 && total <= 2;
-        }
-
-        /// <summary>A clean cross kill: straight across, no side wall before it bounces, one at most before the second.</summary>
-        public bool CleanCrossKill(BallState ball, List<Surface> surfaces)
-        {
-            int total = SideWallHits(ball, surfaces);
-            return _sideHitsInAir == 0 && total <= 1;
-        }
-
-        int _sideHitsInAir;
-
-        /// <summary>How many times this launch meets a side wall after the front wall, before its second bounce
-        /// (and, in _sideHitsInAir, before its first).</summary>
-        public int SideWallHits(BallState ball, List<Surface> surfaces)
-        {
-            _sideHitsInAir = 0;
-            _scratch.Reset(ball.Pos, _vel, null, ball.Temperature); _scratch.DipOffFrontWall = _dip;
-            bool front = false;
-            int sides = 0, floors = 0;
-            for (int i = 0; i < 480; i++)
-            {
-                _events.Clear();
-                BallPhysics.Step(_scratch, surfaces, 1.0 / 120, _events);
-                foreach (var e in _events)
-                {
-                    if (e.SurfaceClass == "frontWall") front = true;
-                    else if (!front) { if (e.SurfaceClass == "floor" || e.SurfaceClass == "tin") return 0; }
-                    else if (e.SurfaceClass == "sideWall") { sides++; if (floors == 0) _sideHitsInAir++; }
-                    else if (e.SurfaceClass == "floor" && ++floors == 2) return sides;
-                    else if (e.SurfaceClass == "backWall" && floors >= 1) return sides;
-                }
-            }
-            return sides;
         }
 
         /// <summary>Does this launch touch side wall <paramref name="side"/> before bounce number <paramref name="bounces"/>

@@ -261,8 +261,7 @@ namespace SquashGame
             if (LineShown)
             {
                 var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
-                double snap = ctrl.Arcade.Assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted;
-                LineX = aim.X + (ArcadeStroke.ShotLine(from.X, from.Z, ShotType, aim.X) - aim.X) * snap;
+                LineX = ArcadeStroke.PullToLine(aim.X, ArcadeStroke.ShotLine(from.X, from.Z, ShotType, aim.X), ctrl.Arcade.Assisted);
                 double ly = ShotType == "kill" ? CourtDimensions.TIN_H + GameTuning.Shots.KillHeightAboveTin + 0.1
                           : ShotType == "drop" ? CourtDimensions.TIN_H + GameTuning.Shots.DropHeightAboveTin + 0.1 : aim.Y;
                 _line.position = SimToWorld.Pos(LineX, ly, 0.03);

@@ -56,8 +56,9 @@ namespace SquashGame
         /// <summary>Right-stick reticle speed (m/s at full deflection).</summary>
         public const float StickReticleSpeed = 9f;
         public static bool InvertMouseY;
-        /// <summary>Control mode: false = Non-assisted (every shot exactly where you aim), true = Assisted (straight drives kept
-        /// off the side wall, serves nudged onto a deep, legal line).</summary>
+        /// <summary>Control mode: false = Non-assisted (the shot pulled only a little toward its line - the aim matters),
+        /// true = Assisted (pulled most of the way, a straight drive kept off its side wall, serves nudged onto a deep,
+        /// legal line). Neither plays the perfect shot for you.</summary>
         public static bool Assisted;
         /// <summary>How close to a front-wall corner the reticle may go: the ring (AimTargetView.CircleRadius) stays fully on the wall.</summary>
         public const float EdgeMargin = 0.15f;

@@ -120,7 +120,7 @@ namespace SquashGame.UI
             // ---- CONTROLS ----
             var c = Panel("CONTROLS");
             Row(c, new SelectorItem("Control mode", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => { S.Assisted = i == 1; Changed(false); }),
-                "Both: aim at your half of the front wall for straight, across for cross-court - the shot plays its line. Assisted also keeps drives off the side wall, crosses from rattling and serves deep and legal.");
+                "Assisted pulls your aim toward the shot's line and keeps straight drives off the wall. Non-assisted pulls only a little - your aim matters more.");
             Row(c, new SelectorItem("Aim speed", new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" }, () => Nearest(IntentSource.SensitivitySteps, S.AimSpeed),
                 i => { S.AimSpeed = IntentSource.SensitivitySteps[i]; Changed(false); }, true), "How fast the ring moves with the mouse or the right stick.");
             Row(c, new SelectorItem("Invert mouse Y", new[] { "Off", "On" }, () => S.InvertMouseY ? 1 : 0, i => { S.InvertMouseY = i == 1; Changed(false); }), "Mouse up moves the ring down.");
