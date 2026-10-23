@@ -10,6 +10,10 @@
 // always fits the court. Renders only: nothing here is read by the sim.
 // Settings > Video > Venue: Off (the old greybox), Low (venue, no extra
 // lights or grade), High (everything).
+// 2026-10-23, after a Canary Wharf Classic photo: a dark, warm hall - wood
+// panelled walls, pillars with TVs, a string of warm lights, an arched steel
+// roof with amber lamps; the crowd close and low (flat rows by the glass,
+// then the rake) in darker clothes; the big screen shows the match live.
 // ===========================================================
 
 using UnityEngine;
@@ -25,6 +29,10 @@ namespace SquashGame
         public static int Detail = 2;
 
         const float ROW_DEPTH = 0.85f, ROW_RISE = 0.42f, CROWD_H = 0.95f;
+        /// <summary>The first rows sit on the floor right by the glass; the rake starts behind them.</summary>
+        const int FlatRows = 3;
+        static float Tread(int i) { return i < FlatRows ? 0.04f : 0.5f + (i - FlatRows) * ROW_RISE; }
+        const float HallX = 18.5f, HallFront = -24f, HallBackFromLength = 22f, HallWallH = 10f;
         static readonly Color Steel = Greybox.Hex(0x2a2e36);
         static readonly Color Dark = Greybox.Hex(0x12151b);
 
@@ -81,38 +89,27 @@ namespace SquashGame
             // Behind the camera (seen in the menus' reverse angles).
             Stand(venue, seat, high ? new[] { BenchMat(palette) } : crowd, people, Motion, "StandBack", 14, i => W(0, 0, L + 7.8 + i * ROW_DEPTH), new Vector3(1, 0, 0), Vector3.back, 2 * HW + 2.6f, 3);
 
-            // ---- LED ad boards along the side stands' front ----
-            var ledLime = LedMat(palette, "lime", "RE:SQUASHSTRIKE  •  WORLD TOUR  •", Greybox.Hex(0xb8ee26), new Color(0.02f, 0.025f, 0.03f), high ? 1.9f : 1.2f);
-            var ledWhite = LedMat(palette, "white", "GLASS COURT SERIES  •  PLAY ON  •", new Color(0.95f, 0.96f, 1f), new Color(0.02f, 0.03f, 0.06f), high ? 1.5f : 1.0f);
-            foreach (int side in new[] { -1, 1 })
-            {
-                Greybox.TexturedBox("LedSide", venue, side < 0 ? ledLime : ledWhite, W(side * (HW + 1.15), 0.45, L / 2 - 1.0), new Vector3(0.08f, 0.9f, L + 3f), new Vector2(14.4f, 0.9f), false);
-            }
+            // (no LED boards: the show-court look keeps the court the only bright thing at floor level)
 
-            // ---- the gallery mat behind the glass, edged in lime ----
-            var mat = palette.LitColor(Greybox.Hex(0x143a74)); mat.SetFloat("_Smoothness", 0.35f);
-            var edge = palette.UnlitColor(Greybox.Hex(0xb8ee26));
+            // ---- the gallery mat behind the glass, edged in blue ----
+            var mat = palette.LitColor(Greybox.Hex(0x0f1d36)); mat.SetFloat("_Smoothness", 0.35f);
+            var edge = palette.LitColor(Greybox.Hex(0x1d5fb8));
             float mw = 2 * HW + 1.6f, md = 4.6f, mz = L + 0.12f + md / 2;
             Greybox.Box("GalleryMat", venue, mat, W(0, -0.005, mz), new Vector3(mw, 0.02f, md), false);
             Greybox.Box("GalleryEdge", venue, edge, W(0, 0.006, mz + md / 2 - 0.04), new Vector3(mw, 0.004f, 0.06f), false);
             foreach (int side in new[] { -1, 1 })
                 Greybox.Box("GalleryEdge", venue, edge, W(side * (mw / 2 - 0.03), 0.006, mz), new Vector3(0.06f, 0.004f, md), false);
 
-            // ---- the big screen over the front wall ----
-            var screenMat = palette.UnlitColor(new Color(1.15f, 1.15f, 1.15f));
-            screenMat.mainTexture = ProcTex.Screen();
-            Greybox.Box("ScreenFrame", venue, steel, W(0, 7.25, -1.35), new Vector3(7.6f, 2.1f, 0.2f), false);
-            Greybox.TexturedBox("Screen", venue, screenMat, W(0, 7.25, -1.22), new Vector3(7.2f, 1.8f, 0.04f), new Vector2(7.2f, 1.8f), false);
-            Greybox.Box("ScreenCable", venue, steel, W(-3.0, 9.6, -1.35), new Vector3(0.03f, 2.6f, 0.03f), false);
-            Greybox.Box("ScreenCable", venue, steel, W(3.0, 9.6, -1.35), new Vector3(0.03f, 2.6f, 0.03f), false);
+            // ---- the big screen over the front wall: the match, live (High), or the event's mark ----
+            var screenMat = palette.UnlitColor(new Color(1.1f, 1.1f, 1.1f));
+            screenMat.mainTexture = high ? LiveFeed(venue) : (Texture)ProcTex.Screen();
+            Greybox.Box("ScreenFrame", venue, steel, W(0, 7.35, -1.35), new Vector3(4.3f, 2.5f, 0.2f), false);
+            Greybox.TexturedBox("Screen", venue, screenMat, W(0, 7.35, -1.22), new Vector3(4.0f, 2.25f, 0.04f), new Vector2(4.0f, 2.25f), false);
+            Greybox.Box("ScreenCable", venue, steel, W(-1.8, 9.9, -1.35), new Vector3(0.03f, 2.6f, 0.03f), false);
+            Greybox.Box("ScreenCable", venue, steel, W(1.8, 9.9, -1.35), new Vector3(0.03f, 2.6f, 0.03f), false);
 
-            // ---- the hall: roof and end walls, lost in the dark ----
-            var hall = palette.UnlitColor(Greybox.Hex(0x07080b));
-            Greybox.Box("Roof", venue, hall, W(0, 17, L / 2), new Vector3(60f, 0.2f, 70f), false);
-            Greybox.Box("HallFront", venue, hall, W(0, 8, -27), new Vector3(60f, 18f, 0.2f), false);
-            Greybox.Box("HallBack", venue, hall, W(0, 8, L + 27), new Vector3(60f, 18f, 0.2f), false);
-            foreach (int side in new[] { -1, 1 })
-                Greybox.Box("HallSide", venue, hall, W(side * 25, 8, L / 2), new Vector3(0.2f, 18f, 70f), false);
+            // ---- the hall: wood-panelled walls, pillars with TVs, warm lights, an arched steel roof ----
+            Hall(venue, palette, screenMat, steel, high);
 
             // ---- the lighting gantry ----
             var lamp = palette.UnlitColor(high ? new Color(3.2f, 3.1f, 2.9f) : new Color(1.4f, 1.4f, 1.35f));
@@ -131,15 +128,15 @@ namespace SquashGame
 
             // ---- light ----
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.42f, 0.44f, 0.50f);
-            RenderSettings.ambientEquatorColor = new Color(0.36f, 0.37f, 0.40f);
-            RenderSettings.ambientGroundColor = new Color(0.20f, 0.20f, 0.22f);
+            RenderSettings.ambientSkyColor = new Color(0.30f, 0.29f, 0.31f);
+            RenderSettings.ambientEquatorColor = new Color(0.27f, 0.24f, 0.22f);
+            RenderSettings.ambientGroundColor = new Color(0.12f, 0.11f, 0.11f);
             RenderSettings.reflectionIntensity = 0.3f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = Greybox.Hex(0x0b0d12);
-            RenderSettings.fogStartDistance = 19f;
-            RenderSettings.fogEndDistance = 52f;
+            RenderSettings.fogColor = Greybox.Hex(0x0f0b09);
+            RenderSettings.fogStartDistance = 26f;
+            RenderSettings.fogEndDistance = 80f;
 
             if (high)
             {
@@ -156,23 +153,24 @@ namespace SquashGame
                         spot.spotAngle = 92f;
                         spot.innerSpotAngle = 40f;
                         spot.range = 13f;
-                        spot.intensity = 14f;
+                        spot.intensity = 17f;
                         spot.shadows = LightShadows.None;
                         spot.transform.position = W(side * 1.7, 6.9, z);
                         spot.transform.rotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
                     }
                 }
-                // Accent: a cool wash on the side stands and a lime glow off the boards.
+                // The hall's warm light: amber pools on the wood and the roof, the stands left dim.
                 foreach (int side in new[] { -1, 1 })
-                {
-                    var wash = new GameObject("StandWash").AddComponent<Light>();
-                    wash.transform.SetParent(venue, false);
-                    wash.type = LightType.Point;
-                    wash.color = new Color(0.45f, 0.6f, 1f);
-                    wash.range = 12f;
-                    wash.intensity = 1.6f;
-                    wash.transform.position = W(side * (HW + 6.5), 6.5, L / 2);
-                }
+                    for (int k = 0; k < 3; k++)
+                    {
+                        var warm = new GameObject("HallWarm").AddComponent<Light>();
+                        warm.transform.SetParent(venue, false);
+                        warm.type = LightType.Point;
+                        warm.color = new Color(1f, 0.68f, 0.38f);
+                        warm.range = 16f;
+                        warm.intensity = 2.2f;
+                        warm.transform.position = W(side * (HallX - 3f), 9.5, -12 + k * 16);
+                    }
                 Grade(venue);
             }
         }
@@ -190,10 +188,10 @@ namespace SquashGame
             for (int i = 0; i < rows; i++)
             {
                 Vector3 p = rowPos(i);
-                float top = 0.5f + i * ROW_RISE;
+                float top = Tread(i);
                 // The tier: one block from the floor to this row's tread (rows behind stack higher).
                 Vector3 size = alongX ? new Vector3(length, top, ROW_DEPTH) : new Vector3(ROW_DEPTH, top, length);
-                Greybox.Box("Tier", stand, seat, p + back * (ROW_DEPTH / 2) + Vector3.up * (top / 2), size, false);
+                if (top > 0.1f) Greybox.Box("Tier", stand, seat, p + back * (ROW_DEPTH / 2) + Vector3.up * (top / 2), size, false);
                 if (people != null)
                 {
                     // The bench they sit on.
@@ -212,13 +210,116 @@ namespace SquashGame
                 mesh.uv = uv;
             }
             if (people != null)
-                motion.Add(CrowdBuilder.Stand(stand, people, name, rows, rowPos, i => 0.5f + i * ROW_RISE, along, facing, length, seed));
+                motion.Add(CrowdBuilder.Stand(stand, people, name, rows, rowPos, Tread, along, facing, length, seed));
         }
+
+        /// <summary>The hall around the stands. Walls in warm wood with dark pillars (a TV on every other one), a line
+        /// of warm lamps along a balcony rail, and over it all a vault of steel ladder trusses with amber lamps.</summary>
+        static void Hall(Transform venue, GreyboxPalette palette, Material screen, Material steel, bool high)
+        {
+            float L = (float)LENGTH, back = L + HallBackFromLength, len = back - HallFront, midZ = (back + HallFront) / 2;
+            var wood = palette.LitColor(Color.white); wood.mainTexture = ProcTex.Wood(); wood.SetFloat("_Smoothness", 0.35f);
+            var pillar = palette.LitColor(Greybox.Hex(0x1b1d22)); pillar.SetFloat("_Smoothness", 0.5f);
+            var warmLamp = palette.UnlitColor(new Color(2.8f, 1.7f, 0.8f));
+            var roofSkin = palette.UnlitColor(Greybox.Hex(0x05070b));
+            var hall = new GameObject("Hall").transform; hall.SetParent(venue, false);
+
+            // Walls (wood), then the dark above the end walls up to the roof.
+            foreach (int side in new[] { -1, 1 })
+                Greybox.TexturedBox("HallWall", hall, wood, W(side * HallX, HallWallH / 2, midZ), new Vector3(0.3f, HallWallH, len), new Vector2(2.4f, 2.4f));
+            Greybox.TexturedBox("HallWall", hall, wood, W(0, HallWallH / 2, HallFront), new Vector3(2 * HallX, HallWallH, 0.3f), new Vector2(2.4f, 2.4f));
+            Greybox.TexturedBox("HallWall", hall, wood, W(0, HallWallH / 2, back), new Vector3(2 * HallX, HallWallH, 0.3f), new Vector2(2.4f, 2.4f));
+            Greybox.Box("HallEndFront", hall, roofSkin, W(0, HallWallH + 6, HallFront - 0.2), new Vector3(2 * HallX, 12f, 0.2f), false);
+            Greybox.Box("HallEndBack", hall, roofSkin, W(0, HallWallH + 6, back + 0.2), new Vector3(2 * HallX, 12f, 0.2f), false);
+
+            // Pillars along the side walls, a small TV on every other one; the balcony rail and its lamps.
+            var lamps = new MeshMerge();
+            int k = 0;
+            for (float z = HallFront + 3f; z < back - 2f; z += 6f, k++)
+                foreach (int side in new[] { -1, 1 })
+                {
+                    float x = side * (HallX - 0.35f);
+                    Greybox.Box("Pillar", hall, pillar, W(x, HallWallH / 2, z), new Vector3(0.5f, HallWallH, 0.5f), false);
+                    if (k % 2 == 0 && high)
+                    {
+                        Greybox.Box("TvFrame", hall, pillar, W(x - side * 0.3, 3.6, z), new Vector3(0.08f, 0.62f, 1.02f), false);
+                        Greybox.TexturedBox("Tv", hall, screen, W(x - side * 0.35, 3.6, z), new Vector3(0.02f, 0.54f, 0.94f), new Vector2(0.94f, 0.54f), false);
+                    }
+                }
+            foreach (int side in new[] { -1, 1 })
+            {
+                Greybox.Box("BalconyRail", hall, steel, W(side * (HallX - 0.6), 6.2, midZ), new Vector3(0.15f, 0.15f, len), false);
+                for (float z = HallFront + 1f; z < back; z += 1.6f)
+                    lamps.Box(W(side * (HallX - 0.6), 6.38, z), new Vector3(0.12f, 0.12f, 0.12f), Quaternion.identity);
+            }
+
+            // The vault: elliptical ladder trusses across the hall every 4 m, purlins along it, dark glass over it.
+            const float spring = HallWallH, rise = 11f;
+            const int SEG = 22;
+            var truss = new MeshMerge();
+            var skin = new MeshMerge();
+            System.Func<float, float, Vector3> arch = (t, scale) =>                               // t: 0..1 across the hall
+            {
+                float a = Mathf.PI * t;
+                return new Vector3(-Mathf.Cos(a) * HallX * scale, spring + Mathf.Sin(a) * rise * scale, 0);
+            };
+            for (float z = HallFront + 2f; z <= back - 1f; z += 4f)
+            {
+                Vector3 o = new Vector3(0, 0, z);
+                for (int i = 0; i < SEG; i++)
+                {
+                    float t0 = i / (float)SEG, t1 = (i + 1) / (float)SEG;
+                    Vector3 a0 = arch(t0, 1f) + o, a1 = arch(t1, 1f) + o, b0 = arch(t0, 0.93f) + o, b1 = arch(t1, 0.93f) + o;
+                    b0.y += 0.5f; b1.y += 0.5f;
+                    truss.Beam(a0, a1, 0.16f, 0.16f);
+                    truss.Beam(b0, b1, 0.16f, 0.16f);
+                    truss.Beam(a0, b0, 0.08f, 0.08f);                                                // the ladder's rungs
+                    if (i % 4 == 2) lamps.Box((a0 + b0) * 0.5f + Vector3.down * 0.35f, new Vector3(0.22f, 0.22f, 0.22f), Quaternion.identity);
+                }
+            }
+            for (int i = 1; i < SEG; i += 3)                                                          // purlins along the hall
+            {
+                float t = i / (float)SEG;
+                truss.Beam(arch(t, 1f) + new Vector3(0, 0, HallFront), arch(t, 1f) + new Vector3(0, 0, back), 0.12f, 0.12f);
+            }
+            for (int i = 0; i < SEG; i++)                                                             // the dark glass over it
+            {
+                Vector3 p0 = arch(i / (float)SEG, 1f) + Vector3.up * 0.4f, p1 = arch((i + 1) / (float)SEG, 1f) + Vector3.up * 0.4f;
+                skin.Quad(p0 + new Vector3(0, 0, HallFront), p1 + new Vector3(0, 0, HallFront), p1 + new Vector3(0, 0, back), p0 + new Vector3(0, 0, back));
+            }
+            truss.Build("RoofTrusses", hall, steel);
+            skin.Build("RoofGlass", hall, roofSkin);
+            lamps.Build("WarmLamps", hall, warmLamp);
+        }
+
+        /// <summary>The broadcast's high camera behind the back stand, rendered small into the big screen and the TVs.</summary>
+        static RenderTexture LiveFeed(Transform venue)
+        {
+            var rt = new RenderTexture(640, 360, 16) { name = "LiveFeed" };
+            var cam = new GameObject("LiveFeedCamera").AddComponent<Camera>();
+            cam.transform.SetParent(venue, false);
+            cam.targetTexture = rt;
+            cam.fieldOfView = 46f;
+            cam.depth = -5f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = Greybox.Hex(0x07080b);
+            cam.farClipPlane = 90f;
+            cam.transform.position = W(0, 6.8, LENGTH + 10.5);
+            cam.transform.LookAt(W(0, 0.8, LENGTH * 0.42));
+            var data = cam.GetUniversalAdditionalCameraData();
+            data.renderPostProcessing = false;
+            data.renderShadows = false;
+            LiveCamera = cam;
+            return rt;
+        }
+
+        /// <summary>The live feed's camera (High only).</summary>
+        public static Camera LiveCamera { get; private set; }
 
         static Material _bench;
         static Material BenchMat(GreyboxPalette palette)
         {
-            if (_bench == null) { _bench = palette.LitColor(Greybox.Hex(0x1f4f9a)); _bench.SetFloat("_Smoothness", 0.4f); }   // blue seats
+            if (_bench == null) { _bench = palette.LitColor(Greybox.Hex(0x12203a)); _bench.SetFloat("_Smoothness", 0.4f); }   // dark navy seats
             return _bench;
         }
 

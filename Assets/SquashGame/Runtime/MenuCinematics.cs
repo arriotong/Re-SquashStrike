@@ -35,6 +35,7 @@ namespace SquashGame
             // Quick Match: the old home's "play" cuts
             new[]
             {
+                new Shot( 0f, 12.5f, 30.0f,   0f, 0.6f, 4.2f,  58, 0.10f,   0.06f, -0.04f, -0.12f),   // the whole hall (2026-10-23)
                 new Shot(-3.5f, 4.5f, 11.0f,   0f, 0.5f, 4.0f,  40, 0.35f,   0.05f, -0.03f, -0.10f),
                 new Shot( 1.0f, 0.5f,  2.0f,  -1.5f, 1.0f, 8.0f,  60, 0.45f,  -0.10f, 0f, 0.14f),
                 new Shot( 3.0f, 0.4f,  3.5f,   1.5f, 0.6f, 1.0f,  62, 0.50f,   0f, 0.04f, -0.10f),

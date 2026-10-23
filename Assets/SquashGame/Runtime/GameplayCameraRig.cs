@@ -31,6 +31,13 @@ namespace SquashGame
         public const int BigRallyShots = 15;
         public bool CutAway { get; private set; }
         float _cutSide = 1f;
+        /// <summary>The establishing shot (the Canary Wharf photo): high behind the back stand, the whole hall in view.
+        /// Each match opens on it and flies down to the match camera.</summary>
+        public static readonly Vector3 EstablishingPos = new Vector3(0f, 12.5f, 30f), EstablishingLook = new Vector3(0f, 0.6f, 4.2f);
+        public const float EstablishingFov = 58f, FlySeconds = 3.4f;
+        object _flyFor;
+        float _flyT = 99f;
+        public bool FlyingIn { get; private set; }
         bool _wasCut;
 
         void Awake()
@@ -116,6 +123,26 @@ namespace SquashGame
             double lh = custom ? Presets[p, 3] : cfg.LookAtHeight, ld = custom ? Presets[p, 4] : cfg.LookAtDepth;
             transform.position = SimToWorld.Pos(_lateral, h, CourtDimensions.LENGTH + dist);
             transform.LookAt(SimToWorld.Pos(_lateral * 0.5, lh, ld), Vector3.up);
+
+            // A new match: open on the establishing shot and fly down to this view while the players get ready.
+            FlyingIn = false;
+            if (Runner is MatchRunner fm && !fm.Demo && !fm.InSetup && fm.Sim != null && VenueView.Detail > 0)
+            {
+                if (_flyFor != fm.Sim) { _flyFor = fm.Sim; _flyT = fm.Sim.History.Count == 0 ? 0f : 99f; }
+                if (_flyT < FlySeconds && fm.Sim.Phase == MatchPhase.AwaitToss && fm.Sim.History.Count == 0)
+                {
+                    _flyT += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+                    float u = Mathf.Clamp01(_flyT / FlySeconds);
+                    float e = u * u * u * (u * (u * 6f - 15f) + 10f);                          // smootherstep
+                    Vector3 from = SimToWorld.Pos(EstablishingPos.x, EstablishingPos.y, EstablishingPos.z);
+                    Quaternion fromRot = Quaternion.LookRotation(SimToWorld.Pos(EstablishingLook.x, EstablishingLook.y, EstablishingLook.z) - from, Vector3.up);
+                    transform.position = Vector3.Lerp(from, transform.position, e);
+                    transform.rotation = Quaternion.Slerp(fromRot, transform.rotation, e);
+                    _cam.fieldOfView = Mathf.Lerp(EstablishingFov, _cam.fieldOfView, e);
+                    FlyingIn = u < 1f;
+                }
+                else _flyT = 99f;
+            }
         }
     }
 }

@@ -87,6 +87,9 @@ namespace SquashGame.Tests
             Assert.That(fe.Top.Root.Q<Label>(className: "fe-version").text, Does.Contain(Application.version));
             fe.StartMatch(MatchSettings.QuickGame());
             yield return WaitReal(0.4f);
+            var flyRig = Camera.main.GetComponent<GameplayCameraRig>();
+            float tf = Time.realtimeSinceStartup;
+            while (flyRig.FlyingIn && Time.realtimeSinceStartup - tf < 6f) yield return null;      // the match's opening fly-in
             var cam = Camera.main.transform;
             float back = cam.position.y;
             GameplayCameraRig.Preset = 1;

@@ -23,13 +23,15 @@ namespace SquashGame
         public const int Groups = 4;
         public static int PeopleBuilt { get; private set; }
 
+        // An evening crowd (2026-10-23, after the Canary Wharf photo): mostly dark and muted - navy, black, charcoal,
+        // greys, white shirts - with the odd colour.
         static readonly Color[] Shirts =
         {
-            Greybox.Hex(0x2b3a55), Greybox.Hex(0x7a1f2b), Greybox.Hex(0xe8e8e8), Greybox.Hex(0x1d1d22), Greybox.Hex(0x35643f),
-            Greybox.Hex(0x9aa3ad), Greybox.Hex(0xc8a03c), Greybox.Hex(0x3d6fa8), Greybox.Hex(0x5a3d6e), Greybox.Hex(0xb35a2a),
-            Greybox.Hex(0x1f6fb8), Greybox.Hex(0xaec43a), Greybox.Hex(0xd94a4a), Greybox.Hex(0xf0c8d8),
+            Greybox.Hex(0x1c2233), Greybox.Hex(0x16171b), Greybox.Hex(0x2b2e35), Greybox.Hex(0x3d4048), Greybox.Hex(0x5b5f68),
+            Greybox.Hex(0xd8d8d4), Greybox.Hex(0xb9bcc2), Greybox.Hex(0x23324f), Greybox.Hex(0x4a2228), Greybox.Hex(0x3a4230),
+            Greybox.Hex(0x6b5a44), Greybox.Hex(0x2f5a8a), Greybox.Hex(0x8a2f2f), Greybox.Hex(0x1f2a3a),
         };
-        static readonly Color[] Trousers = { Greybox.Hex(0x2c3e5c), Greybox.Hex(0x1b1c20), Greybox.Hex(0x8a7a5c), Greybox.Hex(0x5c5f66) };
+        static readonly Color[] Trousers = { Greybox.Hex(0x232d40), Greybox.Hex(0x141518), Greybox.Hex(0x5e5444), Greybox.Hex(0x3c3f45) };
         static readonly Color[] Skins = { Greybox.Hex(0xf1c9a5), Greybox.Hex(0xe0ac83), Greybox.Hex(0xc68b62), Greybox.Hex(0x8d5a3b), Greybox.Hex(0x5c3a26) };
         static readonly Color[] Hairs = { Greybox.Hex(0x1a1410), Greybox.Hex(0x3b2a1e), Greybox.Hex(0x6b4a2e), Greybox.Hex(0xb08a58), Greybox.Hex(0x9a9a9a) };
         static readonly Color Shoe = Greybox.Hex(0x2a2a2e);
@@ -49,7 +51,8 @@ namespace SquashGame
             public readonly Material ShoeMat;
             public Palette(GreyboxPalette p)
             {
-                Material M(Color c) { var m = p.LitColor(c); m.SetFloat("_Smoothness", 0.15f); return m; }
+                // Darker than their clothes: the stands sit in the hall's shadow, the court takes the light.
+                Material M(Color c) { var m = p.LitColor(c * 0.62f); m.SetFloat("_Smoothness", 0.15f); return m; }
                 Shirt = System.Array.ConvertAll(Shirts, M);
                 Trouser = System.Array.ConvertAll(Trousers, M);
                 Skin = System.Array.ConvertAll(Skins, M);

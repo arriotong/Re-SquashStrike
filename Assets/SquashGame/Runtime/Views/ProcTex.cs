@@ -99,10 +99,73 @@ namespace SquashGame
             return Cached("tin", () =>
             {
                 const int W = 2048, H = 160;
-                var px = Fill(W, H, new Color(0.10f, 0.11f, 0.13f));
-                for (int y = H - 14; y < H; y++) for (int x = 0; x < W; x++) px[y * W + x] = new Color(0.72f, 0.93f, 0.15f);
-                DotText(px, W, H, "RE:SQUASHSTRIKE", 60, 40, 9, new Color(0.92f, 0.93f, 0.95f), 3, 1080);
-                DotText(px, W, H, "RE:SQUASHSTRIKE", 60 + 1080, 40, 9, new Color(0.92f, 0.93f, 0.95f), 3, W);
+                // Navy board, white lettering, a light-blue top edge (the show-court look, 2026-10-23).
+                var px = Fill(W, H, new Color(0.05f, 0.09f, 0.18f));
+                for (int y = H - 12; y < H; y++) for (int x = 0; x < W; x++) px[y * W + x] = new Color(0.45f, 0.72f, 1f);
+                DotText(px, W, H, "RE:SQUASHSTRIKE CLASSIC", 70, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, 1024);
+                DotText(px, W, H, "RE:SQUASHSTRIKE CLASSIC", 70 + 1024, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, W);
+                return Make(W, H, px, true);
+            });
+        }
+
+        /// <summary>The front wall of a show court: deep blue, lighter at the centre, a row of names along the top above
+        /// the out line and the event's mark above the service line; the playing area itself is left clean. UV 0..1 = the
+        /// whole wall (6.40 x 5.64 m).</summary>
+        public static Texture2D FrontWall()
+        {
+            return Cached("frontwall_blue", () =>
+            {
+                const int W = 1024, H = 904;                                     // ~ the wall's aspect
+                var px = new Color[W * H];
+                var deep = new Color(0.07f, 0.20f, 0.48f); var mid = new Color(0.13f, 0.34f, 0.70f);
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        float dx = (x - W * 0.5f) / (W * 0.5f), dy = (y - H * 0.55f) / (H * 0.6f);
+                        float glow = Mathf.Clamp01(1f - (dx * dx * 0.8f + dy * dy));
+                        px[y * W + x] = Color.Lerp(deep, mid, glow) * (0.97f + Hash(x, y) * 0.03f);
+                    }
+                var white = new Color(0.96f, 0.97f, 1f);
+                // The names along the top (above the 4.57 m out line: from 81% of the height).
+                int topY = (int)(H * 0.855f);
+                string[] names = { "RE:SQUASHSTRIKE", "WORLD TOUR", "GLASS COURT", "PLAY ON" };
+                int x0 = 30;
+                foreach (var n in names)
+                {
+                    DotText(px, W, H, n, x0, topY, 4, white, 1, W);
+                    x0 += TextWidth(n, 4) + 48;
+                }
+                // The event's mark, between the service line (32%) and the out line.
+                string mark = "RE:SQUASHSTRIKE";
+                int mw = TextWidth(mark, 8);
+                DotText(px, W, H, mark, (W - mw) / 2, (int)(H * 0.62f), 8, white, 1, W);
+                string sub = "CLASSIC  2026";
+                DotText(px, W, H, sub, (W - TextWidth(sub, 4)) / 2, (int)(H * 0.56f), 4, new Color(0.62f, 0.82f, 1f), 1, W);
+                return Make(W, H, px, false);
+            });
+        }
+
+        /// <summary>Warm wood panelling (the hall's walls): vertical boards with grain, a dark shadow line at each joint.
+        /// One tile = 2.4 m across x 2.4 m.</summary>
+        public static Texture2D Wood()
+        {
+            return Cached("wood", () =>
+            {
+                const int W = 512, H = 512, BOARDS = 6;
+                var px = new Color[W * H];
+                var rng = new System.Random(5);
+                float[] tone = new float[BOARDS];
+                for (int b = 0; b < BOARDS; b++) tone[b] = 0.85f + (float)rng.NextDouble() * 0.25f;
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        int b = x * BOARDS / W; float fx = (x * BOARDS / (float)W) - b;
+                        float grain = Mathf.Sin((x * 0.09f + Mathf.Sin(y * 0.013f + b * 3f) * 2.5f) * 3f) * 0.5f + 0.5f;
+                        float t = tone[b] * (0.88f + grain * 0.12f) - ValueNoise(x / 30f, y / 120f, b) * 0.06f;
+                        var c = new Color(0.42f * t, 0.25f * t, 0.14f * t);
+                        if (fx < 0.02f) c *= 0.45f;
+                        px[y * W + x] = c;
+                    }
                 return Make(W, H, px, true);
             });
         }

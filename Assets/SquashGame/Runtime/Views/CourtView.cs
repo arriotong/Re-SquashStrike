@@ -32,16 +32,16 @@ namespace SquashGame
             Material frontWall = wall, sideWall = wall;
             if (dressed)
             {
-                floor = palette.LitColor(Color.white); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.46f);
+                floor = palette.LitColor(new Color(0.84f, 0.80f, 0.76f)); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.46f);
                 frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
                 // PSA show court: blue-tinted glass side and back walls, a frosted front wall (2026-10-23)
-                // The front wall is glass too, as on a pro show court - frosted more than the sides so the ball still reads
-                // against the crowd behind it (2026-10-23).
-                frontWall = palette.Clear(new Color(0.80f, 0.88f, 0.97f, 0.42f));
+                // The front wall: a show court's deep blue, branded along the top, lines in white (the Canary Wharf look,
+                // 2026-10-23). The ball's light rim keeps it readable against the blue.
+                frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.FrontWall(); frontWall.SetFloat("_Smoothness", 0.6f);
                 sideWall = palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.26f));
                 tin = palette.LitColor(Color.white); tin.mainTexture = ProcTex.Tin(); tin.SetFloat("_Smoothness", 0.5f);
             }
-            var line = palette.UnlitColor(Greybox.Hex(0xd8382f));
+            var line = palette.UnlitColor(dressed ? Greybox.Hex(0xeef3ff) : Greybox.Hex(0xd8382f));
             var glass = dressed ? palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.16f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
             var glassEdge = palette.UnlitColor(dressed ? Greybox.Hex(0x3d8be0) : Greybox.Hex(0x5fa8c4));
 
@@ -66,12 +66,7 @@ namespace SquashGame
             }
 
             // ---- front wall (playing face at z = 0) ----
-            if (dressed)
-            {
-                Greybox.Box("FrontWall", root, frontWall, SimToWorld.Pos(0, CEILING_H / 2, -0.012), new Vector3(W, H, 0.024f), false);
-                foreach (int side in new[] { -1, 1 })
-                    Greybox.Box("GlassJoint", root, glassEdge, SimToWorld.Pos(side * W / 6.0, (CEILING_H + TIN_H) / 2, -0.02), new Vector3(0.025f, H - (float)TIN_H, 0.03f), false);
-            }
+            if (dressed) Greybox.TexturedBox("FrontWall", root, frontWall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f), new Vector2(W, H));
             else Greybox.Box("FrontWall", root, wall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f));
             // Tin: a board standing proud of the wall so the 0.48 m surface-class change is visible.
             if (dressed) Greybox.TexturedBox("Tin", root, tin, SimToWorld.Pos(0, TIN_H / 2, 0.02), new Vector3(W, (float)TIN_H, 0.04f), new Vector2(W, (float)TIN_H));

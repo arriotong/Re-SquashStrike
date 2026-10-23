@@ -63,7 +63,13 @@ namespace SquashGame.Tests
             yield return WaitReal(1.5f);
             Capture("PR1_Venue_Menu.png");                    // the menus' demo rally (cinematic camera)
             StartQuickGame();
-            yield return WaitReal(1.0f);
+            var flyRig = Camera.main.GetComponent<GameplayCameraRig>();
+            yield return null; yield return null;
+            Assert.That(flyRig.FlyingIn, Is.True, "a match opens on the establishing shot");
+            yield return WaitReal(GameplayCameraRig.FlySeconds * 0.3f);
+            Capture("PR7_FlyIn.png");
+            yield return WaitReal(GameplayCameraRig.FlySeconds * 0.9f);
+            Assert.That(flyRig.FlyingIn, Is.False, "the fly-in ends on the match camera");
             Capture("PR1_Venue.png");
 
             // The frame cost at High, for the record (batch mode timings are only indicative).
@@ -88,6 +94,14 @@ namespace SquashGame.Tests
             cam.transform.position = SimToWorld.Pos(0.5, 4.8, 11.5);
             cam.transform.LookAt(SimToWorld.Pos(0, 4.0, 0));
             Capture("PR6_Court_High.png");
+            cam.fieldOfView = GameplayCameraRig.EstablishingFov;
+            cam.transform.position = SimToWorld.Pos(GameplayCameraRig.EstablishingPos.x, GameplayCameraRig.EstablishingPos.y, GameplayCameraRig.EstablishingPos.z);
+            cam.transform.LookAt(SimToWorld.Pos(GameplayCameraRig.EstablishingLook.x, GameplayCameraRig.EstablishingLook.y, GameplayCameraRig.EstablishingLook.z));
+            Capture("PR7_Hall.png");
+            cam.fieldOfView = 80f;
+            cam.transform.position = SimToWorld.Pos(9, 8, 14);
+            cam.transform.LookAt(SimToWorld.Pos(0, 9, -5));
+            Capture("PR7_Roof.png");
             cam.fieldOfView = fov;
             rig.enabled = true;
             yield return null;
