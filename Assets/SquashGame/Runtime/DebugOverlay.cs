@@ -84,11 +84,30 @@ namespace SquashGame
             return go.transform;
         }
 
+        // -perflog: every 5 s, the frame rate and how much sim time the step cap threw away (slow motion below 20 fps).
+        static readonly bool PerfLog = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-perflog") >= 0;
+        float _perfT, _perfWorst = 999f; int _perfFrames, _perfClamped; double _perfSim0 = -1;
+
+        void LogPerf()
+        {
+            float dt = Time.unscaledDeltaTime;
+            _perfT += dt; _perfFrames++;
+            _perfWorst = Mathf.Min(_perfWorst, 1f / Mathf.Max(1e-4f, dt));
+            if (Runner.Clock.Clamped) _perfClamped++;
+            if (_perfSim0 < 0) _perfSim0 = Runner.Clock.SimulatedTime;
+            if (_perfT < 5f) return;
+            double sim = Runner.Clock.SimulatedTime - _perfSim0;
+            Debug.Log(string.Format("[perf] {0:0} fps avg, {1:0} worst, {2} clamped frames, sim/real {3:0.00} (scale {4}), venue {5}, {6}x{7}",
+                _perfFrames / _perfT, _perfWorst, _perfClamped, sim / _perfT, Runner.Clock.TimeScale, VenueView.Detail, Screen.width, Screen.height));
+            _perfT = 0; _perfFrames = 0; _perfClamped = 0; _perfWorst = 999f; _perfSim0 = Runner.Clock.SimulatedTime;
+        }
+
         void Update()
         {
             _fpsAccum += Time.unscaledDeltaTime; _fpsFrames++;
             if (_fpsAccum >= 0.4f) { _fps = _fpsFrames / _fpsAccum; _fpsAccum = 0; _fpsFrames = 0; }
             if (Runner == null || Runner.Clock == null) return;
+            if (PerfLog) LogPerf();
 
             HandleKeys();
             UpdateCursor();

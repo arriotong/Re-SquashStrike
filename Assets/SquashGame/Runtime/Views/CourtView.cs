@@ -21,6 +21,7 @@ namespace SquashGame
 
         public void Build(GreyboxPalette palette)
         {
+            var total = System.Diagnostics.Stopwatch.StartNew();
             _palette = palette;
             _builtDetail = VenueView.Detail;
             Transform root = transform;
@@ -33,12 +34,14 @@ namespace SquashGame
             {
                 floor = palette.LitColor(Color.white); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.46f);
                 frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
-                sideWall = palette.LitColor(Color.white); sideWall.mainTexture = ProcTex.Wall(false); sideWall.SetFloat("_Smoothness", 0.12f);
+                // PSA show court: blue-tinted glass side and back walls, a frosted front wall (2026-10-23)
+                frontWall.color = new Color(0.95f, 0.97f, 1f); frontWall.SetFloat("_Smoothness", 0.35f);
+                sideWall = palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.26f));
                 tin = palette.LitColor(Color.white); tin.mainTexture = ProcTex.Tin(); tin.SetFloat("_Smoothness", 0.5f);
             }
             var line = palette.UnlitColor(Greybox.Hex(0xd8382f));
-            var glass = palette.Clear(Greybox.Hex(0x9fd4e8, dressed ? 0.06f : 0.14f));
-            var glassEdge = palette.UnlitColor(Greybox.Hex(0x5fa8c4));
+            var glass = dressed ? palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.16f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
+            var glassEdge = palette.UnlitColor(dressed ? Greybox.Hex(0x3d8be0) : Greybox.Hex(0x5fa8c4));
 
             float W = (float)(HALF_W * 2), L = (float)LENGTH, H = (float)CEILING_H;
 
@@ -74,8 +77,15 @@ namespace SquashGame
             foreach (int side in new[] { -1, 1 })
             {
                 if (dressed)
-                    Greybox.TexturedBox(side < 0 ? "SideWallLeft" : "SideWallRight", root, sideWall,
-                        SimToWorld.Pos(side * (HALF_W + 0.05), CEILING_H / 2, LENGTH / 2), new Vector3(0.1f, H, L), new Vector2(L, H));
+                {
+                    Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, sideWall,
+                        SimToWorld.Pos(side * (HALF_W + 0.012), CEILING_H / 2, LENGTH / 2), new Vector3(0.024f, H, L), false);
+                    // The glass panels' joints: slim blue fittings, so the wall reads as a wall at any angle.
+                    for (int k = 1; k < 6; k++)
+                        Greybox.Box("GlassJoint", root, glassEdge, SimToWorld.Pos(side * (HALF_W + 0.02), CEILING_H / 2, LENGTH * k / 6.0),
+                            new Vector3(0.03f, H, 0.025f), false);
+                    Greybox.Box("GlassFrameFront", root, glassEdge, SimToWorld.Pos(side * (HALF_W + 0.02), CEILING_H / 2, 0.02), new Vector3(0.04f, H, 0.04f), false);
+                }
                 else
                     Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, wall,
                         SimToWorld.Pos(side * (HALF_W + 0.05), CEILING_H / 2, LENGTH / 2), new Vector3(0.1f, H, L));
@@ -114,8 +124,11 @@ namespace SquashGame
             fill.shadows = LightShadows.None;
             fill.transform.rotation = Quaternion.LookRotation(SimToWorld.Pos(0, 0, 4) - SimToWorld.Pos(-2.0, 5.0, 8.0));
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             VenueView.Build(root, palette);
+            Debug.Log("[venue] detail " + VenueView.Detail + " built in " + sw.ElapsedMilliseconds + " ms, " + CrowdBuilder.PeopleBuilt + " people");
             VenueView.SetUpCamera(Camera.main);
+            Debug.Log("[venue] court and venue in " + total.ElapsedMilliseconds + " ms");
         }
 
         /// <summary>Settings > Video > Venue changed: rebuild the court (and the venue) in place.</summary>

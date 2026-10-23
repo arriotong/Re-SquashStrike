@@ -9,9 +9,11 @@
 // real angular velocity, so what you see spinning really is spinning.
 // A short fading trail follows the drawn ball (presentation only) so it is
 // easy to pick up in flight.
-// PR2: never smaller than MinPixels on screen (far up the court the real
-// size is a few pixels), and a thin light rim so it reads against the
-// dark stands as well as the white walls.
+// PR2: a thin light rim so it reads against the stands and the glass,
+// and a small floor on its on-screen size so it never vanishes. Only a
+// small one: size is how the eye judges distance, and a ball drawn big at
+// the front wall looks close - shots seemed to land short and slow when
+// the floor was 9 px (playtest 2026-10-23).
 // ===========================================================
 
 using SquashSim;
@@ -26,7 +28,7 @@ namespace SquashGame
         /// <summary>Practice: a long "where that went" trail (else the short one).</summary>
         public static bool LongTrail;
         /// <summary>PR2: the drawn ball's smallest diameter on screen, in pixels at 1080p.</summary>
-        public const float MinPixels = 9f;
+        public const float MinPixels = 5f;
         /// <summary>PR2: the last drawn diameter in metres (for tests).</summary>
         public float DrawnDiameter { get; private set; }
 
@@ -81,14 +83,9 @@ namespace SquashGame
             _ball.localScale = Vector3.one * (visualRadius * 2f);   // Unity sphere primitive has radius 0.5
             if ((p - _lastPos).sqrMagnitude > 4f) _trail.Clear();     // a reset / new feed: no streak across the court
             _lastPos = p;
-            // Faster ball, longer and brighter streak (presentation only).
-            float speed = (float)V3.Length(ball.Vel);
-            float fast = Mathf.Clamp01((speed - 8f) / 22f);
-            _trail.startWidth = visualRadius * 1.5f;
-            _trail.time = LongTrail ? 1.4f : Mathf.Lerp(0.14f, 0.24f, fast);
+            _trail.startWidth = visualRadius * 1.6f;
+            _trail.time = LongTrail ? 1.4f : 0.16f;
             _trail.endWidth = 0f;
-            var tc = new Color(1f, 0.95f, 0.8f);
-            _trail.colorGradient = TrailGradient(tc, Mathf.Lerp(0.4f, 0.65f, fast));
 
             // Visual spin, only while the sim is actually running.
             double w = V3.Length(ball.Omega);
@@ -118,17 +115,6 @@ namespace SquashGame
             float viewHeight = 2f * d * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);   // metres seen top to bottom at that depth
             float px = MinPixels * Mathf.Max(1, cam.pixelHeight) / 1080f;
             return 0.5f * px * viewHeight / Mathf.Max(1, cam.pixelHeight);
-        }
-
-        readonly Gradient _gradient = new Gradient();
-        float _gradientAlpha = -1f;
-        Gradient TrailGradient(Color c, float alpha)
-        {
-            if (Mathf.Abs(alpha - _gradientAlpha) < 0.02f) return _gradient;
-            _gradientAlpha = alpha;
-            _gradient.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) },
-                              new[] { new GradientAlphaKey(alpha, 0f), new GradientAlphaKey(0f, 1f) });
-            return _gradient;
         }
     }
 }

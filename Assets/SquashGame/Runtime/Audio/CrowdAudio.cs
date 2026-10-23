@@ -9,6 +9,7 @@
 // ===========================================================
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using SquashSim;
 using UnityEngine;
 
@@ -25,6 +26,8 @@ namespace SquashGame.Audio
         public readonly Dictionary<string, int> Played = new Dictionary<string, int>();
 
         static Dictionary<string, AudioClip[]> _clips;
+        // The takes are synthesised off the main thread (about 1.5 s of work) and made into clips when ready.
+        static Task<Dictionary<string, float[][]>> _render;
         AudioSource _bed;
         readonly List<AudioSource> _voices = new List<AudioSource>();
         int _next, _lastRallies = -1;
@@ -35,23 +38,21 @@ namespace SquashGame.Audio
         {
             Runner = runner;
             Presence = presence;
-            if (_clips == null)
-            {
-                _clips = new Dictionary<string, AudioClip[]>();
-                foreach (var n in CrowdSounds.Names)
+            if (_clips == null && _render == null)
+                _render = Task.Run(() =>
                 {
-                    var one = Resources.Load<AudioClip>("Audio/" + n);          // a recording wins
-                    if (one != null) { _clips[n] = new[] { one }; continue; }
-                    var takes = new AudioClip[CrowdSounds.Takes(n)];
-                    for (int k = 0; k < takes.Length; k++) takes[k] = CrowdSounds.Clip(n, k);
-                    _clips[n] = takes;
-                }
-            }
+                    var d = new Dictionary<string, float[][]>();
+                    foreach (var n in CrowdSounds.Names)
+                    {
+                        var takes = new float[CrowdSounds.Takes(n)][];
+                        for (int k = 0; k < takes.Length; k++) takes[k] = CrowdSounds.Samples(n, k);
+                        d[n] = takes;
+                    }
+                    return d;
+                });
             _bed = NewSource("CrowdBed");
-            _bed.clip = _clips["crowdBed"][0];
             _bed.loop = true;
             _bed.volume = 0f;
-            _bed.Play();
             for (int i = 0; i < 4; i++) _voices.Add(NewSource("CrowdVoice" + i));
             runner.Stepped += OnStepped;
         }
@@ -69,6 +70,32 @@ namespace SquashGame.Audio
 
         void OnDestroy() { if (Runner != null) Runner.Stepped -= OnStepped; }
 
+        /// <summary>Make the clips once the synthesis is done (a recording in Resources/Audio/ wins).</summary>
+        static bool Ready()
+        {
+            if (_clips != null && _clips["crowdBed"][0] != null) return true;   // (a scene change can unload unused clips: then remake them)
+            _clips = null;
+            if (_render == null || !_render.IsCompleted) return false;
+            var raw = _render.Result;
+            var clips = new Dictionary<string, AudioClip[]>();
+            foreach (var n in CrowdSounds.Names)
+            {
+                var one = Resources.Load<AudioClip>("Audio/" + n);
+                if (one != null) { clips[n] = new[] { one }; continue; }
+                var takes = new AudioClip[raw[n].Length];
+                for (int k = 0; k < takes.Length; k++)
+                {
+                    takes[k] = AudioClip.Create("crowd_" + n + "_" + k, raw[n][k].Length, 1, CrowdSounds.Rate, false);
+                    takes[k].SetData(raw[n][k], 0);
+                }
+                clips[n] = takes;
+            }
+            _clips = clips;
+            return true;
+        }
+
+        public bool SoundsReady { get { return _clips != null; } }
+
         bool Live
         {
             get
@@ -81,7 +108,7 @@ namespace SquashGame.Audio
 
         public void Play(string name, float volume)
         {
-            if (!_clips.TryGetValue(name, out var takes) || volume <= 0.01f) return;
+            if (_clips == null || !_clips.TryGetValue(name, out var takes) || volume <= 0.01f) return;
             var src = _voices[_next];
             _next = (_next + 1) % _voices.Count;
             src.clip = takes[Random.Range(0, takes.Length)];
@@ -89,6 +116,7 @@ namespace SquashGame.Audio
             src.pitch = 1f + Random.Range(-0.03f, 0.03f);
             src.Play();
             Played[name] = Played.TryGetValue(name, out int n) ? n + 1 : 1;
+            VenueView.Excite(name == "ooh" ? volume * 0.5f : volume);       // the people move with the sound
         }
 
         void OnStepped(IReadOnlyList<SimEvent> events)
@@ -111,6 +139,8 @@ namespace SquashGame.Audio
 
         void Update()
         {
+            if (!Ready()) return;
+            if (_bed.clip == null) { _bed.clip = _clips["crowdBed"][0]; _bed.Play(); }
             _oohCooldown -= Time.deltaTime;
             var mr = Runner as MatchRunner;
             bool live = Live;

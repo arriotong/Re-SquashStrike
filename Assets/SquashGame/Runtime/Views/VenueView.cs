@@ -39,8 +39,13 @@ namespace SquashGame
 
             var floor = palette.LitColor(Greybox.Hex(0x1a1e26)); floor.SetFloat("_Smoothness", 0.55f);
             var steel = palette.LitColor(Steel); steel.SetFloat("_Smoothness", 0.45f);
+            var blue = palette.LitColor(Greybox.Hex(0x1d5fb8)); blue.SetFloat("_Smoothness", 0.6f);
             var dark = palette.LitColor(Dark);
             var seat = palette.LitColor(Greybox.Hex(0x1c2029));
+            // The people: 3D at High (CrowdBuilder), painted cards at Low.
+            CrowdBuilder.ResetCount();
+            var people = high ? new CrowdBuilder.Palette(palette) : null;
+            Motion = venue.gameObject.AddComponent<CrowdMotion>();
             var crowd = new Material[4];
             for (int i = 0; i < crowd.Length; i++)
             {
@@ -57,23 +62,24 @@ namespace SquashGame
             // ---- the court's shell: dark cladding outside the walls, a steel coping along the top ----
             foreach (int side in new[] { -1, 1 })
             {
-                Greybox.Box("SideCladding", venue, dark, W(side * (HW + 0.16), H / 2, L / 2), new Vector3(0.12f, H, L + 0.2f));
-                Greybox.Box("SideCoping", venue, steel, W(side * (HW + 0.06), H + 0.05, L / 2), new Vector3(0.36f, 0.1f, L + 0.3f));
+                // Glass side walls now (PSA court): no cladding, a blue frame along the top and a blue plinth along the foot.
+                Greybox.Box("SideCoping", venue, blue, W(side * (HW + 0.03), H + 0.05, L / 2), new Vector3(0.12f, 0.1f, L + 0.1f));
+                Greybox.Box("SidePlinth", venue, blue, W(side * (HW + 0.2), 0.08, L / 2), new Vector3(0.36f, 0.18f, L + 0.4f));
                 // Glass fins at the back corners, full height of the glass.
-                Greybox.Box("CornerPost", venue, steel, W(side * (HW + 0.08), BACK_WALL_OUT_H / 2 + 0.02, L + 0.02), new Vector3(0.14f, (float)BACK_WALL_OUT_H + 0.04f, 0.1f));
+                Greybox.Box("CornerPost", venue, blue, W(side * (HW + 0.08), BACK_WALL_OUT_H / 2 + 0.02, L + 0.02), new Vector3(0.14f, (float)BACK_WALL_OUT_H + 0.04f, 0.1f));
             }
             Greybox.Box("FrontCladding", venue, dark, W(0, H / 2, -0.17), new Vector3(2 * HW + 0.44f, H, 0.12f));
-            Greybox.Box("FrontCoping", venue, steel, W(0, H + 0.05, -0.06), new Vector3(2 * HW + 0.5f, 0.1f, 0.36f));
+            Greybox.Box("FrontCoping", venue, blue, W(0, H + 0.05, -0.06), new Vector3(2 * HW + 0.5f, 0.1f, 0.36f));
 
             // ---- stands ----
             // Sides: rows rising away from the court, front to well behind the camera.
             foreach (int side in new[] { -1, 1 })
-                Stand(venue, seat, crowd, side < 0 ? "StandLeft" : "StandRight", 14,
+                Stand(venue, seat, high ? new[] { BenchMat(palette) } : crowd, people, Motion, side < 0 ? "StandLeft" : "StandRight", 14,
                     i => W(side * (HW + 1.5 + i * ROW_DEPTH), 0, L / 2 + 2.5), new Vector3(0, 0, 1), side < 0 ? Vector3.left : Vector3.right, 34f, side + 5);
             // Behind the front wall: only the upper rows show over the wall from the TV camera.
-            Stand(venue, seat, crowd, "StandFront", 22, i => W(0, 0, -2.4 - i * ROW_DEPTH), new Vector3(1, 0, 0), Vector3.forward, 2 * HW + 2.6f, 2);
+            Stand(venue, seat, high ? new[] { BenchMat(palette) } : crowd, people, Motion, "StandFront", 22, i => W(0, 0, -2.4 - i * ROW_DEPTH), new Vector3(1, 0, 0), Vector3.forward, 2 * HW + 2.6f, 2);
             // Behind the camera (seen in the menus' reverse angles).
-            Stand(venue, seat, crowd, "StandBack", 14, i => W(0, 0, L + 7.8 + i * ROW_DEPTH), new Vector3(1, 0, 0), Vector3.back, 2 * HW + 2.6f, 3);
+            Stand(venue, seat, high ? new[] { BenchMat(palette) } : crowd, people, Motion, "StandBack", 14, i => W(0, 0, L + 7.8 + i * ROW_DEPTH), new Vector3(1, 0, 0), Vector3.back, 2 * HW + 2.6f, 3);
 
             // ---- LED ad boards along the side stands' front ----
             var ledLime = LedMat(palette, "lime", "RE:SQUASHSTRIKE  •  WORLD TOUR  •", Greybox.Hex(0xb8ee26), new Color(0.02f, 0.025f, 0.03f), high ? 1.9f : 1.2f);
@@ -84,7 +90,7 @@ namespace SquashGame
             }
 
             // ---- the gallery mat behind the glass, edged in lime ----
-            var mat = palette.LitColor(Greybox.Hex(0x15203a)); mat.SetFloat("_Smoothness", 0.3f);
+            var mat = palette.LitColor(Greybox.Hex(0x143a74)); mat.SetFloat("_Smoothness", 0.35f);
             var edge = palette.UnlitColor(Greybox.Hex(0xb8ee26));
             float mw = 2 * HW + 1.6f, md = 4.6f, mz = L + 0.12f + md / 2;
             Greybox.Box("GalleryMat", venue, mat, W(0, -0.005, mz), new Vector3(mw, 0.02f, md), false);
@@ -171,10 +177,11 @@ namespace SquashGame
             }
         }
 
-        /// <summary>Raked rows of seats with a crowd row on each. rowPos(i) is the row's front edge at floor
-        /// level (centre along its length); along is the row's length axis, facing points at the court.</summary>
-        static void Stand(Transform venue, Material seat, Material[] crowd, string name, int rows, System.Func<int, Vector3> rowPos,
-            Vector3 along, Vector3 facing, float length, int seed)
+        /// <summary>Raked rows of seats with people on them. rowPos(i) is the row's front edge at floor level
+        /// (centre along its length); along is the row's length axis, facing points at the court. At High the
+        /// people are 3D (CrowdBuilder) on benches; at Low they are painted cards.</summary>
+        static void Stand(Transform venue, Material seat, Material[] crowd, CrowdBuilder.Palette people, CrowdMotion motion, string name, int rows,
+            System.Func<int, Vector3> rowPos, Vector3 along, Vector3 facing, float length, int seed)
         {
             var stand = new GameObject(name).transform;
             stand.SetParent(venue, false);
@@ -187,6 +194,13 @@ namespace SquashGame
                 // The tier: one block from the floor to this row's tread (rows behind stack higher).
                 Vector3 size = alongX ? new Vector3(length, top, ROW_DEPTH) : new Vector3(ROW_DEPTH, top, length);
                 Greybox.Box("Tier", stand, seat, p + back * (ROW_DEPTH / 2) + Vector3.up * (top / 2), size, false);
+                if (people != null)
+                {
+                    // The bench they sit on.
+                    Vector3 bsize = alongX ? new Vector3(length, 0.42f, 0.36f) : new Vector3(0.36f, 0.42f, length);
+                    Greybox.Box("Bench", stand, crowd[0], p + back * 0.64f + Vector3.up * (top + 0.21f), bsize, false);
+                    continue;
+                }
                 // The people: a thin card on the tread, a little back from the edge.
                 var mat = crowd[(i + seed) % crowd.Length];
                 Vector3 csize = alongX ? new Vector3(length, CROWD_H, 0.04f) : new Vector3(0.04f, CROWD_H, length);
@@ -197,7 +211,22 @@ namespace SquashGame
                 for (int k = 0; k < uv.Length; k++) uv[k].x += off;
                 mesh.uv = uv;
             }
+            if (people != null)
+                motion.Add(CrowdBuilder.Stand(stand, people, name, rows, rowPos, i => 0.5f + i * ROW_RISE, along, facing, length, seed));
         }
+
+        static Material _bench;
+        static Material BenchMat(GreyboxPalette palette)
+        {
+            if (_bench == null) { _bench = palette.LitColor(Greybox.Hex(0x1f4f9a)); _bench.SetFloat("_Smoothness", 0.4f); }   // blue seats
+            return _bench;
+        }
+
+        /// <summary>The crowd's motion (null with the venue off).</summary>
+        public static CrowdMotion Motion { get; private set; }
+
+        /// <summary>The crowd reacts: 0..1 (CrowdAudio's applause, cheers, oohs).</summary>
+        public static void Excite(float level) { if (Motion != null) Motion.Excite(level); }
 
         static Material LedMat(GreyboxPalette palette, string id, string text, Color ink, Color back, float glow)
         {

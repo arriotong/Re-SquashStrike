@@ -39,6 +39,8 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             Assert.That(GameObject.Find("Venue"), Is.Not.Null, "no venue at High");
             Assert.That(Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Length, Is.GreaterThan(4), "High should add the court's spots");
+            Assert.That(CrowdBuilder.PeopleBuilt, Is.GreaterThan(1500), "High seats a 3D crowd");
+            Debug.Log("[Crowd] " + CrowdBuilder.PeopleBuilt + " people");
 
             VenueView.Detail = 0;
             yield return null; yield return null;
@@ -74,6 +76,21 @@ namespace SquashGame.Tests
             cam.targetTexture = null;
             rt.Release();
             Debug.Log("[PR1] 1080p render at High: " + (sw.Elapsed.TotalMilliseconds / 60).ToString("0.00") + " ms a frame (CPU side)");
+
+            // The crowd up close: from the court, looking up into the side stand, and from the glass at the front stand.
+            var rig = cam.GetComponent<GameplayCameraRig>();
+            rig.enabled = false;
+            float fov = cam.fieldOfView;
+            cam.fieldOfView = 55f;
+            cam.transform.position = SimToWorld.Pos(-1.5, 1.6, 6.0);
+            cam.transform.LookAt(SimToWorld.Pos(-8.0, 3.2, 8.0));
+            Capture("PR6_Crowd_Side.png");
+            cam.transform.position = SimToWorld.Pos(0.5, 4.8, 11.5);
+            cam.transform.LookAt(SimToWorld.Pos(0, 4.0, 0));
+            Capture("PR6_Court_High.png");
+            cam.fieldOfView = fov;
+            rig.enabled = true;
+            yield return null;
 
             VenueView.Detail = 0;
             yield return null; yield return null;
