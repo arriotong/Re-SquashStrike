@@ -16,20 +16,35 @@ namespace SquashGame
         const float LINE_W = 0.05f;
         const float FLOOR_LINE_Y = 0.004f;
 
+        GreyboxPalette _palette;
+        int _builtDetail = -1;
+
         public void Build(GreyboxPalette palette)
         {
+            _palette = palette;
+            _builtDetail = VenueView.Detail;
             Transform root = transform;
+            bool dressed = VenueView.Detail > 0;      // PR1: the real court's surfaces and the arena around it
             var wall = palette.LitColor(Greybox.Hex(0xd9d9d4));
             var floor = palette.LitColor(Greybox.Hex(0xc2b79a));
             var tin = palette.LitColor(Greybox.Hex(0x4a4a52));
+            Material frontWall = wall, sideWall = wall;
+            if (dressed)
+            {
+                floor = palette.LitColor(Color.white); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.46f);
+                frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
+                sideWall = palette.LitColor(Color.white); sideWall.mainTexture = ProcTex.Wall(false); sideWall.SetFloat("_Smoothness", 0.12f);
+                tin = palette.LitColor(Color.white); tin.mainTexture = ProcTex.Tin(); tin.SetFloat("_Smoothness", 0.5f);
+            }
             var line = palette.UnlitColor(Greybox.Hex(0xd8382f));
-            var glass = palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
+            var glass = palette.Clear(Greybox.Hex(0x9fd4e8, dressed ? 0.06f : 0.14f));
             var glassEdge = palette.UnlitColor(Greybox.Hex(0x5fa8c4));
 
             float W = (float)(HALF_W * 2), L = (float)LENGTH, H = (float)CEILING_H;
 
             // ---- floor (top surface at y = 0) ----
-            Greybox.Box("Floor", root, floor, SimToWorld.Pos(0, -0.05, LENGTH / 2), new Vector3(W, 0.1f, L));
+            if (dressed) Greybox.TexturedBox("Floor", root, floor, SimToWorld.Pos(0, -0.05, LENGTH / 2), new Vector3(W, 0.1f, L), new Vector2(1.4f, 2.8f));
+            else Greybox.Box("Floor", root, floor, SimToWorld.Pos(0, -0.05, LENGTH / 2), new Vector3(W, 0.1f, L));
 
             // Short line, half-court line, service boxes.
             Greybox.Box("ShortLine", root, line, SimToWorld.Pos(0, FLOOR_LINE_Y, SHORT_LINE_Z), new Vector3(W, 0.004f, LINE_W), false);
@@ -46,9 +61,11 @@ namespace SquashGame
             }
 
             // ---- front wall (playing face at z = 0) ----
-            Greybox.Box("FrontWall", root, wall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f));
+            if (dressed) Greybox.TexturedBox("FrontWall", root, frontWall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f), new Vector2(W, H));
+            else Greybox.Box("FrontWall", root, wall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f));
             // Tin: a board standing proud of the wall so the 0.48 m surface-class change is visible.
-            Greybox.Box("Tin", root, tin, SimToWorld.Pos(0, TIN_H / 2, 0.02), new Vector3(W, (float)TIN_H, 0.04f));
+            if (dressed) Greybox.TexturedBox("Tin", root, tin, SimToWorld.Pos(0, TIN_H / 2, 0.02), new Vector3(W, (float)TIN_H, 0.04f), new Vector2(W, (float)TIN_H));
+            else Greybox.Box("Tin", root, tin, SimToWorld.Pos(0, TIN_H / 2, 0.02), new Vector3(W, (float)TIN_H, 0.04f));
             Greybox.Box("TinLine", root, line, SimToWorld.Pos(0, TIN_H, 0.022), new Vector3(W, 0.05f, 0.045f), false);
             Greybox.Box("ServiceLine", root, line, SimToWorld.Pos(0, SERVICE_LINE_H, 0.006), new Vector3(W, 0.05f, 0.01f), false);
             Greybox.Box("FrontOutLine", root, line, SimToWorld.Pos(0, FRONT_WALL_OUT_H, 0.006), new Vector3(W, 0.05f, 0.01f), false);
@@ -56,8 +73,12 @@ namespace SquashGame
             // ---- side walls (faces at x = +-HALF_W) with the sloping out line ----
             foreach (int side in new[] { -1, 1 })
             {
-                Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, wall,
-                    SimToWorld.Pos(side * (HALF_W + 0.05), CEILING_H / 2, LENGTH / 2), new Vector3(0.1f, H, L));
+                if (dressed)
+                    Greybox.TexturedBox(side < 0 ? "SideWallLeft" : "SideWallRight", root, sideWall,
+                        SimToWorld.Pos(side * (HALF_W + 0.05), CEILING_H / 2, LENGTH / 2), new Vector3(0.1f, H, L), new Vector2(L, H));
+                else
+                    Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, wall,
+                        SimToWorld.Pos(side * (HALF_W + 0.05), CEILING_H / 2, LENGTH / 2), new Vector3(0.1f, H, L));
 
                 var slope = Greybox.Primitive(PrimitiveType.Cube, "SideOutLine", root, line, false);
                 double x = side * (HALF_W - 0.008);
@@ -73,23 +94,36 @@ namespace SquashGame
                 Greybox.Box("GlassEdge", root, glassEdge, SimToWorld.Pos(side * (HALF_W - 0.01), BACK_WALL_OUT_H / 2, LENGTH),
                     new Vector3(0.02f, (float)BACK_WALL_OUT_H, 0.03f), false);
 
-            // ---- lighting (lab: key + fill + ambient) ----
+            // ---- lighting (lab: key + fill + ambient; the venue adds its own and takes over the ambient) ----
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.62f, 0.62f, 0.62f);
+            RenderSettings.fog = false;
+            bool lit = VenueView.Detail >= 2;
 
             var key = new GameObject("KeyLight").AddComponent<Light>();
             key.transform.SetParent(root, false);
             key.type = LightType.Directional;
-            key.intensity = 1.1f;
+            key.intensity = lit ? 0.85f : 1.1f;
             key.shadows = LightShadows.Soft;
             key.transform.rotation = Quaternion.LookRotation(SimToWorld.Pos(0, 0, 4) - SimToWorld.Pos(1.5, 7.5, 3.0));
 
             var fill = new GameObject("FillLight").AddComponent<Light>();
             fill.transform.SetParent(root, false);
             fill.type = LightType.Directional;
-            fill.intensity = 0.35f;
+            fill.intensity = lit ? 0.22f : 0.35f;
             fill.shadows = LightShadows.None;
             fill.transform.rotation = Quaternion.LookRotation(SimToWorld.Pos(0, 0, 4) - SimToWorld.Pos(-2.0, 5.0, 8.0));
+
+            VenueView.Build(root, palette);
+            VenueView.SetUpCamera(Camera.main);
+        }
+
+        /// <summary>Settings > Video > Venue changed: rebuild the court (and the venue) in place.</summary>
+        void Update()
+        {
+            if (_palette == null || _builtDetail == VenueView.Detail) return;
+            for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
+            Build(_palette);
         }
     }
 }

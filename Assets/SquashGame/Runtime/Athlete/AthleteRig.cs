@@ -38,8 +38,11 @@ namespace SquashGame.Athlete
 
         public enum Region { ShirtBody, ShirtSleeves, Shorts, Socks, Shoes, Skin }
         readonly Material[] _region = new Material[6];
-        Material _frame, _grip, _strings, _headband, _wristband;
+        Material _frame, _grip, _strings, _headband, _wristband, _hair, _features;
         GameObject _headbandGo, _wristbandGo;
+        readonly GameObject[] _hairGo = new GameObject[HeadDetail.StyleCount];
+        /// <summary>PR3: the hair style drawn (tests).</summary>
+        public int HairStyleShown { get; private set; } = 2;
 
         /// <summary>The kit region a body form (or a joint blend, by its bone) belongs to.</summary>
         public static Region RegionOf(string name)
@@ -70,6 +73,23 @@ namespace SquashGame.Athlete
             _wristbandGo.SetActive(k.HasWristband); _wristband.color = k.Wristband;
             _frame.color = k.Frame; _grip.color = k.Grip;
             _strings.color = new Color(k.Strings.r, k.Strings.g, k.Strings.b, 0.35f);
+            ShowHair(k.HairStyle);
+            _hair.color = k.Hair;
+        }
+
+        void ShowHair(int style)
+        {
+            HairStyleShown = Mathf.Clamp(style, 0, HeadDetail.StyleCount - 1);
+            for (int i = 0; i < _hairGo.Length; i++) if (_hairGo[i] != null) _hairGo[i].SetActive(i == HairStyleShown);
+        }
+
+        GameObject HeadPart(string name, MeshData m, Material mat, bool shadows)
+        {
+            if (m == null) return null;
+            var go = Greybox.MeshObject(name, Bones["Head"], m.ToUnity(name), mat, shadows);
+            go.GetComponent<MeshRenderer>().receiveShadows = true;
+            go.transform.localPosition = ToUnity(HeadDetail.Pivot - RigBoneRest("Head"));
+            return go;
         }
 
         public void Build(GreyboxPalette palette, Color bodyColor)
@@ -138,6 +158,15 @@ namespace SquashGame.Athlete
             _wristbandGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             _wristbandGo.transform.localScale = new Vector3(0.046f, 0.046f, 0.09f);
             _wristbandGo.SetActive(false);
+
+            // ---- PR3: a face and hair ----
+            _hair = palette.LitColor(Greybox.Hex(0x352418)); _hair.SetFloat("_Smoothness", 0.35f);
+            _features = palette.LitColor(Greybox.Hex(0x1c1411)); _features.SetFloat("_Smoothness", 0.6f);
+            for (int i = 0; i < _hairGo.Length; i++) _hairGo[i] = HeadPart("hair_" + i, HeadDetail.Hair(i), _hair, true);
+            ShowHair(HairStyleShown);
+            HeadPart("face_skin", HeadDetail.SkinFeatures(), _region[(int)Region.Skin], false);
+            HeadPart("face_dark", HeadDetail.DarkFeatures(), _features, false);
+            HeadPart("face_brows", HeadDetail.Brows(), _hair, false);
         }
 
         static void AddPart(Transform parent, string name, MeshData m, Material mat, bool shadows)

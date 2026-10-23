@@ -13,6 +13,8 @@
 //   banners       referee review, controller disconnected
 //   LET?          over a local striker's head while the referee would
 //                 give a let or a stroke for asking (P2-M7), with the key
+//   PR5           GAME BALL / MATCH BALL under the bug; a rally counter
+//                 once a rally gets long; a walk-on card as a match starts
 //
 // Reads state only. Hidden behind menus (the pause screen keeps it).
 // ===========================================================
@@ -40,6 +42,25 @@ namespace SquashGame
         int _letFor = -1;
         readonly int[] _lastPoints = { -1, -1 };
         int _lastGames = -1;
+        // PR5
+        readonly Label _ball = new Label(), _rally = new Label(), _introNames = new Label(), _introSub = new Label();
+        readonly VisualElement _intro = new VisualElement();
+        MatchSimulation _introFor;
+        float _introLeft;
+        /// <summary>PR5: a rally shows its shot count from this many shots.</summary>
+        public const int RallyCountFrom = 6;
+        public string BallText { get { return _ball.style.display == DisplayStyle.Flex ? _ball.text : null; } }
+        public string RallyText { get { return _rally.style.display == DisplayStyle.Flex ? _rally.text : null; } }
+        public bool IntroShown { get { return _intro.style.display == DisplayStyle.Flex; } }
+
+        /// <summary>PR5: would player p win the game with the next point? (Presentation only.)</summary>
+        public static bool GameBall(MatchScore s, int p)
+        {
+            if (s.GameOver || s.MatchOver) return false;
+            int me = s.Points[p], them = s.Points[1 - p];
+            return s.System == ScoringSystem.Par ? me + 1 >= s.GameTarget && me + 1 - them >= 2
+                                                 : s.Server == p && me + 1 >= s.GameTarget;
+        }
 
         /// <summary>What the call says now (tests).</summary>
         public string BannerText { get { return _third.style.display == DisplayStyle.Flex ? _banner.text : null; } }
@@ -89,7 +110,12 @@ namespace SquashGame
             var letWord = new Label("LET?"); letWord.AddToClassList("hud-let-word"); letWord.pickingMode = PickingMode.Ignore;
             _letKey.AddToClassList("hud-let-key");
             _let.Add(letWord); _let.Add(_letKey); _let.style.display = DisplayStyle.None; Add(_let);
-            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey }) l.pickingMode = PickingMode.Ignore;
+            _ball.AddToClassList("hud-ball"); Add(_ball);
+            _rally.AddToClassList("hud-rally"); Add(_rally);
+            _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
+            _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
+            _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
+            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub }) l.pickingMode = PickingMode.Ignore;
         }
 
         static void Show(Label l, string text)
@@ -184,6 +210,35 @@ namespace SquashGame
             if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
             _banner.style.fontSize = 40 * CallTextScale;
             LetChip(r, m, twoPlayer);
+            Broadcast(r, m, s, names);
+        }
+
+        /// <summary>PR5: the game/match-ball chip, the rally counter, the walk-on card.</summary>
+        void Broadcast(MatchRunner r, MatchSimulation m, MatchScore s, string[] names)
+        {
+            string ball = null;
+            bool between = m.Phase == MatchPhase.AwaitToss || m.Phase == MatchPhase.Rally;
+            if (between && !r.ReplayActive)
+                for (int p = 0; p < 2; p++)
+                    if (GameBall(s, p)) ball = (s.Games[p] + 1 >= s.GamesToWin ? "MATCH BALL" : "GAME BALL") + "  ·  " + names[p];
+            Show(_ball, ball);
+
+            int shots = m.Referee.Shots;
+            Show(_rally, m.Phase == MatchPhase.Rally && shots >= RallyCountFrom && !r.ReplayActive ? "RALLY  " + shots : null);
+            _rally.EnableInClassList("hud-rally--hot", shots >= 15);
+
+            // The walk-on: once per match, as it starts.
+            if (_introFor != m) { _introFor = m; _introLeft = s.Rallies == 0 && m.History.Count == 0 ? 3.6f : 0f; }
+            if (_introLeft > 0 && m.Phase == MatchPhase.AwaitToss) _introLeft -= Time.unscaledDeltaTime; else if (m.Phase != MatchPhase.AwaitToss && m.Phase != MatchPhase.WarmUp) _introLeft = 0;
+            bool intro = _introLeft > 0;
+            if (intro)
+            {
+                _introNames.text = names[0] + "   v   " + names[1];
+                string system = s.System == ScoringSystem.Par ? "PAR " + PhysicsConfig.Current.Match.ParPoints : "ENGLISH " + s.GameTarget;
+                _introSub.text = (s.GamesToWin > 1 ? "BEST OF " + (s.GamesToWin * 2 - 1) : "ONE GAME") + "   ·   " + system + "   ·   GLASS COURT";
+            }
+            _intro.style.display = intro ? DisplayStyle.Flex : DisplayStyle.None;
+            _intro.EnableInClassList("hud-intro--in", intro && _introLeft < 3.4f && _introLeft > 0.3f);
         }
 
         /// <summary>LET? over the local striker while asking would be granted; held a moment after it stops being so.</summary>

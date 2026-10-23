@@ -45,6 +45,11 @@ namespace SquashGame
             ball.transform.SetParent(transform, false);
             ball.Build(Base, Palette);
 
+            // PR2: a quick mark wherever the ball hits.
+            var marks = new GameObject("ImpactMarks").AddComponent<ImpactMarkView>();
+            marks.transform.SetParent(transform, false);
+            marks.Build(Base, Palette);
+
             // M4: the Gate A athlete on the Gate B skeleton (replaces the greybox capsule + racket).
             var athlete = new GameObject("Athlete0").AddComponent<Athlete.AthleteFigure>();
             athlete.transform.SetParent(transform, false);
@@ -79,6 +84,11 @@ namespace SquashGame
             var audio = new GameObject("AudioDirector").AddComponent<Audio.AudioDirector>();
             audio.transform.SetParent(transform, false);
             audio.Build(Base);
+
+            // PR4: the crowd in the venue.
+            var crowd = new GameObject("CrowdAudio").AddComponent<Audio.CrowdAudio>();
+            crowd.transform.SetParent(transform, false);
+            crowd.Build(Base, 0.4f);
 
             // P2-M2: the challenge's targets on the walls and the floor.
             if (Arcade != null)

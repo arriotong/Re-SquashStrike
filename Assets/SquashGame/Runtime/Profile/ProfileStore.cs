@@ -29,8 +29,9 @@ namespace SquashGame.Profile
         public bool VSync = true;
         public int FrameCap = 0;                 // 0 = none, else fps
         public int Quality = -1;                 // QualitySettings level; -1 = leave
+        public int Venue = 2;                    // PR1: the arena around the court: 0 off, 1 low, 2 high
         // ---- audio ----
-        public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f;
+        public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f, CrowdVolume = 0.8f;
         // ---- accessibility ----
         public float BallScale = 1f;             // x the game's drawn ball (render only)
         public int RingColour = 0;               // 0 white, 1 yellow, 2 cyan
@@ -245,8 +246,10 @@ namespace SquashGame.Profile
             Audio.AudioDirector.SfxVolume = s.SfxVolume;
             Audio.AudioDirector.RefereeVolume = s.RefereeVolume;
             Audio.MenuMusic.Volume = Mathf.Clamp01(s.MusicVolume);
+            Audio.CrowdAudio.Volume = Mathf.Clamp01(s.CrowdVolume);
             AudioListener.volume = Mathf.Clamp01(s.MasterVolume);
             BallView.UserScale = Mathf.Clamp(s.BallScale, 0.75f, 1.6f);
+            VenueView.Detail = Mathf.Clamp(s.Venue, 0, 2);
             HudLayer.CallTextScale = Mathf.Clamp(s.CallTextScale, 0.8f, 1.5f);
             if (!video || Application.isBatchMode) return;
             QualitySettings.vSyncCount = s.VSync ? 1 : 0;

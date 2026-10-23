@@ -101,6 +101,55 @@ namespace SquashGame
             return m;
         }
 
+        /// <summary>A box whose UVs are in metres / tile on every face (a texture keeps its real size
+        /// whatever the box's size), each face's u reading left to right from outside it.
+        /// On the top face u = x, v = z.</summary>
+        public static GameObject TexturedBox(string name, Transform parent, Material mat, Vector3 centre, Vector3 size, Vector2 tile, bool shadows = true)
+        {
+            var go = MeshObject(name, parent, BoxMesh(size, tile), mat, shadows);
+            go.GetComponent<MeshRenderer>().receiveShadows = shadows;
+            go.transform.localPosition = centre;
+            return go;
+        }
+
+        static Mesh BoxMesh(Vector3 s, Vector2 tile)
+        {
+            var verts = new System.Collections.Generic.List<Vector3>();
+            var norms = new System.Collections.Generic.List<Vector3>();
+            var uvs = new System.Collections.Generic.List<Vector2>();
+            var tris = new System.Collections.Generic.List<int>();
+            Vector3 h = s * 0.5f;
+            // normal, right (u), up (v) per face, as seen from outside
+            Vector3[,] faces =
+            {
+                { Vector3.up, Vector3.right, Vector3.forward },
+                { Vector3.down, Vector3.right, Vector3.back },
+                { Vector3.forward, Vector3.left, Vector3.up },
+                { Vector3.back, Vector3.right, Vector3.up },
+                { Vector3.right, Vector3.forward, Vector3.up },
+                { Vector3.left, Vector3.back, Vector3.up },
+            };
+            for (int f = 0; f < 6; f++)
+            {
+                Vector3 n = faces[f, 0], r = faces[f, 1], u = faces[f, 2];
+                float hr = Mathf.Abs(Vector3.Dot(h, r)), hu = Mathf.Abs(Vector3.Dot(h, u)), hn = Mathf.Abs(Vector3.Dot(h, n));
+                int b = verts.Count;
+                for (int k = 0; k < 4; k++)
+                {
+                    float a = (k == 1 || k == 2) ? 1 : -1, c = k >= 2 ? 1 : -1;
+                    verts.Add(n * hn + r * (a * hr) + u * (c * hu));
+                    norms.Add(n);
+                    uvs.Add(new Vector2((a * hr + hr) / tile.x, (c * hu + hu) / tile.y));
+                }
+                tris.AddRange(new[] { b, b + 2, b + 1, b, b + 3, b + 2 });
+            }
+            var m = new Mesh { name = "TexturedBox" };
+            m.SetVertices(verts); m.SetNormals(norms); m.SetUVs(0, uvs); m.SetTriangles(tris, 0);
+            m.RecalculateTangents();
+            m.RecalculateBounds();
+            return m;
+        }
+
         public static GameObject MeshObject(string name, Transform parent, Mesh mesh, Material mat, bool shadows = false)
         {
             var go = new GameObject(name);

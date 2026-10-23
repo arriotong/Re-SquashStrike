@@ -142,6 +142,7 @@ namespace SquashGame.UI
             Row(v, new SelectorItem("Frame cap", new[] { "Off", "60", "120", "144", "240" }, () => Math.Max(0, Array.IndexOf(caps, S.FrameCap)), i => { S.FrameCap = caps[i]; Changed(true); }), "The most frames a second (with VSync off).");
             var q = new List<string> { "Default" }; q.AddRange(QualitySettings.names);
             Row(v, new CarouselItem("Quality", q.ToArray(), () => S.Quality + 1, i => { S.Quality = i - 1; Changed(true); }), "Shadows and smoothing. The ball plays the same at every setting.");
+            Row(v, new SelectorItem("Venue", new[] { "Off", "Low", "High" }, () => S.Venue, i => { S.Venue = i; Changed(false); }), "The arena around the court: crowd, lights and screens. Low leaves out the extra lights and the picture grade; Off is the plain court.");
 
             // ---- AUDIO ----
             var a = Panel("AUDIO");
@@ -149,6 +150,7 @@ namespace SquashGame.UI
             Row(a, Volume("Sound effects", () => S.SfxVolume, x => S.SfxVolume = x), "The ball, the walls, the shoes, the menus.");
             Row(a, Volume("Referee", () => S.RefereeVolume, x => S.RefereeVolume = x), "The calls.");
             Row(a, Volume("Music", () => S.MusicVolume, x => S.MusicVolume = x), "The menus' music.");
+            Row(a, Volume("Crowd", () => S.CrowdVolume, x => S.CrowdVolume = x), "The people watching: quiet in a rally, applause after it.");
 
             // ---- ACCESSIBILITY ----
             var acc = Panel("ACCESSIBILITY");

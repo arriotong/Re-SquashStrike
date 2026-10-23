@@ -19,7 +19,7 @@ using UnityEngine;
 
 namespace SquashGame.Progression
 {
-    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title }
+    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour }
 
     public enum UnlockKind { Free, Level, Achievement }
 
@@ -30,6 +30,7 @@ namespace SquashGame.Progression
         public Color A, B;                 // main colour; second colour (shirt sleeves, banner stripe)
         public bool None;                  // "no headband"
         public string Pose;                // celebrations: the pose library's name
+        public int Style;                  // PR3: hair - the drawn style (AthleteRig.HairStyles)
         public UnlockKind Unlock;
         public int Level;                  // UnlockKind.Level
         public string Achievement;         // UnlockKind.Achievement
@@ -53,6 +54,8 @@ namespace SquashGame.Progression
     {
         public Color ShirtBody, ShirtSleeves, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings;
         public bool HasHeadband, HasWristband;
+        public int HairStyle;              // PR3: 0 shaved .. AthleteRig.HairStyles - 1
+        public Color Hair;
     }
 
     [Serializable]
@@ -60,7 +63,8 @@ namespace SquashGame.Progression
     {
         public string Shirt = "shirt_charcoal", Shorts = "shorts_black", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3",
                       Headband = "headband_none", Wristband = "wristband_none", Frame = "frame_graphite", Grip = "grip_black",
-                      Strings = "strings_white", Celebration = "cel_fist", Banner = "banner_charcoal", Title = "title_rookie";
+                      Strings = "strings_white", Celebration = "cel_fist", Banner = "banner_charcoal", Title = "title_rookie",
+                      Hair = "hair_short", HairColour = "haircol_darkbrown";
 
         public string Get(Slot s)
         {
@@ -69,6 +73,7 @@ namespace SquashGame.Progression
                 case Slot.Shirt: return Shirt; case Slot.Shorts: return Shorts; case Slot.Socks: return Socks; case Slot.Shoes: return Shoes;
                 case Slot.Skin: return Skin; case Slot.Headband: return Headband; case Slot.Wristband: return Wristband; case Slot.Frame: return Frame;
                 case Slot.Grip: return Grip; case Slot.Strings: return Strings; case Slot.Celebration: return Celebration; case Slot.Banner: return Banner;
+                case Slot.Hair: return Hair; case Slot.HairColour: return HairColour;
                 default: return Title;
             }
         }
@@ -80,6 +85,7 @@ namespace SquashGame.Progression
                 case Slot.Shirt: Shirt = id; break; case Slot.Shorts: Shorts = id; break; case Slot.Socks: Socks = id; break; case Slot.Shoes: Shoes = id; break;
                 case Slot.Skin: Skin = id; break; case Slot.Headband: Headband = id; break; case Slot.Wristband: Wristband = id; break; case Slot.Frame: Frame = id; break;
                 case Slot.Grip: Grip = id; break; case Slot.Strings: Strings = id; break; case Slot.Celebration: Celebration = id; break; case Slot.Banner: Banner = id; break;
+                case Slot.Hair: Hair = id; break; case Slot.HairColour: HairColour = id; break;
                 default: Title = id; break;
             }
         }
@@ -89,8 +95,17 @@ namespace SquashGame.Progression
 
     public static class Cosmetics
     {
-        public static readonly Slot[] KitSlots = { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Skin, Slot.Headband, Slot.Wristband, Slot.Frame, Slot.Grip, Slot.Strings };
-        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title" };
+        public static readonly Slot[] KitSlots = { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Skin, Slot.Headband, Slot.Wristband, Slot.Frame, Slot.Grip, Slot.Strings, Slot.Hair, Slot.HairColour };
+        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title", "Hair", "Hair colour" };
+
+        /// <summary>PR3: the hair styles, in AthleteRig's order (item id suffix, name).</summary>
+        public static readonly (string id, string name)[] HairStyles =
+            { ("shaved", "Shaved"), ("crop", "Crop"), ("short", "Short"), ("curls", "Curls"), ("bun", "Bun"), ("ponytail", "Ponytail"), ("mohawk", "Mohawk") };
+        static readonly (string id, string name, uint rgb)[] HairColours =
+        {
+            ("black", "Black", 0x17130f), ("darkbrown", "Dark brown", 0x352418), ("brown", "Brown", 0x5e3d23), ("auburn", "Auburn", 0x7a3418),
+            ("blonde", "Blonde", 0xc49a5c), ("platinum", "Platinum", 0xe4d6b8), ("grey", "Grey", 0x8d8b88),
+        };
 
         static List<Item> _all;
         static Dictionary<string, Item> _byId;
@@ -133,6 +148,9 @@ namespace SquashGame.Progression
             Colourways(Slot.Shoes, "shoes", new[] { "white", "black", "lime", "red", "royal", "orange", "gold", "pink", "teal", "purple" }, 2);
             uint[] skins = { 0xf3d2b8, 0xe3b48f, 0xc98e66, 0xa56b46, 0x7c4a2e, 0x4f2f1d };
             for (int i = 0; i < skins.Length; i++) Add(Slot.Skin, "skin_" + (i + 1), "Tone " + (i + 1), H(skins[i]), H(skins[i]), UnlockKind.Free);
+            // PR3: hair - who you are, not a reward, so every style and natural colour is free
+            for (int i = 0; i < HairStyles.Length; i++) Add(Slot.Hair, "hair_" + HairStyles[i].id, HairStyles[i].name, Color.white, Color.white, UnlockKind.Free).Style = i;
+            foreach (var c in HairColours) Add(Slot.HairColour, "haircol_" + c.id, c.name, H(c.rgb), H(c.rgb), UnlockKind.Free);
             Add(Slot.Headband, "headband_none", "None", Color.clear, Color.clear, UnlockKind.Free).None = true;
             Colourways(Slot.Headband, "headband", new[] { "white", "black", "lime", "red", "royal", "gold" }, 0);
             Add(Slot.Wristband, "wristband_none", "None", Color.clear, Color.clear, UnlockKind.Free).None = true;
@@ -207,7 +225,7 @@ namespace SquashGame.Progression
         public static Kit KitOf(Loadout l)
         {
             var shirt = Find(l.Shirt) ?? Find("shirt_charcoal");
-            var head = Find(l.Headband); var wrist = Find(l.Wristband);
+            var head = Find(l.Headband); var wrist = Find(l.Wristband); var hair = Find(l.Hair);
             return new Kit
             {
                 ShirtBody = shirt.A, ShirtSleeves = shirt.B,
@@ -215,6 +233,7 @@ namespace SquashGame.Progression
                 HasHeadband = head != null && !head.None, Headband = head != null ? head.A : Color.clear,
                 HasWristband = wrist != null && !wrist.None, Wristband = wrist != null ? wrist.A : Color.clear,
                 Frame = Of(l.Frame, H(0x5d656f)), Grip = Of(l.Grip, H(0x23272c)), Strings = Of(l.Strings, H(0xdde2e8)),
+                HairStyle = hair != null ? hair.Style : 2, Hair = Of(l.HairColour, H(0x352418)),
             };
         }
 
@@ -234,6 +253,7 @@ namespace SquashGame.Progression
                 Shirt = Pick(Slot.Shirt), Shorts = Pick(Slot.Shorts), Socks = Pick(Slot.Socks), Shoes = Pick(Slot.Shoes), Skin = Pick(Slot.Skin),
                 Headband = Pick(Slot.Headband), Wristband = Pick(Slot.Wristband), Frame = Pick(Slot.Frame), Grip = Pick(Slot.Grip), Strings = Pick(Slot.Strings),
             };
+            l.Hair = Pick(Slot.Hair); l.HairColour = Pick(Slot.HairColour);      // PR3: drawn after the rest, so older kits are unchanged
             return l;
         }
 
@@ -242,11 +262,11 @@ namespace SquashGame.Progression
         {
             switch (personality)
             {
-                case "attacker": return new Loadout { Shirt = "shirt_red", Shorts = "shorts_black", Socks = "socks_red", Shoes = "shoes_black", Skin = "skin_4", Headband = "headband_red", Frame = "frame_black", Grip = "grip_red" };
-                case "shotmaker": return new Loadout { Shirt = "shirt_purple", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_purple", Skin = "skin_2", Wristband = "wristband_gold", Frame = "frame_gold", Grip = "grip_white" };
-                case "grinder": return new Loadout { Shirt = "shirt_forest", Shorts = "shorts_navy", Socks = "socks_navy", Shoes = "shoes_white", Skin = "skin_5", Headband = "headband_white", Frame = "frame_teal" };
-                case "wallbot": return new Loadout { Shirt = "shirt_white", Shorts = "shorts_grey", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3" };
-                default: return new Loadout { Shirt = "shirt_royal", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_royal", Skin = "skin_3", Wristband = "wristband_white", Frame = "frame_white", Grip = "grip_royal" };
+                case "attacker": return new Loadout { Shirt = "shirt_red", Shorts = "shorts_black", Socks = "socks_red", Shoes = "shoes_black", Skin = "skin_4", Headband = "headband_red", Frame = "frame_black", Grip = "grip_red", Hair = "hair_crop", HairColour = "haircol_black" };
+                case "shotmaker": return new Loadout { Shirt = "shirt_purple", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_purple", Skin = "skin_2", Wristband = "wristband_gold", Frame = "frame_gold", Grip = "grip_white", Hair = "hair_ponytail", HairColour = "haircol_blonde" };
+                case "grinder": return new Loadout { Shirt = "shirt_forest", Shorts = "shorts_navy", Socks = "socks_navy", Shoes = "shoes_white", Skin = "skin_5", Headband = "headband_white", Frame = "frame_teal", Hair = "hair_curls", HairColour = "haircol_black" };
+                case "wallbot": return new Loadout { Shirt = "shirt_white", Shorts = "shorts_grey", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3", Hair = "hair_shaved" };
+                default: return new Loadout { Shirt = "shirt_royal", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_royal", Skin = "skin_3", Wristband = "wristband_white", Frame = "frame_white", Grip = "grip_royal", Hair = "hair_short", HairColour = "haircol_brown" };
             }
         }
 

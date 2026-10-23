@@ -67,7 +67,7 @@ namespace SquashGame.Tests
             }
         }
 
-        static void Wav(string path, float[] s)
+        internal static void Wav(string path, float[] s)
         {
             using (var w = new BinaryWriter(File.Create(path)))
             {

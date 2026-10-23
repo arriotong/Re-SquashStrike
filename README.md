@@ -25,7 +25,9 @@ It runs on Windows 10 or 11 (64-bit), with a keyboard and mouse or a gamepad. No
 - **Replay Theatre**: every match is saved. Watch it back in slow motion from any camera, with highlights.
 - **Locker Room**: kit and racket colours you earn by playing. Cosmetic only.
 - **Lets and strokes**: a real referee. Ask for a let when you are blocked, or switch let calls off in Settings > Gameplay.
-- **Settings**: change your keys and pad buttons, pick the match camera (back wall, high, low glass), and more.
+- **A glass-court arena**: a full crowd that hushes in a rally and applauds after it, an "ooh" at a tin, a cheer for a game. You get a big screen, court lights, a game-ball chip and a rally counter, and the ball leaves a mark wherever it hits.
+- **Your look**: skin tone, seven hair styles and hair colours, plus your kit and racket.
+- **Settings**: change your keys and pad buttons, pick the match camera (back wall, high, low glass), the arena's detail (Settings > Video > Venue), the crowd's volume, and more.
 
 ## Controls
 

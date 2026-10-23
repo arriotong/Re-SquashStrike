@@ -133,8 +133,9 @@ namespace SquashGame.Athlete
                 {
                     int v0 = i * segs + j, v1 = i * segs + (j + 1) % segs;
                     int v2 = (i + 1) * segs + j, v3 = (i + 1) * segs + (j + 1) % segs;
-                    d.T.Add(v0); d.T.Add(v2); d.T.Add(v1);
-                    d.T.Add(v1); d.T.Add(v2); d.T.Add(v3);
+                    // Wound for Unity after ToUnity's X mirror (PR3: this was inside-out, so the far side drew).
+                    d.T.Add(v0); d.T.Add(v1); d.T.Add(v2);
+                    d.T.Add(v1); d.T.Add(v3); d.T.Add(v2);
                 }
 
             Cap(d, pos, rings, segs, 0, -1);
@@ -151,8 +152,8 @@ namespace SquashGame.Athlete
             for (int j = 0; j < segs; j++)
             {
                 int u = baseIdx + j, v = baseIdx + (j + 1) % segs;
-                if (dir > 0) { d.T.Add(c); d.T.Add(v); d.T.Add(u); }
-                else { d.T.Add(c); d.T.Add(u); d.T.Add(v); }
+                if (dir > 0) { d.T.Add(c); d.T.Add(u); d.T.Add(v); }
+                else { d.T.Add(c); d.T.Add(v); d.T.Add(u); }
             }
         }
 

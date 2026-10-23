@@ -117,7 +117,7 @@ namespace SquashGame.Athlete
         {
             var l = KitSource != null ? KitSource() : null;
             if (l == null) return;
-            string key = l.Shirt + l.Shorts + l.Socks + l.Shoes + l.Skin + l.Headband + l.Wristband + l.Frame + l.Grip + l.Strings;
+            string key = l.Shirt + l.Shorts + l.Socks + l.Shoes + l.Skin + l.Headband + l.Wristband + l.Frame + l.Grip + l.Strings + l.Hair + l.HairColour;
             if (key == _kitKey) return;
             _kitKey = key;
             Worn = l.Clone();

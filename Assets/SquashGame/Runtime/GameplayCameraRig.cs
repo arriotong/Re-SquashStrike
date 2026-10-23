@@ -27,6 +27,11 @@ namespace SquashGame
         // per preset: height, distance behind the back wall, field of view, look-at height, look-at depth (back wall = the config)
         static readonly float[,] Presets = { { 0f, 0f, 0f, 0f, 0f }, { 6.4f, 3.6f, 56f, 0.7f, 4.4f }, { 1.7f, 3.4f, 60f, 1.5f, 2.2f } };
         float _lateral;
+        /// <summary>PR5: after a rally this long, the break cuts to a high side angle (the broadcast's "what a rally").</summary>
+        public const int BigRallyShots = 15;
+        public bool CutAway { get; private set; }
+        float _cutSide = 1f;
+        bool _wasCut;
 
         void Awake()
         {
@@ -55,6 +60,23 @@ namespace SquashGame
                 transform.LookAt(new Vector3(focus.x * 0.6f, 0.6f, focus.z), Vector3.up);
                 return;
             }
+
+            // PR5: a big rally just ended - hold a high side angle through the break.
+            CutAway = false;
+            if (Runner is MatchRunner big && !big.Demo && !big.InSetup && big.Sim != null && big.Sim.Phase == MatchPhase.RallyOver &&
+                big.Sim.ShotsPerRally.Count > 0 && big.Sim.ShotsPerRally[big.Sim.ShotsPerRally.Count - 1] >= BigRallyShots)
+            {
+                if (!_wasCut) _cutSide = Runner.Ball.Pos.X >= 0 ? -1f : 1f;           // from the side the ball isn't
+                CutAway = _wasCut = true;
+                float kc = 1f - Mathf.Exp(-3f * Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+                Vector3 want = SimToWorld.Pos(_cutSide * 2.7, 3.6, 9.3);
+                transform.position = Vector3.Lerp(transform.position, want, kc);
+                Quaternion look = Quaternion.LookRotation(SimToWorld.Pos(-_cutSide * 0.4, 0.9, 3.4) - transform.position, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, look, kc);
+                _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 54f, kc);
+                return;
+            }
+            _wasCut = false;
 
             // The menus' demo rally: slow-motion cuts from cinematic angles (the old home screen).
             if (Runner is MatchRunner menu && menu.Demo)

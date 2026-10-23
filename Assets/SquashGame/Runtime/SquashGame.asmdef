@@ -1,7 +1,7 @@
 {
     "name": "SquashGame",
     "rootNamespace": "SquashGame",
-    "references": ["SquashSim.Core", "Unity.InputSystem"],
+    "references": ["SquashSim.Core", "Unity.InputSystem", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

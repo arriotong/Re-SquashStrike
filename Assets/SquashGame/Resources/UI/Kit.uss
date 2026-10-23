@@ -844,3 +844,27 @@
 .k-th-time { width: 110px; font-size: 14px; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-th-chip { margin-left: 10px; padding: 4px 12px; border-radius: 12px; font-size: 12px; letter-spacing: 1px; background-color: rgba(255, 255, 255, 0.1); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-th-prompts { left: 40px; bottom: 22px; padding: 6px 14px; border-radius: 10px; background-color: rgba(12, 13, 16, 0.85); }
+
+/* ---- PR5: broadcast touches ---- */
+.hud-ball {
+    position: absolute; left: 20px; top: 176px; padding: 4px 12px; border-radius: 6px;
+    font-size: 13px; letter-spacing: 2px; color: rgb(14, 15, 18); background-color: rgb(200, 255, 61);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.hud-rally {
+    position: absolute; left: 50%; top: 22px; translate: -50% 0; padding: 5px 16px; border-radius: 16px;
+    font-size: 15px; letter-spacing: 3px; color: rgb(255, 255, 255); background-color: rgba(12, 13, 16, 0.86);
+    border-width: 1px; border-color: rgba(200, 255, 61, 0.5);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+    transition-property: background-color, color, scale; transition-duration: 0.25s;
+}
+.hud-rally--hot { background-color: rgb(200, 255, 61); color: rgb(14, 15, 18); scale: 1.08 1.08; }
+.hud-intro {
+    position: absolute; left: 50%; bottom: 120px; translate: -50% 30px; opacity: 0; align-items: center;
+    padding: 16px 40px 18px 40px; background-color: rgba(12, 13, 16, 0.92);
+    border-top-width: 4px; border-top-color: rgb(200, 255, 61);
+    transition-property: translate, opacity; transition-duration: 0.3s; transition-timing-function: ease-out-cubic;
+}
+.hud-intro--in { translate: -50% 0; opacity: 1; }
+.hud-intro-names { font-size: 44px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-intro-sub { font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

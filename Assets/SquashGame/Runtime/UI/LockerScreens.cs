@@ -123,6 +123,8 @@ namespace SquashGame.UI
                 case Slot.Socks: Poly(V(.38f, .1f), V(.62f, .1f), V(.62f, .62f), V(.84f, .74f), V(.8f, .9f), V(.42f, .9f), V(.38f, .78f)); break;
                 case Slot.Shoes: Poly(V(.1f, .5f), V(.38f, .5f), V(.5f, .62f), V(.86f, .66f), V(.92f, .82f), V(.1f, .82f)); break;
                 case Slot.Skin: p.BeginPath(); p.Arc(V(.5f, .45f), w * 0.3f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); break;
+                case Slot.Hair: p.BeginPath(); p.Arc(V(.5f, .55f), w * 0.32f, Angle.Degrees(180), Angle.Degrees(360)); p.ClosePath(); p.Fill(); break;
+                case Slot.HairColour: for (int i = 0; i < 3; i++) { p.BeginPath(); p.Arc(V(.28f + i * .22f, .5f), w * 0.1f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); } break;
                 case Slot.Headband: p.lineWidth = 6f; p.BeginPath(); p.Arc(V(.5f, .62f), w * 0.34f, Angle.Degrees(200), Angle.Degrees(340)); p.Stroke(); break;
                 case Slot.Wristband: p.lineWidth = 7f; p.BeginPath(); p.Arc(V(.5f, .5f), w * 0.26f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); break;
                 case Slot.Frame: p.lineWidth = 4f; p.BeginPath(); p.Arc(V(.5f, .36f), w * 0.24f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.5f, .6f)); p.LineTo(V(.5f, .92f)); p.Stroke(); break;
@@ -235,7 +237,7 @@ namespace SquashGame.UI
         {
             // ---- the kit, in three tabs of a few slots each; your athlete (or racket) live in the middle ----
             Wardrobe("CLOTHES", new[] { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes }, "you");
-            Wardrobe("LOOK", new[] { Slot.Skin, Slot.Headband, Slot.Wristband, Slot.Celebration }, "you");
+            Wardrobe("LOOK", new[] { Slot.Skin, Slot.Hair, Slot.HairColour, Slot.Headband, Slot.Wristband, Slot.Celebration }, "you");
             Wardrobe("RACKET", new[] { Slot.Frame, Slot.Grip, Slot.Strings }, "racket");
 
             // ---- CARD ----
