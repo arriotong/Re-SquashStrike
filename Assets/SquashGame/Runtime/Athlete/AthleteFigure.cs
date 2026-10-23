@@ -27,6 +27,11 @@
 //             spot and strings are EXACTLY the simulated racket's, so the
 //             racket you see at contact is the racket that hits
 //   Fatigue   extra stoop and breathing (stamina), never a bar
+//   Life      (anim rework 2026-10-23) a split step as the opponent strikes;
+//             the body leans into acceleration and braking and dips as it
+//             plants; the running pelvis bobs and the trunk counter-rotates;
+//             a light bounce on the toes while waiting; strokes accelerate
+//             into contact and ease out of it
 // ===========================================================
 
 using UnityEngine;
@@ -67,7 +72,7 @@ namespace SquashGame.Athlete
         public readonly bool[] FootPlanted = { true, true };
 
         // ---- poses ----
-        AthletePose _ready, _shuffle, _runA, _runB, _backpedal;
+        AthletePose _ready, _shuffle, _runA, _runB, _backpedal, _splitHop;
         AthletePose _cBack, _cContact, _cFollow;
         float _contactBearing;
         readonly PoseBuffer _loco = new PoseBuffer(), _stroke = new PoseBuffer(), _tmp = new PoseBuffer(), _out = new PoseBuffer();
@@ -102,6 +107,7 @@ namespace SquashGame.Athlete
             var lib = PoseLibrary.Active;
             _ready = lib.Find("ready"); _shuffle = lib.Find("shuffle");
             _runA = lib.Find("run_a"); _runB = lib.Find("run_b"); _backpedal = lib.Find("backpedal");
+            _splitHop = lib.Find("split_hop");
             _out.Set(_ready); _loco.Set(_ready); _stroke.Set(_ready);
         }
 
@@ -172,6 +178,20 @@ namespace SquashGame.Athlete
         }
 
         static float Ease(float t) { t = Mathf.Clamp01(t); return t * t * (3f - 2f * t); }
+        /// <summary>Into contact: slow off the backswing, fast at the ball.</summary>
+        static float EaseIn(float t) { t = Mathf.Clamp01(t); return t * t * (0.35f + 0.65f * t); }
+        /// <summary>Out of contact: fast off the ball, settling into the follow-through.</summary>
+        static float EaseOut(float t) { t = Mathf.Clamp01(t); float u = 1f - t; return 1f - u * u * u; }
+
+        // ---- life (anim rework) ----
+        public const float SplitSeconds = 0.34f;
+        float _split = -1f, _lastOppContact = -1f, _bounce;
+        Vector3 _prevVel, _accel;
+        float _plant;
+        /// <summary>The split step's progress 0..1 while it plays, else -1 (tests).</summary>
+        public float SplitT { get { return _split; } }
+        /// <summary>The lean into acceleration this frame, degrees forward (tests).</summary>
+        public float AccelLean { get; private set; }
 
         public void Pose(AthleteSnapshot v, Vector3 ball, float dt)
         {
@@ -239,8 +259,8 @@ namespace SquashGame.Athlete
                 if (v.Swing == SwingPhase.Swinging)
                 {
                     float t = Mathf.Clamp01(v.SwingT);
-                    if (t < 0.5f) { _stroke.Set(_cBack); _stroke.Blend(_cContact, Ease(t / 0.5f)); }
-                    else { _stroke.Set(_cContact); _stroke.Blend(_cFollow, Ease((t - 0.5f) / 0.5f)); }
+                    if (t < 0.5f) { _stroke.Set(_cBack); _stroke.Blend(_cContact, EaseIn(t / 0.5f)); }
+                    else { _stroke.Set(_cContact); _stroke.Blend(_cFollow, EaseOut((t - 0.5f) / 0.5f)); }
                 }
                 else if (v.Swing == SwingPhase.Recovering || (!inStroke && _latched)) _stroke.Set(_cFollow);
                 else _stroke.Set(_cBack);                                           // armed / preparing / scheduled: the backswing
@@ -248,6 +268,27 @@ namespace SquashGame.Athlete
                 _out.Blend(_stroke, Ease(_strokeW));
             }
             else _out.CopyFrom(_loco);
+
+            // ---------------- split step: a small hop as the opponent strikes, landing low and ready ----------------
+            var lastHit = Runner.LastRacketContact;
+            if (lastHit != null && lastHit.PlayerIndex >= 0 && lastHit.PlayerIndex != Index && (float)lastHit.Time != _lastOppContact)
+            {
+                _lastOppContact = (float)lastHit.Time;
+                if (!inStroke && !v.Diving && speed < 3.2f) _split = 0f;
+            }
+            float splitLift = 0f, splitDip = 0f;
+            if (_split >= 0f)
+            {
+                _split += dt / SplitSeconds;
+                if (_split >= 1f || inStroke) _split = -1f;
+                else
+                {
+                    float air = _split < 0.55f ? Mathf.Sin(_split / 0.55f * Mathf.PI) : 0f;
+                    splitLift = air * 0.07f;
+                    splitDip = _split >= 0.55f ? Mathf.Sin((_split - 0.55f) / 0.45f * Mathf.PI) * 0.07f : 0f;
+                    if (_splitHop != null) { _tmp.Set(_splitHop); _out.Blend(_tmp, air * 0.85f); }
+                }
+            }
 
             // ---------------- the dive (the original SquashStrike): flat out toward the ball, then up again ----------------
             float diveWant = v.Diving ? 1f : (v.GetUp > 0f ? 0.55f * v.GetUp : 0f);
@@ -284,6 +325,32 @@ namespace SquashGame.Athlete
             B("Spine_02").localRotation = B("Spine_02").localRotation * Quaternion.Euler(-6f * tired, 0, 0);
             Transform pelvis = B("Pelvis");
             pelvis.localPosition += Vector3.up * (Mathf.Sin(_breath) * Mathf.Lerp(0.002f, 0.012f, tired));
+
+            // ---- life: lean into acceleration, plant, gait bob and counter-twist, the waiting bounce, the split step ----
+            if (dt > 1e-4f)
+            {
+                Vector3 a = (vflat - _prevVel) / dt;
+                if (a.magnitude > 60f) a = a.normalized * 60f;                   // a reset, not a push
+                _accel = Vector3.Lerp(_accel, a, 1f - Mathf.Exp(-7f * dt));
+                _prevVel = vflat;
+            }
+            Vector3 al = transform.InverseTransformDirection(_accel);             // +X left, -Z forward
+            float lean = Mathf.Clamp(-al.z * 0.9f, -12f, 16f) * (1f - _diveW);     // speeding up: forward; braking: back
+            float tilt = Mathf.Clamp(-al.x * 0.6f, -10f, 10f) * (1f - _diveW);     // into the cut
+            AccelLean = lean;
+            float braking = Mathf.Max(0f, Vector3.Dot(-_accel, vflat.sqrMagnitude > 0.01f ? vflat.normalized : Vector3.zero));
+            _plant = Mathf.Lerp(_plant, Mathf.Clamp01(braking / 25f), 1f - Mathf.Exp(-10f * dt));
+            foreach (var bn in new[] { "Spine_01", "Chest" })
+                B(bn).localRotation = B(bn).localRotation * Quaternion.Euler(-lean * 0.5f, 0f, -tilt * 0.5f);
+            float gaitW = moveW * (1f - _strokeW) * (1f - _diveW);
+            float gp = _gait * Mathf.PI * 2f;
+            B("Chest").localRotation = B("Chest").localRotation * Quaternion.Euler(0f, Mathf.Sin(gp) * 9f * gaitW, 0f);
+            pelvis.localRotation = pelvis.localRotation * Quaternion.Euler(0f, -Mathf.Sin(gp) * 6f * gaitW, 0f);
+            float bob = (Mathf.Abs(Mathf.Sin(gp)) - 0.5f) * 0.05f * gaitW;
+            bool waiting = !inStroke && speed < 0.4f && _split < 0f && _diveW < 0.01f && _momentW < 0.01f;
+            _bounce += dt * 2.3f * Mathf.PI * 2f;
+            float toes = waiting ? Mathf.Abs(Mathf.Sin(_bounce * 0.5f)) * 0.012f : 0f;
+            pelvis.localPosition += Vector3.up * (bob + toes + splitLift - splitDip - _plant * 0.06f);
 
             // ---------------- the racket target ----------------
             float w = 0f;
@@ -362,7 +429,7 @@ namespace SquashGame.Athlete
                         _stepDur[side] = Mathf.Clamp(0.24f - 0.025f * speed, 0.12f, 0.24f);
                         _footFrom[side] = Feet[side];
                     }
-                    else Feet[side] = new Vector3(Feet[side].x, Ankle + lift, Feet[side].z);
+                    else Feet[side] = new Vector3(Feet[side].x, Ankle + lift + splitLift * 0.8f, Feet[side].z);
                 }
                 if (_stepT[side] >= 0)
                 {

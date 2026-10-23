@@ -68,7 +68,7 @@ namespace SquashGame
                 // Glass fins at the back corners, full height of the glass.
                 Greybox.Box("CornerPost", venue, blue, W(side * (HW + 0.08), BACK_WALL_OUT_H / 2 + 0.02, L + 0.02), new Vector3(0.14f, (float)BACK_WALL_OUT_H + 0.04f, 0.1f));
             }
-            Greybox.Box("FrontCladding", venue, dark, W(0, H / 2, -0.17), new Vector3(2 * HW + 0.44f, H, 0.12f));
+            // (no front cladding: the front wall is glass, the crowd behind it shows through)
             Greybox.Box("FrontCoping", venue, blue, W(0, H + 0.05, -0.06), new Vector3(2 * HW + 0.5f, 0.1f, 0.36f));
 
             // ---- stands ----

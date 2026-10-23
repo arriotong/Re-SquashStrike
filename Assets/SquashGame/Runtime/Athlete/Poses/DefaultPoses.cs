@@ -81,33 +81,34 @@ namespace SquashGame.Athlete
             var poses = new List<B>
             {
                 // ---------------- stance: racket up in front, free hand by the throat ----------------
-                Pose("ready", "stance").Crouch(0.11f).Lean(16).Feet(-0.25f, -0.03f, 0.25f, 0.03f, 14, -14)
-                    .Racket(-0.20f, 1.30f, -0.55f, 0.08f, 0.75f, -0.60f, 0.3f, 0.2f, -0.9f).Hand(0.05f, 1.00f, -0.42f),
-                Pose("split_hop", "stance").Crouch(0.0f).Lean(12).Feet(-0.27f, 0, 0.27f, 0, 14, -14, 0.10f, 0.10f)
-                    .Racket(-0.22f, 1.42f, -0.52f, 0.08f, 0.8f, -0.55f, 0.3f, 0.2f, -0.9f).Hand(0.22f, 1.05f, -0.35f),
-                Pose("shuffle", "move").Crouch(0.15f).Lean(16).Feet(-0.37f, 0, 0.37f, 0, 18, -18)
-                    .Racket(-0.22f, 1.25f, -0.55f, 0.08f, 0.75f, -0.60f, 0.3f, 0.2f, -0.9f).Hand(0.10f, 0.95f, -0.42f),
-                Pose("run_a", "move").Crouch(0.08f).Lean(24).Feet(-0.12f, -0.38f, 0.12f, 0.30f, 5, -5, 0.04f, 0.16f)
-                    .Racket(-0.30f, 1.20f, -0.55f, 0.0f, 0.7f, -0.7f, 0.4f, 0.2f, -0.9f).Hand(0.20f, 0.85f, 0.25f),
-                Pose("run_b", "move").Crouch(0.08f).Lean(24).Feet(-0.12f, 0.30f, 0.12f, -0.38f, 5, -5, 0.16f, 0.04f)
-                    .Racket(-0.30f, 1.05f, -0.30f, 0.0f, 0.7f, -0.7f, 0.4f, 0.2f, -0.9f).Hand(0.20f, 1.10f, -0.40f),
-                Pose("backpedal", "move").Crouch(0.10f).Lean(6).Feet(-0.18f, 0.20f, 0.18f, -0.15f, 10, -10, 0, 0.10f)
-                    .Racket(-0.22f, 1.35f, -0.50f, 0.08f, 0.8f, -0.55f, 0.3f, 0.2f, -0.9f).Hand(0.15f, 1.05f, -0.38f),
+                // ---------------- stance: low and wide, weight forward, racket head up and angled out (anim rework 2026-10-23) ----------------
+                Pose("ready", "stance").Crouch(0.23f).Lean(30).Feet(-0.31f, -0.02f, 0.31f, 0.04f, 20, -16)
+                    .Racket(-0.36f, 1.36f, -0.42f, -0.35f, 0.80f, -0.40f, 0.25f, 0.15f, -0.95f).Hand(0.18f, 1.05f, -0.36f),
+                Pose("split_hop", "stance").Crouch(0.10f).Lean(24).Feet(-0.33f, 0, 0.33f, 0, 20, -16, 0.06f, 0.06f)
+                    .Racket(-0.38f, 1.46f, -0.40f, -0.35f, 0.85f, -0.35f, 0.25f, 0.15f, -0.95f).Hand(0.26f, 1.12f, -0.32f),
+                Pose("shuffle", "move").Crouch(0.25f).Lean(28).Feet(-0.40f, 0, 0.40f, 0, 22, -22)
+                    .Racket(-0.36f, 1.30f, -0.42f, -0.35f, 0.80f, -0.40f, 0.25f, 0.15f, -0.95f).Hand(0.22f, 1.00f, -0.38f),
+                Pose("run_a", "move").Crouch(0.12f).Lean(28).Twist(10).Feet(-0.12f, -0.46f, 0.12f, 0.36f, 5, -5, 0.04f, 0.22f)
+                    .Racket(-0.34f, 1.10f, 0.05f, -0.1f, 0.75f, 0.55f, 0.4f, 0.2f, -0.9f).Hand(0.24f, 1.05f, -0.45f),
+                Pose("run_b", "move").Crouch(0.12f).Lean(28).Twist(-10).Feet(-0.12f, 0.36f, 0.12f, -0.46f, 5, -5, 0.22f, 0.04f)
+                    .Racket(-0.34f, 1.25f, -0.55f, -0.1f, 0.75f, -0.6f, 0.4f, 0.2f, -0.9f).Hand(0.24f, 0.80f, 0.32f),
+                Pose("backpedal", "move").Crouch(0.18f).Lean(16).Feet(-0.20f, 0.22f, 0.20f, -0.16f, 12, -12, 0, 0.10f)
+                    .Racket(-0.36f, 1.40f, -0.38f, -0.3f, 0.85f, -0.35f, 0.25f, 0.15f, -0.95f).Hand(0.22f, 1.08f, -0.36f),
 
                 // ---------------- forehand drive: racket up and back, out in front at contact, over the left shoulder after ----------------
-                Pose("fh_back", "forehand").Crouch(0.14f).Lean(18).Twist(50).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
+                Pose("fh_back", "forehand").Crouch(0.18f).Lean(24).Twist(50).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
                     .Racket(-0.70f, 1.75f, 0.40f, -0.25f, 0.75f, 0.60f, -0.9f, 0.0f, 0.4f).Hand(-0.05f, 1.30f, -0.60f),
-                Pose("fh_contact", "forehand").Crouch(0.17f).Lean(24).Twist(10).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
+                Pose("fh_contact", "forehand").Crouch(0.23f).Lean(30).Twist(10).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
                     .Racket(-0.85f, 0.80f, -0.60f, -0.85f, 0.15f, -0.50f, 0.0f, 0.15f, -1.0f).Hand(0.55f, 1.10f, 0.15f),
-                Pose("fh_follow", "forehand").Crouch(0.13f).Lean(14).Twist(-55).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
+                Pose("fh_follow", "forehand").Crouch(0.17f).Lean(14).Twist(-55).Feet(-0.30f, 0.15f, 0.20f, -0.30f, 60, 30)
                     .Racket(0.35f, 1.80f, 0.10f, 0.6f, 0.5f, 0.6f, 0.5f, 0.0f, -0.8f, 0.2f, -0.5f, -0.3f).Hand(0.25f, 1.15f, -0.30f),
 
                 // ---------------- backhand drive: racket behind the left shoulder, out to the LEFT in front at contact ----------------
-                Pose("bh_back", "backhand").Crouch(0.14f).Lean(18).Twist(-60).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
+                Pose("bh_back", "backhand").Crouch(0.18f).Lean(24).Twist(-60).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
                     .Racket(0.45f, 1.70f, 0.35f, 0.3f, 0.75f, 0.55f, 0.9f, 0.0f, 0.3f, 0.15f, -0.45f, -0.3f).Hand(0.25f, 1.25f, -0.15f),
-                Pose("bh_contact", "backhand").Crouch(0.17f).Lean(24).Twist(-15).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
+                Pose("bh_contact", "backhand").Crouch(0.23f).Lean(30).Twist(-15).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
                     .Racket(0.75f, 0.80f, -0.60f, 0.85f, 0.10f, -0.45f, 0.0f, 0.15f, -1.0f, 0.15f, -0.45f, -0.35f).Hand(-0.45f, 1.10f, 0.25f),
-                Pose("bh_follow", "backhand").Crouch(0.13f).Lean(12).Twist(25).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
+                Pose("bh_follow", "backhand").Crouch(0.17f).Lean(12).Twist(25).Feet(-0.05f, -0.32f, 0.32f, 0.15f, -30, -60)
                     .Racket(-0.40f, 1.95f, -0.15f, -0.5f, 0.75f, 0.3f, -0.3f, 0.2f, -0.9f).Hand(0.55f, 1.10f, 0.35f),
 
                 // ---------------- specials ----------------
