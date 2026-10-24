@@ -322,7 +322,12 @@ namespace SquashSim.Tests
             UnityEngine.Debug.Log("[P2M7] " + s);
             Assert.That(s.FlaggedShare, Is.LessThanOrEqualTo(0.10), "flagged turns (target 8% on the full survey)");
             Assert.That(s.Rallies, Is.GreaterThan(100));
-            Assert.That(s.Count("NoLet"), Is.EqualTo(0), "the AI never asks when it was not trying, nor twice for nothing");
+            // the AI never asks when it was not trying; a misjudged appeal (Profile.Misjudge) may cost it once a game, never twice
+            int notTrying = 0;
+            foreach (var kv in s.Calls) if (kv.Key.StartsWith("NoLet:") && kv.Key.Contains("every effort")) notTrying += kv.Value;
+            Assert.That(notTrying, Is.EqualTo(0), "the AI never asks when it was not trying");
+            Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(12), "at most one appeal for nothing a game (12 games)");
+            Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(System.Math.Max(1, s.Count("Let"))), "and fewer than the good ones");
             Assert.That(s.CallShare, Is.InRange(0.003, 0.06), "calls: rare (1.5-3% on the full survey)");
         }
     }

@@ -88,6 +88,8 @@ namespace SquashGame
             _trail.startWidth = visualRadius * 1.2f;
             _trail.time = LongTrail ? 1.4f : GameplayCameraRig.Preset == GameplayCameraRig.TV ? 0.06f : 0.16f;   // the long TV lens: a short smear
             _trail.endWidth = 0f;
+            // Only a struck ball smears: one carried in the hand (or tossed to serve) moves no faster than a runner.
+            _trail.emitting = LongTrail || V3.Length(ball.Vel) > 7.0;
 
             // Visual spin, only while the sim is actually running.
             double w = V3.Length(ball.Omega);

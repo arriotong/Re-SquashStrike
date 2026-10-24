@@ -95,6 +95,8 @@ namespace SquashGame
             ShotType = hard ? "hard serve" : "lob serve";
             // Assisted fixes the serve's line itself (and that search is the expensive one): nothing to warn about.
             if (c == null || IntentSource.Assisted) { ServeLegal = true; return; }
+            // A lob serve aimed over the service line finds its own deep line (ArcadeStroke.ServeLaunch, LobNudge): nothing to warn about either.
+            if (!hard && y >= SquashSim.CourtDimensions.SERVICE_LINE_H) { ServeLegal = true; return; }
             bool same = Mathf.Abs(x - _lastPreviewX) < 0.02f && Mathf.Abs(y - _lastPreviewY) < 0.02f && hard == _lastHard && IntentSource.Assisted == _lastAssisted;
             if (same || Time.unscaledTime - _previewAt < 0.15f) return;          // a few times a second at most
             _lastPreviewX = x; _lastPreviewY = y; _lastHard = hard; _lastAssisted = IntentSource.Assisted; _previewAt = Time.unscaledTime;

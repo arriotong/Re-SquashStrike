@@ -75,9 +75,10 @@ namespace SquashSim.Tests
             {
                 V3 f = ServeAt(t[0], t[1], out _);
                 Assert.That(f, Is.Not.Null);
-                double err = System.Math.Sqrt((f.X - t[0]) * (f.X - t[0]) + (f.Y - t[1]) * (f.Y - t[1]));
                 UnityEngine.Debug.Log("[Serve] aimed (" + t[0] + ", " + t[1] + "): front wall at (" + f.X.ToString("0.00") + ", " + f.Y.ToString("0.00") + ")");
-                Assert.That(err, Is.LessThan(0.25), "the serve lands on the aim");
+                // on the aim - or, a lob serve that couldn't go deep from there, the nearest line that does (LobNudge)
+                Assert.That(System.Math.Abs(f.X - t[0]), Is.LessThan(GameTuning.Serve.LobNudge + 0.1), "the serve goes to the aim's line");
+                Assert.That(f.Y - t[1], Is.InRange(-0.85, 0.45), "and its height");
             }
             ServeAt(0.5, 1.2, out RallyOutcome low);
             Assert.That(low, Is.Not.Null);
@@ -114,6 +115,64 @@ namespace SquashSim.Tests
             Assert.That(hard.Technique, Is.EqualTo("hard serve"));
             Assert.That(hard.BallSpeedOut, Is.GreaterThan(tap.BallSpeedOut * 1.2), "the hard serve is clearly faster");
             Assert.That(hard.OutVel.Y / hard.BallSpeedOut, Is.LessThan(tap.OutVel.Y / tap.BallSpeedOut), "and flatter (a lower launch angle)");
+        }
+
+        /// <summary>Where a served ball first lands after the front wall (z, m from the front wall; -1 = never): the serve is
+        /// struck in a match, then flown on its own (the receiver would volley it).</summary>
+        static double LobServeLanding(double x, double y, bool assisted, int hold = 0)
+        {
+            var m = NewMatch();
+            m.Players[0].Arcade.Assisted = assisted;
+            double dt = PhysicsConfig.Current.Sim.FixedDt;
+            var it = m.Intents[0];
+            for (int s = 0; s < 24; s++) { Aim(it, x, y); m.Step(dt); }
+            it.Hit.Pressed = true; it.Hit.Held = hold > 0;
+            for (int s = 0; s < hold + 8; s++)
+            {
+                Aim(it, x, y);
+                if (s >= hold) it.Hit.Held = false;
+                m.Step(dt);
+                foreach (var e in m.StepEvents)
+                    if (e.Type == SimEventType.RacketContact)
+                    {
+                        var b = new BallState();
+                        b.Reset(m.Ball.Pos, m.Ball.Vel, m.Ball.Omega, m.Ball.Temperature);
+                        var events = new System.Collections.Generic.List<SimEvent>();
+                        bool front = false;
+                        for (int k = 0; k < 4000; k++)
+                        {
+                            events.Clear();
+                            BallPhysics.Step(b, m.Surfaces, dt, events);
+                            foreach (var f in events)
+                            {
+                                if (f.SurfaceClass == "frontWall") front = true;
+                                else if (front && f.SurfaceClass == "floor") return f.Point.Z;
+                            }
+                        }
+                        return -1;
+                    }
+            }
+            return -1;
+        }
+
+        [Test] public void LobServesLandDeep()
+        {
+            var lines = new System.Text.StringBuilder();
+            int shortOnes = 0, n = 0;
+            foreach (bool assisted in new[] { false, true })
+                foreach (double y in new[] { 2.2, 2.6, 3.0, 3.6, 4.2 })
+                    foreach (double x in new[] { -2.4, -1.2, 0.0, 1.2 })
+                    {
+                        double z = LobServeLanding(x, y, assisted);
+                        n++; if (z < CourtDimensions.SHORT_LINE_Z + 0.5) shortOnes++;
+                        lines.Append((assisted ? "A" : "-") + " (" + x + "," + y + ")->" + z.ToString("0.0") + "  ");
+                    }
+            var arc = new ArcadeStroke(1);
+            var surf = CourtSurfaces.Create();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < 10; i++) arc.PreviewServe(new V3(2.8, 1.0, 4.7), 30, surf, -2.4 + 0.1 * i, 3.6, 0, 1);
+            UnityEngine.Debug.Log("[Serve] lob landings: " + lines + " | a lob serve's line search: " + (sw.ElapsedMilliseconds / 10.0).ToString("0.0") + " ms");
+            Assert.That(shortOnes, Is.EqualTo(0), "lob serves landing short of the short line: " + shortOnes + "/" + n);
         }
 
         [Test] public void AssistedServesLandDeepAndLegalWhereverYouAim()

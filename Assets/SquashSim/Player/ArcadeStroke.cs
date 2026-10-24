@@ -559,6 +559,30 @@ namespace SquashSim
                 }
                 tx = bestX;
             }
+            else if (!hard && ty >= CourtDimensions.SERVICE_LINE_H)      // (aimed under the service line it stays a fault)
+            {
+                // Not assisted, a lob serve: struck at the ring if that goes deep; if not (the middle of the wall, the far
+                // half, or high - playtest 2026-10-24 "my lob serves land in the middle of the court"), the nearest line
+                // within LobServeNudge of it that does - a server picks the line that gets it into the back corner.
+                ServeAt(ball, surfaces, tx, ty, false, pace, serveSide, out _);
+                double bestScore = ServeScore(ball, surfaces, serveSide), bestX = tx, bestY = ty;
+                if (bestScore >= 0.8)
+                {
+                    double r = GameTuning.Serve.LobNudge, floorY = CourtDimensions.SERVICE_LINE_H + 0.3;
+                    // outward from the ring, stopping at the first line that is deep enough (one search, at the serve)
+                    double step = 2 * GameTuning.Assist.ServeLineStep;
+                    for (int k = 1; k <= (int)System.Math.Round(r / step) && bestScore >= 0.8; k++)
+                        foreach (double dx in new[] { k * step, -k * step })
+                            for (double dy = -0.4; dy <= 0.41 && bestScore >= 0.8; dy += 0.4)
+                            {
+                                double x = Clamp(tx + dx, -CourtDimensions.HALF_W + 0.3, CourtDimensions.HALF_W - 0.3), y = System.Math.Max(floorY, ty + dy);
+                                ServeAt(ball, surfaces, x, y, false, pace, serveSide, out _);
+                                double score = ServeScore(ball, surfaces, serveSide) + 0.3 * (System.Math.Abs(x - tx) + System.Math.Abs(y - ty));   // depth first
+                                if (score < bestScore) { bestScore = score; bestX = x; bestY = y; }
+                            }
+                }
+                tx = bestX; ty = bestY;
+            }
             ServeAt(ball, surfaces, tx, ty, hard, pace, serveSide, out speed);
             LastServeLegal = ServeScore(ball, surfaces, serveSide) < 100;
             LastServeLineX = tx;

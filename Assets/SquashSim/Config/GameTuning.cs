@@ -117,6 +117,7 @@ namespace SquashSim
         {
             public const double Speed = 24.0, HardCharge = 0.3, ChargeBonus = 0.6, Depth = 8.4;
             public const double AiPace = 0.85;                     // the physical swing's serve: 0.8-0.9 of the lift (before Ball.Pace)
+            public const double LobNudge = 4.0;                    // m: a lob serve (tap, not assisted) that can't go deep from the ring finds the deep line this far away, at most (a hard serve goes exactly to the ring)
         }
 
         /// <summary>Assisted controls.</summary>

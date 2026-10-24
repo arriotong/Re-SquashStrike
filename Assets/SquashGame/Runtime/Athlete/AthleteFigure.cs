@@ -18,7 +18,12 @@
 //                           reach, touch) and played on the sim's own swing
 //                           phase (contact at 0.5); held while preparing
 //   Legs      planted feet that take real steps toward the pose's foot
-//             positions (no sliding); leg IK reaches them, knees forward
+//             positions (no sliding); leg IK reaches them, knees forward.
+//             Running (2026-10-24, "the run looks goofy"): a gait cycle -
+//             the feet alternate in rhythm (~4.5 steps a second flat out),
+//             each planted while it bears weight and swung in an arc to
+//             land ahead of the body, a moment in the air at speed; the
+//             arms, trunk and bob keep the same rhythm
 //   Head      level; turns to the ball at most 45 deg sideways, 25 up/down
 //   Racket    always in the hand, where the pose puts it - until the
 //             simulated racket closes on the ball during a swing: within
@@ -85,6 +90,19 @@ namespace SquashGame.Athlete
         Vector3 _shift;
         readonly Vector3[] _footFrom = new Vector3[2], _footTo = new Vector3[2];
         readonly float[] _stepT = { -1f, -1f }, _stepDur = { 0.2f, 0.2f };
+        // the running gait: each foot's swing (lifted from), and whether the gait drove the feet last frame
+        readonly Vector3[] _liftFrom = new Vector3[2];
+        readonly bool[] _inSwing = new bool[2];
+        bool _gaitFeet;
+        float _stride = 1.6f;
+        /// <summary>Running: the feet are on the gait cycle (tests).</summary>
+        public bool GaitFeet { get { return _gaitFeet; } }
+        const float GaitMinSpeed = 1.8f;
+        const float RunTurnFrom = 2.0f, RunTurnFull = 4.0f;  // m/s: from here the body turns into the run, fully by here                     // m/s: above this the feet run in rhythm, below they step
+        /// <summary>One gait cycle (two steps), metres: short, choppy squash steps that lengthen with speed.</summary>
+        static float Stride(float speed) { return Mathf.Clamp(0.9f + 0.26f * speed, 0.9f, 2.3f); }
+        /// <summary>The share of the cycle each foot is on the floor: walking-like slow, a flight phase flat out.</summary>
+        static float Duty(float speed) { return Mathf.Lerp(0.56f, 0.38f, Mathf.InverseLerp(GaitMinSpeed, 5.5f, speed)); }
 
         const float MaxFacingFromFront = 115f;               // degrees either side of facing the front wall (between strokes)
         const float TurnRateIdle = 300f, TurnRateSwing = 540f; // degrees per second
@@ -231,7 +249,23 @@ namespace SquashGame.Athlete
             if (inStroke && _cContact != null && toContact.sqrMagnitude > 0.04f)
                 want = Vector3.SignedAngle(front, toContact, up) - _contactBearing;          // the ball where the contact pose expects it
             else
-                want = Mathf.Clamp(Vector3.SignedAngle(front, Flat(v.Forward, front), up), -MaxFacingFromFront, MaxFacingFromFront);
+            {
+                Vector3 face = Flat(v.Forward, front);
+                // Running (2026-10-24, "the run looks goofy" - it crab-ran, facing the ball whatever way it went): the body
+                // turns into the run - the way it goes when that is forward or across, side-on when it goes back (the
+                // chasse back to the corner, never a backward sprint).
+                Vector3 travel = new Vector3(v.Velocity.x, 0f, v.Velocity.z);
+                float runW = Mathf.InverseLerp(RunTurnFrom, RunTurnFull, travel.magnitude) * (1f - _diveW);
+                if (runW > 0f)
+                {
+                    travel.Normalize();
+                    float rel = Vector3.SignedAngle(face, travel, up);
+                    Vector3 runFace = Mathf.Abs(rel) <= 100f ? travel
+                        : Quaternion.AngleAxis(rel > 0f ? rel - 90f : rel + 90f, up) * face;      // side-on: the perpendicular nearer the ball
+                    face = Vector3.Slerp(face, runFace, runW);
+                }
+                want = Mathf.Clamp(Vector3.SignedAngle(front, face, up), -MaxFacingFromFront, MaxFacingFromFront);
+            }
             if (!_hasYaw) { _yaw = want; _hasYaw = true; }
             float rate = (inStroke ? TurnRateSwing : TurnRateIdle) * dt;
             float turn = Mathf.Clamp(Mathf.DeltaAngle(_yaw, want) * (1f - Mathf.Exp(-10f * dt)) * 1.6f, -rate, rate);
@@ -251,12 +285,15 @@ namespace SquashGame.Athlete
             float moveW = Mathf.Clamp01((speed - 0.35f) / 2.2f);
             if (moveW > 0f)
             {
-                _gait += speed * dt / 1.6f;
+                // side-on (the chasse): shorter, quicker steps than running forward
+                float lateral = Mathf.Clamp01(Mathf.Abs(sideSpeed) / Mathf.Max(0.01f, speed));
+                _stride = Stride(speed) * Mathf.Lerp(1f, 0.6f, lateral);
+                _gait += speed * dt / _stride;
                 if (Mathf.Abs(sideSpeed) > Mathf.Abs(fwdSpeed) * 0.8f) _tmp.Set(_shuffle);
                 else if (fwdSpeed > 0f)
                 {
                     _tmp.Set(_runA);
-                    _tmp.Blend(_runB, 0.5f + 0.5f * Mathf.Sin(_gait * Mathf.PI * 2f));
+                    _tmp.Blend(_runB, 0.5f - 0.5f * Mathf.Cos(_gait * Mathf.PI * 2f));   // run_a as the right foot lands (gait 0), run_b the left (0.5)
                 }
                 else _tmp.Set(_backpedal);
                 _loco.Blend(_tmp, moveW);
@@ -355,7 +392,8 @@ namespace SquashGame.Athlete
             float gp = _gait * Mathf.PI * 2f;
             B("Chest").localRotation = B("Chest").localRotation * Quaternion.Euler(0f, Mathf.Sin(gp) * 9f * gaitW, 0f);
             pelvis.localRotation = pelvis.localRotation * Quaternion.Euler(0f, -Mathf.Sin(gp) * 6f * gaitW, 0f);
-            float bob = (Mathf.Abs(Mathf.Sin(gp)) - 0.5f) * 0.05f * gaitW;
+            // lowest mid-stance, highest in the flight between steps (twice a cycle)
+            float bob = -Mathf.Cos(2f * (gp - Mathf.PI * Duty(speed))) * 0.022f * gaitW;
             bool waiting = !inStroke && speed < 0.4f && _split < 0f && _diveW < 0.01f && _momentW < 0.01f;
             _bounce += dt * 2.3f * Mathf.PI * 2f;
             float toes = waiting ? Mathf.Abs(Mathf.Sin(_bounce * 0.5f)) * 0.012f : 0f;
@@ -419,6 +457,8 @@ namespace SquashGame.Athlete
             Vector3 right = Vector3.Cross(up, fwd);
             Vector3 shiftFlat = new Vector3(_shift.x, 0, _shift.z);
             float threshold = speed > 2.5f ? StepThresholdFast : StepThreshold;
+            bool gaitFeet = _hasFeet && speed > GaitMinSpeed && _strokeW < 0.5f && _diveW < 0.05f && _momentW < 0.05f && _split < 0f && !v.Diving;
+            float cycles = speed / Mathf.Max(0.5f, _stride), duty = Duty(speed);
             for (int side = 0; side < 2; side++)
             {
                 Vector3 local = side == 0 ? _out.FootR : _out.FootL;
@@ -426,6 +466,39 @@ namespace SquashGame.Athlete
                 float lift = Mathf.Max(0f, local.y - GateA.Ankle) * VisualScale;   // pose units are life-size
                 target.y = Ankle;
                 if (!_hasFeet) Feet[side] = target;
+
+                if (gaitFeet)
+                {
+                    // ---- running: the gait cycle drives the feet (right lands at 0, left at 0.5) ----
+                    _stepT[side] = -1f;
+                    float ph = Mathf.Repeat(_gait + (side == 0 ? 0f : 0.5f), 1f);
+                    if (ph < duty)
+                    {
+                        if (_inSwing[side]) _inSwing[side] = false;                      // landed: planted while it bears weight
+                        Feet[side] = new Vector3(Feet[side].x, Ankle, Feet[side].z);
+                    }
+                    else
+                    {
+                        if (!_inSwing[side]) { _inSwing[side] = true; _liftFrom[side] = Feet[side]; }
+                        float u = (ph - duty) / (1f - duty);
+                        // where it lands: under its hip when it lands, half a stance ahead (so the body passes over it)
+                        Vector3 slot = transform.TransformPoint(new Vector3(Mathf.Clamp(local.x, -0.16f, 0.16f), 0f, 0f)) + shiftFlat * 0.6f;
+                        float untilLand = (1f - ph) / Mathf.Max(0.1f, cycles);
+                        Vector3 land = slot + vflat * (untilLand + 0.5f * duty / Mathf.Max(0.1f, cycles));
+                        Vector3 fp = Vector3.Lerp(_liftFrom[side], land, Ease(u));
+                        fp.y = Ankle + Mathf.Sin(u * Mathf.PI) * Mathf.Min(0.16f, 0.06f + 0.018f * speed);
+                        Feet[side] = fp;
+                    }
+                    FootPlanted[side] = !_inSwing[side];
+                }
+                else
+                {
+                if (_gaitFeet && _inSwing[side])
+                {
+                    // out of the run mid-swing: finish it as an ordinary step
+                    _inSwing[side] = false;
+                    _stepT[side] = 0f; _stepDur[side] = 0.12f; _footFrom[side] = Feet[side];
+                }
 
                 if (_stepT[side] < 0)
                 {
@@ -452,6 +525,7 @@ namespace SquashGame.Athlete
                     if (u >= 1f) { _stepT[side] = -1f; Feet[side] = _footTo[side]; }
                 }
                 FootPlanted[side] = _stepT[side] < 0;
+                }
 
                 string sn = side == 0 ? "R" : "L";
                 float outward = side == 0 ? -1f : 1f;
@@ -460,6 +534,7 @@ namespace SquashGame.Athlete
                 B("Foot_" + sn).rotation = transform.rotation * Quaternion.Euler(0f, side == 0 ? _out.FootYawR : _out.FootYawL, 0f);
             }
             _hasFeet = true;
+            _gaitFeet = gaitFeet;
 
             // ---------------- head: level, eyes on the ball ----------------
             {
