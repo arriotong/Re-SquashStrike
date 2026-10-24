@@ -23,9 +23,19 @@ namespace SquashGame
 
         /// <summary>Settings > Gameplay > Camera: 0 back wall (the TV view), 1 high, 2 low glass.</summary>
         public static int Preset;
-        public static readonly string[] PresetNames = { "Back wall", "High", "Low glass" };
+        public static readonly string[] PresetNames = { "TV", "High", "Low glass", "Wide" };
         // per preset: height, distance behind the back wall, field of view, look-at height, look-at depth (back wall = the config)
-        static readonly float[,] Presets = { { 0f, 0f, 0f, 0f, 0f }, { 6.4f, 3.6f, 56f, 0.7f, 4.4f }, { 1.7f, 3.4f, 60f, 1.5f, 2.2f } };
+        // TV (2026-10-24, measured off a PSA broadcast): far back in the stands and up high on a long lens - the court
+        // fills the frame, near and far players look nearly the same size, as on television. Wide is the old lab camera.
+        static readonly float[,] Presets =
+        {
+            { 6.0f, 12.5f, 24f, 0.9f, 1.5f },      // TV
+            { 8.2f, 4.5f, 50f, 0.7f, 4.4f },       // High
+            { 1.7f, 3.4f, 60f, 1.5f, 2.2f },       // Low glass
+            { 3.95f, 6.6f, 52f, 1.55f, 3.2f },     // Wide
+        };
+        /// <summary>A club's gallery is small and low: its TV and High views stay inside it.</summary>
+        static readonly float[] ClubView = { 4.3f, 8.6f, 34f, 1.2f, 2.5f };
         float _lateral;
         /// <summary>PR5: after a rally this long, the break cuts to a high side angle (the broadcast's "what a rally").</summary>
         public const int BigRallyShots = 15;
@@ -95,8 +105,10 @@ namespace SquashGame
             // Projection: hold the horizontal field on narrow windows.
             float aspect = _cam.aspect;
             int p = Mathf.Clamp(Preset, 0, PresetNames.Length - 1);
-            bool custom = p != 0 && !(Runner is MatchRunner mr0 && mr0.Demo);           // the menus' demo keeps its cinematics
-            float fov = custom ? Presets[p, 2] : (float)cfg.Fov;
+            if (Runner is MatchRunner mr0 && mr0.Demo) p = 0;                            // (the menus' demo films its own cinematics)
+            bool club = VenueView.Detail > 0 && Courts.Current.Id == "club" && p <= 1;
+            float Pv(int k) { return club ? ClubView[k] : Presets[p, k]; }
+            float fov = Pv(2);
             if (aspect < REFERENCE_ASPECT)
             {
                 float refTan = Mathf.Tan(fov * Mathf.Deg2Rad / 2f);
@@ -119,8 +131,8 @@ namespace SquashGame
             float k = 1f - Mathf.Exp(-(float)cfg.FollowSmoothing * Mathf.Max(0f, Time.unscaledDeltaTime));
             _lateral += (target - _lateral) * k;
 
-            double h = custom ? Presets[p, 0] : cfg.Height, dist = custom ? Presets[p, 1] : cfg.Distance;
-            double lh = custom ? Presets[p, 3] : cfg.LookAtHeight, ld = custom ? Presets[p, 4] : cfg.LookAtDepth;
+            double h = Pv(0), dist = Pv(1);
+            double lh = Pv(3), ld = Pv(4);
             transform.position = SimToWorld.Pos(_lateral, h, CourtDimensions.LENGTH + dist);
             transform.LookAt(SimToWorld.Pos(_lateral * 0.5, lh, ld), Vector3.up);
 

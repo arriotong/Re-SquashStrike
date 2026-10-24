@@ -91,7 +91,7 @@ namespace SquashGame.Athlete
         const float StepThreshold = 0.22f, StepThresholdFast = 0.14f;
         /// <summary>The athlete is drawn at this fraction of life size (the court is not): smaller figures read
         /// better from the broadcast camera. Gameplay distances (reach, hitting) are unchanged.</summary>
-        public const float VisualScale = 0.88f;
+        public const float VisualScale = 1.0f;          // life size (2026-10-24: the TV camera's long lens shows them as broadcasts do)
         static float Ankle { get { return GateA.Ankle * VisualScale; } }
         const float ComfortReach = 0.90f * VisualScale;                    // shoulder -> sweet spot an arm + racket (strings set) cover
         const float MaxBodyShift = 0.60f, MaxBodyShiftLocked = 1.10f;   // locked: the drawn lunge may lead the sim's

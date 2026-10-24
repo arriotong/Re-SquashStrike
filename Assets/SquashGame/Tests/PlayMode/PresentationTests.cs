@@ -126,9 +126,9 @@ namespace SquashGame.Tests
             Assert.That(court.Runner.Demo, Is.True, "the menus should be playing their demo rally");
             var cam = Camera.main;
             cam.GetComponent<GameplayCameraRig>().enabled = false;
-            cam.fieldOfView = 52f;
-            cam.transform.position = SimToWorld.Pos(0, 3.95, 16.35);
-            cam.transform.LookAt(SimToWorld.Pos(0, 1.55, 3.2));
+            cam.fieldOfView = 24f;                                             // the TV view
+            cam.transform.position = SimToWorld.Pos(0, 6.0, 22.25);
+            cam.transform.LookAt(SimToWorld.Pos(0, 0.9, 1.5));
             var ball = Object.FindFirstObjectByType<BallView>();
             var marks = Object.FindFirstObjectByType<ImpactMarkView>();
 
@@ -256,9 +256,10 @@ namespace SquashGame.Tests
                 {
                     if (row == 0)
                     {
-                        cam.fieldOfView = 52f;
-                        cam.transform.position = SimToWorld.Pos(0, 3.95, 16.35);
-                        cam.transform.LookAt(SimToWorld.Pos(0, 1.55, 3.2));
+                        bool clubView = Courts.All[i].Id == "club";
+                        cam.fieldOfView = clubView ? 34f : 24f;
+                        cam.transform.position = clubView ? SimToWorld.Pos(0, 4.3, 18.35) : SimToWorld.Pos(0, 6.0, 22.25);
+                        cam.transform.LookAt(clubView ? SimToWorld.Pos(0, 1.2, 2.5) : SimToWorld.Pos(0, 0.9, 1.5));
                     }
                     else
                     {
