@@ -76,6 +76,7 @@ namespace SquashSim
         bool _charging;
         string _stroke = "hit";
         double _pending = -1;          // grace time left for a released stroke waiting for the ball
+        bool _pendingLive;             // was the ball ever this player's to hit while the stroke waited?
         double _pendingCharge, _lunged;
         bool _boast;
         /// <summary>The next stroke will be a boast (E / pad RB tapped).</summary>
@@ -247,6 +248,7 @@ namespace SquashSim
                 {
                     _charging = false;
                     _pending = c.Grace;
+                    _pendingLive = false;
                     _pendingCharge = System.Math.Min(1, _charge / c.ChargeFull);
                 }
             }
@@ -283,6 +285,7 @@ namespace SquashSim
 
             if (_pending > 0)
             {
+                if (ctrl.ContactEnabled) _pendingLive = true;
                 if (ctrl.ContactEnabled && InReach(player, ball, c, out double dist))
                 {
                     _releaseWait = c.Grace - _pending;
@@ -294,7 +297,11 @@ namespace SquashSim
                 {
                     _pending = -1;
                     _boast = false;
-                    Whiff(ctrl, ball);
+                    // Let go while the ball was never yours to hit (the opponent's shot still on its way to the front
+                    // wall): no swing at it - the stroke is simply dropped (playtest 2026-10-24: a swing there, with
+                    // the ball glancing off you, looked like a hit before the front wall).
+                    if (_pendingLive) Whiff(ctrl, ball);
+                    else if (sw.State == SwingStates.Preparing) sw.State = SwingStates.Idle;
                 }
             }
             return null;

@@ -80,9 +80,12 @@ namespace SquashSim
 
             double tx = rvx - vn * nx, ty = rvy - vn * ny, tz = rvz - vn * nz;
             double e = cfg.Restitution, k = cfg.TangentialRetain;
-            ball.Vel.X = body.Vel.X + (-e * vn * nx + tx * k);
+            // Off a body the ball goes dead: it keeps only part of the athlete's own speed (playtest 2026-10-24 - with all of
+            // it, a ball off a running player flew away like a shot).
+            double carry = cfg.Carry;
+            ball.Vel.X = body.Vel.X * carry + (-e * vn * nx + tx * k);
             ball.Vel.Y = (-e * vn * ny + ty * k);
-            ball.Vel.Z = body.Vel.Z + (-e * vn * nz + tz * k);
+            ball.Vel.Z = body.Vel.Z * carry + (-e * vn * nz + tz * k);
             ball.Omega.X *= cfg.SpinRetain; ball.Omega.Y *= cfg.SpinRetain; ball.Omega.Z *= cfg.SpinRetain;
             BallPhysics.Wake(ball);
 

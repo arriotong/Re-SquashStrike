@@ -233,6 +233,7 @@ namespace SquashSim
         public double TangentialRetain;     // fraction of sliding speed kept along the body
         public double SpinRetain;
         public int SweepSamples;            // sub-samples of the ball's path per step (thin grazes at 70 m/s)
+        public double Carry = 0.3;          // how much of the athlete's own velocity the ball takes (a ball off a running body drops)
     }
 
     /// <summary>After a stroke the body needs time to recover; stretched strokes cost more.</summary>
@@ -450,7 +451,7 @@ namespace SquashSim
                 },
                 Nick = new NickSection { DetectHeight = 0.09, MinNormalSpeed = 2.5 },
 
-                Body = new BodySection { Enabled = true, Restitution = 0.15, TangentialRetain = 0.45, SpinRetain = 0.5, SweepSamples = 4 },
+                Body = new BodySection { Enabled = true, Restitution = 0.15, TangentialRetain = 0.45, SpinRetain = 0.5, SweepSamples = 4, Carry = 0.3 },
                 Recovery = new RecoverySection
                 {
                     Normal = 0.0, Lunge = 0.12, DeepLunge = 0.22, Stretch = 0.35, RateScale = 0.35, SpeedScale = 0.6
