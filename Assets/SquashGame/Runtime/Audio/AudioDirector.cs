@@ -40,6 +40,64 @@ namespace SquashGame.Audio
         public string LastSound { get; private set; }
 
         Dictionary<string, AudioClip[]> _clips;
+
+        // The synthesised takes are rendered once, off the main thread, from the moment the game starts (they cost about
+        // a second; rendered in Build they froze every scene load). Clips are made from them on the main thread the
+        // first time they are wanted - waiting for the render only if a sound is needed before it is done.
+        static System.Threading.Tasks.Task<Dictionary<string, float[][]>> _render;
+        static Dictionary<string, AudioClip[]> _synth;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void StartRendering()
+        {
+            if (_render != null) return;
+            _render = System.Threading.Tasks.Task.Run(() =>
+            {
+                var d = new Dictionary<string, float[][]>();
+                foreach (var n in ProceduralSounds.Names)
+                {
+                    var takes = new float[ProceduralSounds.Varies(n) ? ProceduralSounds.Variants : 1][];
+                    for (int v = 0; v < takes.Length; v++) takes[v] = ProceduralSounds.Samples(n, v);
+                    d[n] = takes;
+                }
+                return d;
+            });
+        }
+
+        /// <summary>The synthesised clips (made once; remade if a scene change unloaded them).</summary>
+        static Dictionary<string, AudioClip[]> SynthClips(bool wait)
+        {
+            if (_synth != null && _synth["ping"][0] != null) return _synth;
+            StartRendering();
+            if (!wait && !_render.IsCompleted) return null;
+            var raw = _render.Result;
+            var d = new Dictionary<string, AudioClip[]>();
+            foreach (var kv in raw)
+            {
+                var a = new AudioClip[kv.Value.Length];
+                for (int v = 0; v < a.Length; v++)
+                {
+                    a[v] = AudioClip.Create("sq_" + kv.Key + "_" + v, kv.Value[v].Length, 1, ProceduralSounds.Rate, false);
+                    a[v].SetData(kv.Value[v], 0);
+                }
+                d[kv.Key] = a;
+            }
+            _synth = d;
+            return d;
+        }
+
+        bool _haveSynth;
+        readonly Dictionary<string, AudioClip[]> _recorded = new Dictionary<string, AudioClip[]>();
+
+        /// <summary>The clips in use: recordings win; the synthesised takes join when ready.</summary>
+        void EnsureClips(bool wait)
+        {
+            if (_haveSynth) return;
+            var synth = SynthClips(wait);
+            if (synth == null) return;
+            foreach (var kv in synth) if (!_recorded.ContainsKey(kv.Key)) _clips[kv.Key] = kv.Value;
+            _haveSynth = true;
+        }
         readonly List<AudioSource> _pool = new List<AudioSource>();
         int _next;
         readonly Vector3[] _lastVel = new Vector3[2];
@@ -50,7 +108,7 @@ namespace SquashGame.Audio
         public void Build(SimRunnerBase runner)
         {
             Runner = runner;
-            _clips = ProceduralSounds.AllClips();
+            _clips = new Dictionary<string, AudioClip[]>();
             // A recording wins over the synthesised takes: Resources/Audio/<name> (wav / ogg), or <name>_1, _2 ... for takes.
             foreach (var n in ProceduralSounds.Names)
             {
@@ -58,7 +116,7 @@ namespace SquashGame.Audio
                 var one = Resources.Load<AudioClip>("Audio/" + n);
                 if (one != null) takes.Add(one);
                 for (int k = 1; k <= 8; k++) { var c = Resources.Load<AudioClip>("Audio/" + n + "_" + k); if (c != null) takes.Add(c); }
-                if (takes.Count > 0) _clips[n] = takes.ToArray();
+                if (takes.Count > 0) { _clips[n] = takes.ToArray(); _recorded[n] = _clips[n]; }
             }
             for (int i = 0; i < Voices; i++)
             {
@@ -99,7 +157,9 @@ namespace SquashGame.Audio
         /// <summary>Play a sound at a world point. Volume 0..1; pitch around 1.</summary>
         public void Play(string name, Vector3 at, float volume, float pitch = 1f)
         {
-            if (_clips == null || volume <= 0.01f || !_clips.TryGetValue(name, out AudioClip[] takes) || takes.Length == 0) return;
+            if (_clips == null || volume <= 0.01f) return;
+            EnsureClips(true);
+            if (!_clips.TryGetValue(name, out AudioClip[] takes) || takes.Length == 0) return;
             AudioClip clip = takes[Random.Range(0, takes.Length)];      // a different take each time (presentation only)
             // Steal the next voice in turn (the oldest sound is the least missed).
             AudioSource src = _pool[_next];
@@ -166,6 +226,7 @@ namespace SquashGame.Audio
         void Update()
         {
             if (Runner == null || _clips == null) return;
+            EnsureClips(false);
             var mr = Runner as MatchRunner;
             if (mr != null && mr.InSetup) return;
             float dt = Mathf.Max(1e-4f, Time.deltaTime);

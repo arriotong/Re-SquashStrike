@@ -59,7 +59,32 @@ namespace SquashGame
                 Hair = System.Array.ConvertAll(Hairs, M);
                 ShoeMat = M(Shoe);
             }
+
+            /// <summary>A material's place in this palette (so a cached crowd can be dressed in a new palette's materials).</summary>
+            public int KeyOf(Material m)
+            {
+                int i;
+                if ((i = System.Array.IndexOf(Shirt, m)) >= 0) return i;
+                if ((i = System.Array.IndexOf(Trouser, m)) >= 0) return 100 + i;
+                if ((i = System.Array.IndexOf(Skin, m)) >= 0) return 200 + i;
+                if ((i = System.Array.IndexOf(Hair, m)) >= 0) return 300 + i;
+                return 400;
+            }
+
+            public Material ByKey(int k)
+            {
+                if (k < 100) return Shirt[k];
+                if (k < 200) return Trouser[k - 100];
+                if (k < 300) return Skin[k - 200];
+                if (k < 400) return Hair[k - 300];
+                return ShoeMat;
+            }
         }
+
+        // The crowd's meshes are the same every match (seeded), so each stand is built once a session and reused - the
+        // build was most of the 0.8 s a court took to load. Static references keep the meshes through scene changes.
+        sealed class CachedStand { public readonly List<(int group, int mat, Mesh mesh)> Parts = new List<(int, int, Mesh)>(); public int People; }
+        static readonly Dictionary<string, CachedStand> _cache = new Dictionary<string, CachedStand>();
 
         public static void ResetCount() { PeopleBuilt = 0; }
 
@@ -76,6 +101,19 @@ namespace SquashGame
                 groups[g].SetParent(parent, false);
                 accs[g] = new Dictionary<Material, Acc>();
             }
+            string key = name + "|" + rows + "|" + seed + "|" + length + "|" + rowStart(0) + "|" + rowStart(rows - 1) + "|" + empty;
+            if (_cache.TryGetValue(key, out var hit) && hit.Parts.TrueForAll(pt => pt.mesh != null))
+            {
+                foreach (var pt in hit.Parts)
+                {
+                    var mat = pal.ByKey(pt.mat);
+                    Greybox.MeshObject(mat.name, groups[pt.group], pt.mesh, mat, false);
+                }
+                PeopleBuilt += hit.People;
+                return groups;
+            }
+            var made = new CachedStand();
+            int before = PeopleBuilt;
             var rng = new System.Random(seed * 7919 + 13);
             int seats = Mathf.FloorToInt(length / SeatPitch);
             Quaternion face = Quaternion.LookRotation(facing, Vector3.up);
@@ -101,7 +139,10 @@ namespace SquashGame
                     m.SetVertices(kv.Value.V); m.SetNormals(kv.Value.N); m.SetTriangles(kv.Value.T, 0);
                     m.RecalculateBounds();
                     Greybox.MeshObject(kv.Key.name, groups[g], m, kv.Key, false);
+                    made.Parts.Add((g, pal.KeyOf(kv.Key), m));
                 }
+            made.People = PeopleBuilt - before;
+            _cache[key] = made;
             return groups;
         }
 

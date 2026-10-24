@@ -126,18 +126,22 @@ namespace SquashGame.Athlete
                     .Racket(-0.75f, 1.35f, -0.60f, -0.6f, 0.3f, -0.7f, 0.0f, 0.0f, -1.0f).Hand(0.35f, 1.20f, -0.20f),
 
                 // ---------------- far balls: lunge, then dive ----------------
-                Pose("lunge_fh", "reach").Crouch(0.30f).PelvisShift(-0.18f, -0.28f).Lean(30).Twist(25).Feet(-0.55f, -0.85f, 0.22f, 0.40f, 45, 20)
-                    .Racket(-1.15f, 0.38f, -1.20f, -0.6f, -0.1f, -0.8f, 0.1f, 0.5f, -0.85f).Hand(0.60f, 1.00f, 0.55f),
-                Pose("lunge_bh", "reach").Crouch(0.30f).PelvisShift(0.12f, -0.28f).Lean(30).Twist(-50).Feet(0.25f, -0.85f, 0.30f, 0.40f, -40, -10)
-                    .Racket(0.95f, 0.38f, -1.25f, 0.5f, -0.1f, -0.85f, -0.1f, 0.5f, -0.85f, 0.15f, -0.45f, -0.35f).Hand(-0.40f, 1.00f, 0.55f),
-                Pose("dive_fh", "reach").Crouch(0.40f).PelvisShift(-0.55f, -0.15f).Lean(45).Tilt(30).Twist(30)
-                    .Feet(-0.95f, -0.20f, 0.15f, 0.35f, 80, 10, 0.25f, 0)
-                    .Racket(-1.70f, 0.32f, -0.55f, -0.95f, -0.1f, -0.2f, 0.0f, 0.4f, -0.9f).Hand(0.40f, 1.15f, 0.40f),
-                Pose("dive_bh", "reach").Crouch(0.40f).PelvisShift(0.45f, -0.15f).Lean(45).Tilt(-30).Twist(-45)
-                    .Feet(0.75f, -0.30f, 0.0f, 0.35f, -70, -20, 0.25f, 0)
-                    .Racket(1.50f, 0.32f, -0.65f, 0.95f, -0.1f, -0.3f, 0.0f, 0.4f, -0.9f, 0.15f, -0.45f, -0.35f).Hand(-0.30f, 1.00f, 0.50f),
-                Pose("get_up", "reach").Crouch(0.42f).Lean(22).Feet(-0.20f, -0.35f, 0.20f, 0.45f, 10, -10)
-                    .Racket(-0.55f, 0.55f, -0.40f, -0.3f, 0.6f, -0.7f, -0.9f, 0.0f, 0.0f).Hand(0.25f, 0.12f, -0.35f),
+                // Deep squash lunges (polish 2026-10-24): hips dropped, front knee over the foot, back knee low and the back heel
+                // up, chest out over the front thigh, racket low and far in front, the free arm back for balance.
+                Pose("lunge_fh", "reach").Crouch(0.47f).PelvisShift(-0.20f, -0.40f).Lean(38).Twist(28).Feet(-0.52f, -0.92f, 0.20f, 0.52f, 40, 15, 0f, 0.10f)
+                    .Racket(-1.10f, 0.30f, -1.40f, -0.55f, -0.15f, -0.85f, 0.1f, 0.5f, -0.85f).Hand(0.62f, 0.95f, 0.62f, 0.4f, -0.3f, 0.3f),
+                Pose("lunge_bh", "reach").Crouch(0.47f).PelvisShift(0.14f, -0.40f).Lean(38).Twist(-52).Feet(0.22f, -0.92f, 0.34f, 0.52f, -40, -10, 0f, 0.10f)
+                    .Racket(0.92f, 0.30f, -1.42f, 0.5f, -0.15f, -0.9f, -0.1f, 0.5f, -0.85f, 0.15f, -0.45f, -0.35f).Hand(-0.45f, 0.95f, 0.62f),
+                // Dives: flat out to the side, the body nearly horizontal, the trailing leg lifted off the floor.
+                Pose("dive_fh", "reach").Crouch(0.58f).PelvisShift(-0.62f, -0.15f).Lean(52).Tilt(40).Twist(30)
+                    .Feet(-1.05f, -0.25f, 0.20f, 0.40f, 80, 10, 0.12f, 0.32f)
+                    .Racket(-1.85f, 0.28f, -0.60f, -0.95f, -0.1f, -0.25f, 0.0f, 0.4f, -0.9f).Hand(0.30f, 0.55f, 0.20f),
+                Pose("dive_bh", "reach").Crouch(0.58f).PelvisShift(0.52f, -0.15f).Lean(52).Tilt(-40).Twist(-45)
+                    .Feet(0.85f, -0.35f, -0.05f, 0.40f, -70, -20, 0.12f, 0.32f)
+                    .Racket(1.62f, 0.28f, -0.70f, 0.95f, -0.1f, -0.3f, 0.0f, 0.4f, -0.9f, 0.15f, -0.45f, -0.35f).Hand(-0.25f, 0.55f, 0.20f),
+                // Getting up: a hand pushing off the floor, one knee down, the racket held clear.
+                Pose("get_up", "reach").Crouch(0.48f).Lean(34).Feet(-0.22f, -0.40f, 0.22f, 0.50f, 10, -10, 0f, 0.06f)
+                    .Racket(-0.60f, 0.70f, -0.35f, -0.3f, 0.7f, -0.6f, -0.9f, 0.0f, 0.0f).Hand(0.28f, 0.10f, -0.50f),
 
                 // ---------------- match moments ----------------
                 Pose("celebrate", "moment").Crouch(0.02f).Lean(-5).Feet(-0.22f, 0, 0.22f, 0, 14, -14)

@@ -32,7 +32,8 @@ namespace SquashGame
         /// <summary>PR2: the last drawn diameter in metres (for tests).</summary>
         public float DrawnDiameter { get; private set; }
 
-        static readonly Color Cold = new Color(0.20f, 0.30f, 0.55f);
+        // Cold: a real ball's near-black (it was a dark blue, lost against the show court's blue front wall).
+        static readonly Color Cold = new Color(0.07f, 0.07f, 0.09f);
         static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
 
         SimRunnerBase _runner;

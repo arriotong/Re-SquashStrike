@@ -91,6 +91,7 @@ namespace SquashGame
         void LogPerf()
         {
             float dt = Time.unscaledDeltaTime;
+            if (dt > 0.1f) Debug.Log("[perf] long frame " + (dt * 1000f).ToString("0") + " ms at frame " + Time.frameCount + " (" + Time.realtimeSinceStartup.ToString("0.00") + " s)");
             _perfT += dt; _perfFrames++;
             _perfWorst = Mathf.Min(_perfWorst, 1f / Mathf.Max(1e-4f, dt));
             if (Runner.Clock.Clamped) _perfClamped++;
