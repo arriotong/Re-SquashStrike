@@ -22,6 +22,9 @@ namespace SquashGame
             if (Palette == null) { Debug.LogError("MatchCourt: no GreyboxPalette assigned."); enabled = false; return; }
 
             Runner = gameObject.AddComponent<MatchRunner>();
+            // The menus show the court last chosen for a quick match (a match then sets its own: MatchRunner.BeginMatch).
+            var choices = Profile.ProfileStore.Current.Choices;
+            Courts.CurrentId = Courts.All[Mathf.Clamp(choices.Court, 0, Courts.All.Length - 1)].Id;
 
             var court = new GameObject("Court").AddComponent<CourtView>();
             court.transform.SetParent(transform, false);

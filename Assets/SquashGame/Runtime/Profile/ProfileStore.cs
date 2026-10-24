@@ -52,6 +52,7 @@ namespace SquashGame.Profile
     {
         public int Opponent = 0, Difficulty = 1, Length = 2, Scoring = 0;
         public int VsLength = 2, VsScoring = 0;
+        public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.All index
     }
 
     /// <summary>P2-M2: a Target Arcade challenge's (or drill's) best.</summary>

@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace SquashGame
 {
-    public static class ProcTex
+    public static partial class ProcTex
     {
         static readonly Dictionary<string, Texture2D> Cache = new Dictionary<string, Texture2D>();
 

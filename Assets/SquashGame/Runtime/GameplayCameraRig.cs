@@ -126,7 +126,7 @@ namespace SquashGame
 
             // A new match: open on the establishing shot and fly down to this view while the players get ready.
             FlyingIn = false;
-            if (Runner is MatchRunner fm && !fm.Demo && !fm.InSetup && fm.Sim != null && VenueView.Detail > 0)
+            if (Runner is MatchRunner fm && !fm.Demo && !fm.InSetup && fm.Sim != null && VenueView.Detail > 0 && Courts.Current.Establishing)
             {
                 if (_flyFor != fm.Sim) { _flyFor = fm.Sim; _flyT = fm.Sim.History.Count == 0 ? 0f : 99f; }
                 if (_flyT < FlySeconds && fm.Sim.Phase == MatchPhase.AwaitToss && fm.Sim.History.Count == 0)

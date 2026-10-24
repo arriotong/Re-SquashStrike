@@ -44,6 +44,8 @@ namespace SquashGame
         public string P1Name, P2Name;
         /// <summary>P2-M5: the opponent's kit from this seed (a career pro); 0 = the personality's signature kit.</summary>
         public uint KitSeed;
+        /// <summary>The court to play on (Courts.All id); null = the one being drawn.</summary>
+        public string Court;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -239,6 +241,7 @@ namespace SquashGame
         {
             EndRecording(true);
             Settings = s.Clone();
+            if (!string.IsNullOrEmpty(Settings.Court)) Courts.CurrentId = Settings.Court;     // CourtView rebuilds on the next frame
             if (Settings.TwoPlayer && !CanPlayTwoPlayer) Settings.TwoPlayer = false;
             if (Settings.TwoPlayer)
             {

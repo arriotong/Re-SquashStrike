@@ -181,13 +181,16 @@ namespace SquashGame.UI
                 AddTo(mid, new SelectorItem("Difficulty", MatchChoices.DifficultyLabels, () => C.Difficulty, v => C.Difficulty = v, true)).Enabled = () => C.Opponent != 4;
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.Scoring, v => C.Scoring = v));
+                // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
+                AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
             }
             else
             {
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.VsLength, v => C.VsLength = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.VsScoring, v => C.VsScoring = v));
+                AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.All[v].Id; }));
+                AddTo(mid, new SelectorItem("Controls", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
-            AddTo(mid, new SelectorItem("Controls", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             // them
             var them = Kit.Box(stage, "k-vs-side");
             var themPic = Kit.Box(them, "k-vs-pic"); Vignettes.Attach(themPic, "them", 512, 640);
@@ -237,12 +240,14 @@ namespace SquashGame.UI
             ProfileStore.Save();
             KitDirector.OpponentPreview = null;
             if (TwoPlayer)
-                Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = false });
+                Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = false,
+                                                  Court = Courts.All[Mathf.Clamp(C.VsCourt, 0, Courts.All.Length - 1)].Id });
             else
                 Fe.StartMatch(new MatchSettings
                 {
                     TwoPlayer = false, Opponent = MatchRunner.Opponents[C.Opponent], Difficulty = MatchChoices.DifficultyValues[C.Difficulty],
-                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[C.Scoring], WarmUp = false
+                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[C.Scoring], WarmUp = false,
+                    Court = Courts.All[Mathf.Clamp(C.Court, 0, Courts.All.Length - 1)].Id
                 });
         }
 

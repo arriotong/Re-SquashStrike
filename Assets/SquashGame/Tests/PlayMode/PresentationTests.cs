@@ -231,6 +231,55 @@ namespace SquashGame.Tests
             Debug.Log("[PR4] bed in rally " + inRally.ToString("0.00") + ", between " + maxBetween.ToString("0.00"));
         }
 
+        /// <summary>Every court, built and filmed from the match camera (top) and the establishing shot (bottom):
+        /// Captures/COURTS.png.</summary>
+        [UnityTest]
+        public IEnumerator EveryCourtBuildsAndIsFilmed()
+        {
+            VenueView.Detail = 2;
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            var cam = Camera.main;
+            var rig = cam.GetComponent<GameplayCameraRig>();
+            rig.enabled = false;
+            const int CW = 640, CHt = 360;
+            int n = Courts.All.Length;
+            var sheet = new Texture2D(CW * n, CHt * 2, TextureFormat.RGB24, false);
+            var rt = new RenderTexture(CW, CHt, 24);
+            for (int i = 0; i < n; i++)
+            {
+                Courts.CurrentId = Courts.All[i].Id;
+                yield return null; yield return null; yield return null;
+                Assert.That(GameObject.Find("Venue"), Is.Not.Null, Courts.All[i].Id + ": no venue");
+                Assert.That(Camera.main.farClipPlane, Is.GreaterThanOrEqualTo(Courts.All[i].FarClip - 1f), Courts.All[i].Id + ": the camera must see its sky");
+                for (int row = 0; row < 2; row++)
+                {
+                    if (row == 0)
+                    {
+                        cam.fieldOfView = 52f;
+                        cam.transform.position = SimToWorld.Pos(0, 3.95, 16.35);
+                        cam.transform.LookAt(SimToWorld.Pos(0, 1.55, 3.2));
+                    }
+                    else
+                    {
+                        cam.fieldOfView = GameplayCameraRig.EstablishingFov;
+                        cam.transform.position = SimToWorld.Pos(GameplayCameraRig.EstablishingPos.x, GameplayCameraRig.EstablishingPos.y, GameplayCameraRig.EstablishingPos.z);
+                        cam.transform.LookAt(SimToWorld.Pos(GameplayCameraRig.EstablishingLook.x, GameplayCameraRig.EstablishingLook.y, GameplayCameraRig.EstablishingLook.z));
+                    }
+                    cam.targetTexture = rt;
+                    cam.Render();
+                    RenderTexture.active = rt;
+                    sheet.ReadPixels(new Rect(0, 0, CW, CHt), i * CW, (1 - row) * CHt);
+                    cam.targetTexture = null;
+                    RenderTexture.active = null;
+                }
+            }
+            sheet.Apply();
+            File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "COURTS.png")), sheet.EncodeToPNG());
+            Object.Destroy(sheet); rt.Release();
+            Courts.CurrentId = "show";
+        }
+
         static IEnumerator WaitReal(float seconds)
         {
             float t0 = Time.realtimeSinceStartup;

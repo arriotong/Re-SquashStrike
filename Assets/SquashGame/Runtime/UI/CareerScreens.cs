@@ -227,6 +227,13 @@ namespace SquashGame.UI
             return row;
         }
 
+        /// <summary>The court a career event is played on, by its tier (club .. world finals).</summary>
+        public static string CourtFor(int tier)
+        {
+            string[] byTier = { "club", "rooftop", "station", "show", "desert", "arena" };
+            return byTier[Mathf.Clamp(tier, 0, byTier.Length - 1)];
+        }
+
         /// <summary>Start your next career match in the match scene.</summary>
         public static void PlayNext(FrontEnd fe)
         {
@@ -247,6 +254,7 @@ namespace SquashGame.UI
                 P1Name = c.BugOf(You),
                 P2Name = pro.Bug,
                 KitSeed = KitSeed(c, pro.Id),                              // the pro's own kit, the same every match
+                Court = CourtFor(c.S.Current != null ? c.S.Current.Tier : 0),  // the bigger the event, the bigger the stage
             });
         }
 
