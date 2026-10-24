@@ -43,6 +43,9 @@ namespace SquashGame.Athlete
         public SimRunnerBase Runner;
         public int Index;
         public AthleteRig Rig { get; private set; }
+        /// <summary>The body worn over the rig (2026-10-24), or null with the mannequin.</summary>
+        public AthleteSkin Skin { get; private set; }
+        GreyboxPalette _palette;
 
         /// <summary>How far the hand fell short of the racket target this frame (diagnostic).</summary>
         public float GripGap { get; private set; }
@@ -104,6 +107,8 @@ namespace SquashGame.Athlete
             Rig.Build(palette, bodyColor);
             Rig.HoldRacketInHand();
             transform.localScale = Vector3.one * VisualScale;
+            _palette = palette;
+            if (AthleteSkin.Enabled) PutOnBody(false);
             var lib = PoseLibrary.Active;
             _ready = lib.Find("ready"); _shuffle = lib.Find("shuffle");
             _runA = lib.Find("run_a"); _runB = lib.Find("run_b"); _backpedal = lib.Find("backpedal");
@@ -112,6 +117,17 @@ namespace SquashGame.Athlete
         }
 
         Transform B(string name) { return Rig.Bones[name]; }
+
+        /// <summary>(Re)build the body over the rig, from rest.</summary>
+        void PutOnBody(bool female)
+        {
+            if (Skin != null) { Destroy(Skin.transform.Find("Body")?.gameObject); Destroy(Skin); Skin = null; }
+            Rig.ResetPose();
+            var skin = gameObject.AddComponent<AthleteSkin>();
+            skin.Build(Rig, _palette, female);
+            Skin = skin;
+            _shown = true;
+        }
 
         /// <summary>P2-M5: what this athlete wears (polled each frame; re-dressed when it changes). Null = plain.</summary>
         public System.Func<SquashGame.Progression.Loadout> KitSource;
@@ -123,11 +139,14 @@ namespace SquashGame.Athlete
         {
             var l = KitSource != null ? KitSource() : null;
             if (l == null) return;
-            string key = l.Shirt + l.Shorts + l.Socks + l.Shoes + l.Skin + l.Headband + l.Wristband + l.Frame + l.Grip + l.Strings + l.Hair + l.HairColour;
+            string key = l.Shirt + l.Shorts + l.Socks + l.Shoes + l.Skin + l.Headband + l.Wristband + l.Frame + l.Grip + l.Strings + l.Hair + l.HairColour + l.Body;
             if (key == _kitKey) return;
             _kitKey = key;
             Worn = l.Clone();
-            Rig.ApplyKit(SquashGame.Progression.Cosmetics.KitOf(l));
+            var kit = SquashGame.Progression.Cosmetics.KitOf(l);
+            Rig.ApplyKit(kit);
+            if (AthleteSkin.Enabled && (Skin == null || Skin.Female != kit.Female)) PutOnBody(kit.Female);
+            if (Skin != null) Skin.ApplyKit(kit);
         }
 
         void LateUpdate()
@@ -135,7 +154,7 @@ namespace SquashGame.Athlete
             if (Runner == null || Runner.Clock == null || Rig == null) return;
             Dress();
             bool shown = Index < Runner.View.Count;            // P2-M7: an athlete who is not there now (the Academy's opponent)
-            if (shown != _shown) { _shown = shown; foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = shown; }
+            if (shown != _shown) { _shown = shown; foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = shown && !(Skin != null && Skin.Hides(r)); }
             if (!shown) return;
             AthleteSnapshot v = Runner.View.Athlete(Index);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
@@ -474,6 +493,7 @@ namespace SquashGame.Athlete
 
             Rig.UpdateBlends();
             KeepInsideTheCourt();
+            if (Skin != null) Skin.Follow();
         }
 
         /// <summary>How far the drawn figure was moved back off the walls this frame (tests).</summary>

@@ -58,6 +58,10 @@ namespace SquashGame.Athlete
         /// <summary>The material drawing a kit region (tests, captures).</summary>
         public Material RegionMaterial(Region r) { return _region[(int)r]; }
         public bool HeadbandShown { get { return _headbandGo != null && _headbandGo.activeSelf; } }
+        public bool WristbandShown { get { return _wristbandGo != null && _wristbandGo.activeSelf; } }
+        /// <summary>The bands' materials (the body worn over the rig wears its own bands in them).</summary>
+        public Material HeadbandMaterial { get { return _headband; } }
+        public Material WristbandMaterial { get { return _wristband; } }
 
         /// <summary>Dress the athlete: the kit's colours on its regions, the bands, the racket. Presentation only.</summary>
         public void ApplyKit(SquashGame.Progression.Kit k)
