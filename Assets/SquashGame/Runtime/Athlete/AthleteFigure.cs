@@ -105,6 +105,10 @@ namespace SquashGame.Athlete
             Rig.Build(palette, bodyColor);
             Rig.HoldRacketInHand();
             transform.localScale = Vector3.one * VisualScale;
+            // Graphics pass 2: a soft dark patch where the athlete stands - grounds them on the polished floor.
+            var patchMat = palette.Clear(new Color(0f, 0f, 0f, 0.38f));
+            patchMat.mainTexture = ProcTex.SoftSpot();
+            _patch = Greybox.TexturedBox("ContactPatch", transform.parent, patchMat, Vector3.zero, new Vector3(0.95f, 0.002f, 0.95f), new Vector2(0.95f, 0.95f), false).transform;
 
             var lib = PoseLibrary.Active;
             _ready = lib.Find("ready"); _shuffle = lib.Find("shuffle");
@@ -114,6 +118,7 @@ namespace SquashGame.Athlete
         }
 
         Transform B(string name) { return Rig.Bones[name]; }
+        Transform _patch;
 
         /// <summary>P2-M5: what this athlete wears (polled each frame; re-dressed when it changes). Null = plain.</summary>
         public System.Func<SquashGame.Progression.Loadout> KitSource;
@@ -139,7 +144,7 @@ namespace SquashGame.Athlete
             if (Runner == null || Runner.Clock == null || Rig == null) return;
             Dress();
             bool shown = Index < Runner.View.Count;            // P2-M7: an athlete who is not there now (the Academy's opponent)
-            if (shown != _shown) { _shown = shown; foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = shown; }
+            if (shown != _shown) { _shown = shown; foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = shown; if (_patch != null) _patch.gameObject.SetActive(shown); }
             if (!shown) return;
             AthleteSnapshot v = Runner.View.Athlete(Index);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
@@ -478,6 +483,14 @@ namespace SquashGame.Athlete
 
             Rig.UpdateBlends();
             KeepInsideTheCourt();
+            if (_patch != null)
+            {
+                Vector3 hips = B("Pelvis").position;
+                float h = Mathf.Clamp01(1f - (hips.y - 0.5f) / 0.7f);                 // a lunge or a dive spreads it
+                _patch.position = new Vector3(hips.x, 0.003f, hips.z);
+                _patch.localScale = Vector3.one * (0.9f + h * 0.5f);
+                if (_patch.gameObject.activeSelf != _shown) _patch.gameObject.SetActive(_shown);
+            }
         }
 
         /// <summary>How far the drawn figure was moved back off the walls this frame (tests).</summary>

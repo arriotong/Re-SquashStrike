@@ -82,7 +82,7 @@ namespace SquashGame.Athlete
             _headbandGo.SetActive(k.HasHeadband); _headband.color = k.Headband;
             _wristbandGo.SetActive(k.HasWristband); _wristband.color = k.Wristband;
             _frame.color = k.Frame; _grip.color = k.Grip;
-            _strings.color = new Color(k.Strings.r, k.Strings.g, k.Strings.b, 0.35f);
+            _strings.color = new Color(Mathf.Min(1f, k.Strings.r * 1.15f), Mathf.Min(1f, k.Strings.g * 1.15f), Mathf.Min(1f, k.Strings.b * 1.15f), 0.6f);   // readable at TV zoom
             ShowHair(k.HairStyle);
             _hair.color = k.Hair;
             SetBody(k.Female);
@@ -106,7 +106,7 @@ namespace SquashGame.Athlete
                 if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
                 {
                     var s = MannequinForms.Slim(jb.Bone, female);
-                    _bodyMeshes[key] = mesh = Loft.Ellipsoid(jb.W * s.x, jb.D * s.y, jb.H).ToUnity(key);
+                    _bodyMeshes[key] = mesh = Loft.Ellipsoid(jb.W * s.x * 0.86f, jb.D * s.y * 0.86f, jb.H * 0.9f).ToUnity(key);   // never bulging past the limbs
                 }
                 mf.sharedMesh = mesh;
             }
@@ -177,6 +177,18 @@ namespace SquashGame.Athlete
             }
 
             SetBody(false);
+
+            // ---- graphics pass 2: trainers - a white midsole under each foot ----
+            var sole = palette.LitColor(new Color(0.94f, 0.94f, 0.92f)); sole.SetFloat("_Smoothness", 0.3f);
+            var soleMesh = Loft.Ellipsoid(0.098f, 0.29f, 0.026f).ToUnity("sole");
+            foreach (var side in new[] { "R", "L" })
+            {
+                var sg = new GameObject("sole_" + side);
+                sg.transform.SetParent(Bones["Foot_" + side], false);
+                sg.AddComponent<MeshFilter>().sharedMesh = soleMesh;
+                sg.AddComponent<MeshRenderer>().sharedMaterial = sole;
+                sg.transform.localPosition = ToUnity(new Vector3(0f, -GateA.Ankle + 0.012f, -0.06f));
+            }
 
             // ---- racket (placed in world from the simulated racket, not parented to the hand) ----
             var parts = RacketMesh.Build();

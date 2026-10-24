@@ -276,7 +276,8 @@ namespace SquashGame
             kiosk.transform.localPosition = W(0, 1.6, -15f); kiosk.transform.localScale = new Vector3(3.6f, 1.6f, 3.6f);
             var ball = Greybox.Primitive(PrimitiveType.Sphere, "Clock", c.Venue, brass);
             ball.transform.localPosition = W(0, 4.2, -15f); ball.transform.localScale = Vector3.one * 1.6f;
-            var face = c.Palette.UnlitColor(new Color(1.3f, 1.25f, 1.1f));
+            var face = c.Palette.UnlitColor(new Color(1.7f, 1.62f, 1.4f));
+            if (c.High) Point(c, "ClockLight", W(0, 6.5, -12.5), new Color(1f, 0.85f, 0.6f), 12f, 3.2f);
             for (int k = 0; k < 4; k++)
             {
                 Quaternion r = Quaternion.Euler(0, k * 90f, 0);
@@ -337,18 +338,18 @@ namespace SquashGame
                 built++;
             }
             // String lights over the deck, zigzagging between posts.
-            var bulb = c.Palette.UnlitColor(new Color(2.8f, 1.9f, 1.0f));
+            var bulb = c.Palette.UnlitColor(new Color(2.4f, 1.6f, 0.8f));
             var bulbs = new MeshMerge();
             foreach (int side in new[] { -1, 1 })
                 for (float z = dz0 + 1f; z < dz1; z += 6f)
                 {
-                    Greybox.Box("LightPost", c.Venue, c.Steel, W(side * (dx - 1f), 3f, z), new Vector3(0.1f, 6f, 0.1f), false);
-                    Vector3 a0 = W(side * (dx - 1f), 6f, z), a1 = W(-side * (dx - 1f), 6f, z + 3f);
+                    Greybox.Box("LightPost", c.Venue, c.Steel, W(side * (dx - 1f), 4.2f, z), new Vector3(0.1f, 8.4f, 0.1f), false);
+                    Vector3 a0 = W(side * (dx - 1f), 8.4f, z), a1 = W(-side * (dx - 1f), 8.4f, z + 3f);
                     for (int k = 0; k <= 16; k++)
                     {
                         float t = k / 16f;
                         Vector3 p = Vector3.Lerp(a0, a1, t) + Vector3.down * Mathf.Sin(t * Mathf.PI) * 1.2f;
-                        bulbs.Box(p, new Vector3(0.12f, 0.16f, 0.12f), Quaternion.identity);
+                        bulbs.Box(p, new Vector3(0.05f, 0.07f, 0.05f), Quaternion.identity);
                     }
                 }
             bulbs.Build("StringLights", c.Venue, bulb);
@@ -509,12 +510,19 @@ namespace SquashGame
             float h = baseSize / 2;
             Vector3 apex = baseCentre + Vector3.up * height;
             Vector3[] corners = { baseCentre + new Vector3(-h, 0, -h), baseCentre + new Vector3(h, 0, -h), baseCentre + new Vector3(h, 0, h), baseCentre + new Vector3(-h, 0, h) };
-            Color[] tones = { new Color(0.14f, 0.10f, 0.07f), new Color(0.34f, 0.22f, 0.11f), new Color(0.82f, 0.53f, 0.25f), new Color(0.38f, 0.25f, 0.12f) };
+            Color[] tones = { new Color(0.16f, 0.11f, 0.08f), new Color(0.40f, 0.26f, 0.13f), new Color(1.0f, 0.66f, 0.32f), new Color(0.44f, 0.29f, 0.14f) };
+            var tex = ProcTex.PyramidFace();
             for (int f = 0; f < 4; f++)
             {
-                var m = new MeshMerge();
-                m.Quad(corners[f], corners[(f + 1) % 4], apex, apex);
-                m.Build("PyramidFace", c.Venue, c.Palette.UnlitColor(tones[f]));
+                // One face, both sides, stepped courses lit from the base (graphics pass 2).
+                Vector3 a = corners[f], b = corners[(f + 1) % 4];
+                var mesh = new Mesh { name = "PyramidFace" };
+                mesh.vertices = new[] { a, b, apex, a, b, apex };
+                mesh.uv = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 1), new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 1) };
+                mesh.triangles = new[] { 0, 1, 2, 3, 5, 4 };
+                mesh.RecalculateNormals(); mesh.RecalculateBounds();
+                var mat = c.Palette.UnlitColor(tones[f]); mat.mainTexture = tex;
+                Greybox.MeshObject("PyramidFace", c.Venue, mesh, mat);
             }
         }
 

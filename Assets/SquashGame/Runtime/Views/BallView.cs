@@ -66,7 +66,7 @@ namespace SquashGame
             _trail.receiveShadows = false;
             var g = new Gradient();
             g.SetKeys(new[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f), new GradientColorKey(new Color(1f, 0.95f, 0.8f), 1f) },
-                      new[] { new GradientAlphaKey(0.45f, 0f), new GradientAlphaKey(0f, 1f) });
+                      new[] { new GradientAlphaKey(0.32f, 0f), new GradientAlphaKey(0f, 1f) });
             _trail.colorGradient = g;
         }
 
@@ -84,8 +84,9 @@ namespace SquashGame
             _ball.localScale = Vector3.one * (visualRadius * 2f);   // Unity sphere primitive has radius 0.5
             if ((p - _lastPos).sqrMagnitude > 4f) _trail.Clear();     // a reset / new feed: no streak across the court
             _lastPos = p;
-            _trail.startWidth = visualRadius * 1.6f;
-            _trail.time = LongTrail ? 1.4f : 0.16f;
+            // A motion smear, not a line (graphics pass 2): at the TV camera's zoom a long trail read as a laser.
+            _trail.startWidth = visualRadius * 1.2f;
+            _trail.time = LongTrail ? 1.4f : 0.06f;
             _trail.endWidth = 0f;
 
             // Visual spin, only while the sim is actually running.

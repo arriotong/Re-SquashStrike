@@ -71,6 +71,74 @@ namespace SquashGame
             });
         }
 
+        /// <summary>A frosted glass front wall (graphics pass 2): denser low down where the ball meets it, clearing toward the
+        /// top so what is behind shows through, a dark band of names along the top. UV 0..1 = the whole wall; alpha carries the frost.</summary>
+        public static Texture2D FrostedGlass()
+        {
+            return Cached("frostedglass", () =>
+            {
+                const int W = 512, H = 452;
+                var px = new Color[W * H];
+                for (int y = 0; y < H; y++)
+                {
+                    float f = y / (float)(H - 1);                         // 0 floor .. 1 top of the wall
+                    float a = f < 0.36f ? 0.46f : Mathf.Lerp(0.46f, 0.16f, Mathf.Clamp01((f - 0.36f) / 0.40f));
+                    for (int x = 0; x < W; x++)
+                    {
+                        float n = ValueNoise(x / 30f, y / 30f, 21) * 0.05f;
+                        px[y * W + x] = new Color(0.88f, 0.92f, 0.97f, a + n);
+                    }
+                }
+                int b0 = (int)(H * 0.86f), b1 = (int)(H * 0.95f);
+                for (int y = b0; y < b1; y++) for (int x = 0; x < W; x++) px[y * W + x] = new Color(0.08f, 0.14f, 0.30f, 0.82f);
+                string names = "RE:SQUASHSTRIKE  WORLD TOUR  GLASS COURT";
+                int tw = TextWidth(names, 2);
+                DotText(px, W, H, names, (W - tw) / 2, b0 + (b1 - b0 - 14) / 2, 2, new Color(0.95f, 0.97f, 1f, 1f), 1, W);
+                return Make(W, H, px, false);
+            });
+        }
+
+        /// <summary>A soft round spot: opaque at the middle, nothing at the edge (contact patches). Alpha only.</summary>
+        public static Texture2D SoftSpot()
+        {
+            return Cached("softspot", () =>
+            {
+                const int N = 128;
+                var px = new Color[N * N];
+                for (int y = 0; y < N; y++)
+                    for (int x = 0; x < N; x++)
+                    {
+                        float dx = (x + 0.5f) / N * 2f - 1f, dy = (y + 0.5f) / N * 2f - 1f, d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float a = Mathf.Clamp01(1f - d); a = a * a * (3f - 2f * a);
+                        px[y * N + x] = new Color(1f, 1f, 1f, a);
+                    }
+                return Make(N, N, px, false);
+            });
+        }
+
+        /// <summary>A pyramid's face at night: stepped courses, lit warm at the base and falling into the dark toward the apex.
+        /// UV v = 0 base .. 1 apex.</summary>
+        public static Texture2D PyramidFace()
+        {
+            return Cached("pyramidface", () =>
+            {
+                const int W = 256, H = 512;
+                var px = new Color[W * H];
+                for (int y = 0; y < H; y++)
+                {
+                    float v = y / (float)(H - 1);
+                    float light = Mathf.Lerp(1.0f, 0.38f, Mathf.Pow(v, 0.8f));
+                    bool course = y % 8 < 2;
+                    for (int x = 0; x < W; x++)
+                    {
+                        float t = light * (0.9f + Hash(x / 6, y / 8) * 0.12f) * (course ? 0.72f : 1f);
+                        px[y * W + x] = new Color(t, t * 0.92f, t * 0.82f);
+                    }
+                }
+                return Make(W, H, px, false);
+            });
+        }
+
         /// <summary>Sand: warm, rippled, mottled. One tile = 8 m.</summary>
         public static Texture2D Sand()
         {

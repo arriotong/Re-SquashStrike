@@ -298,7 +298,9 @@ namespace SquashGame
             for (int i = 0; i < Groups.Count; i++)
             {
                 float beat = Mathf.Abs(Mathf.Sin(t * (7.5f + (i % 4) * 0.9f) + i * 1.7f));
-                Groups[i].localPosition = _rest[i] + Vector3.up * (beat * 0.045f * Excitement);
+                // Never frozen (graphics pass 2): a slow idle shift per group, the bounce on top when they react.
+                float idle = Mathf.Sin(t * (0.5f + (i % 5) * 0.13f) + i * 2.3f) * 0.006f;
+                Groups[i].localPosition = _rest[i] + Vector3.up * (beat * 0.045f * Excitement + idle);
             }
         }
     }

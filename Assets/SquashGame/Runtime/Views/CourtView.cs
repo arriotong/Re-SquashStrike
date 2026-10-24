@@ -36,15 +36,16 @@ namespace SquashGame
             Material frontWall = wall, sideWall = wall;
             if (dressed)
             {
-                floor = palette.LitColor(new Color(0.84f, 0.80f, 0.76f)); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.46f);
+                floor = palette.LitColor(new Color(0.84f, 0.80f, 0.76f)); floor.mainTexture = ProcTex.Floor(); floor.SetFloat("_Smoothness", 0.62f);
                 frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
                 // PSA show court: blue-tinted glass side and back walls, a frosted front wall (2026-10-23)
                 // The front wall: a show court's deep blue, branded along the top, lines in white (the Canary Wharf look,
                 // 2026-10-23). The ball's light rim keeps it readable against the blue.
                 frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.FrontWall(); frontWall.SetFloat("_Smoothness", 0.6f);
-                sideWall = palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.26f));
+                // Glass you can see through (graphics pass 2): the faintest blue, thin fittings, a light along the top.
+                sideWall = palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.09f));
                 // The court's theme (2026-10-24): an all-glass court frosts its front wall; a club court is plaster all round.
-                if (theme.Walls == WallStyle.Glass) frontWall = palette.Clear(new Color(0.86f, 0.92f, 1f, 0.42f));
+                if (theme.Walls == WallStyle.Glass) { frontWall = palette.Clear(Color.white); frontWall.mainTexture = ProcTex.FrostedGlass(); }
                 if (theme.Walls == WallStyle.Plaster)
                 {
                     frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
@@ -54,8 +55,10 @@ namespace SquashGame
                 tin = palette.LitColor(Color.white); tin.mainTexture = ProcTex.Tin(); tin.SetFloat("_Smoothness", 0.5f);
             }
             var line = palette.UnlitColor(dressed ? theme.Lines : Greybox.Hex(0xd8382f));
-            var glass = dressed ? palette.Clear(new Color(0.42f, 0.66f, 0.92f, 0.16f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
-            var glassEdge = palette.UnlitColor(dressed ? Greybox.Hex(0x3d8be0) : Greybox.Hex(0x5fa8c4));
+            var glass = dressed ? palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.07f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
+            var glassEdge = palette.UnlitColor(dressed ? new Color(0.55f, 0.68f, 0.82f) : Greybox.Hex(0x5fa8c4));
+            var glassLight = palette.UnlitColor(new Color(0.88f, 0.94f, 1.0f));
+            var glare = palette.Clear(new Color(1f, 1f, 1f, 0.045f));
 
             float W = (float)(HALF_W * 2), L = (float)LENGTH, H = (float)CEILING_H;
 
@@ -80,9 +83,17 @@ namespace SquashGame
             // ---- front wall (playing face at z = 0) ----
             if (dressed && theme.Walls == WallStyle.Glass)
             {
-                Greybox.Box("FrontWall", root, frontWall, SimToWorld.Pos(0, CEILING_H / 2, -0.012), new Vector3(W, H, 0.024f), false);
+                // One quad facing the court (a box would show its far face through the frost, mirrored).
+                var q = new Mesh { name = "FrostedFront" };
+                float hw = W / 2f;
+                q.vertices = new[] { new Vector3(hw, 0, 0), new Vector3(-hw, 0, 0), new Vector3(-hw, H, 0), new Vector3(hw, H, 0) };
+                q.uv = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1) };
+                q.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+                q.RecalculateNormals(); q.RecalculateBounds();
+                var fq = Greybox.MeshObject("FrontWall", root, q, frontWall);
+                fq.transform.localPosition = SimToWorld.Pos(0, 0, -0.002);
                 foreach (int side in new[] { -1, 1 })
-                    Greybox.Box("GlassJoint", root, glassEdge, SimToWorld.Pos(side * W / 6.0, (CEILING_H + TIN_H) / 2, -0.02), new Vector3(0.025f, H - (float)TIN_H, 0.03f), false);
+                    Greybox.Box("GlassJoint", root, glassEdge, SimToWorld.Pos(side * W / 6.0, (CEILING_H + TIN_H) / 2, -0.02), new Vector3(0.012f, H - (float)TIN_H, 0.012f), false);
             }
             else if (dressed) Greybox.TexturedBox("FrontWall", root, frontWall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f), new Vector2(W, H));
             else Greybox.Box("FrontWall", root, wall, SimToWorld.Pos(0, CEILING_H / 2, -0.05), new Vector3(W, H, 0.1f));
@@ -103,11 +114,18 @@ namespace SquashGame
                 {
                     Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, sideWall,
                         SimToWorld.Pos(side * (HALF_W + 0.012), CEILING_H / 2, LENGTH / 2), new Vector3(0.024f, H, L), false);
-                    // The glass panels' joints: slim blue fittings, so the wall reads as a wall at any angle.
+                    // The glass panels' joints: thin fittings at the panels' real spacing; a light catching the top edge;
+                    // two faint glare streaks across the panes - enough to read as glass, not enough to hide the crowd.
                     for (int k = 1; k < 6; k++)
                         Greybox.Box("GlassJoint", root, glassEdge, SimToWorld.Pos(side * (HALF_W + 0.02), CEILING_H / 2, LENGTH * k / 6.0),
-                            new Vector3(0.03f, H, 0.025f), false);
-                    Greybox.Box("GlassFrameFront", root, glassEdge, SimToWorld.Pos(side * (HALF_W + 0.02), CEILING_H / 2, 0.02), new Vector3(0.04f, H, 0.04f), false);
+                            new Vector3(0.012f, H, 0.012f), false);
+                    Greybox.Box("GlassFrameFront", root, glassEdge, SimToWorld.Pos(side * (HALF_W + 0.02), CEILING_H / 2, 0.02), new Vector3(0.02f, H, 0.02f), false);
+                    Greybox.Box("GlassTopLight", root, glassLight, SimToWorld.Pos(side * (HALF_W + 0.014), H - 0.01, LENGTH / 2), new Vector3(0.01f, 0.012f, L), false);
+                    foreach (float z in new[] { 2.4f, 6.8f })
+                    {
+                        var streak = Greybox.Box("GlassGlare", root, glare, SimToWorld.Pos(side * (HALF_W + 0.026), H * 0.55, z), new Vector3(0.004f, H * 1.1f, 0.35f), false);
+                        streak.transform.localRotation = Quaternion.Euler(28f * side, 0f, 0f);
+                    }
                 }
                 else
                     Greybox.Box(side < 0 ? "SideWallLeft" : "SideWallRight", root, wall,
@@ -151,7 +169,34 @@ namespace SquashGame
             VenueView.Build(root, palette);
             Debug.Log("[venue] detail " + VenueView.Detail + " built in " + sw.ElapsedMilliseconds + " ms, " + CrowdBuilder.PeopleBuilt + " people");
             VenueView.SetUpCamera(Camera.main);
+            if (dressed) Reflections(root, W, H, L);
+            else if (GetComponent<ReflectionProbe>() != null) GetComponent<ReflectionProbe>().enabled = false;
             Debug.Log("[venue] court and venue in " + total.ElapsedMilliseconds + " ms");
+        }
+
+        /// <summary>Graphics pass 2: the polished floor - a reflection probe boxed to the court, rendered once now the court and
+        /// its surroundings are built, so the lamps, the walls and the hall show in the boards.</summary>
+        void Reflections(Transform root, float W, float H, float L)
+        {
+            // One probe for the court's life, on the court object itself (rebuilds destroy only its children - a probe
+            // destroyed mid-frame breaks URP's probe culling), re-rendered for the court now built.
+            var rp = GetComponent<ReflectionProbe>();
+            if (rp == null)
+            {
+                rp = gameObject.AddComponent<ReflectionProbe>();
+                rp.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+                rp.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+                rp.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+                rp.boxProjection = true;
+                rp.resolution = 256;
+                rp.intensity = 0.7f;
+                rp.farClipPlane = 120f;
+            }
+            Vector3 c = transform.InverseTransformPoint(SimToWorld.Pos(0, 1.6, LENGTH / 2));
+            rp.center = c + new Vector3(0f, 0.5f, 0f);
+            rp.size = new Vector3(W + 0.4f, 2f * 1.6f + 2.6f, L + 0.4f);
+            rp.enabled = true;
+            rp.RenderProbe();
         }
 
         /// <summary>Settings > Video > Venue changed, or the court (Courts.CurrentId): rebuild the court and the venue in place.</summary>
