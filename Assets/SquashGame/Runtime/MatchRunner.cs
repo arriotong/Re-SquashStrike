@@ -46,6 +46,8 @@ namespace SquashGame
         public uint KitSeed;
         /// <summary>The court to play on (Courts.All id); null = the one being drawn.</summary>
         public string Court;
+        /// <summary>How full the stands are, 0..1 (0 = full: the default).</summary>
+        public float CrowdFill;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -242,6 +244,7 @@ namespace SquashGame
             EndRecording(true);
             Settings = s.Clone();
             if (!string.IsNullOrEmpty(Settings.Court)) Courts.CurrentId = Settings.Court;     // CourtView rebuilds on the next frame
+            Courts.CrowdFill = Settings.CrowdFill > 0f ? Settings.CrowdFill : 1f;
             if (Settings.TwoPlayer && !CanPlayTwoPlayer) Settings.TwoPlayer = false;
             if (Settings.TwoPlayer)
             {

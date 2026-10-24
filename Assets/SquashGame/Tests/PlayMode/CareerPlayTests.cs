@@ -3,7 +3,7 @@
 // P2-M4: the Career in the real scene, on the keyboard.
 //   - main menu -> Career -> create a player (name, nation, matches:
 //     one step each) -> the hub; its tabs
-//   - CONTINUE enters the Club event -> the match preview -> the match
+//   - CONTINUE enters a Challenger 3 -> the match preview -> the match
 //     starts with the players' names, the pro's style and strength
 //   - the match is played (an AI stands in for you, sped up) -> post-
 //     match Continue -> the result is recorded and saved
@@ -127,7 +127,7 @@ namespace SquashGame.Tests
             Assert.That(c.S.Nat, Is.EqualTo("SCO"));
             Assert.That(c.S.GamesToWin, Is.EqualTo(1));
             Assert.That(File.Exists(Path.Combine(ProfileStore.Folder, CareerStore.FileName)), Is.True, "saved");
-            Assert.That(fe.Top.Focused.Name, Does.Contain("Club"), "the Club event is the one open to a newcomer");
+            Assert.That(fe.Top.Focused.Name, Does.Contain("Challenger"), "a Challenger 3 is the one open to a newcomer");
             Assert.That(hub.Reachable().Count, Is.LessThanOrEqualTo(6), "few choices in view");
             yield return CaptureUI(fe, "P2M4_UI_2_Hub.png");
 
@@ -149,7 +149,7 @@ namespace SquashGame.Tests
             yield return null; yield return null; yield return null;
             Assert.That(c.S.Current, Is.Not.Null);
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
-            Assert.That(fe.Top.Focused.Name, Does.StartWith("Round of 16 v "), "your next match");
+            Assert.That(fe.Top.Focused.Name, Does.StartWith("Round of 32 v "), "your next match");
             yield return CaptureUI(fe, "U3_Central_Match.png");
             int opp = c.NextOpponent();
             yield return Tap(kb.enterKey);
@@ -261,16 +261,16 @@ namespace SquashGame.Tests
             yield return Tap(kb.eKey); yield return Tap(kb.eKey); yield return Tap(kb.eKey);
             yield return CaptureUI(fe, "U3_PLAYER_History.png");
 
-            // a 32-player draw (a Tour event): rank the player up, move on to March
-            c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = 4, Reached = 0, Points = 9000 });
+            // a World Tour draw (a Gold event): rank the player up, move on to it
+            c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = (int)Tier.Diamond, Reached = 0, Points = 40000 });
             while (c.S.Current != null) { while (c.NextOpponent() >= 0) c.SimulateYours(); c.FinishSlot(); }
             Assert.That(c.S.Last, Is.Not.Null);
             fe.Push(new EventResultScreen(c.S.Last));                                // the result screen, whatever the matches did (skipping a month clears Last)
             yield return Wait(1.5f, () => false);
             yield return CaptureUI(fe, "U3_EventResult.png");
             fe.Pop();
-            while (System.Array.IndexOf(c.EventsNow(), Tier.Tour) < 0) c.Skip();
-            c.Enter(Tier.Tour);
+            while (System.Array.IndexOf(c.EventsNow(), Tier.Gold) < 0) c.Skip();
+            c.Enter(Tier.Gold);
             c.SimulateYours();
             fe.Push(new DrawScreen(c.S.Current));
             yield return null; yield return null; yield return null;

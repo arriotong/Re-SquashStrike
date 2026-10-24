@@ -231,6 +231,47 @@ namespace SquashGame.Tests
             Debug.Log("[PR4] bed in rally " + inRally.ToString("0.00") + ", between " + maxBetween.ToString("0.00"));
         }
 
+        /// <summary>The career's stages, Challenger 3 to the World Championship, each with its crowd (Courts.ForCareerTier,
+        /// CrowdForCareerTier), from the TV camera: Captures/CAREER_COURTS.png. The stands fill as the events grow.</summary>
+        [UnityTest]
+        public IEnumerator TheCareersCourtsGrowWithTheEvents()
+        {
+            VenueView.Detail = 2;
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            var cam = Camera.main;
+            cam.GetComponent<GameplayCameraRig>().enabled = false;
+            int[] tiers = { 0, 2, 3, 5, 7, 9, 11 };       // C3, C9, C15, Copper, Silver, Platinum, World Championship
+            const int CW = 640, CHt = 360;
+            var sheet = new Texture2D(CW * 4, CHt * 2, TextureFormat.RGB24, false);
+            var rt = new RenderTexture(CW, CHt, 24);
+            int lastPeople = -1;
+            for (int k = 0; k < tiers.Length; k++)
+            {
+                Courts.CurrentId = Courts.ForCareerTier(tiers[k]);
+                Courts.CrowdFill = Courts.CrowdForCareerTier(tiers[k]);
+                CrowdBuilder.ResetCount();
+                yield return null; yield return null; yield return null;
+                if (k == 1) Assert.That(CrowdBuilder.PeopleBuilt, Is.GreaterThan(lastPeople), "a Challenger 9 draws more people than a Challenger 3");
+                lastPeople = CrowdBuilder.PeopleBuilt;
+                bool clubView = Courts.CurrentId == "club";
+                cam.fieldOfView = clubView ? 34f : 24f;
+                cam.transform.position = clubView ? SimToWorld.Pos(0, 4.3, 18.35) : SimToWorld.Pos(0, 6.0, 22.25);
+                cam.transform.LookAt(clubView ? SimToWorld.Pos(0, 1.2, 2.5) : SimToWorld.Pos(0, 0.9, 1.5));
+                cam.targetTexture = rt;
+                cam.Render();
+                RenderTexture.active = rt;
+                sheet.ReadPixels(new Rect(0, 0, CW, CHt), (k % 4) * CW, (1 - k / 4) * CHt);
+                cam.targetTexture = null;
+                RenderTexture.active = null;
+                Debug.Log("[career courts] tier " + tiers[k] + ": " + Courts.CurrentId + ", " + CrowdBuilder.PeopleBuilt + " people");
+            }
+            sheet.Apply();
+            File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "CAREER_COURTS.png")), sheet.EncodeToPNG());
+            Object.Destroy(sheet); rt.Release();
+            Courts.CrowdFill = 1f;
+        }
+
         /// <summary>Every court, built and filmed from the match camera (top) and the establishing shot (bottom):
         /// Captures/COURTS.png.</summary>
         [UnityTest]

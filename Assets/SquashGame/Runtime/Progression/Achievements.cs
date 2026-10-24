@@ -94,12 +94,12 @@ namespace SquashGame.Progression
             A("Target Arcade", "streak25", "On a roll", "A streak of 25 in Streak.", AchTier.Silver);
             A("Target Arcade", "drills", "Drilled", "Finish every drill in the Practice Court.", AchTier.Bronze);
             // ---- career ----
-            A("Career", "club", "Club champion", "Win a Club event.", AchTier.Bronze, "title_clubchamp");
-            A("Career", "regional", "Regional hero", "Win a Regional event.", AchTier.Silver, "title_regional");
-            A("Career", "challenger", "Challenger", "Win a Challenger event.", AchTier.Silver, "title_challenger");
-            A("Career", "tour", "Tour winner", "Win a Tour event.", AchTier.Gold, "title_tour");
-            A("Career", "major", "Major champion", "Win a Major.", AchTier.Gold, "title_major");
-            A("Career", "world", "World champion", "Win the World Finals.", AchTier.Gold, "title_world");
+            A("Career", "club", "Challenger champion", "Win a Challenger 3 or 6.", AchTier.Bronze, "title_clubchamp");
+            A("Career", "regional", "Challenger elite", "Win a Challenger 9, 15 or 20.", AchTier.Silver, "title_regional");
+            A("Career", "challenger", "World Tour winner", "Win a Copper or Bronze event.", AchTier.Silver, "title_challenger");
+            A("Career", "tour", "Gold standard", "Win a Silver or Gold event.", AchTier.Gold, "title_tour");
+            A("Career", "major", "Platinum class", "Win a Platinum or Diamond event.", AchTier.Gold, "title_major");
+            A("Career", "world", "World champion", "Win the World Championship or the World Tour Finals.", AchTier.Gold, "title_world");
             A("Career", "top20", "Top 20", "Reach the world's top 20.", AchTier.Silver, "frame_gold");
             A("Career", "top10", "Top 10", "Reach the world's top 10.", AchTier.Gold, "shirt_navygold");
             A("Career", "no1", "World No. 1", "Reach number one in the world.", AchTier.Gold, "title_no1");

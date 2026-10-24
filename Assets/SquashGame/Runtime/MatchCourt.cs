@@ -25,6 +25,7 @@ namespace SquashGame
             // The menus show the court last chosen for a quick match (a match then sets its own: MatchRunner.BeginMatch).
             var choices = Profile.ProfileStore.Current.Choices;
             Courts.CurrentId = Courts.All[Mathf.Clamp(choices.Court, 0, Courts.All.Length - 1)].Id;
+            Courts.CrowdFill = 1f;
 
             var court = new GameObject("Court").AddComponent<CourtView>();
             court.transform.SetParent(transform, false);

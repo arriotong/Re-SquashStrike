@@ -50,6 +50,10 @@ namespace SquashGame
         /// <summary>The court being drawn (CourtView rebuilds when it changes).</summary>
         public static string CurrentId = "show";
 
+        /// <summary>How full the stands are, 0..1 (CourtView rebuilds when it changes). A career's small events play to a
+        /// handful of people; the big ones are packed.</summary>
+        public static float CrowdFill = 1f;
+
         public static CourtTheme Current { get { return Find(CurrentId) ?? All[0]; } }
 
         public static CourtTheme Find(string id)
@@ -61,5 +65,14 @@ namespace SquashGame
         public static int IndexOf(string id) { for (int i = 0; i < All.Length; i++) if (All[i].Id == id) return i; return 0; }
 
         public static string[] Names { get { var n = new string[All.Length]; for (int i = 0; i < n.Length; i++) n[i] = All[i].Name; return n; } }
+
+        // The career's stages (SquashSim.Career.Tier order, Challenger 3 .. World Tour Finals): the club court for the small
+        // Challengers, then up through the glass courts - the rooftop, the station, the pyramids, the show court - to the
+        // full arena for the World Championship and the Finals; the stands fill as the events grow.
+        static readonly string[] CareerCourts = { "club", "club", "club", "rooftop", "rooftop", "station", "station", "desert", "desert", "show", "show", "arena", "arena" };
+        static readonly float[] CareerCrowd = { 0.18f, 0.28f, 0.4f, 0.5f, 0.6f, 0.68f, 0.76f, 0.84f, 0.9f, 0.95f, 1f, 1f, 1f };
+
+        public static string ForCareerTier(int tier) { return CareerCourts[Mathf.Clamp(tier, 0, CareerCourts.Length - 1)]; }
+        public static float CrowdForCareerTier(int tier) { return CareerCrowd[Mathf.Clamp(tier, 0, CareerCrowd.Length - 1)]; }
     }
 }

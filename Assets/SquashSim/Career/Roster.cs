@@ -1,12 +1,13 @@
 // ===========================================================
 // Assets/SquashSim/Career/Roster.cs
-// P2-M4: the tour's pros - 80 fictional players, generated once per
-// career from its seed. No real players' names.
+// P2-M4: the tour's pros - a world of fictional players (Tour.RosterSize,
+// 480 since the PSA rework), generated once per career from its seed.
+// No real players' names.
 //
-//   strength   the AI's difficulty (AiProfile.WithDifficulty), 0..0.62;
-//              made so the ranking bands get the tier strengths of the
-//              plan: Club ~0-0.04, Regional ~0.04-0.13, Challenger
-//              ~0.13-0.26, Tour 0.26-0.60
+//   strength   the AI's difficulty (AiProfile.WithDifficulty), 0..0.62,
+//              falling with the place in the world: the top 32 ~0.54+,
+//              #100 ~0.41, #250 ~0.18, the bottom hundred under 0.05 -
+//              the Challenger 3s are where a new pro can win
 //   style      one of the four AI personalities
 //   age        drives the season's drift: the young improve, veterans
 //              fade; at 36 (or a little earlier) they retire and a
@@ -81,6 +82,29 @@ namespace SquashSim.Career
             "Kingsmill", "Longacre", "Moorcroft", "Netherby", "Ormsby", "Penhallow", "Quenby", "Rushworth", "Starling", "Tolliver"
         };
 
+        // ~700 more surnames, made of English place-name parts (Ashby, Coldwell, Thornfield...)
+        static readonly string[] Heads =
+        {
+            "Ash", "Barrow", "Bel", "Black", "Bright", "Cal", "Cold", "Dun", "East", "Fair", "Fen", "Gar", "Grey", "Hart", "Haw",
+            "Iron", "Kings", "Lang", "Lind", "Long", "Marl", "Moor", "North", "Oak", "Pen", "Red", "Rook", "Salt", "Sef", "Silver",
+            "Stan", "Storm", "Thorn", "Under", "Wain", "West", "Whit", "Wind", "Wynd", "Yard"
+        };
+        static readonly string[] Tails = { "by", "combe", "dale", "field", "ford", "holt", "hurst", "ley", "more", "ton", "well", "wood", "worth", "bridge", "croft", "lake", "stead", "wick" };
+
+        static string[] _pool;
+        /// <summary>Every surname a pro may have: the list above, then the made ones.</summary>
+        static string[] Pool
+        {
+            get
+            {
+                if (_pool != null) return _pool;
+                var all = new List<string>(Lasts);
+                var seen = new HashSet<string>(Lasts);
+                foreach (var h in Heads) foreach (var t in Tails) { string n = h + t; if (seen.Add(n)) all.Add(n); }
+                return _pool = all.ToArray();
+            }
+        }
+
         public const double MaxStrength = 0.62;
 
         /// <summary>The roster, best first (index 0 = strongest).</summary>
@@ -106,7 +130,8 @@ namespace SquashSim.Career
         {
             string last;
             int guard = 0;
-            do { last = Lasts[rng.Range(Lasts.Length)]; } while (usedLast.Contains(last) && guard++ < 200);
+            var pool = Pool;
+            do { last = pool[rng.Range(pool.Length)]; } while (usedLast.Contains(last) && guard++ < 400);
             usedLast.Add(last);
             return new Pro
             {

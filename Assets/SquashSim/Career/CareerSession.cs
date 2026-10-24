@@ -4,9 +4,12 @@
 //
 //   New(...)            a new career: the roster, then the tour's year
 //                       before you joined, played out in the background
-//   Ranking()           everyone, best first (rolling best 8 of 12)
+//   Ranking()           the ranked players, best first: the PSA's rolling
+//                       12 months, points averaged over the events played
+//                       (dividing by at least 10). No results = unranked.
 //   Entry(tier)         may you enter this event now?
-//   Enter(tier)         build this slot's draw with you in it
+//   Enter(tier)         build this slot's draw with you in it (the month's
+//                       fields are drawn biggest event first: MonthFields)
 //   NextOpponent        your next opponent, or -1
 //   RecordYours(...)    your match is done (played, simulated, retired):
 //                       the rest of the round is played out
@@ -31,7 +34,7 @@ namespace SquashSim.Career
 
         public const int You = 0;
 
-        /// <summary>A new career: the roster, then a year of the tour without you (so the ranking is real).</summary>
+        /// <summary>A new career: the world's pros, then a year of the tour without you (so the ranking is real). You start unranked.</summary>
         public static CareerSession New(string name, string nat, uint seed, int gamesToWin = 2, bool english = false)
         {
             var s = new CareerState { Name = name, Nat = nat, Seed = seed, GamesToWin = gamesToWin, English = english, Season = 0, Month = 0 };
@@ -70,16 +73,30 @@ namespace SquashSim.Career
 
         // ---------------- the ranking ----------------
 
-        public sealed class Row { public int Id, Rank, Points; public int LastSlot = -1; }
+        public sealed class Row
+        {
+            public int Id, Rank, Total, Events;
+            public double Average;                          // the ranking points: Total / max(Events, MinDivisor)
+            public int LastSlot = -1;
+            /// <summary>The ranking points, rounded (the tables show them like this).</summary>
+            public int Points { get { return (int)System.Math.Round(Average); } }
+        }
+
+        /// <summary>RankOf for a player with no results in the last 12 months.</summary>
+        public const int Unranked = 9999;
 
         List<Row> _ranking;
-        int _rankingAt = int.MinValue, _rankingResults = -1;
+        Dictionary<int, Row> _rankById;
+        int _rankingAt = int.MinValue, _rankingResults = -1, _rankingRoster = -1;
 
-        /// <summary>Everyone (you included), best first: points from the best 8 results of the last 12 slots.</summary>
+        /// <summary>The ranked players (you included, once you have a result), best first.</summary>
         public List<Row> Ranking()
         {
-            if (_ranking != null && _rankingAt == S.Slot && _rankingResults == S.Results.Count) return _ranking;
-            _ranking = RankingAt(S.Slot); _rankingAt = S.Slot; _rankingResults = S.Results.Count;
+            if (_ranking != null && _rankingAt == S.Slot && _rankingResults == S.Results.Count && _rankingRoster == S.Roster.Count) return _ranking;
+            _ranking = RankingAt(S.Slot); _rankingAt = S.Slot; _rankingResults = S.Results.Count; _rankingRoster = S.Roster.Count;
+            _rankById = new Dictionary<int, Row>();
+            foreach (var r in _ranking) _rankById[r.Id] = r;
+            _order = null;
             return _ranking;
         }
 
@@ -87,28 +104,27 @@ namespace SquashSim.Career
         public List<Row> RankingAt(int slot)
         {
             var rows = new Dictionary<int, Row>();
-            var per = new Dictionary<int, List<int>>();
-            foreach (var p in S.Roster) if (!p.Retired) { rows[p.Id] = new Row { Id = p.Id }; per[p.Id] = new List<int>(); }
-            rows[You] = new Row { Id = You }; per[You] = new List<int>();
             int from = slot - Tour.RankingWindow;
             foreach (var r in S.Results)
             {
-                if (r.Slot < from || r.Slot >= slot || !rows.ContainsKey(r.Player)) continue;
-                per[r.Player].Add(r.Points);
-                if (r.Points > 0 && r.Slot > rows[r.Player].LastSlot) rows[r.Player].LastSlot = r.Slot;
+                if (r.Slot < from || r.Slot >= slot) continue;
+                if (r.Player != You) { var p = Pro(r.Player); if (p == null || p.Retired) continue; }
+                if (!rows.TryGetValue(r.Player, out var row)) rows[r.Player] = row = new Row { Id = r.Player };
+                row.Total += r.Points;
+                row.Events++;
+                if (r.Slot > row.LastSlot) row.LastSlot = r.Slot;
             }
-            foreach (var kv in per)
+            var list = new List<Row>();
+            foreach (var row in rows.Values)
             {
-                kv.Value.Sort((a, b) => b.CompareTo(a));
-                int sum = 0;
-                for (int i = 0; i < kv.Value.Count && i < Tour.CountedResults; i++) sum += kv.Value[i];
-                rows[kv.Key].Points = sum;
+                if (row.Total <= 0) continue;
+                row.Average = (double)row.Total / System.Math.Max(row.Events, Tour.MinDivisor);
+                list.Add(row);
             }
-            var list = new List<Row>(rows.Values);
             list.Sort((a, b) =>
             {
-                if (a.Points != b.Points) return b.Points.CompareTo(a.Points);
-                if ((a.Points == 0) && (a.Id == You) != (b.Id == You)) return a.Id == You ? 1 : -1;   // unranked: you start at the bottom
+                if (a.Average != b.Average) return b.Average.CompareTo(a.Average);
+                if (a.Total != b.Total) return b.Total.CompareTo(a.Total);
                 if (a.LastSlot != b.LastSlot) return b.LastSlot.CompareTo(a.LastSlot);
                 double sa = a.Id == You ? -1 : Pro(a.Id).Strength, sb = b.Id == You ? -1 : Pro(b.Id).Strength;
                 if (sa != sb) return sb.CompareTo(sa);
@@ -128,88 +144,166 @@ namespace SquashSim.Career
             { _before = RankingAt(S.Slot - 1); _beforeAt = S.Slot; _beforeResults = S.Results.Count; }
             int was = 0;
             foreach (var r in _before) if (r.Id == id) { was = r.Rank; break; }
-            return was == 0 ? 0 : was - RankOf(id);
+            int now = RankOf(id);
+            return was == 0 || now == Unranked ? 0 : was - now;
         }
 
-        public int RankOf(int id) { foreach (var r in Ranking()) if (r.Id == id) return r.Rank; return 999; }
-        public int PointsOf(int id) { foreach (var r in Ranking()) if (r.Id == id) return r.Points; return 0; }
+        /// <summary>A player's world ranking, or Unranked.</summary>
+        public int RankOf(int id) { Ranking(); return _rankById.TryGetValue(id, out var r) ? r.Rank : Unranked; }
+        public bool IsRanked(int id) { return RankOf(id) != Unranked; }
+        /// <summary>Ranking points (the average), rounded.</summary>
+        public int PointsOf(int id) { Ranking(); return _rankById.TryGetValue(id, out var r) ? r.Points : 0; }
+        public double AverageOf(int id) { Ranking(); return _rankById.TryGetValue(id, out var r) ? r.Average : 0; }
+        /// <summary>Events counted in the ranking (the last 12 months).</summary>
+        public int EventsOf(int id) { Ranking(); return _rankById.TryGetValue(id, out var r) ? r.Events : 0; }
 
-        /// <summary>The pros only, best first (the tier bands are places in this list).</summary>
+        List<int> _order;
+
+        /// <summary>The pros in entry order: the ranked best first, then the unranked by strength. A tier's band is places in this list.</summary>
         List<int> ProOrder()
         {
+            Ranking();
+            if (_order != null) return _order;
             var ids = new List<int>();
-            foreach (var r in Ranking()) if (r.Id != You) ids.Add(r.Id);
-            return ids;
+            foreach (var r in _ranking) if (r.Id != You) ids.Add(r.Id);
+            var rest = new List<Pro>();
+            foreach (var p in S.Roster) if (!p.Retired && !_rankById.ContainsKey(p.Id)) rest.Add(p);
+            rest.Sort((a, b) => a.Strength != b.Strength ? b.Strength.CompareTo(a.Strength) : a.Id.CompareTo(b.Id));
+            foreach (var p in rest) ids.Add(p.Id);
+            return _order = ids;
         }
 
         // ---------------- entering ----------------
 
-        public Tier[] EventsNow() { return Tour.EventsIn(S.Month); }
+        /// <summary>This month's tiers, biggest first, each once (a month has several Challenger 3s: you play one).</summary>
+        public Tier[] EventsNow()
+        {
+            var list = new List<Tier>();
+            foreach (var t in Tour.EventsIn(S.Month)) if (!list.Contains(t)) list.Add(t);
+            return list.ToArray();
+        }
+
+        /// <summary>The month's events worth showing you: the best three you may enter, and the next one up (a goal).</summary>
+        public List<Tier> EventsForYou()
+        {
+            var open = new List<Tier>();
+            Tier next = (Tier)(-1);
+            foreach (var t in EventsNow())
+            {
+                if (CanEnter(t)) { if (open.Count < 3) open.Add(t); }
+                else if (open.Count == 0) next = t;              // the smallest locked one above the open ones
+            }
+            var list = new List<Tier>();
+            if ((int)next >= 0) list.Add(next);
+            list.AddRange(open);
+            return list;
+        }
 
         /// <summary>Null when you may enter this event now, else why not.</summary>
         public string Entry(Tier t)
         {
             if (S.Current != null) return "you are in an event";
-            if (Array.IndexOf(EventsNow(), t) < 0) return "not this month";
+            if (Tour.IndexOf(S.Month, t) < 0) return "not this month";
             var info = Tour.Info(t);
             int rank = RankOf(You);
+            if (t == Tier.WorldTourFinals) return rank <= info.UnlockRank ? null : "the world's top 8 only";
             if (info.UnlockRank > 0 && rank > info.UnlockRank)
-                return t == Tier.WorldFinals ? "the season's top 8 only" : "opens at rank " + info.UnlockRank;
+                return rank == Unranked ? "needs a world ranking" : "opens at #" + info.UnlockRank;
             return null;
         }
 
         public bool CanEnter(Tier t) { return Entry(t) == null; }
 
-        /// <summary>The field for one of this slot's events: ids, best-ranked first.</summary>
-        List<int> Field(Tier t, bool withYou)
+        /// <summary>Does this pro enter an event this month? (Most do; the same answer all month.)</summary>
+        bool Enters(int id) { return CareerRng.Mix(S.Seed ^ 0x5EA5u, S.Slot, id) % 1000u < (uint)(Tour.EntryChance * 1000); }
+
+        /// <summary>Every event's field this month, by its index in Tour.EventsIn: filled biggest event first, each from its
+        /// band down, the best-ranked entrants first; nobody plays two. yourEvent = the index you play (-1 = none):
+        /// you take the place of its lowest entrant.</summary>
+        List<int>[] MonthFields(int yourEvent)
         {
-            var info = Tour.Info(t);
-            var field = new List<int>();
-            if (t == Tier.WorldFinals)
-            {
-                foreach (var r in Ranking()) { if (field.Count >= info.Draw) break; if (r.Id != You || withYou) field.Add(r.Id); }
-                return field;
-            }
+            var tiers = Tour.EventsIn(S.Month);
+            var fields = new List<int>[tiers.Length];
             var order = ProOrder();
-            for (int place = info.BandTop; place <= info.BandBottom && place - 1 < order.Count; place++) field.Add(order[place - 1]);
-            if (withYou)
+            var used = new HashSet<int>();
+            var idx = new List<int>();
+            for (int i = 0; i < tiers.Length; i++) idx.Add(i);
+            idx.Sort((a, b) => tiers[a] != tiers[b] ? ((int)tiers[b]).CompareTo((int)tiers[a]) : a.CompareTo(b));
+            foreach (int i in idx)
             {
-                field.RemoveAt(field.Count - 1);                      // you take the lowest entrant's place
-                int at = 0, mine = RankOf(You);
-                while (at < field.Count && RankOf(field[at]) < mine) at++;
-                field.Insert(at, You);
+                var info = Tour.Info(tiers[i]);
+                var field = new List<int>();
+                bool everyone = tiers[i] == Tier.WorldChampionship || tiers[i] == Tier.WorldTourFinals;   // nobody misses these
+                for (int pass = 0; pass < 2 && field.Count < info.Draw; pass++)
+                    for (int place = info.BandTop - 1; place < order.Count && field.Count < info.Draw; place++)
+                    {
+                        int id = order[place];
+                        if (used.Contains(id) || field.Contains(id)) continue;
+                        if (pass == 0 && !everyone && !Enters(id)) continue;
+                        field.Add(id);
+                    }
+                if (i == yourEvent && field.Count > 0)
+                {
+                    field.RemoveAt(field.Count - 1);                      // you take the lowest entrant's place
+                    int at = 0, mine = RankOf(You);
+                    while (at < field.Count && RankOf(field[at]) < mine) at++;
+                    field.Insert(at, You);
+                }
+                foreach (int id in field) used.Add(id);
+                fields[i] = field;
             }
-            return field;
+            return fields;
         }
 
-        /// <summary>A draw: seeds 1 and 2 at the ends, 3 and 4 in the other half-ends, the rest by lot.</summary>
+        /// <summary>The draw's seeding: seed number at each slot (1 at the top, 2 at the bottom, 3 and 4 in the other halves...).</summary>
+        static int[] SeedOrder(int n)
+        {
+            var o = new List<int> { 1, 2 };
+            while (o.Count < n)
+            {
+                int m = o.Count * 2;
+                var next = new List<int>();
+                for (int i = 0; i < o.Count; i++)
+                {
+                    if (i % 2 == 0) { next.Add(o[i]); next.Add(m + 1 - o[i]); }
+                    else { next.Add(m + 1 - o[i]); next.Add(o[i]); }
+                }
+                o = next;
+            }
+            return o.ToArray();
+        }
+
+        /// <summary>A draw: a quarter of the field seeded (1 and 2 at the ends, 3-4, 5-8, 9-16 drawn into their places), the rest by lot.</summary>
         RoundRec Draw(List<int> field, CareerRng rng)
         {
             int n = field.Count;
             var slots = new int[n];
-            for (int i = 0; i < n; i++) slots[i] = int.MinValue;
-            slots[0] = field[0];
-            if (n > 1) slots[n - 1] = field[1];
-            if (n > 3)
+            if (n < 2) { var single = new RoundRec(); single.Players.AddRange(field); return single; }
+            var order = SeedOrder(n);
+            int seeds = System.Math.Max(2, n / 4);
+            // the seeds: groups 3-4, 5-8, 9-16 are each drawn into their group's places
+            var bySeed = new int[seeds + 1];
+            for (int k = 1; k <= seeds; k++) bySeed[k] = field[k - 1];
+            for (int lo = 3, hi; lo <= seeds; lo = hi + 1)
             {
-                bool flip = rng.Next() < 0.5;
-                slots[n / 2 - 1] = field[flip ? 3 : 2];
-                slots[n / 2] = field[flip ? 2 : 3];
+                hi = System.Math.Min(seeds, lo * 2 - 2);
+                for (int k = hi; k > lo; k--) { int j = lo + rng.Range(k - lo + 1); int tmp = bySeed[k]; bySeed[k] = bySeed[j]; bySeed[j] = tmp; }
             }
             var rest = new List<int>();
-            for (int i = Math.Min(4, n); i < n; i++) rest.Add(field[i]);
+            for (int i = seeds; i < n; i++) rest.Add(field[i]);
             for (int i = rest.Count - 1; i > 0; i--) { int j = rng.Range(i + 1); int tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp; }
-            int k = 0;
-            for (int i = 0; i < n; i++) if (slots[i] == int.MinValue) slots[i] = rest[k++];
+            int r = 0;
+            for (int i = 0; i < n; i++) slots[i] = order[i] <= seeds ? bySeed[order[i]] : rest[r++];
             var round = new RoundRec();
             round.Players.AddRange(slots);
             return round;
         }
 
-        EventState Build(Tier t, bool withYou)
+        EventState Build(int index, List<int> field, bool withYou)
         {
-            var e = new EventState { Slot = S.Slot, Tier = (int)t, Name = Tour.EventName(S.Month, t), YouIn = withYou };
-            e.Rounds.Add(Draw(Field(t, withYou), new CareerRng(S.Seed, S.Slot * 16 + (int)t, 999)));
+            var t = Tour.EventsIn(S.Month)[index];
+            var e = new EventState { Slot = S.Slot, Tier = (int)t, Index = index, Name = Tour.EventName(S.Month, index), YouIn = withYou };
+            e.Rounds.Add(Draw(field, new CareerRng(S.Seed, S.Slot * 16 + index, 999)));
             return e;
         }
 
@@ -217,7 +311,8 @@ namespace SquashSim.Career
         public EventState Enter(Tier t)
         {
             if (!CanEnter(t)) throw new InvalidOperationException("can't enter " + t + ": " + Entry(t));
-            S.Current = Build(t, true);
+            int index = Tour.IndexOf(S.Month, t);
+            S.Current = Build(index, MonthFields(index)[index], true);
             return S.Current;
         }
 
@@ -259,7 +354,7 @@ namespace SquashSim.Career
         {
             int opp = NextOpponent();
             if (opp < 0) throw new InvalidOperationException("no match to simulate");
-            var rng = new CareerRng(S.Seed, S.Slot * 16 + S.Current.Tier, 5000 + PlayersLeft);
+            var rng = new CareerRng(S.Seed, S.Slot * 16 + S.Current.Index, 5000 + PlayersLeft);
             var res = RallyModel.Play(RallyModel.YouRally(S.Rating, Pro(opp).Strength), S.GamesToWin, S.English, rng);
             RecordYours(res.AWon, res.Score, res.RalliesA, res.RalliesA + res.RalliesB, simulated: true);
             return res;
@@ -279,7 +374,7 @@ namespace SquashSim.Career
                     r.Scores.Add(a == You ? yourScore : Flip(yourScore));
                     continue;
                 }
-                var rng = new CareerRng(S.Seed, S.Slot * 16 + e.Tier, round * 64 + m);
+                var rng = new CareerRng(S.Seed, S.Slot * 16 + e.Index, round * 64 + m);
                 var res = RallyModel.Play(RallyModel.ProRally(Pro(a).Strength, Pro(b).Strength), S.GamesToWin, S.English, rng);
                 r.Winners.Add(res.AWon ? a : b);
                 r.Scores.Add(res.Score);
@@ -302,7 +397,7 @@ namespace SquashSim.Career
         void PlayOut(EventState e)
         {
             int guard = 0;
-            while (!e.Done && guard++ < 10)
+            while (!e.Done && guard++ < 12)
             {
                 if (e.YouIn && !e.YouOut && Open(e).Players.Contains(You)) throw new InvalidOperationException("your match first");
                 PlayRound(e, -1, null);
@@ -337,11 +432,13 @@ namespace SquashSim.Career
         {
             if (!CanFinishSlot) throw new InvalidOperationException("your match first");
             var events = new List<EventState>();
-            Tier yours = S.Current != null ? (Tier)S.Current.Tier : (Tier)(-1);
-            foreach (var t in EventsNow())
+            int yours = S.Current != null ? S.Current.Index : -1;
+            var fields = MonthFields(yours);
+            for (int i = 0; i < fields.Length; i++)
             {
-                if (S.Current != null && t == yours) { PlayOut(S.Current); events.Add(S.Current); continue; }
-                var e = Build(t, false);
+                if (i == yours) { PlayOut(S.Current); events.Add(S.Current); continue; }
+                if (fields[i].Count < 2) continue;
+                var e = Build(i, fields[i], false);
                 PlayOut(e);
                 events.Add(e);
             }
@@ -395,7 +492,7 @@ namespace SquashSim.Career
             int next = S.NextId;
             Roster.NewSeason(S.Roster, S.Seed, season, ref next);
             S.NextId = next;
-            _byId = null; _ranking = null;
+            _byId = null; _ranking = null; _order = null;
         }
 
         // ---------------- scouting ----------------
@@ -412,12 +509,12 @@ namespace SquashSim.Career
 
         public static string ReachedShort(int reached)
         {
-            switch (reached) { case 0: return "W"; case 1: return "F"; case 2: return "SF"; case 3: return "QF"; case 4: return "R16"; default: return "R32"; }
+            switch (reached) { case 0: return "W"; case 1: return "F"; case 2: return "SF"; case 3: return "QF"; case 4: return "R16"; case 5: return "R32"; default: return "R64"; }
         }
 
         public static string ReachedLong(int reached)
         {
-            switch (reached) { case 0: return "Champion"; case 1: return "Runner-up"; case 2: return "Semi-finals"; case 3: return "Quarter-finals"; case 4: return "Round of 16"; default: return "Round of 32"; }
+            switch (reached) { case 0: return "Champion"; case 1: return "Runner-up"; case 2: return "Semi-finals"; case 3: return "Quarter-finals"; case 4: return "Round of 16"; case 5: return "Round of 32"; default: return "Round of 64"; }
         }
 
         /// <summary>Your record against this pro: wins, losses.</summary>

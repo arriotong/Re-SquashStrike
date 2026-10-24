@@ -93,6 +93,7 @@ namespace SquashGame
         public static Transform[] Stand(Transform parent, Palette pal, string name, int rows, System.Func<int, Vector3> rowStart,
             System.Func<int, float> tread, Vector3 along, Vector3 facing, float length, int seed, float empty = 0.1f)
         {
+            empty = 1f - (1f - empty) * Mathf.Clamp(Courts.CrowdFill, 0.05f, 1f);     // a small event's thin crowd
             var groups = new Transform[Groups];
             var accs = new Dictionary<Material, Acc>[Groups];
             for (int g = 0; g < Groups; g++)

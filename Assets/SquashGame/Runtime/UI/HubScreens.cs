@@ -126,7 +126,7 @@ namespace SquashGame.UI
         {
             var c = CareerStore.Current;
             if (c == null) return "";
-            string next = c.S.Current != null ? "playing " + c.S.Current.Name : SquashSim.Career.Tour.Month(c.S.Month) + ": " + SquashSim.Career.Tour.EventName(c.S.Month, c.EventsNow()[0]);
+            string next = c.S.Current != null ? "playing " + c.S.Current.Name : SquashSim.Career.Tour.Month(c.S.Month) + ": " + SquashSim.Career.Tour.EventName(c.S.Month, 0);
             return Career.Rank(c.RankOf(SquashSim.Career.CareerSession.You)) + "  ·  Season " + c.S.Season + "  ·  " + next;
         }
 
@@ -341,7 +341,7 @@ namespace SquashGame.UI
             // P2-M5: XP, lifetime stats, the match achievements (once, when the screen is made)
             double tier = 0;
             var career = CareerStore.Current;
-            if (m.Settings.Career && career != null && career.S.Current != null) tier = Rewards.TierFactor[career.S.Current.Tier];
+            if (m.Settings.Career && career != null && career.S.Current != null) tier = Rewards.TierFactor[SquashSim.Career.Tour.Band(career.S.Current.Tier)];
             Reward = Rewards.Match(st.Facts(m), tier);
 
             // the primary first (it has the focus): Rematch, or Continue in a career

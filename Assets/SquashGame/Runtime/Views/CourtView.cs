@@ -19,6 +19,7 @@ namespace SquashGame
         GreyboxPalette _palette;
         int _builtDetail = -1;
         string _builtCourt;
+        float _builtFill = -1f;
 
         public void Build(GreyboxPalette palette)
         {
@@ -26,6 +27,7 @@ namespace SquashGame
             _palette = palette;
             _builtDetail = VenueView.Detail;
             _builtCourt = Courts.CurrentId;
+            _builtFill = Courts.CrowdFill;
             var theme = Courts.Current;
             Transform root = transform;
             bool dressed = VenueView.Detail > 0;      // PR1: the real court's surfaces and the arena around it
@@ -202,7 +204,7 @@ namespace SquashGame
         /// <summary>Settings > Video > Venue changed, or the court (Courts.CurrentId): rebuild the court and the venue in place.</summary>
         void Update()
         {
-            if (_palette == null || (_builtDetail == VenueView.Detail && _builtCourt == Courts.CurrentId)) return;
+            if (_palette == null || (_builtDetail == VenueView.Detail && _builtCourt == Courts.CurrentId && _builtFill == Courts.CrowdFill)) return;
             for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
             Build(_palette);
         }

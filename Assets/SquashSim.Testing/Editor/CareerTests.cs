@@ -1,15 +1,17 @@
 // ===========================================================
 // Assets/SquashSim.Testing/Editor/CareerTests.cs
-// P2-M4: the Career, headless.
-//   - the roster: 80 pros, strengths in the tier bands, no repeats
+// P2-M4: the Career, headless (the PSA system since 2026-10-24).
+//   - the world: 480 pros, strength falling with the place, no repeats
 //   - draws: seeds 1 and 2 at the ends, every round halves, the same
 //     seed gives the same draw
 //   - the rally model: even at equal strength, legal scorelines (PAR
 //     and English), the calibration it was fitted to
-//   - rankings: points by round, the best 8 of the last 12
-//   - seasons: every event finishes; a strong player climbs from Club
-//     to Tour inside two seasons, a weak one stays down; the save
-//     round-trips mid-event and plays out identically
+//   - rankings: you start unranked; the PSA average (12 months, divided
+//     by at least 10); only the Challenger 3s are open to the unranked;
+//     nobody plays two events in a month
+//   - seasons: every event finishes; a strong player climbs onto the
+//     World Tour inside two seasons, a weak one stays in the Challengers;
+//     the save round-trips mid-event and plays out identically
 // ===========================================================
 
 using System.Collections.Generic;
@@ -24,18 +26,17 @@ namespace SquashSim.Tests
     {
         [SetUp] public void Defaults() { PhysicsConfig.ResetToDefaults(); }
 
-        [Test] public void TheRosterFillsTheTierBands()
+        [Test] public void TheWorldFallsAwayFromTheTop()
         {
             var pros = Roster.Generate(7);
             Assert.That(pros.Count, Is.EqualTo(Tour.RosterSize));
             var names = new HashSet<string>();
             foreach (var p in pros) Assert.That(names.Add(p.Last), Is.True, "surnames are not repeated: " + p.Last);
             double Mean(int top, int bottom) { double s = 0; for (int i = top - 1; i < bottom; i++) s += pros[i].Strength; return s / (bottom - top + 1); }
-            Debug.Log("[Career] band strengths: Tour " + Mean(1, 32).ToString("0.00") + ", Challenger " + Mean(33, 48).ToString("0.00") +
-                      ", Regional " + Mean(49, 64).ToString("0.00") + ", Club " + Mean(65, 80).ToString("0.00"));
-            Assert.That(Mean(65, 80), Is.LessThan(0.05));
-            Assert.That(Mean(49, 64), Is.InRange(0.04, 0.14));
-            Assert.That(Mean(33, 48), Is.InRange(0.12, 0.27));
+            Debug.Log("[Career] strengths by place: 1-32 " + Mean(1, 32).ToString("0.00") + ", 33-140 " + Mean(33, 140).ToString("0.00") +
+                      ", 141-300 " + Mean(141, 300).ToString("0.00") + ", 301-480 " + Mean(301, 480).ToString("0.00"));
+            Assert.That(Mean(1, 32), Is.GreaterThan(0.5));
+            Assert.That(Mean(401, 480), Is.LessThan(0.03));
             Assert.That(pros[0].Strength, Is.InRange(0.55, Roster.MaxStrength));
         }
 
@@ -73,32 +74,67 @@ namespace SquashSim.Tests
         {
             var a = CareerSession.New("Tester", "ENG", 42);
             var b = CareerSession.New("Tester", "ENG", 42);
-            var e = a.Enter(Tier.Club);
-            var f = b.Enter(Tier.Club);
+            var e = a.Enter(Tier.Challenger3);
+            var f = b.Enter(Tier.Challenger3);
             Assert.That(e.Rounds[0].Players, Is.EqualTo(f.Rounds[0].Players), "same seed, same draw");
-            Assert.That(e.Rounds[0].Players.Count, Is.EqualTo(16));
+            Assert.That(e.Rounds[0].Players.Count, Is.EqualTo(32));
             Assert.That(e.Rounds[0].Players, Does.Contain(CareerSession.You));
             var field = new List<int>(e.Rounds[0].Players);
             field.Sort((x, y) => a.RankOf(x).CompareTo(a.RankOf(y)));
             Assert.That(e.Rounds[0].Players[0], Is.EqualTo(field[0]), "the top seed at the top");
-            Assert.That(e.Rounds[0].Players[15], Is.EqualTo(field[1]), "the second seed at the bottom");
+            Assert.That(e.Rounds[0].Players[31], Is.EqualTo(field[1]), "the second seed at the bottom");
+            Assert.That(new HashSet<int>(e.Rounds[0].Players).Count, Is.EqualTo(32), "nobody twice");
             while (a.NextOpponent() >= 0) a.SimulateYours();
             a.FinishSlot();
             var done = a.S.Last;
             Assert.That(done.Done, Is.True);
             for (int i = 1; i < done.Rounds.Count; i++) Assert.That(done.Rounds[i].Players.Count, Is.EqualTo(done.Rounds[i - 1].Players.Count / 2));
-            Assert.That(done.YouReached, Is.InRange(0, 4));
-            Assert.That(done.YouPoints, Is.EqualTo(Tour.Info(Tier.Club).Points[done.YouReached]));
+            Assert.That(done.YouReached, Is.InRange(0, 5));
+            Assert.That(done.YouPoints, Is.EqualTo(Tour.Info(Tier.Challenger3).Points[done.YouReached]));
+            Assert.That(a.IsRanked(CareerSession.You), Is.True, "one event and you are on the list");
         }
 
-        [Test] public void TheRankingCountsTheBestEightOfTwelve()
+        [Test] public void YouStartUnrankedAndOnlyTheChallenger3sAreOpen()
         {
             var c = CareerSession.New("Tester", "ENG", 5);
-            Assert.That(c.RankOf(CareerSession.You), Is.EqualTo(Tour.RosterSize + 1), "you start unranked, at the bottom");
-            // ten results for you in the window: only the best 8 count
-            for (int i = 0; i < 10; i++) c.S.Results.Add(new ResultRec { Player = 0, Slot = c.S.Slot - 1 - i, Tier = 0, Reached = 0, Points = 10 * (i + 1) });
+            Assert.That(c.RankOf(CareerSession.You), Is.EqualTo(CareerSession.Unranked), "you start unranked");
+            Assert.That(c.Ranking().Count, Is.InRange(300, Tour.RosterSize), "a year of the tour: most of the world is ranked");
+            Assert.That(c.CanEnter(Tier.Challenger3), Is.True);
+            foreach (var t in c.EventsNow())
+                if (t != Tier.Challenger3) Assert.That(c.CanEnter(t), Is.False, t + " is closed to the unranked");
+            Assert.That(c.EventsForYou(), Does.Contain(Tier.Challenger3));
+        }
+
+        [Test] public void TheRankingIsThePSAAverage()
+        {
+            var c = CareerSession.New("Tester", "ENG", 5);
+            // three results: the total divided by 10 (the minimum divisor)
+            for (int i = 0; i < 3; i++) c.S.Results.Add(new ResultRec { Player = 0, Slot = c.S.Slot - 1 - i, Tier = 0, Reached = 0, Points = 100 });
+            Assert.That(c.AverageOf(CareerSession.You), Is.EqualTo(30.0).Within(1e-9));
+            Assert.That(c.IsRanked(CareerSession.You), Is.True);
+            // twelve in the window: divided by 12; an older one does not count
+            for (int i = 3; i < 12; i++) c.S.Results.Add(new ResultRec { Player = 0, Slot = c.S.Slot - 1 - i, Tier = 0, Reached = 0, Points = 100 });
             c.S.Results.Add(new ResultRec { Player = 0, Slot = c.S.Slot - 13, Tier = 0, Reached = 0, Points = 5000 });   // too old
-            Assert.That(c.PointsOf(CareerSession.You), Is.EqualTo(100 + 90 + 80 + 70 + 60 + 50 + 40 + 30));
+            Assert.That(c.AverageOf(CareerSession.You), Is.EqualTo(100.0).Within(1e-9));
+            Assert.That(c.EventsOf(CareerSession.You), Is.EqualTo(12));
+            var list = c.Ranking();
+            for (int i = 1; i < list.Count; i++) Assert.That(list[i].Average, Is.LessThanOrEqualTo(list[i - 1].Average));
+            Debug.Log("[Career] the world after a year: #1 " + Pts(list[0].Average) + ", #32 " + Pts(list[31].Average) + ", #100 " + Pts(list[99].Average) +
+                      ", #250 " + Pts(list[249].Average) + ", #" + list.Count + " " + Pts(list[list.Count - 1].Average) + "; you (100.0) #" + c.RankOf(0));
+        }
+
+        static string Pts(double v) { return v.ToString("0.0"); }
+
+        [Test] public void NobodyPlaysTwoEventsInAMonth()
+        {
+            var c = CareerSession.New("Tester", "ENG", 8);
+            int slot = c.S.Slot;
+            c.Skip();
+            var seen = new HashSet<int>();
+            int events = 0;
+            foreach (var r in c.S.Results) if (r.Slot == slot) { Assert.That(seen.Add(r.Player), Is.True, "player " + r.Player + " twice"); if (r.Reached == 0) events++; }
+            Assert.That(events, Is.EqualTo(Tour.EventsIn(slot).Length), "every event finished, one winner each");
+            Debug.Log("[Career] a month: " + events + " events, " + seen.Count + " players of " + Tour.RosterSize);
         }
 
         static int HighestTier(CareerSession c, int seasons, double strength)
@@ -114,7 +150,7 @@ namespace SquashSim.Tests
             int top = HighestTier(strong, 2, 0.45);
             Debug.Log("[Career] strong (0.45): rank " + strong.RankOf(0) + " after 2 seasons, highest tier " + (Tier)top + ", rating " + strong.S.Rating.ToString("0.00") +
                       ", titles " + strong.S.Titles + ", earnings " + strong.S.Earnings);
-            Assert.That(top, Is.GreaterThanOrEqualTo((int)Tier.Tour), "a strong player reaches the Tour inside two seasons");
+            Assert.That(top, Is.GreaterThanOrEqualTo((int)Tier.Copper), "a strong player reaches the World Tour inside two seasons");
             Assert.That(strong.S.Rating, Is.InRange(0.30, 0.60), "the rating finds the true strength");
 
             var mid = CareerSession.New("Mid", "ENG", 12);
@@ -124,14 +160,14 @@ namespace SquashSim.Tests
             var weak = CareerSession.New("Weak", "ENG", 13);
             int weakTop = HighestTier(weak, 2, -0.15);
             Debug.Log("[Career] weak (-0.15): rank " + weak.RankOf(0) + " after 2 seasons, highest tier " + (Tier)weakTop);
-            Assert.That(weakTop, Is.LessThanOrEqualTo((int)Tier.Regional), "a weak player stays in the lower tiers");
+            Assert.That(weakTop, Is.LessThanOrEqualTo((int)Tier.Challenger9), "a weak player stays in the small Challengers");
             Assert.That(strong.S.Seasons.Count, Is.EqualTo(2), "two season summaries");
         }
 
         [Test] public void ASaveMidEventPlaysOutTheSame()
         {
             var c = CareerSession.New("Saver", "SCO", 21);
-            c.Enter(Tier.Club);
+            c.Enter(Tier.Challenger3);
             c.SimulateYours();
             string json = JsonUtility.ToJson(c.S);
             var copy = new CareerSession(JsonUtility.FromJson<CareerState>(json));

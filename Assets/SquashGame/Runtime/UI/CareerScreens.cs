@@ -39,7 +39,9 @@ namespace SquashGame.UI
         const int You = CareerSession.You;
 
         public static string Money(int n) { return "$" + n.ToString("N0"); }
-        public static string Rank(int r) { return r > Tour.RosterSize ? "unranked" : "#" + r; }
+        public static string Rank(int r) { return r >= CareerSession.Unranked ? "unranked" : "#" + r; }
+        /// <summary>Ranking points (an average): one decimal while small.</summary>
+        public static string Pts(double v) { return v < 100 ? v.ToString("0.0") : v.ToString("N0"); }
         public static string TierName(int t) { return Tour.Info((Tier)t).Name; }
         public static string When(CareerState s) { return "SEASON " + s.Season + "  ·  " + Tour.Month(s.Month).ToUpperInvariant(); }
         public static readonly string[] LengthLabels = { "One game", "Best of 3", "Best of 5" };
@@ -96,17 +98,20 @@ namespace SquashGame.UI
         /// <summary>The field's strength, as stars.</summary>
         public static string Stars(int tier)
         {
-            int n = Mathf.Clamp(tier + 1, 1, 5);
+            int n = Mathf.Clamp(Tour.Band(tier) + 1, 1, 5);
             return new string('★', n) + new string('☆', 5 - n);
         }
 
-        public static Color TierColor(int t) { return TierBadge.Fill[Mathf.Clamp(t, 0, TierBadge.Fill.Length - 1)]; }
+        public static Color TierColor(int t) { return TierBadge.Fill[Mathf.Clamp(Tour.Band(t), 0, TierBadge.Fill.Length - 1)]; }
+        /// <summary>A tier's badge (its band's colour).</summary>
+        public static TierBadge Badge(int tier, float size) { return new TierBadge(Tour.Band(tier), size); }
+        public static readonly string[] BandNames = { "Challenger 3-6", "Challenger 9-20", "Copper-Bronze", "Silver-Gold", "Platinum-Diamond", "World" };
         public static Color TierBg(int t) { var c = TierColor(t); return new Color(0.08f + c.r * 0.08f, 0.09f + c.g * 0.08f, 0.11f + c.b * 0.08f, 1f); }
 
         /// <summary>A tier diamond in a card's picture, top left.</summary>
         public static void TierOn(VisualElement art, int tier)
         {
-            var b = new TierBadge(tier, 34); b.AddToClassList("k-cr-cardtier"); art.Add(b);
+            var b = Badge(tier, 34); b.AddToClassList("k-cr-cardtier"); art.Add(b);
         }
 
         /// <summary>The seeds of an event (the best-ranked quarter of the field): id -> seed.</summary>
@@ -144,7 +149,7 @@ namespace SquashGame.UI
         public static List<CareerSession.Row> Around(CareerSession c, int id, int k)
         {
             var all = c.Ranking();
-            int at = c.RankOf(id) - 1;
+            int at = Mathf.Min(c.RankOf(id) - 1, all.Count - 1);       // unranked: the bottom of the list
             int from = Mathf.Clamp(at - k, 0, Mathf.Max(0, all.Count - (2 * k + 1)));
             return all.GetRange(from, Mathf.Min(2 * k + 1, all.Count - from));
         }
@@ -153,10 +158,11 @@ namespace SquashGame.UI
         public static string ToNext(CareerSession c)
         {
             var all = c.Ranking();
+            if (!c.IsRanked(You)) return "Unranked. Your first event puts you on the list.";
             int at = c.RankOf(You) - 1;
             if (at <= 0) return "World No. 1. Stay there.";
-            int gap = all[at - 1].Points - all[at].Points;
-            return gap <= 0 ? "Level on points with #" + at + ": your next result moves you up." : gap.ToString("N0") + " pts behind #" + at;
+            double gap = all[at - 1].Average - all[at].Average;
+            return gap <= 0 ? "Level on points with #" + at + ": your next result moves you up." : Pts(gap) + " pts behind #" + at;
         }
 
         /// <summary>A season's months for a timeline: your result under each (or what's coming).</summary>
@@ -174,8 +180,8 @@ namespace SquashGame.UI
                 if (state == 0 && s.Current != null) note = "LIVE";
                 if (state == 1)
                 {
-                    var top = Tour.EventsIn(m)[0];
-                    note = top == Tier.WorldFinals ? "FINALS" : top == Tier.Major ? "MAJOR" : top == Tier.Tour ? "TOUR" : "";
+                    var top = Tour.HeadlineOf(m);
+                    note = top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS" : top == Tier.Platinum ? "PLAT" : Tour.Info(top).Name.ToUpperInvariant();
                 }
                 list.Add((Tour.Month(m).ToUpperInvariant(), note, state));
             }
@@ -190,6 +196,7 @@ namespace SquashGame.UI
             if (s.Last != null && s.Last.Slot == s.Slot - 1 && s.Last.YouReached >= 0)
                 list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last.YouReached) + " at the " + s.Last.Name));
             int mv = c.Movement(You), rank = c.RankOf(You);
+            if (mv == 0 && rank != CareerSession.Unranked && c.EventsOf(You) == 1) list.Add(("RANKINGS", "You're on the world ranking: a new entry at #" + rank));
             if (mv > 0) list.Add(("RANKINGS", "You climb " + mv + (mv == 1 ? " place" : " places") + " to #" + rank));
             else if (mv < 0) list.Add(("RANKINGS", "You slip " + (-mv) + (mv == -1 ? " place" : " places") + " to #" + rank));
             int prev = s.Slot - 1, month = ((prev % Tour.SlotsPerSeason) + Tour.SlotsPerSeason) % Tour.SlotsPerSeason;
@@ -198,11 +205,11 @@ namespace SquashGame.UI
             foreach (var r in champs)
             {
                 if (list.Count >= 3) break;
-                list.Add((Tour.Info((Tier)r.Tier).Name.ToUpperInvariant(), c.NameOf(r.Player) + " wins the " + Tour.EventName(month, (Tier)r.Tier) + (c.IsRival(r.Player) ? " (your rival)" : "")));
+                list.Add((Tour.Info((Tier)r.Tier).Name.ToUpperInvariant(), c.NameOf(r.Player) + " wins the " + Tour.EventName(month, Tour.IndexOf(month, (Tier)r.Tier)) + (c.IsRival(r.Player) ? " (your rival)" : "")));
             }
-            if (list.Count < 3) { var top = c.Ranking()[0]; list.Add(("WORLD NO. 1", c.NameOf(top.Id) + " leads the tour on " + top.Points.ToString("N0") + " points")); }
-            if (list.Count < 3) list.Add(("THE TOUR", "Club events are open to all. Reach #" + Tour.Info(Tier.Regional).UnlockRank + " and the Regional tier opens."));
-            if (list.Count < 3) list.Add(("WORLD FINALS", "The season's top 8 meet in December."));
+            if (list.Count < 3) { var top = c.Ranking()[0]; list.Add(("WORLD NO. 1", c.NameOf(top.Id) + " leads the world on " + Pts(top.Average) + " points")); }
+            if (list.Count < 3) list.Add(("THE TOUR", "Challenger 3s are open to all. Climb the ranking: the World Tour's Copper events open at #" + Tour.Info(Tier.Copper).UnlockRank + "."));
+            if (list.Count < 3) list.Add(("WORLD TOUR FINALS", "The world's top 8 meet in December."));
             return list;
         }
 
@@ -227,12 +234,15 @@ namespace SquashGame.UI
             return row;
         }
 
-        /// <summary>The court a career event is played on, by its tier (club .. world finals).</summary>
-        public static string CourtFor(int tier)
-        {
-            string[] byTier = { "club", "rooftop", "station", "show", "desert", "arena" };
-            return byTier[Mathf.Clamp(tier, 0, byTier.Length - 1)];
-        }
+        /// <summary>The court a career event is played on, by its tier: the club court for the small Challengers, then up
+        /// through the glass courts - the rooftop, the station, the pyramids, the arena - to the show court for the World
+        /// Championship and the Finals. The bigger the event, the bigger the stage.</summary>
+        public static string CourtFor(int tier) { return Courts.ForCareerTier(tier); }
+
+        /// <summary>How full the stands are: a few dozen at a Challenger 3, a sell-out at the top.</summary>
+        public static float CrowdFill(int tier) { return Courts.CrowdForCareerTier(tier); }
+
+        public static string CourtName(int tier) { var t = Courts.Find(CourtFor(tier)); return t != null ? t.Name : ""; }
 
         /// <summary>Start your next career match in the match scene.</summary>
         public static void PlayNext(FrontEnd fe)
@@ -255,6 +265,7 @@ namespace SquashGame.UI
                 P2Name = pro.Bug,
                 KitSeed = KitSeed(c, pro.Id),                              // the pro's own kit, the same every match
                 Court = CourtFor(c.S.Current != null ? c.S.Current.Tier : 0),  // the bigger the event, the bigger the stage
+                CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
             });
         }
 
@@ -407,13 +418,13 @@ namespace SquashGame.UI
             {
                 Kit.L(hero, Tour.Month(s.Month).ToUpperInvariant() + "  ·  CHOOSE YOUR EVENT", "k-cr-head");
                 var row = Kit.Box(hero, "k-row");
-                foreach (var t in c.EventsNow())
+                foreach (var t in c.EventsForYou())
                 {
                     var tier = t;
                     var info = Tour.Info(t);
-                    var card = AddTo(row, new CardItem(Tour.EventName(s.Month, t), info.Name.ToUpperInvariant(), () => Enter(tier))
+                    var card = AddTo(row, new CardItem(Tour.EventName(s.Month, Tour.IndexOf(s.Month, t)), info.Name.ToUpperInvariant(), () => Enter(tier))
                         .Drawn("trophy", Career.TierBg((int)t), Career.TierColor((int)t))
-                        .Line("Winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "\n" + info.Draw + "-player draw")
+                        .Line("Winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "\n" + info.Draw + "-player draw  ·  " + Career.CourtName((int)t))
                         .Badge(() => Career.Stars((int)tier)));
                     card.Root.AddToClassList("k-card--event");
                     card.Locked = () => !c.CanEnter(tier);
@@ -427,10 +438,10 @@ namespace SquashGame.UI
             var rw = Kit.Panel(top, "WORLD RANKING"); rw.AddToClassList("k-cr-rankw");
             int rank = c.RankOf(You), mv = c.Movement(You);
             var big = Kit.Box(rw, "k-cr-rank-row");
-            Kit.L(big, "#" + rank, "k-cr-rank-big");
+            Kit.L(big, rank == CareerSession.Unranked ? "NR" : "#" + rank, "k-cr-rank-big");
             var mvl = Kit.L(big, mv > 0 ? "▲" + mv : mv < 0 ? "▼" + (-mv) : "–", "k-cr-rank-move");
             mvl.AddToClassList(mv > 0 ? "k-up" : mv < 0 ? "k-down" : "k-same");
-            Kit.L(rw, c.PointsOf(You).ToString("N0") + " POINTS  ·  " + s.Nat + (rank > Tour.RosterSize ? "  ·  UNRANKED" : ""), "k-cr-rank-sub");
+            Kit.L(rw, rank == CareerSession.Unranked ? "UNRANKED  ·  " + s.Nat : Career.Pts(c.AverageOf(You)) + " POINTS  ·  " + c.EventsOf(You) + (c.EventsOf(You) == 1 ? " EVENT" : " EVENTS") + "  ·  " + s.Nat, "k-cr-rank-sub");
             rw.Add(new RankTable(Career.Rows(c, Career.Around(c, You, 2))));
             Kit.L(rw, Career.ToNext(c), "k-cr-note");
 
@@ -455,11 +466,20 @@ namespace SquashGame.UI
                 var head = Kit.Box(cell, "k-cr-month-head");
                 Kit.L(head, Tour.Month(m).ToUpperInvariant(), "k-cr-month-name");
                 if (m == s.Month) Kit.L(head, "NOW", "k-cr-now");
-                foreach (var t in Tour.EventsIn(m))
+                var month = Tour.EventsIn(m);
+                int challengers = 0;
+                for (int i = 0; i < month.Length; i++)
+                {
+                    if (!Tour.Info(month[i]).WorldTour) { challengers++; continue; }
+                    var ev = Kit.Box(cell, "k-cr-ev");
+                    ev.Add(Career.Badge((int)month[i], 14));
+                    Kit.L(ev, Tour.EventName(m, i), "k-cr-ev-name");
+                }
+                if (challengers > 0)
                 {
                     var ev = Kit.Box(cell, "k-cr-ev");
-                    ev.Add(new TierBadge((int)t, 14));
-                    Kit.L(ev, Tour.EventName(m, t), "k-cr-ev-name");
+                    ev.Add(Career.Badge((int)Tier.Challenger3, 14));
+                    Kit.L(ev, "+ " + challengers + " Challengers", "k-cr-ev-name");
                 }
                 int slot = s.Season * Tour.SlotsPerSeason + m;
                 string mine = null; bool title = false;
@@ -482,11 +502,11 @@ namespace SquashGame.UI
                 bool open = info.UnlockRank == 0 || rank <= info.UnlockRank;
                 var lr = Kit.Box(ladder, "k-cr-lad");
                 if (open) lr.AddToClassList("k-cr-lad--open");
-                lr.Add(new TierBadge(t, 26));
+                lr.Add(Career.Badge(t, 26));
                 var txt = Kit.Box(lr, "k-cr-lad-text");
                 Kit.L(txt, info.Name.ToUpperInvariant(), "k-cr-lad-name");
-                Kit.L(txt, info.Draw + " players  ·  winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]), "k-cr-lad-line");
-                Kit.L(lr, open ? "OPEN" : (t == (int)Tier.WorldFinals ? "TOP 8" : "#" + info.UnlockRank), "k-cr-lad-gate");
+                Kit.L(txt, info.Draw + " players  ·  winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "  ·  " + Career.CourtName(t), "k-cr-lad-line");
+                Kit.L(lr, open ? "OPEN" : (t == (int)Tier.WorldTourFinals ? "TOP 8" : "#" + info.UnlockRank), "k-cr-lad-gate");
             }
 
             // ---- PLAYER ----
@@ -505,15 +525,15 @@ namespace SquashGame.UI
             Career.Tile(tiles, "TITLES", s.Titles.ToString());
             Career.Tile(tiles, "EARNINGS", Career.Money(s.Earnings));
             var byTier = Kit.Box(cs, "k-cr-bytier");
-            var counts = new int[Tour.Tiers.Length];
-            foreach (var r in s.Results) if (r.Player == You && r.Reached == 0) counts[r.Tier]++;
-            for (int t = 0; t < counts.Length; t++)
+            var counts = new int[Career.BandNames.Length];
+            foreach (var r in s.Results) if (r.Player == You && r.Reached == 0) counts[Tour.Band(r.Tier)]++;
+            for (int b0 = 0; b0 < counts.Length; b0++)
             {
                 var b = Kit.Box(byTier, "k-cr-bytier-item");
-                b.Add(new TierBadge(t, 18));
-                Kit.L(b, counts[t] + "  " + Tour.Tiers[t].Name, "k-cr-bytier-n");
+                b.Add(new TierBadge(b0, 18));
+                Kit.L(b, counts[b0] + "  " + Career.BandNames[b0], "k-cr-bytier-n");
             }
-            int best = rank;
+            int best = CareerSession.Unranked;
             foreach (var sr in s.Seasons) best = Mathf.Min(best, sr.Rank);
             Kit.L(cs, "Best season finish " + (s.Seasons.Count == 0 ? "– (first season)" : Career.Rank(best)) + "   ·   rating " + s.Rating.ToString("0.00"), "k-cr-note");
             var rv = Kit.Panel(mid, "RIVALS");
@@ -535,7 +555,7 @@ namespace SquashGame.UI
                 var hr = Kit.Box(hist, "k-cr-hrow");
                 var wl = Kit.L(hr, mrec.Won ? "W" : "L", "k-cr-chip"); if (mrec.Won) wl.AddToClassList("k-cr-chip--w");
                 var mid2 = Kit.Box(hr, "k-cr-hmid");
-                Kit.L(mid2, "v " + c.NameOf(mrec.Opp) + "  (#" + mrec.OppRank + ")", "k-cr-hname");
+                Kit.L(mid2, "v " + c.NameOf(mrec.Opp) + "  (" + Career.Rank(mrec.OppRank) + ")", "k-cr-hname");
                 Kit.L(mid2, mrec.Event + "  ·  " + Tour.RoundName(mrec.Left) + (mrec.Simulated ? "  ·  simulated" : ""), "k-cr-hline");
                 Kit.L(hr, mrec.Score ?? "", "k-cr-hscore");
             }
@@ -554,6 +574,7 @@ namespace SquashGame.UI
             var c = Career.C;
             var rows = new List<CareerSession.Row>();
             if (_rankFilter == 0) rows = c.Ranking().GetRange(0, Mathf.Min(15, c.Ranking().Count));
+            else if (_rankFilter == 1 && !c.IsRanked(You)) { Kit.L(_table, "You're not on the world ranking yet: your first event puts you on it.", "k-cr-empty"); return; }
             else if (_rankFilter == 1) rows = Career.Around(c, You, 7);
             else foreach (var id in c.Rivals()) foreach (var r in c.Ranking()) if (r.Id == id) rows.Add(r);
             if (rows.Count == 0) { Kit.L(_table, "No rivals yet. A pro who beats you twice becomes one.", "k-cr-empty"); return; }
@@ -647,7 +668,7 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { var c = Career.C; return (c.S.Current.Name + "  ·  " + Tour.RoundName(c.PlayersLeft)).ToUpperInvariant(); } }
         protected override string Title { get { return "Match preview"; } }
-        bool Finals { get { return Career.C.S.Current.Tier == (int)Tier.WorldFinals; } }
+        bool Finals { get { return Career.C.S.Current.Tier == (int)Tier.WorldTourFinals; } }
 
         protected override void Compose()
         {
@@ -666,13 +687,13 @@ namespace SquashGame.UI
 
             var mid = Kit.Box(stage, "k-vs-mid");
             var ev = Kit.Box(mid, "k-cr-pv-event");
-            ev.Add(new TierBadge(s.Current.Tier, 28));
+            ev.Add(Career.Badge(s.Current.Tier, 28));
             Kit.L(ev, Career.TierName(s.Current.Tier).ToUpperInvariant() + "  ·  " + Tour.RoundName(c.PlayersLeft).ToUpperInvariant(), "k-cr-pv-round");
             var tape = Kit.Panel(mid, "TALE OF THE TAPE");
             int ra = c.RankOf(You), rb = c.RankOf(_opp);
             Row(tape, "WORLD RANK", Career.Rank(ra).ToUpperInvariant(), Career.Rank(rb).ToUpperInvariant(), ra < rb ? 0 : rb < ra ? 1 : -1);
-            int pa = c.PointsOf(You), pb = c.PointsOf(_opp);
-            Row(tape, "POINTS", pa.ToString("N0"), pb.ToString("N0"), pa > pb ? 0 : pb > pa ? 1 : -1);
+            double pa = c.AverageOf(You), pb = c.AverageOf(_opp);
+            Row(tape, "POINTS", Career.Pts(pa), Career.Pts(pb), pa > pb ? 0 : pb > pa ? 1 : -1);
             int ta = Career.Titles(c, You), tb = Career.Titles(c, _opp);
             Row(tape, "TITLES (2 YRS)", ta.ToString(), tb.ToString(), ta > tb ? 0 : tb > ta ? 1 : -1);
             Row(tape, "NATION", s.Nat, p.Nat, -1);
@@ -687,7 +708,8 @@ namespace SquashGame.UI
             var sim = AddTo(acts, new ActionItem("Simulate", Simulate, PromptBar.Btn.X));
             sim.Enabled = () => !Finals;
             AddTo(acts, new ActionItem("The draw", () => Fe.Push(new DrawScreen(s.Current)), PromptBar.Btn.Y));
-            if (Finals) Kit.L(mid, "The World Finals can't be simulated: play them.", "k-cr-note");
+            if (Finals) Kit.L(mid, "The World Tour Finals can't be simulated: play them.", "k-cr-note");
+            Kit.L(mid, "On the " + Career.CourtName(s.Current.Tier), "k-cr-note");
 
             var them = Kit.Box(stage, "k-vs-side");
             them.AddToClassList("k-vs-side--right");
@@ -916,7 +938,7 @@ namespace SquashGame.UI
             AddTo(Root, new PrimaryItem("Continue", () => Fe.Pop()));
             var col = Kit.Box(Content, "k-cr-result");
             var head = Kit.Box(col, "k-cr-res-head");
-            head.Add(new TierBadge(_e.Tier, 56));
+            head.Add(Career.Badge(_e.Tier, 56));
             var st = new Stamp(_e.YouReached == 0 ? "CHAMPION" : CareerSession.ReachedLong(_e.YouReached).ToUpperInvariant(), 0.3f);
             if (_e.YouReached != 0) st.AddToClassList("k-stamp--plain");
             head.Add(st);
@@ -933,6 +955,7 @@ namespace SquashGame.UI
                 var ml = Kit.L(rt, (mv > 0 ? "▲ " + mv + " from " : "▼ " + (-mv) + " from ") + Career.Rank(rank + mv), "k-cr-tile-move");
                 ml.AddToClassList(mv > 0 ? "k-up" : "k-down");
             }
+            else if (rank != CareerSession.Unranked && c.EventsOf(You) == 1) Kit.L(rt, "NEW ENTRY", "k-cr-tile-move").AddToClassList("k-up");
             col.Add(new RewardStrip(Reward));
             Fe.ToastAchievements(Reward);
             var acts = Kit.Box(col, "k-cr-pv-acts");

@@ -212,7 +212,7 @@ namespace SquashGame.Progression
         public static RewardResult CareerEvent(SquashSim.Career.CareerSession c, SquashSim.Career.EventState e)
         {
             var r = Begin();
-            double k = TierFactor[Math.Max(0, Math.Min(TierFactor.Length - 1, e.Tier))];
+            double k = TierFactor[SquashSim.Career.Tour.Band(e.Tier)];
             int rounds = 0;
             foreach (var m in c.S.Matches) if (m.Slot == e.Slot && m.Won) rounds++;
             Xp(r, e.Name, (int)Math.Round(EventXp * k));
@@ -223,11 +223,11 @@ namespace SquashGame.Progression
                 Xp(r, "Title!", (int)Math.Round(TitleXp * k));
                 P.Stats.CareerTitles++;
                 ids.Add("first_title");
-                string[] byTier = { "club", "regional", "challenger", "tour", "major", "world" };
-                if (e.Tier >= 0 && e.Tier < byTier.Length) ids.Add(byTier[e.Tier]);
+                string[] byBand = { "club", "regional", "challenger", "tour", "major", "world" };
+                ids.Add(byBand[SquashSim.Career.Tour.Band(e.Tier)]);
             }
             int rank = c.RankOf(SquashSim.Career.CareerSession.You);
-            if (P.Stats.CareerBestRank == 0 || rank < P.Stats.CareerBestRank) P.Stats.CareerBestRank = rank;
+            if (rank != SquashSim.Career.CareerSession.Unranked && (P.Stats.CareerBestRank == 0 || rank < P.Stats.CareerBestRank)) P.Stats.CareerBestRank = rank;
             if (rank <= 20) ids.Add("top20");
             if (rank <= 10) ids.Add("top10");
             if (rank <= 1) ids.Add("no1");

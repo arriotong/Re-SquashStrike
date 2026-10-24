@@ -21,6 +21,8 @@ namespace SquashGame.Audio
         public static float Volume = 0.8f;
         /// <summary>The practice court is quieter: a few people watching.</summary>
         public float Presence = 1f;
+        /// <summary>A small crowd sounds small: the stands' fill (Courts.CrowdFill) sets how loud they are.</summary>
+        static float Size { get { return Mathf.Lerp(0.3f, 1f, Mathf.Clamp01(Courts.CrowdFill)); } }
 
         public SimRunnerBase Runner;
         public readonly Dictionary<string, int> Played = new Dictionary<string, int>();
@@ -112,7 +114,7 @@ namespace SquashGame.Audio
             var src = _voices[_next];
             _next = (_next + 1) % _voices.Count;
             src.clip = takes[Random.Range(0, takes.Length)];
-            src.volume = Mathf.Clamp01(volume) * Volume * Presence;
+            src.volume = Mathf.Clamp01(volume) * Volume * Presence * Size;
             src.pitch = 1f + Random.Range(-0.03f, 0.03f);
             src.Play();
             Played[name] = Played.TryGetValue(name, out int n) ? n + 1 : 1;
@@ -166,7 +168,7 @@ namespace SquashGame.Audio
             float want = !live ? 0f : rally ? 0.07f : 0.30f;
             float k = 1f - Mathf.Exp(-(rally ? 6f : 1.2f) * Time.unscaledDeltaTime);  // hush fast, come back slowly
             _bedLevel += (want - _bedLevel) * k;
-            if (_bed != null) _bed.volume = _bedLevel * Volume * Presence;
+            if (_bed != null) _bed.volume = _bedLevel * Volume * Presence * Size;
         }
 
         /// <summary>The bed's current level, 0..1 before the volume setting (tests).</summary>

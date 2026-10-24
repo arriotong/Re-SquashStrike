@@ -336,11 +336,11 @@
 .k-cr-tablep .k-tr-bar { width: 260px; }
 .k-cr-tablebox { margin-top: 4px; }
 .k-cr-ladder { width: 520px; margin: 0; }
-.k-cr-lad { flex-direction: row; align-items: center; height: 92px; padding: 0 14px; margin-bottom: 10px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.03); opacity: 0.55; }
+.k-cr-lad { flex-direction: row; align-items: center; height: 50px; padding: 0 14px; margin-bottom: 4px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.03); opacity: 0.55; }
 .k-cr-lad--open { opacity: 1; background-color: rgba(200, 255, 61, 0.06); }
 .k-cr-lad-text { flex-grow: 1; margin-left: 16px; }
-.k-cr-lad-name { font-size: 24px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
-.k-cr-lad-line { font-size: 11px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-lad-name { font-size: 19px; margin: 0; padding: 0; -unity-text-align: lower-left; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-lad-line { font-size: 10px; margin: 0; padding: 0; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .k-cr-lad-gate { font-size: 14px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 /* ---------- player ---------- */

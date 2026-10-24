@@ -7,7 +7,8 @@
 //
 // Slots are counted from the start: slot index = season * 12 + month.
 // Season 0 is the tour's year before you joined (played out at
-// creation, so the ranking means something on day one).
+// creation, so the ranking means something on day one; you start it
+// unranked).
 // ===========================================================
 
 using System;
@@ -22,7 +23,7 @@ namespace SquashSim.Career
         public int Player;          // 0 = you, else a Pro.Id
         public int Slot;            // absolute slot index
         public int Tier;
-        public int Reached;         // 0 = won, 1 = final, 2 = semi, 3 = quarter, 4 = R16, 5 = R32
+        public int Reached;         // 0 = won, 1 = final, 2 = semi, 3 = quarter, 4 = R16, 5 = R32, 6 = R64
         public int Points;
     }
 
@@ -50,6 +51,7 @@ namespace SquashSim.Career
     public sealed class EventState
     {
         public int Slot, Tier;
+        public int Index;               // the event's place in its month (Tour.EventsIn): a month has several Challenger 3s
         public string Name;
         public List<RoundRec> Rounds = new List<RoundRec>();
         public bool YouIn, YouOut, Done;
@@ -67,7 +69,7 @@ namespace SquashSim.Career
     [Serializable]
     public sealed class CareerState
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;     // 2: the PSA system (2026-10-24); a version 1 career can't be read
         public int Version = CurrentVersion;
         public uint Seed;
         public string Name = "", Nat = "ENG";

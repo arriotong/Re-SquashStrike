@@ -172,6 +172,7 @@ namespace SquashGame.UI
             Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
             Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "TV: the broadcast view from up in the stands. High: looking down on the court. Low glass: close behind the glass. Wide: the old, wider view.");
             Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
+            Kit.L(g, "Court sounds from real recordings on freesound.org, including \"je_racketballcourt.wav\" by cmusounddesign (CC BY 4.0).", "k-set-hint");
         }
 
         VisualElement Panel(string tab)

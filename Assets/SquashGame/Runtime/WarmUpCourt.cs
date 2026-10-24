@@ -38,6 +38,7 @@ namespace SquashGame
             SessionLaunch.LessonId = null;
             // Practice and lessons at the club; the arcade under the arena's lights.
             Courts.CurrentId = Arcade != null ? "arena" : "club";
+            Courts.CrowdFill = 1f;
 
             var court = new GameObject("Court").AddComponent<CourtView>();
             court.transform.SetParent(transform, false);

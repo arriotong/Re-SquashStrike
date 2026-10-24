@@ -1,100 +1,168 @@
 // ===========================================================
 // Assets/SquashSim/Career/Tour.cs
-// P2-M4: the tour as data - the tiers, what they pay, who plays them
-// and the season's calendar.
+// The tour as data - the PSA's tiers, what they pay, who plays them and
+// the season's calendar (2026-10-24: the real PSA system, fictional
+// players; was a made-up 80-player, six-tier ladder).
 //
-// The roster is ranked 1..80. Each tier draws its field from a band of
-// ranking places, filled from the bottom of the band up, so a Club
-// event is the 16 lowest-ranked pros and a Tour event the top 32:
+// The tiers are the PSA's: the Challenger Tour (3, 6, 9, 15, 20) and the
+// World Tour (Copper, Bronze, Silver, Gold, Platinum, Diamond), the World
+// Championship and the World Tour Finals. Ranking points by round are
+// the PSA's own table (halves rounded up); prize money is the event's
+// purse shared in proportion to the points.
 //
-//   Club 65-80   Regional 49-64   Challenger 33-48   Tour / Major 1-32
-//   World Finals: the season's top 8 (you included, if you made it)
-//
-// You may enter any tier your ranking has opened; you take the place
-// of that event's lowest-ranked entrant.
+// The world is ~480 pros. Each month every event takes its field from
+// the players who enter (most do, most months), best-ranked first,
+// working down from the month's biggest event: the top players fill the
+// World Tour events, the rest drop to the Challengers. A tier's BandTop
+// keeps the stars out of the small events. You may enter any event your
+// ranking opens (UnlockRank); you take the lowest entrant's place.
 // ===========================================================
 
 using System.Collections.Generic;
 
 namespace SquashSim.Career
 {
-    public enum Tier { Club, Regional, Challenger, Tour, Major, WorldFinals }
+    public enum Tier
+    {
+        Challenger3, Challenger6, Challenger9, Challenger15, Challenger20,
+        Copper, Bronze, Silver, Gold, Platinum, Diamond,
+        WorldChampionship, WorldTourFinals
+    }
 
     public sealed class TierInfo
     {
         public Tier Tier;
-        public string Name;
+        public string Name, Short;
+        public bool WorldTour;                   // false = the Challenger Tour
         public int Draw;
-        public int BandTop, BandBottom;          // ranking places the field comes from
-        public int UnlockRank;                   // you may enter at this ranking or better (0 = always)
-        public int[] Points;                     // by round reached: W, F, SF, QF, R16, R32
-        public int[] Prize;                      // earnings, same order
+        public int BandTop;                      // the field comes from this ranking place down
+        public int UnlockRank;                   // you may enter at this ranking or better (0 = always, unranked too)
+        public int Purse;                        // prize money, US$
+        public int[] Points;                     // by round reached: W, F, SF, QF, R16, R32, R64
+        public int[] Prize;                      // the purse shared in proportion to the points, same order
     }
 
     public static class Tour
     {
-        public const int RosterSize = 80;
+        public const int RosterSize = 480;
         public const int SlotsPerSeason = 12;
-        public const int CountedResults = 8;     // ranking: the best 8 results...
-        public const int RankingWindow = 12;     // ...of the last 12 slots (a rolling year)
+        public const int RankingWindow = 12;     // the ranking: the last 12 months' events...
+        public const int MinDivisor = 10;        // ...their points averaged, dividing by at least 10 (the PSA's rule)
+        public const double EntryChance = 0.85;  // a pro enters an event this often (rest, injury, travel)
+
+        static TierInfo T(Tier t, string name, string shortName, bool wt, int draw, int bandTop, int unlock, int purse, params int[] points)
+        {
+            var info = new TierInfo { Tier = t, Name = name, Short = shortName, WorldTour = wt, Draw = draw, BandTop = bandTop, UnlockRank = unlock, Purse = purse, Points = new int[7] };
+            for (int i = 0; i < points.Length && i < 7; i++) info.Points[i] = points[i];
+            // the purse, shared as the points are: each round's players take points / (all points awarded)
+            int total = 0;
+            for (int i = 0; i < 7 && (1 << i) <= draw; i++) total += info.Points[i] * (i == 0 ? 1 : 1 << (i - 1));
+            info.Prize = new int[7];
+            for (int i = 0; i < 7; i++) info.Prize[i] = total == 0 ? 0 : (int)System.Math.Round(purse * (double)info.Points[i] / total / 10.0) * 10;
+            return info;
+        }
 
         public static readonly TierInfo[] Tiers =
         {
-            new TierInfo { Tier = Tier.Club,       Name = "Club",         Draw = 16, BandTop = 65, BandBottom = 80, UnlockRank = 0,
-                           Points = new[] { 100, 60, 35, 20, 10, 0 },        Prize = new[] { 500, 300, 150, 80, 40, 0 } },
-            new TierInfo { Tier = Tier.Regional,   Name = "Regional",     Draw = 16, BandTop = 49, BandBottom = 64, UnlockRank = 48,
-                           Points = new[] { 250, 150, 90, 50, 25, 0 },       Prize = new[] { 1500, 900, 450, 250, 120, 0 } },
-            new TierInfo { Tier = Tier.Challenger, Name = "Challenger",   Draw = 16, BandTop = 33, BandBottom = 48, UnlockRank = 32,
-                           Points = new[] { 500, 300, 180, 100, 50, 0 },     Prize = new[] { 5000, 3000, 1500, 800, 400, 0 } },
-            new TierInfo { Tier = Tier.Tour,       Name = "Tour",         Draw = 32, BandTop = 1,  BandBottom = 32, UnlockRank = 20,
-                           Points = new[] { 1000, 600, 360, 200, 100, 50 },  Prize = new[] { 15000, 9000, 5000, 2500, 1200, 600 } },
-            new TierInfo { Tier = Tier.Major,      Name = "Major",        Draw = 32, BandTop = 1,  BandBottom = 32, UnlockRank = 12,
-                           Points = new[] { 2000, 1200, 720, 400, 200, 100 }, Prize = new[] { 40000, 24000, 12000, 6000, 3000, 1500 } },
-            new TierInfo { Tier = Tier.WorldFinals, Name = "World Finals", Draw = 8, BandTop = 1,  BandBottom = 8,  UnlockRank = 8,
-                           Points = new[] { 3000, 1800, 1000, 500, 0, 0 },   Prize = new[] { 60000, 36000, 18000, 9000, 0, 0 } },
+            //                                                                  draw band unlock  purse     W     F    SF   QF   R16  R32  R64
+            T(Tier.Challenger3,  "Challenger 3",  "C3",  false, 32, 200,   0,   3000,   65,   40,   25,  15,   9,   6),
+            T(Tier.Challenger6,  "Challenger 6",  "C6",  false, 32, 150, 360,   6000,  100,   65,   40,  25,  15,   9),
+            T(Tier.Challenger9,  "Challenger 9",  "C9",  false, 32, 110, 290,   9000,  150,   98,   60,  38,  23,  14),
+            T(Tier.Challenger15, "Challenger 15", "C15", false, 32,  80, 230,  15000,  250,  163,  100,  63,  38,  23),
+            T(Tier.Challenger20, "Challenger 20", "C20", false, 32,  50, 180,  20000,  350,  230,  140,  85,  51,  32),
+            T(Tier.Copper,       "Copper",        "CU",  true,  32,  24, 140,  25000,  500,  325,  200, 125,  75,  46),
+            T(Tier.Bronze,       "Bronze",        "BR",  true,  32,  12, 100,  50000,  900,  585,  360, 225, 135,  83),
+            T(Tier.Silver,       "Silver",        "SV",  true,  32,   6,  76,  75000, 1350,  878,  540, 338, 203, 124),
+            T(Tier.Gold,         "Gold",          "GD",  true,  32,   1,  56, 100000, 1800, 1170,  720, 450, 270, 165),
+            T(Tier.Platinum,     "Platinum",      "PT",  true,  32,   1,  40, 190000, 2800, 1820, 1120, 700, 420, 257),
+            T(Tier.Diamond,      "Diamond",       "DM",  true,  32,   1,  32, 300000, 3100, 2015, 1240, 775, 465, 284),
+            T(Tier.WorldChampionship, "World Championship", "WC", true, 64, 1, 64, 600000, 3500, 2275, 1400, 875, 525, 321, 196),
+            T(Tier.WorldTourFinals,   "World Tour Finals",  "WTF", true, 8, 1,  8, 200000, 2000, 1300,  800, 500),
         };
 
         public static TierInfo Info(Tier t) { return Tiers[(int)t]; }
 
-        /// <summary>The calendar: each slot's events, top tier first. The same every season.</summary>
-        static readonly Tier[][] Calendar =
+        /// <summary>The look of a tier, 0..5: the badge colour, the stars, the XP, the achievements
+        /// (Challenger 3/6, Challenger 9-20, Copper/Bronze, Silver/Gold, Platinum/Diamond, the World Championship and Finals).</summary>
+        public static int Band(Tier t)
         {
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Tour, Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Tour, Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Major, Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Tour, Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.Major, Tier.Challenger, Tier.Regional, Tier.Club },
-            new[] { Tier.WorldFinals },
+            switch (t)
+            {
+                case Tier.Challenger3: case Tier.Challenger6: return 0;
+                case Tier.Challenger9: case Tier.Challenger15: case Tier.Challenger20: return 1;
+                case Tier.Copper: case Tier.Bronze: return 2;
+                case Tier.Silver: case Tier.Gold: return 3;
+                case Tier.Platinum: case Tier.Diamond: return 4;
+                default: return 5;
+            }
+        }
+        public static int Band(int t) { return Band((Tier)t); }
+
+        /// <summary>The Challenger Tour, every month: the bottom of the world plays these.</summary>
+        static readonly Tier[] Challengers = { Tier.Challenger20, Tier.Challenger15, Tier.Challenger9, Tier.Challenger6, Tier.Challenger6, Tier.Challenger3, Tier.Challenger3, Tier.Challenger3 };
+
+        /// <summary>Each month's World Tour events, biggest first (the Challengers and a Copper follow).</summary>
+        static readonly Tier[][] Headline =
+        {
+            new[] { Tier.Gold, Tier.Bronze },                 // Jan
+            new[] { Tier.Platinum, Tier.Silver },             // Feb
+            new[] { Tier.Diamond, Tier.Bronze },              // Mar
+            new[] { Tier.Gold, Tier.Silver },                 // Apr
+            new[] { Tier.Platinum, Tier.Bronze },             // May
+            new[] { Tier.Diamond, Tier.Silver },              // Jun
+            new[] { Tier.Gold, Tier.Bronze },                 // Jul
+            new[] { Tier.Platinum, Tier.Silver },             // Aug
+            new[] { Tier.Diamond, Tier.Bronze },              // Sep
+            new[] { Tier.Gold, Tier.Silver },                 // Oct
+            new[] { Tier.WorldChampionship },                 // Nov
+            new[] { Tier.WorldTourFinals, Tier.Silver },      // Dec: the season's top 8 meet
         };
 
+        static readonly Tier[][] Calendar = BuildCalendar();
+        static Tier[][] BuildCalendar()
+        {
+            var cal = new Tier[SlotsPerSeason][];
+            for (int m = 0; m < SlotsPerSeason; m++)
+            {
+                var list = new List<Tier>(Headline[m]);
+                list.Add(Tier.Copper);
+                list.AddRange(Challengers);
+                cal[m] = list.ToArray();
+            }
+            return cal;
+        }
+
+        /// <summary>The calendar: each slot's events, biggest first. The same every season. The same tier can appear more
+        /// than once in a month (several Challenger 3s): an event is (month, index).</summary>
         public static Tier[] EventsIn(int slot) { return Calendar[((slot % SlotsPerSeason) + SlotsPerSeason) % SlotsPerSeason]; }
+
+        /// <summary>The month's World Tour headline (for the calendar strip).</summary>
+        public static Tier HeadlineOf(int slot) { return EventsIn(slot)[0]; }
 
         static readonly string[] Cities =
         {
             "Harbourside", "Northgate", "Lakeview", "Westmoor", "Kingsbridge", "Redcliffe", "Eastvale", "Silverton",
-            "Marlow Bay", "Ashford", "Stonehaven", "Riverton", "Fairhaven", "Brightwater", "Oakmont", "Highcastle"
+            "Marlow Bay", "Ashford", "Stonehaven", "Riverton", "Fairhaven", "Brightwater", "Oakmont", "Highcastle",
+            "Port Alder", "Cedar Falls", "Saltmere", "Duneholm", "Glenrock", "Bayreach", "Thornbury", "Larkhill",
+            "Kestrel Bay", "Vale Royal", "Mistral", "Sunhaven", "Ironbridge", "Westhaven", "Coral Point", "Elmstead"
         };
 
-        /// <summary>A name for this event ("Harbourside Open").</summary>
-        public static string EventName(int slot, Tier t)
+        static readonly string[] Sponsors = { "Open", "Classic", "International", "Cup", "Squash Open", "Championships" };
+
+        /// <summary>A name for one of a month's events ("Harbourside Open"), by its index in EventsIn.</summary>
+        public static string EventName(int slot, int index)
         {
-            if (t == Tier.WorldFinals) return "World Finals";
-            string city = Cities[(slot * 5 + (int)t * 3) % Cities.Length];
-            switch (t)
-            {
-                case Tier.Major: return city + " Masters";
-                case Tier.Tour: return city + " Open";
-                case Tier.Challenger: return city + " Challenger";
-                case Tier.Regional: return city + " Regional";
-                default: return city + " Club Classic";
-            }
+            var t = EventsIn(slot)[index];
+            if (t == Tier.WorldChampionship) return "PSA World Championship";
+            if (t == Tier.WorldTourFinals) return "PSA World Tour Finals";
+            int m = ((slot % SlotsPerSeason) + SlotsPerSeason) % SlotsPerSeason;
+            string city = Cities[(m * 7 + index * 11) % Cities.Length];
+            if (!Info(t).WorldTour) return city + " Challenger";
+            return city + " " + Sponsors[(m + index * 3) % Sponsors.Length];
         }
+
+        /// <summary>The first index of a tier in this slot's events, or -1.</summary>
+        public static int IndexOf(int slot, Tier t) { return System.Array.IndexOf(EventsIn(slot), t); }
 
         static readonly string[] Months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         public static string Month(int slot) { return Months[((slot % 12) + 12) % 12]; }
@@ -107,7 +175,6 @@ namespace SquashSim.Career
                 case 2: return "Final";
                 case 4: return "Semi-final";
                 case 8: return "Quarter-final";
-                case 16: return "Round of 16";
                 default: return "Round of " + playersLeft;
             }
         }
