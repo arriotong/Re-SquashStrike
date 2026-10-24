@@ -86,7 +86,7 @@ namespace SquashGame
             _lastPos = p;
             // A motion smear, not a line (graphics pass 2): at the TV camera's zoom a long trail read as a laser.
             _trail.startWidth = visualRadius * 1.2f;
-            _trail.time = LongTrail ? 1.4f : 0.06f;
+            _trail.time = LongTrail ? 1.4f : GameplayCameraRig.Preset == GameplayCameraRig.TV ? 0.06f : 0.16f;   // the long TV lens: a short smear
             _trail.endWidth = 0f;
 
             // Visual spin, only while the sim is actually running.

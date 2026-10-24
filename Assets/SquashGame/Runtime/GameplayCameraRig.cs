@@ -21,18 +21,21 @@ namespace SquashGame
         public SimRunnerBase Runner;
         Camera _cam;
 
-        /// <summary>Settings > Gameplay > Camera: 0 back wall (the TV view), 1 high, 2 low glass.</summary>
+        /// <summary>Settings > Gameplay > Camera: 0 classic (the back-wall camera the game was tuned on), 1 high, 2 low glass, 3 TV.</summary>
         public static int Preset;
-        public static readonly string[] PresetNames = { "TV", "High", "Low glass", "Wide" };
+        public const int TV = 3;
+        public static readonly string[] PresetNames = { "Classic", "High", "Low glass", "TV" };
         // per preset: height, distance behind the back wall, field of view, look-at height, look-at depth (back wall = the config)
+        // Classic: the back-wall camera the hitting was tuned on - close, a wide lens, the ball's pace reads.
         // TV (2026-10-24, measured off a PSA broadcast): far back in the stands and up high on a long lens - the court
-        // fills the frame, near and far players look nearly the same size, as on television. Wide is the old lab camera.
+        // fills the frame as on television, but the long lens flattens depth: the ball looks slower (playtest 2026-10-24:
+        // "floaty" - Classic is the default again).
         static readonly float[,] Presets =
         {
-            { 6.0f, 12.5f, 24f, 0.9f, 1.5f },      // TV
+            { 3.95f, 6.6f, 52f, 1.55f, 3.2f },     // Classic
             { 8.2f, 4.5f, 50f, 0.7f, 4.4f },       // High
             { 1.7f, 3.4f, 60f, 1.5f, 2.2f },       // Low glass
-            { 3.95f, 6.6f, 52f, 1.55f, 3.2f },     // Wide
+            { 6.0f, 12.5f, 24f, 0.9f, 1.5f },      // TV
         };
         /// <summary>A club's gallery is small and low: its TV and High views stay inside it.</summary>
         static readonly float[] ClubView = { 4.3f, 8.6f, 34f, 1.2f, 2.5f };
@@ -106,7 +109,7 @@ namespace SquashGame
             float aspect = _cam.aspect;
             int p = Mathf.Clamp(Preset, 0, PresetNames.Length - 1);
             if (Runner is MatchRunner mr0 && mr0.Demo) p = 0;                            // (the menus' demo films its own cinematics)
-            bool club = VenueView.Detail > 0 && Courts.Current.Id == "club" && p <= 1;
+            bool club = VenueView.Detail > 0 && Courts.Current.Id == "club" && (p == TV || p == 1);
             float Pv(int k) { return club ? ClubView[k] : Presets[p, k]; }
             float fov = Pv(2);
             if (aspect < REFERENCE_ASPECT)
