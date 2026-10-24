@@ -56,7 +56,7 @@ namespace SquashGame.Progression
         public bool HasHeadband, HasWristband;
         public int HairStyle;              // PR3: 0 shaved .. AthleteRig.HairStyles - 1
         public Color Hair;
-        public bool Female;                // 2026-10-24: the body (AthleteSkin)
+        public bool Female;                // 2026-10-24: the slim build's female proportions (AthleteRig.SetBody)
     }
 
     [Serializable]
@@ -101,7 +101,7 @@ namespace SquashGame.Progression
 
         /// <summary>PR3: the hair styles, in AthleteRig's order (item id suffix, name).</summary>
         public static readonly (string id, string name)[] HairStyles =
-            { ("shaved", "Shaved"), ("crop", "Buzzed"), ("short", "Side part"), ("curls", "Long"), ("bun", "Buns"), ("ponytail", "Buzzed + beard"), ("mohawk", "Parted + beard") };
+            { ("shaved", "Shaved"), ("crop", "Crop"), ("short", "Short"), ("curls", "Curls"), ("bun", "Bun"), ("ponytail", "Ponytail"), ("mohawk", "Mohawk") };
         static readonly (string id, string name, uint rgb)[] HairColours =
         {
             ("black", "Black", 0x17130f), ("darkbrown", "Dark brown", 0x352418), ("brown", "Brown", 0x5e3d23), ("auburn", "Auburn", 0x7a3418),
@@ -267,7 +267,7 @@ namespace SquashGame.Progression
             switch (personality)
             {
                 case "attacker": return new Loadout { Shirt = "shirt_red", Shorts = "shorts_black", Socks = "socks_red", Shoes = "shoes_black", Skin = "skin_4", Headband = "headband_red", Frame = "frame_black", Grip = "grip_red", Hair = "hair_crop", HairColour = "haircol_black" };
-                case "shotmaker": return new Loadout { Shirt = "shirt_purple", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_purple", Skin = "skin_2", Wristband = "wristband_gold", Frame = "frame_gold", Grip = "grip_white", Hair = "hair_curls", HairColour = "haircol_blonde", Body = "body_female" };
+                case "shotmaker": return new Loadout { Shirt = "shirt_purple", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_purple", Skin = "skin_2", Wristband = "wristband_gold", Frame = "frame_gold", Grip = "grip_white", Hair = "hair_ponytail", HairColour = "haircol_blonde", Body = "body_female" };
                 case "grinder": return new Loadout { Shirt = "shirt_forest", Shorts = "shorts_navy", Socks = "socks_navy", Shoes = "shoes_white", Skin = "skin_5", Headband = "headband_white", Frame = "frame_teal", Hair = "hair_curls", HairColour = "haircol_black" };
                 case "wallbot": return new Loadout { Shirt = "shirt_white", Shorts = "shorts_grey", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3", Hair = "hair_shaved" };
                 default: return new Loadout { Shirt = "shirt_royal", Shorts = "shorts_white", Socks = "socks_white", Shoes = "shoes_royal", Skin = "skin_3", Wristband = "wristband_white", Frame = "frame_white", Grip = "grip_royal", Hair = "hair_short", HairColour = "haircol_brown" };

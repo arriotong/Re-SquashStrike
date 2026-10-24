@@ -272,6 +272,40 @@ namespace SquashGame.Athlete
             return parts;
         }
 
+        // ---------------- the slim, simple build (2026-10-24, after the user's sketch) ----------------
+        // The Gate A forms were chunky on purpose (the Mario Tennis look). The athletes are now slim and simple: every
+        // form keeps its height and its silhouette but is narrowed (x) and thinned (z) about its own centreline - all
+        // the forms hang straight down at rest, so that is the bone's axis. A female build is narrower in the shoulders
+        // and the limbs, a little fuller in the hips.
+
+        /// <summary>Width and depth factors for a form (or a joint blend, by its bone).</summary>
+        public static Vector2 Slim(string name, bool female)
+        {
+            string n = name.ToLowerInvariant();
+            if (n.Contains("pelvis")) return female ? new Vector2(0.92f, 0.90f) : new Vector2(0.84f, 0.86f);
+            if (n.Contains("abdomen") || n.Contains("spine")) return female ? new Vector2(0.72f, 0.76f) : new Vector2(0.78f, 0.80f);
+            if (n.Contains("chest")) return female ? new Vector2(0.80f, 0.82f) : new Vector2(0.88f, 0.82f);
+            if (n.Contains("neck")) return female ? new Vector2(0.80f, 0.84f) : new Vector2(0.86f, 0.88f);
+            if (n.Contains("head")) return female ? new Vector2(0.92f, 0.94f) : new Vector2(0.96f, 0.96f);
+            if (n.Contains("upperarm")) return female ? new Vector2(0.68f, 0.70f) : new Vector2(0.74f, 0.76f);
+            if (n.Contains("forearm")) return female ? new Vector2(0.72f, 0.72f) : new Vector2(0.78f, 0.78f);
+            if (n.Contains("hand") || n.Contains("thumb")) return female ? new Vector2(0.86f, 0.86f) : new Vector2(0.92f, 0.92f);
+            if (n.Contains("thigh")) return female ? new Vector2(0.80f, 0.80f) : new Vector2(0.78f, 0.80f);
+            if (n.Contains("shin")) return female ? new Vector2(0.74f, 0.76f) : new Vector2(0.78f, 0.80f);
+            if (n.Contains("foot") || n.Contains("toe")) return female ? new Vector2(0.86f, 0.92f) : new Vector2(0.92f, 0.95f);
+            return Vector2.one;
+        }
+
+        /// <summary>A form narrowed by <see cref="Slim"/> about its centreline (normals kept true to the new surface).</summary>
+        public static MeshData Slimmed(MeshData m, Vector2 s)
+        {
+            var o = new MeshData();
+            foreach (var v in m.V) o.V.Add(new Vector3(v.x * s.x, v.y, v.z * s.y));
+            foreach (var nrm in m.N) o.N.Add(new Vector3(nrm.x / s.x, nrm.y, nrm.z / s.y).normalized);
+            o.T.AddRange(m.T);
+            return o;
+        }
+
         /// <summary>Blend spheres at joints that bend (shown only when bent, as in the lab).</summary>
         public static List<JointBlend> Blends()
         {

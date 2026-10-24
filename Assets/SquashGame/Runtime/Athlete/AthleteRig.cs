@@ -25,6 +25,12 @@ namespace SquashGame.Athlete
         public readonly Dictionary<string, Transform> Bones = new Dictionary<string, Transform>();
         readonly Dictionary<string, Vector3> _restLocal = new Dictionary<string, Vector3>();
         readonly List<(Transform bone, GameObject blend)> _blends = new List<(Transform, GameObject)>();
+        // The slim build (2026-10-24): each form's mesh, made per body (male / female) once a session.
+        readonly List<(MeshFilter mf, FormPart part)> _forms = new List<(MeshFilter, FormPart)>();
+        readonly List<(MeshFilter mf, JointBlend blend)> _blendForms = new List<(MeshFilter, JointBlend)>();
+        static readonly Dictionary<string, Mesh> _bodyMeshes = new Dictionary<string, Mesh>();
+        public bool Female { get; private set; }
+        bool _bodyBuilt;
 
         public Transform Racket { get; private set; }
         /// <summary>The racket's pose in the hand (HoldRacketInHand): hand-local position and rotation.</summary>
@@ -79,6 +85,35 @@ namespace SquashGame.Athlete
             _strings.color = new Color(k.Strings.r, k.Strings.g, k.Strings.b, 0.35f);
             ShowHair(k.HairStyle);
             _hair.color = k.Hair;
+            SetBody(k.Female);
+        }
+
+        /// <summary>The slim build, male or female: every form's mesh narrowed by MannequinForms.Slim.</summary>
+        public void SetBody(bool female)
+        {
+            if (_bodyBuilt && female == Female) return;
+            Female = female; _bodyBuilt = true;
+            foreach (var (mf, f) in _forms)
+            {
+                string key = f.Name + (female ? "_f" : "_m");
+                if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
+                    _bodyMeshes[key] = mesh = MannequinForms.Slimmed(f.Mesh, MannequinForms.Slim(f.Name, female)).ToUnity(key);
+                mf.sharedMesh = mesh;
+            }
+            foreach (var (mf, jb) in _blendForms)
+            {
+                string key = "blend_" + jb.Bone + (female ? "_f" : "_m");
+                if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
+                {
+                    var s = MannequinForms.Slim(jb.Bone, female);
+                    _bodyMeshes[key] = mesh = Loft.Ellipsoid(jb.W * s.x, jb.D * s.y, jb.H).ToUnity(key);
+                }
+                mf.sharedMesh = mesh;
+            }
+            // Hair, face and headband follow the head's narrowing.
+            var hs = MannequinForms.Slim("head", female);
+            foreach (var hp in _headParts) if (hp != null) hp.transform.localScale = new Vector3(hs.x, 1f, hs.y);
+            if (_headbandGo != null) _headbandGo.transform.localScale = new Vector3(0.094f * hs.x, 0.094f * hs.y, 0.14f);
         }
 
         void ShowHair(int style)
@@ -87,12 +122,15 @@ namespace SquashGame.Athlete
             for (int i = 0; i < _hairGo.Length; i++) if (_hairGo[i] != null) _hairGo[i].SetActive(i == HairStyleShown);
         }
 
+        readonly List<GameObject> _headParts = new List<GameObject>();
+
         GameObject HeadPart(string name, MeshData m, Material mat, bool shadows)
         {
             if (m == null) return null;
             var go = Greybox.MeshObject(name, Bones["Head"], m.ToUnity(name), mat, shadows);
             go.GetComponent<MeshRenderer>().receiveShadows = true;
             go.transform.localPosition = ToUnity(HeadDetail.Pivot - RigBoneRest("Head"));
+            _headParts.Add(go);
             return go;
         }
 
@@ -120,7 +158,8 @@ namespace SquashGame.Athlete
                 var go = new GameObject(f.Name);
                 go.transform.SetParent(Bones[f.Bone], false);
                 go.transform.localPosition = ToUnity(f.Pivot - rigPos[f.Bone]);
-                go.AddComponent<MeshFilter>().sharedMesh = f.Mesh.ToUnity(f.Name);
+                var mf = go.AddComponent<MeshFilter>();
+                _forms.Add((mf, f));
                 var r = go.AddComponent<MeshRenderer>();
                 r.sharedMaterial = _region[(int)RegionOf(f.Name)];
                 FormCount++;
@@ -131,11 +170,13 @@ namespace SquashGame.Athlete
             {
                 var go = new GameObject("blend_" + jb.Bone);
                 go.transform.SetParent(Bones[jb.Bone], false);
-                go.AddComponent<MeshFilter>().sharedMesh = Loft.Ellipsoid(jb.W, jb.D, jb.H).ToUnity("blend");
+                _blendForms.Add((go.AddComponent<MeshFilter>(), jb));
                 go.AddComponent<MeshRenderer>().sharedMaterial = _region[(int)RegionOf("blend_" + jb.Bone)];
                 go.SetActive(false);
                 _blends.Add((Bones[jb.Bone], go));
             }
+
+            SetBody(false);
 
             // ---- racket (placed in world from the simulated racket, not parented to the hand) ----
             var parts = RacketMesh.Build();

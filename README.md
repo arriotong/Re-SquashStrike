@@ -27,7 +27,7 @@ It runs on Windows 10 or 11 (64-bit), with a keyboard and mouse or a gamepad. No
 - **Lets and strokes**: a real referee. Ask for a let when you are blocked, or switch let calls off in Settings > Gameplay.
 - **A glass-court arena**: a full crowd that hushes in a rally and applauds after it, an "ooh" at a tin, a cheer for a game. You get a big screen, court lights, a game-ball chip and a rally counter, and the ball leaves a mark wherever it hits.
 - **Six courts**: Show Court (a wood-panelled wintergarden), Club Court, Desert Night (the pyramids behind the glass), Station Hall, City Rooftop and Arena. Choose one in Quick Match or Local Versus; Career events move up them as they get bigger.
-- **Your look**: a male or female athlete (models by Quaternius, CC0), skin tone, hair style and colour, plus your kit and racket.
+- **Your look**: a slim male or female build, skin tone, hair style and colour, plus your kit and racket.
 - **Settings**: change your keys and pad buttons, pick the match camera (back wall, high, low glass), the arena's detail (Settings > Video > Venue), the crowd's volume, and more.
 
 ## Controls
