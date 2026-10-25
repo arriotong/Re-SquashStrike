@@ -44,12 +44,34 @@ namespace SquashGame.UI
             }
             if (r.Unlocked.Count > 0)
             {
-                var names = new System.Collections.Generic.List<string>();
-                foreach (var it in r.Unlocked) names.Add(it.Name + " (" + Cosmetics.SlotNames[(int)it.Slot].ToLowerInvariant() + ")");
-                var l = new Label("UNLOCKED   " + string.Join(", ", names)); l.AddToClassList("rw-unlock"); Add(l);
+                // P3-R1: each new item as a swatch card, not just a name
+                var row = new VisualElement(); row.AddToClassList("rw-unlocks");
+                var k = new Label("UNLOCKED"); k.AddToClassList("rw-unlock"); row.Add(k);
+                foreach (var it in r.Unlocked) row.Add(Swatch(it));
+                Add(row);
+            }
+            // P3-R1: what the next level brings - always something to play for
+            int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);
+            if (next > 0)
+            {
+                var nl = new Label("NEXT UNLOCK   level " + next + "  ·  " + Rewards.Describe(coming) + "  ·  " + toGo.ToString("N0") + " XP to go");
+                nl.AddToClassList("rw-next"); Add(nl);
             }
             schedule.Execute(Tick).Every(16);
             Show(0f);
+        }
+
+        /// <summary>An item as a small card: its colours and name.</summary>
+        static VisualElement Swatch(Item it)
+        {
+            var card = new VisualElement(); card.AddToClassList("rw-swatch");
+            var chip = new VisualElement(); chip.AddToClassList("rw-swatch-chip");
+            chip.style.backgroundColor = it.A;
+            chip.style.borderRightColor = it.B; chip.style.borderRightWidth = 6;
+            card.Add(chip);
+            var n = new Label(it.Name); n.AddToClassList("rw-swatch-name"); card.Add(n);
+            var sl = new Label(Cosmetics.SlotNames[(int)it.Slot].ToUpperInvariant()); sl.AddToClassList("rw-swatch-slot"); card.Add(sl);
+            return card;
         }
 
         void Tick()

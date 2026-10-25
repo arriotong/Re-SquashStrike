@@ -165,7 +165,7 @@ namespace SquashGame.UI
     public sealed class PlayerChip : VisualElement
     {
         readonly Ring _ring = new Ring();
-        readonly Label _level, _name, _title;
+        readonly Label _level, _name, _title, _next;
 
         public PlayerChip()
         {
@@ -177,6 +177,7 @@ namespace SquashGame.UI
             var text = Kit.Box(this, "k-chip-text");
             _title = Kit.L(text, "", "k-chip-title");
             _name = Kit.L(text, "", "k-chip-name");
+            _next = Kit.L(text, "", "k-chip-next");          // P3-R1: what the next level brings
             Refresh();
         }
 
@@ -190,6 +191,9 @@ namespace SquashGame.UI
             var t = Cosmetics.Find(p.Loadout.Title);
             _title.text = (t != null ? t.Name : "Rookie").ToUpperInvariant();
             _name.text = CareerStore.Current != null ? CareerStore.Current.S.Name : "Player";
+            int next = Rewards.NextUnlock(p.Xp, out var items, out int toGo);
+            _next.text = next > 0 && items.Count > 0 ? "NEXT  " + items[0].Name.ToUpperInvariant() + (items.Count > 1 ? " +" + (items.Count - 1) : "") + "  ·  " + toGo.ToString("N0") + " XP" : "";
+            _next.style.display = next > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             var banner = Cosmetics.Find(p.Loadout.Banner);
             if (banner != null) style.borderLeftColor = banner.B;
         }

@@ -75,6 +75,32 @@ namespace SquashGame.Progression
 
         public static int Prestige(int xp) { int top = TotalFor(MaxLevel); return xp < top ? 0 : (xp - top) / Need(MaxLevel); }
 
+        /// <summary>P3-R1 (visible progress): the next level above this XP that unlocks something, its items, and the XP to
+        /// go. Level 0 when nothing is left to unlock.</summary>
+        public static int NextUnlock(int xp, out List<Item> items, out int xpToGo)
+        {
+            for (int level = LevelOf(xp) + 1; level <= MaxLevel; level++)
+            {
+                var at = Cosmetics.AtLevel(level);
+                if (at.Count == 0) continue;
+                items = at; xpToGo = TotalFor(level) - xp;
+                return level;
+            }
+            items = new List<Item>(); xpToGo = 0;
+            return 0;
+        }
+
+        /// <summary>The XP a match has earned so far from its rallies (the post-match adds great hits and the win).</summary>
+        public static int SoFar(int rallies, int ralliesWon) { return rallies * RallyXp + ralliesWon * RallyWonXp; }
+
+        /// <summary>"Celebration: Fist pump" - an item and its slot, for the next-unlock lines.</summary>
+        public static string Describe(List<Item> items)
+        {
+            var names = new List<string>();
+            foreach (var it in items) names.Add(it.Name + " (" + Cosmetics.SlotNames[(int)it.Slot].ToLowerInvariant() + ")");
+            return string.Join(", ", names);
+        }
+
         static Progress P { get { return ProfileStore.Current.Progress; } }
 
         /// <summary>Owned: free items, and everything unlocked.</summary>

@@ -198,6 +198,13 @@ namespace SquashGame
                 {
                     key = "Enter / Y";
                     prompt = "play now   ·   next game in " + Mathf.CeilToInt((float)m.BreakRemaining) + " s   ·   games " + s.Games[0] + "-" + s.Games[1];
+                    // P3-R1: the XP the match has earned so far (the rallies; the win and great hits come at full time)
+                    if (!twoPlayer)
+                    {
+                        int played = 0, won = 0;
+                        foreach (var o in m.History) { if (o.Winner < 0) continue; played++; if (o.Winner == r.HumanIndex) won++; }
+                        prompt += "   ·   +" + Progression.Rewards.SoFar(played, won) + " XP so far";
+                    }
                 }
             }
             bool call = !string.IsNullOrEmpty(banner);

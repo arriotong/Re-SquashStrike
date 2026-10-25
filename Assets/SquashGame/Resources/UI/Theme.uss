@@ -341,6 +341,13 @@
 .rw-lines { font-size: 12px; color: rgba(255, 255, 255, 0.65); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .rw-ach { font-size: 12px; color: rgb(255, 184, 59); margin-top: 4px; white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .rw-unlock { font-size: 13px; color: rgb(200, 255, 61); margin-top: 4px; white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.rw-unlocks { flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+.rw-unlocks > .rw-unlock { margin: 0 10px 0 0; }
+.rw-swatch { flex-direction: row; align-items: center; margin: 2px 10px 2px 0; padding: 4px 10px 4px 4px; background-color: rgba(200, 255, 61, 0.10); border-radius: 6px; border-width: 1px; border-color: rgba(200, 255, 61, 0.45); }
+.rw-swatch-chip { width: 22px; height: 22px; border-radius: 4px; margin-right: 8px; }
+.rw-swatch-name { font-size: 13px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.rw-swatch-slot { font-size: 9px; letter-spacing: 1px; margin-left: 6px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.rw-next { font-size: 12px; margin-top: 6px; color: rgba(255, 255, 255, 0.8); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 .toasts { position: absolute; right: 24px; top: 24px; width: 380px; align-items: flex-end; }
 .toast {

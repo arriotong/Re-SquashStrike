@@ -41,6 +41,7 @@
 .k-chip-level { font-size: 19px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .k-chip-title { font-size: 10px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-chip-name { font-size: 20px; margin-top: -2px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-chip-next { font-size: 9px; letter-spacing: 1px; margin-top: 1px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
 /* ---------- cards ---------- */
 .k-row { flex-direction: row; align-items: flex-end; justify-content: flex-start; flex-grow: 1; }

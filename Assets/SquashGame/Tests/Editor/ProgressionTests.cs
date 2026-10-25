@@ -35,6 +35,21 @@ namespace SquashGame.Tests
 
         [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); }
 
+        [Test] public void TheNextUnlockIsAlwaysInView()
+        {
+            // P3-R1: from any XP below the top there is a next unlock, at a higher level, with the XP to it
+            foreach (int xp in new[] { 0, 150, 5000, Rewards.TotalFor(30) + 7 })
+            {
+                int level = Rewards.NextUnlock(xp, out var items, out int toGo);
+                Assert.That(level, Is.GreaterThan(Rewards.LevelOf(xp)), "xp " + xp);
+                Assert.That(items, Is.Not.Empty);
+                Assert.That(toGo, Is.EqualTo(Rewards.TotalFor(level) - xp));
+                Assert.That(Rewards.Describe(items), Does.Contain(items[0].Name));
+            }
+            Assert.That(Rewards.NextUnlock(Rewards.TotalFor(Rewards.MaxLevel), out _, out _), Is.EqualTo(0), "nothing left at the top");
+            Assert.That(Rewards.SoFar(10, 6), Is.EqualTo(10 * Rewards.RallyXp + 6 * Rewards.RallyWonXp));
+        }
+
         [Test] public void TheXpCurve()
         {
             Assert.That(Rewards.LevelOf(0), Is.EqualTo(1));
