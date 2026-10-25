@@ -130,7 +130,7 @@ namespace SquashGame.Tests
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":2,\"Progress\":{\"Xp\":500}}");
             ProfileStore.Reset();
             var p = ProfileStore.Current;
-            Assert.That(p.Version, Is.EqualTo(3));
+            Assert.That(p.Version, Is.EqualTo(ProfileStore.CurrentVersion));
             Assert.That(p.Progress.Xp, Is.EqualTo(500));
             Assert.That(p.Progress.Challenges, Is.Not.Null);
             Assert.That(Challenges.Current().Daily.Count, Is.EqualTo(Challenges.DailyCount));

@@ -19,9 +19,9 @@ using UnityEngine;
 
 namespace SquashGame.Progression
 {
-    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body }
+    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body, Trail }
 
-    public enum UnlockKind { Free, Level, Achievement, Challenge, Sponsor }
+    public enum UnlockKind { Free, Level, Achievement, Challenge, Sponsor, Gacha }
 
     public sealed class Item
     {
@@ -34,6 +34,10 @@ namespace SquashGame.Progression
         public UnlockKind Unlock;
         public int Level;                  // UnlockKind.Level
         public string Achievement;         // UnlockKind.Achievement
+        // P4 Gear Drops: a banner's item - its rarity (0 Common .. 4 Legendary; -1 elsewhere), the gold edition, a glowing frame
+        public int Rarity = -1;
+        public string Banner, GoldOf;
+        public bool Gold, Glow;
 
         public string HowToUnlock
         {
@@ -45,6 +49,11 @@ namespace SquashGame.Progression
                     case UnlockKind.Achievement: { var a = Achievements.Find(Achievement); return "Achievement: " + (a != null ? a.Name : Achievement); }
                     case UnlockKind.Challenge: return Achievement;      // the challenge note ("A 7-day streak")
                     case UnlockKind.Sponsor: return "Sponsor: " + Achievement;
+                    case UnlockKind.Gacha:
+                    {
+                        var b = GearDrops.Banner(Banner);
+                        return "Gear Drops: " + (b != null ? b.Name : Banner) + "  ·  " + GearDrops.RarityNames[Mathf.Clamp(Rarity, 0, 4)] + (Gold ? "  ·  gold edition (1% of pulls, or gold-plate it)" : "");
+                    }
                     default: return "";
                 }
             }
@@ -59,6 +68,8 @@ namespace SquashGame.Progression
         public int HairStyle;              // PR3: 0 shaved .. AthleteRig.HairStyles - 1
         public Color Hair;
         public bool Female;                // 2026-10-24: the slim build's female proportions (AthleteRig.SetBody)
+        public Color Trail;                // P4: your shots' trail
+        public bool FrameGlow;             // P4: an Epic / Legendary / gold frame glows
     }
 
     [Serializable]
@@ -67,7 +78,7 @@ namespace SquashGame.Progression
         public string Shirt = "shirt_charcoal", Shorts = "shorts_black", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3",
                       Headband = "headband_none", Wristband = "wristband_none", Frame = "frame_graphite", Grip = "grip_black",
                       Strings = "strings_white", Celebration = "cel_fist", Banner = "banner_charcoal", Title = "title_rookie",
-                      Hair = "hair_short", HairColour = "haircol_darkbrown", Body = "body_male";
+                      Hair = "hair_short", HairColour = "haircol_darkbrown", Body = "body_male", Trail = "trail_classic";
 
         public string Get(Slot s)
         {
@@ -76,7 +87,7 @@ namespace SquashGame.Progression
                 case Slot.Shirt: return Shirt; case Slot.Shorts: return Shorts; case Slot.Socks: return Socks; case Slot.Shoes: return Shoes;
                 case Slot.Skin: return Skin; case Slot.Headband: return Headband; case Slot.Wristband: return Wristband; case Slot.Frame: return Frame;
                 case Slot.Grip: return Grip; case Slot.Strings: return Strings; case Slot.Celebration: return Celebration; case Slot.Banner: return Banner;
-                case Slot.Hair: return Hair; case Slot.HairColour: return HairColour; case Slot.Body: return Body;
+                case Slot.Hair: return Hair; case Slot.HairColour: return HairColour; case Slot.Body: return Body; case Slot.Trail: return Trail;
                 default: return Title;
             }
         }
@@ -89,6 +100,7 @@ namespace SquashGame.Progression
                 case Slot.Skin: Skin = id; break; case Slot.Headband: Headband = id; break; case Slot.Wristband: Wristband = id; break; case Slot.Frame: Frame = id; break;
                 case Slot.Grip: Grip = id; break; case Slot.Strings: Strings = id; break; case Slot.Celebration: Celebration = id; break; case Slot.Banner: Banner = id; break;
                 case Slot.Hair: Hair = id; break; case Slot.HairColour: HairColour = id; break; case Slot.Body: Body = id; break;
+                case Slot.Trail: Trail = id; break;
                 default: Title = id; break;
             }
         }
@@ -99,7 +111,7 @@ namespace SquashGame.Progression
     public static class Cosmetics
     {
         public static readonly Slot[] KitSlots = { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Skin, Slot.Headband, Slot.Wristband, Slot.Frame, Slot.Grip, Slot.Strings, Slot.Hair, Slot.HairColour, Slot.Body };
-        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title", "Hair", "Hair colour", "Body" };
+        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title", "Hair", "Hair colour", "Body", "Shot trail" };
 
         /// <summary>PR3: the hair styles, in AthleteRig's order (item id suffix, name).</summary>
         public static readonly (string id, string name)[] HairStyles =
@@ -219,6 +231,10 @@ namespace SquashGame.Progression
                 ("sp_copperleaf", "Copperleaf Tea", 0xb8642au, 0x1f5a35u), ("sp_pallas", "Pallas Motors", 0x8a9099u, 0x1c1e22u) })
             { var it = Add(Slot.Shirt, id, brand.Split(' ')[0] + " kit", H(a), H(b), UnlockKind.Sponsor); it.Achievement = brand; }
 
+            // ---- P4: Gear Drops - the shot trail's default, then the six banners and their gold editions ----
+            Add(Slot.Trail, "trail_classic", "Classic", H(0xfff2cc), H(0xfff2cc), UnlockKind.Free);
+            GearDrops.AddTo((slot, id, name, a, b, u) => Add(slot, id, name, a, b, u));
+
             // achievements' rewards: those items unlock there, not on the level table
             foreach (var a in Achievements.All())
                 if (a.Reward != null) { var it = Find(a.Reward); if (it != null) { it.Unlock = UnlockKind.Achievement; it.Achievement = a.Id; } }
@@ -273,6 +289,7 @@ namespace SquashGame.Progression
                 HasHeadband = head != null && !head.None, Headband = head != null ? head.A : Color.clear,
                 HasWristband = wrist != null && !wrist.None, Wristband = wrist != null ? wrist.A : Color.clear,
                 Frame = Of(l.Frame, H(0x5d656f)), Grip = Of(l.Grip, H(0x23272c)), Strings = Of(l.Strings, H(0xdde2e8)),
+                Trail = Of(l.Trail, H(0xfff2cc)), FrameGlow = Find(l.Frame) != null && Find(l.Frame).Glow,
                 HairStyle = hair != null ? hair.Style : 2, Hair = Of(l.HairColour, H(0x352418)), Female = body != null && body.Style == 1,
             };
         }
@@ -284,6 +301,7 @@ namespace SquashGame.Progression
             string Pick(Slot slot, bool allowNone = true)
             {
                 var items = InSlot(slot);
+                items.RemoveAll(i => i.Unlock == UnlockKind.Gacha);             // P4: the pros never wear drop-only gear
                 if (!allowNone) items.RemoveAll(i => i.None);
                 s = s * 1664525u + 1013904223u;
                 return items[(int)((s >> 8) % (uint)items.Count)].Id;
