@@ -141,6 +141,7 @@ namespace SquashServer.Tests
 
         static int Main(string[] args)
         {
+            if (args.Length >= 2 && args[0] == "--smoke") return Smoke.Run(args[1]);
             if (args.Length >= 1 && args[0] == "--soak") return Soak.Run(args.Length >= 2 ? int.Parse(args[1]) : 20);
             Console.WriteLine("re:SquashStrike server tests");
 

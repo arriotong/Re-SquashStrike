@@ -13,7 +13,7 @@ Plan: `SQUASH FRONTEND MODIFIED/RE_SQUASHSTRIKE_P2M8_ONLINE_PLAN.md`.
 dotnet run -c Release --project Tools/SquashServer
 ```
 
-It listens on port 5180, and the game's default server address is
+It listens on port 5180. To test against it, set the game's Settings > Gameplay > Online server to
 `ws://localhost:5180/ws`. Data goes in `data/squash.json`, with ranked
 replays in `data/replays/`.
 

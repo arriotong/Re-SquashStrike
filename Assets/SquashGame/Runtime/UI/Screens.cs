@@ -178,7 +178,7 @@ namespace SquashGame.UI
             Row(g, name, "The name other players see online. From your next connection.");
             var server = new TextItem("Online server", string.IsNullOrWhiteSpace(me.Server) ? Online.OnlineService.DefaultServer : me.Server, 120);
             server.Field.RegisterValueChangedCallback(e => { me.Server = (e.newValue ?? "").Trim(); Online.OnlineService.Disconnect(); });
-            Row(g, server, "Where online play connects: ws://localhost:5180/ws for a server on this PC, or the address it was deployed to (wss://...fly.dev/ws)."); 
+            Row(g, server, "Where online play connects. The game's own server is the default; ws://localhost:5180/ws plays against a server on this PC (testing)."); 
             Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
             Kit.L(g, "Court sounds from real recordings on freesound.org, including \"je_racketballcourt.wav\" by cmusounddesign (CC BY 4.0).", "k-set-hint");
         }

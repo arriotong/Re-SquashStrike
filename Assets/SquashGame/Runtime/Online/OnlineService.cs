@@ -4,7 +4,7 @@
 //
 //   identity    no account: a random id and secret made on first use and
 //               kept in the profile; the name you play under; the server
-//               (Settings > Gameplay; localhost until it is deployed)
+//               (Settings > Gameplay; the deployed one by default)
 //   the link    a WebSocket; hello on opening; pings both ways (your ping
 //               on the HUD; the server picks the input delay from them)
 //   lobby       a room of your own (its code), joining one, the quick and
@@ -38,7 +38,7 @@ namespace SquashGame.Online
 
     public static class OnlineService
     {
-        public const string DefaultServer = "ws://localhost:5180/ws";
+        public const string DefaultServer = "wss://re-squashstrike.fly.dev/ws";     // the deployed relay (Tools/SquashServer, Fly.io)
         public const float PingEvery = 2f, ConnectTimeout = 10f, ReconnectFor = 18f;
 
         public static NetState State { get; private set; }
