@@ -34,6 +34,7 @@ namespace SquashSim.Replays
             m.AppealsEnabled = s.Lets;               // P2-M7: the Lets setting, recorded with the match
             m.StartPoints0 = s.StartPoints0; m.StartPoints1 = s.StartPoints1; m.StartGames0 = s.StartGames0; m.StartGames1 = s.StartGames1;   // P3-C1
             m.StartServer = s.StartServer; m.EachGamePoints0 = s.EachGame0; m.EachGamePoints1 = s.EachGame1;
+            if (s.ParPoints > 0) m.ParPoints = s.ParPoints;                    // P5: a Gauntlet floor's game to 7
         }
 
         /// <summary>The match itself (Configure first): the opponent in slot 1 unless two play; everyone plays the simple
@@ -42,6 +43,8 @@ namespace SquashSim.Replays
         {
             var sim = new MatchSimulation(s.FirstServer);
             if (s.Attr0 != null) sim.Players[0].Player.Attributes.CopyFrom(s.Attr0);       // P3-C1 (neutral: no effect)
+            if (s.Attr1 != null) sim.Players[1].Player.Attributes.CopyFrom(s.Attr1);       // P5: a Gauntlet floor's opponent
+            ApplyMods(sim, 0, s.Mods0); ApplyMods(sim, 1, s.Mods1);
             sim.Bots[1] = s.TwoPlayer ? null : Opponent(s);
             if (!string.IsNullOrEmpty(s.Opponent0))
                 sim.Bots[0] = new OpponentBrain(AiProfile.ByName(s.Opponent0).WithDifficulty(s.Difficulty0), s.BotSeed ^ 0x9E3779B9u);
@@ -51,6 +54,16 @@ namespace SquashSim.Replays
             sim.Players[0].ArcadeHitEnabled = true;
             sim.Players[1].ArcadeHitEnabled = p2Arcade;
             return sim;
+        }
+
+        /// <summary>P5: a Gauntlet run's abilities on athlete i (and its Pressure on the other). None: nothing at all.</summary>
+        static void ApplyMods(MatchSimulation sim, int i, List<RunMod> list)
+        {
+            var mods = RunMods.From(list);
+            if (mods == null) return;
+            sim.Players[i].Player.Mods = mods;
+            double p = mods.DrainOnOpponent;
+            if (p != 1.0) sim.Players[1 - i].Player.OpponentDrain = p;
         }
 
         public static IAthleteBrain Opponent(ReplaySetup s)

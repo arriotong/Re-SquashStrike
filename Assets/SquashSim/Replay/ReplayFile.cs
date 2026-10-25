@@ -46,6 +46,11 @@ namespace SquashSim.Replays
         /// <summary>P3-C1 (format 4): athlete 0's attributes; a start score; a head start each game. Older files: neutral, 0-0.</summary>
         public AthleteAttributes Attr0 = new AthleteAttributes();
         public int StartPoints0, StartPoints1, StartGames0, StartGames1, StartServer = -1, EachGame0, EachGame1;
+        /// <summary>P5 (format 5): a game to this many points (0: the scoring's own - PAR 11); athlete 1's attributes; each
+        /// athlete's Gauntlet run abilities (null / empty: none). Older files: none of them.</summary>
+        public int ParPoints;
+        public AthleteAttributes Attr1;
+        public List<RunMod> Mods0, Mods1;
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -109,7 +114,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 4;      // 4: P3-C1 attributes and start score
+        public const int FormatVersion = 5;      // 4: P3-C1 attributes and start score; 5: P5 game length, opponent attributes, run abilities
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -144,6 +149,10 @@ namespace SquashSim.Replays
                 var a = s.Attr0 ?? new AthleteAttributes();
                 w.Write(a.Speed); w.Write(a.Stamina); w.Write(a.Power); w.Write(a.Control);
                 w.Write(s.StartPoints0); w.Write(s.StartPoints1); w.Write(s.StartGames0); w.Write(s.StartGames1); w.Write(s.StartServer); w.Write(s.EachGame0); w.Write(s.EachGame1);
+                w.Write(s.ParPoints);
+                w.Write(s.Attr1 != null);
+                if (s.Attr1 != null) { w.Write(s.Attr1.Speed); w.Write(s.Attr1.Stamina); w.Write(s.Attr1.Power); w.Write(s.Attr1.Control); }
+                WriteMods(w, s.Mods0); WriteMods(w, s.Mods1);
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -173,6 +182,22 @@ namespace SquashSim.Replays
             using (var w = new BinaryWriter(file, Encoding.UTF8, true)) { w.Write(Magic); w.Write(FormatVersion); }
             using (var z = new DeflateStream(file, CompressionLevel.Optimal, true)) { raw.Position = 0; raw.CopyTo(z); }
             return file.ToArray();
+        }
+
+        static void WriteMods(BinaryWriter w, List<RunMod> mods)
+        {
+            int n = 0; if (mods != null) foreach (var m in mods) if (m != null && m.Level > 0) n++;
+            w.Write(n);
+            if (mods != null) foreach (var m in mods) if (m != null && m.Level > 0) { w.Write(m.Id ?? ""); w.Write(m.Level); }
+        }
+
+        static List<RunMod> ReadMods(BinaryReader r)
+        {
+            int n = r.ReadInt32();
+            if (n == 0) return null;
+            var l = new List<RunMod>(n);
+            for (int i = 0; i < n; i++) l.Add(new RunMod { Id = r.ReadString(), Level = r.ReadInt32() });
+            return l;
         }
 
         static void WriteFrame(BinaryWriter w, QFrame f)
@@ -219,6 +244,12 @@ namespace SquashSim.Replays
                     s.Attr0 = new AthleteAttributes { Speed = r.ReadDouble(), Stamina = r.ReadDouble(), Power = r.ReadDouble(), Control = r.ReadDouble() };
                     s.StartPoints0 = r.ReadInt32(); s.StartPoints1 = r.ReadInt32(); s.StartGames0 = r.ReadInt32(); s.StartGames1 = r.ReadInt32();
                     s.StartServer = r.ReadInt32(); s.EachGame0 = r.ReadInt32(); s.EachGame1 = r.ReadInt32();
+                }
+                if (version >= 5)
+                {
+                    s.ParPoints = r.ReadInt32();
+                    if (r.ReadBoolean()) s.Attr1 = new AthleteAttributes { Speed = r.ReadDouble(), Stamina = r.ReadDouble(), Power = r.ReadDouble(), Control = r.ReadDouble() };
+                    s.Mods0 = ReadMods(r); s.Mods1 = ReadMods(r);
                 }
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)

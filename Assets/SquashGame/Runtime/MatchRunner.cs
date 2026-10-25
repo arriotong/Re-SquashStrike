@@ -70,6 +70,10 @@ namespace SquashGame
         public bool Online, Ranked;
         public long MatchId;
         public string OppKit;
+        /// <summary>P5 the Gauntlet: a game to this many (0: the scoring's own); the opponent's attributes; both sides' run abilities.</summary>
+        public int ParPoints;
+        public SquashSim.AthleteAttributes OppAttributes;
+        public List<SquashSim.RunMod> Mods, OppMods;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -214,6 +218,8 @@ namespace SquashGame
                 Attr0 = s.Attributes != null ? s.Attributes.Clone() : new AthleteAttributes(),
                 StartPoints0 = s.StartPoints0, StartPoints1 = s.StartPoints1, StartGames0 = s.StartGames0, StartGames1 = s.StartGames1,
                 StartServer = s.StartServer, EachGame0 = s.EachGame0, EachGame1 = s.EachGame1,
+                ParPoints = s.ParPoints, Attr1 = s.OppAttributes != null ? s.OppAttributes.Clone() : null,
+                Mods0 = s.Mods != null ? new List<RunMod>(s.Mods) : null, Mods1 = s.OppMods != null ? new List<RunMod>(s.OppMods) : null,
             };
         }
 

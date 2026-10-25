@@ -32,6 +32,8 @@ namespace SquashSim
             double s = p.Stamina;
             double drain = f.DrainRate * frac * frac * dt;
             double k = p.Attributes.DrainScale;                    // P3-C1: exactly 1 when neutral
+            if (p.Mods != null) k *= p.Mods.DrainSelf;              // P5: an elite's Tireless
+            if (p.OpponentDrain != 1.0) k *= p.OpponentDrain;      // P5: the opponent's Pressure
             s -= k != 1.0 ? drain * k : drain;
             if (!rallyLive) s += f.RecoverBetweenRallies * dt;
             else if (p.Speed < f.StandingSpeed) s += f.RecoverStanding * dt;
@@ -52,6 +54,8 @@ namespace SquashSim
                 default: cost = 0; break;
             }
             double k = p.Attributes.DrainScale;
+            if (p.Mods != null) k *= p.Mods.DrainSelf;
+            if (p.OpponentDrain != 1.0) k *= p.OpponentDrain;
             if (k != 1.0) cost *= k;
             double s = p.Stamina - cost;
             p.Stamina = s < f.Floor ? f.Floor : s;

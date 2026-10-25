@@ -89,8 +89,9 @@ namespace SquashSim
             _setDecided = false;
         }
 
-        /// <summary>Apply a finished rally. Returns true if it changed the score or serve.</summary>
-        public bool Apply(RallyOutcome o)
+        /// <summary>Apply a finished rally (<paramref name="bonus"/>: P5 extra points for the winner - an ace, a nick). Returns
+        /// true if it changed the score or serve.</summary>
+        public bool Apply(RallyOutcome o, int bonus = 0)
         {
             if (MatchOver || GameOver || o == null) return false;
             Rallies++;
@@ -101,13 +102,13 @@ namespace SquashSim
 
             if (System == ScoringSystem.Par)
             {
-                Points[w]++;
+                Points[w] += 1 + bonus;
                 if (serverWon) ServeSide = -ServeSide;
                 else { Server = w; ServeSide = 1; }
             }
             else
             {
-                if (serverWon) { Points[w]++; ServeSide = -ServeSide; }
+                if (serverWon) { Points[w] += 1 + bonus; ServeSide = -ServeSide; }
                 else { Server = w; ServeSide = 1; }   // hand-out: no point
 
                 int target = BaseTarget;

@@ -50,6 +50,10 @@ namespace SquashSim
         public double PaceScale = 1.0;
         /// <summary>P3-C1: the athlete's attributes (career growth, Gauntlet perks). Neutral (all 5) changes nothing.</summary>
         public readonly AthleteAttributes Attributes = new AthleteAttributes();
+        /// <summary>P5: the Gauntlet run's abilities (null everywhere else: no effect).</summary>
+        public RunMods Mods;
+        /// <summary>P5: the opponent's Pressure on this athlete's stamina drain (1 = none).</summary>
+        public double OpponentDrain = 1.0;
 
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 

@@ -219,7 +219,8 @@ namespace SquashSim
         {
             double dx = ball.Pos.X - p.Pos.X, dz = ball.Pos.Z - p.Pos.Z;
             dist = System.Math.Sqrt(dx * dx + dz * dz);
-            return dist <= c.Reach * ReachScale * AttrReach(p) && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
+            double ghost = p.Mods != null ? p.Mods.GhostReach : 1.0;                   // P5: Ghost (once a rally)
+            return dist <= c.Reach * ReachScale * AttrReach(p) * ghost && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
         }
 
         /// <summary>One fixed step. Returns the contact event when the ball is hit.</summary>
@@ -325,6 +326,12 @@ namespace SquashSim
         SimEvent Hit(TestPlayerController ctrl, BallState ball, List<Surface> surfaces, double dist, double charge, ArcadeHitSection c)
         {
             var player = ctrl.Player;
+            var mods = player.Mods;                                          // P5: the Gauntlet run's abilities (null: none)
+            if (mods != null && mods.Level("ghost") > 0 && !mods.GhostUsed && dist > c.Reach * ReachScale * AttrReach(player))
+            {
+                mods.GhostUsed = true;                                       // reached only thanks to Ghost: spent for this rally
+                dist = c.Reach * ReachScale * AttrReach(player);
+            }
             var aim = ctrl.Aim;
             double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale * AttrReach(player) - c.SweetSpot), 0, 1);
             double early = ctrl.ServeStroke ? 1 : Clamp(_setTime / c.EarlyFull, 0, 1);
@@ -354,7 +361,7 @@ namespace SquashSim
                 // A local player's serve: tap = lob serve, hold = hard serve (struck from the hand: no spread).
                 _boast = false;
                 _dip = false;
-                shot = ServeLaunch(ball, surfaces, tx, ty, charge, ctrl.ServeDefaultX > 0 ? -1 : 1, out speed);
+                shot = ServeLaunch(ball, surfaces, tx, ty, charge, ctrl.ServeDefaultX > 0 ? -1 : 1, out speed, player.Mods != null ? player.Mods.ServeBonus : 1.0);
             }
             else
             {
@@ -370,8 +377,18 @@ namespace SquashSim
                     ty = CourtDimensions.TIN_H + c.DropHeightAboveTin;
                     double reach = System.Math.Sqrt((tx - ball.Pos.X) * (tx - ball.Pos.X) + ball.Pos.Z * ball.Pos.Z);
                     speed = Clamp(reach / c.DropFlightTime, c.DropSpeedMin, c.DropSpeedMax);
+                    if (mods != null && mods.Level("vdrop") > 0 && ball.FloorSinceFrontWall == 0)       // P5: Volley Drop
+                    {
+                        ty = CourtDimensions.TIN_H + c.DropHeightAboveTin * mods.VolleyDropHeight;
+                        speed *= mods.VolleyDropPace;
+                    }
                     break;
-                case "kill": ty = CourtDimensions.TIN_H + c.KillHeightAboveTin; speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
+                case "kill":
+                    ty = CourtDimensions.TIN_H + c.KillHeightAboveTin * (mods != null ? mods.KillHeight : 1.0);   // P5: Nick Hunter: lower
+                    speed = c.DriveSpeed * (1 + c.ChargeBonus * charge);
+                    if (mods != null && mods.KillWiden > 0)                                                  // ... and toward its side wall
+                        tx = Clamp(tx + (tx >= 0 ? 1 : -1) * mods.KillWiden, -CourtDimensions.HALF_W + 0.25, CourtDimensions.HALF_W - 0.25);
+                    break;
                 default: speed = c.DriveSpeed * (1 + c.ChargeBonus * charge); break;
             }
             if (touch && shot != "drop") speed = c.TouchSpeed;
@@ -387,10 +404,18 @@ namespace SquashSim
             {
                 // Off the wall by the ball, across to the aim point - kept on the other half (where the ring shows it).
                 side = BoastTarget(ball.Pos.X, tx, out tx);
-                if (shot != "drop") ty = Clamp(ty, c.BoastMinHeight, c.BoastMaxHeight);
+                if (shot != "drop") ty = Clamp(ty, c.BoastMinHeight, mods != null ? System.Math.Max(c.BoastMinHeight, c.BoastMaxHeight * mods.BoastHeight) : c.BoastMaxHeight);
                 if (shot != "drop" && !touch) speed *= c.BoastPaceScale;
             }
+            // P5: a straight drive (the ball's own side) and a cross (the other half) - Rail Drive and Wide Cross move it
+            bool straight = wall == 0 && !boast && (tx >= 0) == (ball.Pos.X >= 0), cross = wall == 0 && !boast && !straight;
+            if (mods != null && shot == "drive" && !touch)
+            {
+                if (straight && mods.RailPull > 0) tx = Clamp(tx + (tx >= 0 ? 1 : -1) * mods.RailPull, -CourtDimensions.HALF_W + 0.12, CourtDimensions.HALF_W - 0.12);
+                if (cross && mods.CrossWiden > 0) tx = Clamp(tx + (tx >= 0 ? 1 : -1) * mods.CrossWiden, -CourtDimensions.HALF_W + 0.2, CourtDimensions.HALF_W - 0.2);
+            }
             double spread = missRatio * missRatio * c.MaxSpread * (charge > GameTuning.Hit.FullChargeAt ? GameTuning.Hit.FullChargeSpreadCut : 1.0);
+            if (mods != null) spread *= mods.Spread(shot, straight, charge);
             double control = player.Attributes.ControlScale;                 // P3-C1: exactly 1 when neutral
             if (control != 1.0) spread *= control;
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
@@ -399,7 +424,7 @@ namespace SquashSim
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
             ty += ey;
-            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early) * control)
+            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early) * control && (mods == null || !mods.NoMishit(shot, straight)))
             {
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - GameTuning.Hit.GrossMissTinDepth;                       // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
@@ -410,6 +435,7 @@ namespace SquashSim
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
             double power = player.Attributes.PowerScale;                     // P3-C1: the athlete's power (exactly 1 when neutral)
             if (power != 1.0 && (shot == "drive" || shot == "kill")) speed *= power;
+            if (mods != null && !touch) speed *= mods.Pace(shot, straight, cross, charge);           // P5: the run's shots
 
             // Drives, kills and boasts leave the front wall heading down (lobs, drops and serves keep their arc).
             _dip = c.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill" || boast);
@@ -434,7 +460,7 @@ namespace SquashSim
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
             if (boast) shot = "boast";
-            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, c.LobHeight);
+            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, c.LobHeight + (mods != null ? mods.LobLift : 0));
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // Floor before the back wall, and in: a drive, kill, serve or boast that would reach the back wall on the
             // full - or a drive / kill that would fly over an out line - is struck just soft enough. Lobs keep their own rule.
@@ -543,12 +569,12 @@ namespace SquashSim
         /// softened until it bounces before the back wall and stays in). With Assisted on, the line (front-wall x) is
         /// nudged to the nearest one that lands deep and legal. Returns "lob serve" / "hard serve".
         /// </summary>
-        public string ServeLaunch(BallState ball, List<Surface> surfaces, double tx, double ty, double charge, int serveSide, out double speed)
+        public string ServeLaunch(BallState ball, List<Surface> surfaces, double tx, double ty, double charge, int serveSide, out double speed, double bonusScale = 1.0)
         {
             _dip = false;                                       // serves keep their own arc off the wall
             var c = PhysicsConfig.Current.ArcadeHit;
             bool hard = charge >= c.ServeHardCharge;
-            double pace = hard ? c.ServeSpeed * (1 + c.ServeChargeBonus * (charge - c.ServeHardCharge) / (1 - c.ServeHardCharge)) : c.ServeSpeed;
+            double pace = hard ? c.ServeSpeed * (1 + c.ServeChargeBonus * (bonusScale != 1.0 ? bonusScale : 1.0) * (charge - c.ServeHardCharge) / (1 - c.ServeHardCharge)) : c.ServeSpeed;
             if (Assisted)
             {
                 // The ring first; if that is not a deep, legal serve, every line across the wall (0.2 m apart), the

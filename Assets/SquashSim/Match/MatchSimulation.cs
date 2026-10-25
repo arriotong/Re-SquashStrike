@@ -255,6 +255,8 @@ namespace SquashSim
 
             Referee.BeginRally(server, Score.ServeSide);
             Interference.Reset();
+            _lastStriker = -1; _nickBy = -1;                                  // P5
+            for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
             HoldBallForServe(keepTemperature: true);
             Phase = MatchPhase.AwaitToss;
             PhaseTime = 0;
@@ -304,6 +306,11 @@ namespace SquashSim
 
             for (int i = 0; i < 2; i++)
                 if (Bots[i] != null) Bots[i].Fill(Intents[i], this, i, dt);
+            for (int i = 0; i < 2; i++)                                       // P5: Matador's slow wears off
+            {
+                var mm = Players[i].Player.Mods;
+                if (mm != null && mm.SlowTimer > 0) mm.SlowTimer -= dt;
+            }
 
             // ---- phase logic before anyone moves ----
             if (Phase == MatchPhase.WarmUp)
@@ -477,8 +484,8 @@ namespace SquashSim
                 if (Referee.Outcome != null) break;
                 switch (ev.Type)
                 {
-                    case SimEventType.RacketContact: Referee.OnRacketContact(ev, Players[ev.PlayerIndex].Player.Pos); break;
-                    case SimEventType.Impact: Referee.OnImpact(ev); break;
+                    case SimEventType.RacketContact: Referee.OnRacketContact(ev, Players[ev.PlayerIndex].Player.Pos); _lastStriker = ev.PlayerIndex; break;
+                    case SimEventType.Impact: Referee.OnImpact(ev); if (ev.Nick && _lastStriker >= 0) _nickBy = _lastStriker; break;
                     case SimEventType.BodyHit: Referee.OnBodyHit(ev); break;
                 }
             }
@@ -516,6 +523,7 @@ namespace SquashSim
                     StrikerX = s.X, StrikerZ = s.Z, TargetX = Interference.TargetX, TargetZ = Interference.TargetZ, ObstructorX = ob.X, ObstructorZ = ob.Z,
                 };
             }
+            int bonus = RunModsAtRallyEnd();                                  // P5 (0, and nothing changed, without a run)
             History.Add(LastOutcome);
             ShotsPerRally.Add(Referee.Shots);
             Stats.Add(new RallyStats
@@ -526,11 +534,48 @@ namespace SquashSim
                 Stamina0 = Players[0].Player.Stamina, Stamina1 = Players[1].Player.Stamina,
                 Outcome = LastOutcome
             });
-            Score.Apply(LastOutcome);
+            Score.Apply(LastOutcome, bonus);
             Phase = MatchPhase.RallyOver;
             PhaseTime = 0;
             var h = RallyEnded;
             if (h != null) h(LastOutcome);
+        }
+
+        // ---------------- P5: the Gauntlet run's abilities at a rally's end ----------------
+
+        int _lastStriker = -1, _nickBy = -1;
+
+        /// <summary>Second Serve (a fault replayed), then the winner's extra points (an ace, a nick), Vampire, Momentum.</summary>
+        int RunModsAtRallyEnd()
+        {
+            var o = LastOutcome;
+            if (o == null) return 0;
+            if (Players[0].Player.Mods == null && Players[1].Player.Mods == null) return 0;
+            if ((o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.FootFault) && o.Loser >= 0)
+            {
+                var lm = Players[o.Loser].Player.Mods;
+                if (lm != null && lm.SecondServe && !lm.SecondUsed)
+                {
+                    lm.SecondUsed = true;
+                    LastOutcome = new RallyOutcome { Kind = RallyEnd.Let, Reason = "Second serve - serve again", Time = o.Time, Point = o.Point };
+                    return 0;
+                }
+            }
+            int w = o.Winner;
+            if (w < 0 || o.Kind == RallyEnd.Let) return 0;
+            int bonus = 0;
+            var wm = Players[w].Player.Mods;
+            if (wm != null)
+            {
+                bool rallyWon = o.Kind == RallyEnd.NotUp && _lastStriker == w;
+                if (rallyWon && Referee.Shots == 1 && w == Score.Server) bonus += wm.AceBonus;
+                if (rallyWon && _nickBy == w) bonus += wm.NickBonus;
+                if (rallyWon && wm.VampireHeal > 0) Players[w].Player.Stamina = System.Math.Min(1, Players[w].Player.Stamina + wm.VampireHeal);
+                wm.Streak++;
+            }
+            var losing = Players[1 - w].Player.Mods;
+            if (losing != null) losing.Streak = 0;
+            return bonus;
         }
 
         // ---------------- recovery + split-step ----------------
@@ -548,6 +593,13 @@ namespace SquashSim
             }
             if (t > 0) Players[i].Player.RecoveryTimer = t;
             Fatigue.OnStroke(Players[i].Player, contact.ReachState);
+            var mm = Players[i].Player.Mods;                                  // P5: Matador - after your drop or boast, the opponent is slower
+            if (mm != null && mm.MatadorSeconds > 0 && (contact.Technique == "drop" || contact.Technique == "boast"))
+            {
+                var op = Players[1 - i].Player;
+                if (op.Mods == null) op.Mods = new RunMods();
+                op.Mods.SlowTimer = mm.MatadorSeconds;
+            }
 
             SplitStep.Contact(i, Time, Players[1 - i].Player);
         }
@@ -559,6 +611,7 @@ namespace SquashSim
         {
             if (Phase != MatchPhase.GameOver) return;
             Score.NextGame();
+            for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.SecondUsed = false;   // P5: a new game, a new second serve
             SetUpServe();
         }
 
