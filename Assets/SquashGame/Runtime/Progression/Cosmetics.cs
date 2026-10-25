@@ -21,7 +21,7 @@ namespace SquashGame.Progression
 {
     public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body }
 
-    public enum UnlockKind { Free, Level, Achievement, Challenge }
+    public enum UnlockKind { Free, Level, Achievement, Challenge, Sponsor }
 
     public sealed class Item
     {
@@ -44,6 +44,7 @@ namespace SquashGame.Progression
                     case UnlockKind.Level: return "Level " + Level;
                     case UnlockKind.Achievement: { var a = Achievements.Find(Achievement); return "Achievement: " + (a != null ? a.Name : Achievement); }
                     case UnlockKind.Challenge: return Achievement;      // the challenge note ("A 7-day streak")
+                    case UnlockKind.Sponsor: return "Sponsor: " + Achievement;
                     default: return "";
                 }
             }
@@ -197,6 +198,15 @@ namespace SquashGame.Progression
             Ch(Slot.Grip, "ch_grip_tiger", "Tiger", 0xff8a1c, 0xff8a1c, "A weekly challenge (6th)");
             Ch(Slot.Strings, "ch_strings_neon", "Neon", 0xff2bd6, 0xff2bd6, "A weekly challenge (7th)");
             Ch(Slot.Title, "ch_title_weekly", "Weekly Warrior", 0xffffff, 0xffffff, "A weekly challenge (8th)");
+
+            // ---- P3-R4: the sponsors' shirts (sign a deal in the career) ----
+            foreach (var (id, brand, a, b) in new[] {
+                ("sp_kestrel", "Kestrel Sportswear", 0x1f5a35u, 0xffb83bu), ("sp_halden", "Halden Rackets", 0xf2f2eeu, 0xd8382fu),
+                ("sp_northline", "Northline Energy", 0x14203au, 0x3ba3ffu), ("sp_bluecrest", "Bluecrest Bank", 0x1d2a4au, 0xf2f2eeu),
+                ("sp_vireo", "Vireo Water", 0x6fb8ffu, 0xf2f2eeu), ("sp_marrow", "Marrow & Finch", 0x6e1e2au, 0xe4d6b8u),
+                ("sp_tarn", "Tarn Watches", 0x1c1e22u, 0xffd76au), ("sp_ostra", "Ostra Air", 0xd8382fu, 0xf2f2eeu),
+                ("sp_copperleaf", "Copperleaf Tea", 0xb8642au, 0x1f5a35u), ("sp_pallas", "Pallas Motors", 0x8a9099u, 0x1c1e22u) })
+            { var it = Add(Slot.Shirt, id, brand.Split(' ')[0] + " kit", H(a), H(b), UnlockKind.Sponsor); it.Achievement = brand; }
 
             // achievements' rewards: those items unlock there, not on the level table
             foreach (var a in Achievements.All())

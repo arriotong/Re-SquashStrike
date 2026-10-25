@@ -28,6 +28,7 @@ namespace SquashSim.Career
         public double Strength;
         public int Age;
         public bool Retired;
+        public int RetiredSeason = -1;      // P3-R4: for the news
 
         public string Name { get { return First + " " + Last; } }
         /// <summary>The score bug's name: "SURNAME".</summary>
@@ -166,6 +167,7 @@ namespace SquashSim.Career
                 if (p.Age >= 36 || (p.Age >= 33 && rng.Next() < 0.25))
                 {
                     p.Retired = true;
+                    p.RetiredSeason = season;
                     var q = NewPro(rng, usedLast, nextId++);
                     q.Age = 18 + rng.Range(3);
                     q.Strength = Clamp(rng.Between(0.0, 0.07));

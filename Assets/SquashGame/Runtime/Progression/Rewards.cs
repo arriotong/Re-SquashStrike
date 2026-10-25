@@ -42,7 +42,7 @@ namespace SquashGame.Progression
         public const int MaxLevel = 50;
         public const int RallyXp = 2, RallyWonXp = 3, MatchWonXp = 60, GreatHitXp = 5;
         public const int ArcadePlayXp = 20, ArcadeStarXp = 100, DrillXp = 30, LessonXp = 80;
-        public const int EventXp = 30, RoundXp = 40, TitleXp = 200;
+        public const int EventXp = 30, RoundXp = 40, TitleXp = 200, GoalXp = 150;
         public static readonly double[] TierFactor = { 1.0, 1.25, 1.5, 2.0, 3.0, 4.0 };
 
         /// <summary>XP to go from this level to the next.</summary>
@@ -114,6 +114,9 @@ namespace SquashGame.Progression
 
         /// <summary>P3-R2: XP from outside the usual sources (a challenge), with its line.</summary>
         public static void AddXp(RewardResult r, string line, int xp) { Xp(r, line, xp); }
+
+        /// <summary>P3-R4: an item given outside a result (a sponsor's kit). Saves.</summary>
+        public static void GrantNow(string id) { var it = Cosmetics.Find(id); if (it != null && !P.Owned.Contains(id)) { P.Owned.Add(id); ProfileStore.Save(); } }
 
         /// <summary>P3-R2: an item given outright (a challenge reward).</summary>
         public static void Grant(RewardResult r, string id) { Unlock(Cosmetics.Find(id), r); }
@@ -271,6 +274,8 @@ namespace SquashGame.Progression
             foreach (var m in c.S.Matches) { run = m.Won ? run + 1 : 0; best = Math.Max(best, run); }
             if (best >= 10) ids.Add("streak10");
             Achieve(r, ids);
+            // P3-R4: season goals done in this event's month
+            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) Xp(r, "Season goal: " + g.Text, GoalXp);
             Challenges.Record(r, new ChallengeEvent { CareerTitle = e.YouReached == 0 });
             return End(r);
         }

@@ -194,6 +194,21 @@ namespace SquashGame.UI
             var s = c.S;
             var list = new List<(string, string)>();
             if (s.TrainingPoints > 0) list.Add(("TRAINING", s.TrainingPoints + (s.TrainingPoints == 1 ? " point" : " points") + " to spend on your attributes - the PLAYER tab"));
+            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == s.Slot - 1) list.Add(("GOAL DONE", g.Text + "  ·  +" + g.Points + " points, " + Money(g.Money)));
+            if (s.Month == 0 && !string.IsNullOrEmpty(s.SponsorNews)) list.Add(("SPONSOR", s.SponsorNews));
+            int upset = c.UpsetWinner(out int upRank, out int upTier);
+            if (upset >= 0) list.Add(("UPSET", "#" + upRank + " " + c.NameOf(upset) + " wins a " + Tour.Info((Tier)upTier).Name + " event"));
+            if (s.Month <= 1)
+            {
+                int ret = c.LatestRetiree();
+                if (ret >= 0)
+                {
+                    c.HeadToHead(ret, out int hw, out int hl);
+                    list.Add(("RETIRES", c.NameOf(ret) + " retires" + (hl > 0 && hw == 0 ? " - and you never beat them" : hw > 0 ? " (you met " + (hw + hl) + " times)" : "")));
+                }
+            }
+            foreach (var id in c.Rivals())
+                if (c.RankOf(id) < c.RankOf(You) && c.Movement(id) > 0) { list.Add(("RIVAL", c.NameOf(id) + " climbs to #" + c.RankOf(id) + " - ahead of you")); break; }
             if (s.LastTrainedSlot == s.Slot - 1) list.Add(("TRAINING BLOCK", "A month on the practice court: +" + CareerSession.TrainingMonthPoints + " points"));
             if (s.Last != null && s.Last.Slot == s.Slot - 1 && s.Last.YouReached >= 0)
                 list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last.YouReached) + " at the " + s.Last.Name));
@@ -213,6 +228,18 @@ namespace SquashGame.UI
             if (list.Count < 3) list.Add(("THE TOUR", "Challenger 3s are open to all. Climb the ranking: the World Tour's Copper events open at #" + Tour.Info(Tier.Copper).UnlockRank + "."));
             if (list.Count < 3) list.Add(("WORLD TOUR FINALS", "The world's top 8 meet in December."));
             return list;
+        }
+
+        /// <summary>P3-R4: a season goal - done, failed or open - and what it pays.</summary>
+        public static void GoalRow(VisualElement panel, GoalRec g)
+        {
+            var row = Kit.Box(panel, "k-cr-goal");
+            if (g.Done) row.AddToClassList("k-cr-goal--done");
+            if (g.Failed) row.AddToClassList("k-cr-goal--failed");
+            Kit.L(row, g.Done ? "✓" : g.Failed ? "✗" : "○", "k-cr-goal-mark");
+            var t = Kit.Box(row, "k-cr-goal-text");
+            Kit.L(t, g.Text + (g.Kind == "titles" && !g.Done ? "   " + g.Progress + "/" + g.Target : ""), "k-cr-goal-name");
+            Kit.L(t, "+" + g.Points + " training points  ·  " + Money(g.Money), "k-cr-goal-pay");
         }
 
         /// <summary>A stat tile: a big value over a small name.</summary>
@@ -588,6 +615,29 @@ namespace SquashGame.UI
                 Kit.L(hr, mrec.Score ?? "", "k-cr-hscore");
             }
 
+            // ---- GOALS (P3-R4): the season's goals and your sponsor ----
+            var gg = Kit.Box(Page("GOALS"), "k-cr-ggrid");
+            var gp = Kit.Panel(gg, "SEASON " + s.Season + " GOALS  ·  " + c.GoalsDoneNow + " OF " + c.Goals.Count + " DONE"); gp.AddToClassList("k-cr-goals");
+            foreach (var g in c.Goals) Career.GoalRow(gp, g);
+            Kit.L(gp, "Goals are set from your ranking at the start of each season. Each one pays training points and prize money.", "k-cr-note");
+            var sp = Kit.Panel(gg, "SPONSOR"); sp.AddToClassList("k-cr-sponsor");
+            if (s.Sponsor != null)
+            {
+                Kit.L(sp, s.Sponsor.Brand, "k-cr-sp-brand");
+                Kit.L(sp, Career.Money(s.Sponsor.Retainer) + " a season  ·  " + Career.Money(s.Sponsor.TitleBonus) + " a title", "k-cr-sp-line");
+                bool keeping = rank <= s.Sponsor.Clause;
+                var cl = Kit.L(sp, "CLAUSE  stay inside the top " + s.Sponsor.Clause + "  ·  now " + Career.Rank(rank) + (keeping ? "  ✓" : "  ✗"), "k-cr-sp-clause");
+                cl.AddToClassList(keeping ? "k-up" : "k-down");
+                Kit.L(sp, "Paid so far " + Career.Money(s.SponsorPaid), "k-cr-note");
+            }
+            else if (c.OffersWaiting)
+            {
+                Kit.L(sp, s.Offers.Count + " offers on the table", "k-cr-sp-brand");
+                AddTo(sp, new ActionItem("See the offers", () => Fe.Push(new SponsorScreen())));
+            }
+            else Kit.L(sp, rank == CareerSession.Unranked ? "Get a world ranking and the sponsors will call. Offers come at the start of each season."
+                                                             : "No sponsor this season. Offers come at the start of each season.", "k-cr-empty");
+
             // the primary, then the settings chip (the primary is the focus on pages without choices)
             AddTo(Root, new PrimaryItem("Continue", Continue));
             var gear = new ActionItem("Match settings", () => Fe.Push(new CareerSettingsScreen()), PromptBar.Btn.Y);
@@ -670,6 +720,8 @@ namespace SquashGame.UI
             Fe.Replace(new CareerHubScreen());
         }
 
+        static int _offersShown = -1;          // the season whose offers came up (once a season, by themselves)
+
         void Train()
         {
             Career.C.Train();
@@ -713,7 +765,8 @@ namespace SquashGame.UI
                 if (last != null) Fe.Push(new EventResultScreen(last));
                 return;
             }
-            if (c.S.SeasonJustEnded) Fe.Push(new SeasonSummaryScreen());
+            if (c.S.SeasonJustEnded) { Fe.Push(new SeasonSummaryScreen()); return; }
+            if (c.OffersWaiting && c.S.OffersSeason == c.S.Season && _offersShown != c.S.Season) { _offersShown = c.S.Season; Fe.Push(new SponsorScreen()); }
         }
 
         public override void Back() { Fe.Pop(); }
@@ -1050,11 +1103,63 @@ namespace SquashGame.UI
             Kit.L(col, "BEST WIN   " + (string.IsNullOrEmpty(r.BestWin) ? "–" : r.BestWin), "k-cr-res-v");
             var tl = Kit.Panel(col, "THE YEAR"); tl.AddToClassList("k-cr-res-year");
             tl.Add(new Timeline(Career.Months(Career.C, r.Season)));
-            Kit.L(col, "A new season: some veterans retire, newcomers arrive. Your ranking carries on.", "k-cr-note");
+            var lg = Career.S.LastGoals;
+            if (lg != null && lg.Count > 0)
+            {
+                int done = lg.FindAll(g => g.Done).Count;
+                var gpn = Kit.Panel(col, "SEASON GOALS  ·  " + done + " OF " + lg.Count); gpn.AddToClassList("k-cr-res-goals");
+                foreach (var g in lg) Career.GoalRow(gpn, g);
+            }
+            Kit.L(col, "A new season: some veterans retire, newcomers arrive. Your ranking carries on - and new goals are set from it.", "k-cr-note");
         }
 
         void Done() { Career.S.SeasonJustEnded = false; CareerStore.Save(); Fe.Pop(); }
         public override void Back() { Done(); }
+    }
+
+    // ---------------- P3-R4: sponsors ----------------
+
+    public sealed class SponsorScreen : GameScreen
+    {
+        protected override bool ShowChip { get { return false; } }
+        protected override string Kicker { get { return "SEASON " + Career.S.Season + "  ·  SPONSORS"; } }
+        protected override string Title { get { return "Two offers on the table"; } }
+
+        protected override void Compose()
+        {
+            var c = Career.C;
+            var s = c.S;
+            int rank = c.RankOf(CareerSession.You);
+            var row = Kit.Box(Content, "k-row");
+            for (int i = 0; i < s.Offers.Count; i++)
+            {
+                int k = i;
+                var d = s.Offers[i];
+                var item = Cosmetics.Find(d.ItemId);
+                var card = AddTo(row, new CardItem(d.Brand, i == 0 ? "THE SAFE DEAL" : "THE BIG DEAL", () => Sign(k), CardSize.Hero)
+                    .Drawn("stripes", item != null ? item.A * 0.35f + new Color(0, 0, 0, 0.65f) : new Color32(20, 20, 26, 255), item != null ? item.B : Color.white)
+                    .Line(Career.Money(d.Retainer) + " a season (paid at its end)  ·  " + Career.Money(d.TitleBonus) + " a title\n"
+                          + "Clause: stay inside the top " + d.Clause + " (you are " + Career.Rank(rank) + ")\n"
+                          + "Kit: " + (item != null ? item.Name + " " + Cosmetics.SlotNames[(int)item.Slot].ToLowerInvariant() : "-"))
+                    .Badge(() => Career.Money(d.Retainer), true));
+                card.Root.AddToClassList("k-card--sponsor");
+            }
+            AddTo(Root, new PrimaryItem("No thanks", () => Sign(-1)));
+            Kit.L(Content, "Miss the clause at the season's end and the deal is off - with no retainer. Titles pay the bonus straight away.", "k-cr-note");
+        }
+
+        void Sign(int i)
+        {
+            var c = Career.C;
+            var d = c.Sign(i);
+            if (d != null) Rewards.GrantNow(d.ItemId);
+            CareerStore.Save();
+            Fe.Pop();
+            Fe.Replace(new CareerHubScreen());
+        }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Browse"), (PromptBar.Btn.A, "Sign"), (PromptBar.Btn.B, "No thanks")); }
+        public override void Back() { Sign(-1); }
     }
 
     // ---------------- settings / retiring ----------------

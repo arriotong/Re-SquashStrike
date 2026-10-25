@@ -90,6 +90,14 @@ namespace SquashSim.Career
         public SquashSim.AthleteAttributes Attributes = new SquashSim.AthleteAttributes();
         public int TrainingPoints, PointsEarned, MonthsTrained;
         public int LastTrainedSlot = -1;
+        // P3-R4: the season's goals (and last season's, for the review), sponsors
+        public List<GoalRec> Goals = new List<GoalRec>(), LastGoals = new List<GoalRec>();
+        public int GoalsSeason = -1, GoalsDone;
+        public List<SponsorDeal> Offers = new List<SponsorDeal>();
+        public int OffersSeason = -1;
+        public SponsorDeal Sponsor;
+        public int SponsorPaid;
+        public string SponsorNews;
 
         public int Slot { get { return Season * Tour.SlotsPerSeason + Month; } }
     }

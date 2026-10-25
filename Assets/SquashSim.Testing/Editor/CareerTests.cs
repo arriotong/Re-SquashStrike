@@ -154,8 +154,11 @@ namespace SquashSim.Tests
             int wins = c.S.Matches.FindAll(m => m.Won).Count;
             int titles = 0;
             foreach (var r in c.S.Results) if (r.Player == CareerSession.You && r.Reached == 0) titles += CareerSession.TitlePoints(r.Tier);
-            Assert.That(c.S.TrainingPoints - before, Is.EqualTo(wins * CareerSession.PointsPerWin + titles + CareerSession.PointsPerSeason),
-                "a point a win, the titles' points, two at the season's end");
+            int goals = 0;
+            foreach (var g in c.S.LastGoals) if (g.Done) goals += g.Points;
+            foreach (var g in c.Goals) if (g.Done) goals += g.Points;
+            Assert.That(c.S.TrainingPoints - before, Is.EqualTo(wins * CareerSession.PointsPerWin + titles + CareerSession.PointsPerSeason + goals),
+                "a point a win, the titles' points, two at the season's end, and the season goals'");
             Assert.That(c.S.PointsEarned, Is.EqualTo(c.S.TrainingPoints));
         }
 
@@ -184,6 +187,51 @@ namespace SquashSim.Tests
             Assert.That(back.S.Attributes, Is.Not.Null);
             Assert.That(back.S.Attributes.IsNeutral, Is.True);
             Assert.That(back.S.Roster.Count, Is.EqualTo(c.S.Roster.Count), "the career is kept");
+        }
+
+        // ---------------- P3-R4: goals and sponsors ----------------
+
+        [Test] public void EachSeasonHasThreeGoalsFromWhereYouStand()
+        {
+            var c = CareerSession.New("Goals", "ENG", 41);
+            Assert.That(c.Goals.Count, Is.EqualTo(3));
+            Assert.That(c.Goals[0].Kind, Is.EqualTo("rank"), "the rank goal always");
+            Assert.That(c.Goals[0].Target, Is.EqualTo(400), "unranked: get into the top 400");
+            Assert.That(c.Goals.TrueForAll(g => g.Points > 0 && g.Money > 0 && !string.IsNullOrEmpty(g.Text)), Is.True);
+            var again = CareerSession.New("Goals", "ENG", 41);
+            Assert.That(again.Goals.ConvertAll(g => g.Text), Is.EqualTo(c.Goals.ConvertAll(g => g.Text)), "the same seed, the same goals");
+            SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
+            Assert.That(c.S.LastGoals.Count, Is.EqualTo(3), "last season's, settled for the review");
+            Assert.That(c.S.LastGoals.TrueForAll(g => g.Done || g.Failed), Is.True, "every goal settled");
+            Assert.That(c.S.LastGoals[0].Done, Is.True, "a strong player gets into the top 400: " + c.RankOf(0));
+            Assert.That(c.Goals.Count, Is.EqualTo(3)); Assert.That(c.Goals[0].Target, Is.LessThan(400), "new goals from the new ranking");
+            Assert.That(c.S.GoalsDone, Is.EqualTo(c.S.LastGoals.FindAll(g => g.Done).Count));
+        }
+
+        [Test] public void SponsorsPayWhileYouKeepTheClause()
+        {
+            var c = CareerSession.New("Sponsored", "ENG", 42);
+            Assert.That(c.OffersWaiting, Is.False, "nobody sponsors the unranked");
+            SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
+            Assert.That(c.OffersWaiting, Is.True, "ranked now: two offers");
+            Assert.That(c.S.Offers.Count, Is.EqualTo(2));
+            Assert.That(c.S.Offers[1].Retainer, Is.GreaterThan(c.S.Offers[0].Retainer), "the bolder deal pays more");
+            Assert.That(c.S.Offers[1].Clause, Is.LessThanOrEqualTo(c.S.Offers[0].Clause), "and asks more");
+            var d = c.Sign(0);
+            Assert.That(c.S.Sponsor, Is.SameAs(d)); Assert.That(c.OffersWaiting, Is.False);
+            int earnings = c.S.Earnings, titles = c.S.Titles;
+            d.Clause = 480;                                            // a clause it will keep
+            SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
+            int bonus = (c.S.Titles - titles) * d.TitleBonus;
+            Assert.That(c.S.SponsorPaid, Is.EqualTo(d.Retainer + bonus), "the retainer and a bonus a title");
+            Assert.That(c.S.SponsorNews, Does.Contain("pays"));
+            Assert.That(c.S.Sponsor, Is.Not.Null, "kept on");
+            c.S.Sponsor.Clause = 1;                                   // one it can't
+            SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
+            Assert.That(c.S.Sponsor, Is.Null, "dropped outside the clause");
+            Assert.That(c.S.SponsorNews, Does.Contain("drops"));
+            var json = JsonUtility.ToJson(c.S);
+            Assert.That(new CareerSession(JsonUtility.FromJson<CareerState>(json)).S.Sponsor, Is.Null, "an empty sponsor reads back as none");
         }
 
         static int HighestTier(CareerSession c, int seasons, double strength)

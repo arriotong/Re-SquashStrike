@@ -898,3 +898,18 @@
 .k-cr-attr-val { width: 40px; font-size: 22px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .k-cr-attr-plus { width: 44px; height: 36px; margin-left: 10px; padding: 0; justify-content: center; }
 .k-cr-attr-line { font-size: 11px; margin: 2px 0 0 110px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+
+/* ---- P3-R4: goals and sponsors ---- */
+.k-cr-ggrid { flex-direction: row; align-items: flex-start; }
+.k-cr-goals { width: 900px; margin-right: 20px; }
+.k-cr-sponsor { width: 620px; }
+.k-cr-goal { flex-direction: row; align-items: center; margin: 8px 0; padding: 12px 14px; border-radius: 8px; background-color: rgba(255, 255, 255, 0.04); }
+.k-cr-goal--done { background-color: rgba(200, 255, 61, 0.10); }
+.k-cr-goal--failed { opacity: 0.5; }
+.k-cr-goal-mark { width: 34px; font-size: 26px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-goal-name { font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-goal-pay { font-size: 11px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-cr-sp-brand { font-size: 32px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-sp-line { font-size: 14px; margin-top: 4px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-sp-clause { font-size: 13px; margin-top: 10px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-res-goals { width: 1000px; margin-top: 10px; }

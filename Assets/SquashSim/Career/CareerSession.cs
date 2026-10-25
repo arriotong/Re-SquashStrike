@@ -27,7 +27,7 @@ using System.Collections.Generic;
 
 namespace SquashSim.Career
 {
-    public sealed class CareerSession
+    public sealed partial class CareerSession
     {
         public readonly CareerState S;
         public CareerSession(CareerState s) { S = s; Normalise(); }
@@ -44,6 +44,10 @@ namespace SquashSim.Career
             s.Seasons.Clear();
             s.SeasonJustEnded = false;
             s.TrainingPoints = 0; s.PointsEarned = 0;          // the year before you joined earns you nothing
+            s.Earnings = 0; s.GoalsDone = 0; s.SponsorPaid = 0; s.SponsorNews = null; s.Sponsor = null;
+            s.LastGoals = new List<GoalRec>();
+            c.SetGoals();                                      // season 1's goals, from where you start (unranked)
+            c.MakeOffers();
             s.Last = null;
             return c;
         }
@@ -58,6 +62,10 @@ namespace SquashSim.Career
             if (S.Matches == null) S.Matches = new List<MatchRec>();
             if (S.Seasons == null) S.Seasons = new List<SeasonRec>();
             if (S.Attributes == null) S.Attributes = new AthleteAttributes();
+            if (S.Goals == null) S.Goals = new List<GoalRec>();
+            if (S.LastGoals == null) S.LastGoals = new List<GoalRec>();
+            if (S.Offers == null) S.Offers = new List<SponsorDeal>();
+            if (S.Sponsor != null && string.IsNullOrEmpty(S.Sponsor.Brand)) S.Sponsor = null;      // JsonUtility's empty object
             if (S.Version < CareerState.CurrentVersion) S.Version = CareerState.CurrentVersion;     // v2 -> v3: the defaults fill in
         }
 
@@ -350,7 +358,7 @@ namespace SquashSim.Career
             });
             PlayRound(e, won ? You : opp, score);
             if (!won) e.YouOut = true;
-            else Award(PointsPerWin);
+            else { Award(PointsPerWin); GoalsAfterWin(S.Matches[S.Matches.Count - 1].OppRank); }
         }
 
         /// <summary>The rally model plays your match (at your rating).</summary>
@@ -503,7 +511,8 @@ namespace SquashSim.Career
                     {
                         e.YouReached = reached; e.YouPoints = info.Points[reached]; e.YouPrize = info.Prize[reached];
                         S.Earnings += info.Prize[reached];
-                        if (reached == 0) { S.Titles++; Award(TitlePoints(e.Tier)); }
+                        if (reached == 0) { S.Titles++; Award(TitlePoints(e.Tier)); SponsorTitle(); }
+                        if (e.YouIn) GoalsAfterEvent(e, reached);
                     }
                 }
             }
@@ -540,10 +549,14 @@ namespace SquashSim.Career
             S.Seasons.Add(rec);
             S.SeasonJustEnded = true;
             Award(PointsPerSeason);
+            SettleGoals(rec.Rank);
+            SettleSponsor(rec.Rank);
             int next = S.NextId;
             Roster.NewSeason(S.Roster, S.Seed, season, ref next);
             S.NextId = next;
             _byId = null; _ranking = null; _order = null;
+            SetGoals();                                        // the new season's goals and offers, from where you finished
+            MakeOffers();
         }
 
         // ---------------- scouting ----------------

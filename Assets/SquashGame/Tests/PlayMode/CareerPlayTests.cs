@@ -132,7 +132,7 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P2M4_UI_2_Hub.png");
 
             // the other tabs: calendar, rankings, player, and round to Central
-            foreach (var tab in new[] { "CALENDAR", "RANKINGS", "PLAYER" })
+            foreach (var tab in new[] { "CALENDAR", "RANKINGS", "PLAYER", "GOALS" })
             {
                 yield return Tap(kb.eKey);
                 yield return null;
@@ -288,7 +288,23 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "U3_SeasonSummary.png");
             yield return Tap(kb.enterKey);
             Assert.That(c.S.SeasonJustEnded, Is.False);
+            // P3-R4: ranked now, the sponsors call - two offers; sign one
+            yield return null; yield return null;
+            if (c.OffersWaiting)
+            {
+                Assert.That(fe.Top, Is.InstanceOf<SponsorScreen>(), "the offers come up after the review");
+                yield return Wait(0.6f, () => false);
+                yield return CaptureUI(fe, "P3_Sponsor.png");
+                c.Sign(0); CareerStore.Save();
+                fe.Pop();
+                fe.Replace(new CareerHubScreen());
+                yield return null; yield return null;
+                Assert.That(c.S.Sponsor, Is.Not.Null);
+            }
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
+            ((CareerHubScreen)fe.Top).Tabs.Select(4);                                  // GOALS
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P3_Goals.png");
 
             // it is all on disk
             CareerStore.Save();
