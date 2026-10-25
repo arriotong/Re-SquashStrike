@@ -49,7 +49,7 @@ namespace SquashGame.UI
             // ---- PLAY ----
             var play = Kit.Box(Page("PLAY"), "k-row");
             AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
-                .Line(() => "You v " + MatchChoices.OpponentLabels[C.Opponent] + "  ·  " + MatchChoices.DifficultyLabels[C.Difficulty] + "  ·  " + MatchChoices.LengthLabels[C.Length])
+                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length])
                 .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
             AddTo(play, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
                 .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
@@ -218,11 +218,11 @@ namespace SquashGame.UI
             Kit.L(mid, "VS", "k-vs-vs");
             if (!TwoPlayer)
             {
-                AddTo(mid, new SelectorItem("Opponent", MatchChoices.OpponentLabels, () => C.Opponent, v => { C.Opponent = v; UpdateOpponent(); }));
-                AddTo(mid, new SelectorItem("Difficulty", MatchChoices.DifficultyLabels, () => C.Difficulty, v => C.Difficulty = v, true)).Enabled = () => C.Opponent != 4;
+                // P6: three rows - who (easiest to the world No. 1: the rating is the difficulty), how long, where.
+                // Scoring is in Settings > Gameplay, Controls in Settings > Controls.
+                var ladder = System.Array.ConvertAll(MatchChoices.Ladder, MatchChoices.Label);
+                AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
-                AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.Scoring, v => C.Scoring = v));
-                Kit.L(mid, ScoringHint, "k-vs-hint");
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
                 AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
             }
@@ -272,11 +272,15 @@ namespace SquashGame.UI
                 KitDirector.OpponentPreview = null;
                 return;
             }
-            string id = MatchRunner.Opponents[C.Opponent];
-            _oppName.text = MatchChoices.OpponentLabels[C.Opponent];
-            _oppStyle.text = id == "wallbot" ? "THE PRACTICE WALL" : MatchChoices.DifficultyLabels[C.Difficulty].ToUpperInvariant() + "  ·  " + SquashSim.Career.Roster.StyleName(id).ToUpperInvariant();
-            _oppLines.text = id == "wallbot" ? "Sends it back down the middle, every time." : string.Join("\n", SquashSim.Career.Roster.StyleLines(id));
-            KitDirector.OpponentPreview = Cosmetics.Signature(id);
+            string id = C.OpponentId;
+            var d = SquashSim.Career.Stars.Describe(id);
+            var star = SquashSim.Career.Stars.Find(id);
+            _oppName.text = d.name;
+            _oppStyle.text = "RATED " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant() + (star != null ? "  ·  WORLD No. " + star.Rank : "  ·  CLUB PLAYER");
+            var lines = new List<string>(SquashSim.Career.Roster.StyleLines(d.style));
+            if (star != null) lines.Add("Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })));
+            _oppLines.text = string.Join("\n", lines);
+            KitDirector.OpponentPreview = star != null ? Cosmetics.AiKit(star.KitSeed) : Cosmetics.Signature(d.style);
         }
 
         public override void Tick(float dt) { if (TwoPlayer) UpdateOpponent(); }
@@ -291,10 +295,10 @@ namespace SquashGame.UI
             else
                 Fe.StartMatch(new MatchSettings
                 {
-                    TwoPlayer = false, Opponent = MatchRunner.Opponents[C.Opponent], Difficulty = MatchChoices.DifficultyValues[C.Difficulty],
-                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[C.Scoring], WarmUp = false,
+                    TwoPlayer = false, Opponent = C.OpponentId,
+                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = false,
                     Court = Courts.All[Mathf.Clamp(C.Court, 0, Courts.All.Length - 1)].Id
-                });
+                }.Dressed());
         }
 
         public override void OnShow() { base.OnShow(); MenuCinematics.Scene = TwoPlayer ? 1 : 0; }

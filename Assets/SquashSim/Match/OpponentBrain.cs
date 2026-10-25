@@ -128,6 +128,44 @@ namespace SquashSim
             return p;
         }
 
+        // ---- P6: four more styles (the stars') ----
+
+        /// <summary>Heavy length and pace off both sides; takes the ball early and charges its strokes.</summary>
+        public static AiProfile Powerhouse()
+        {
+            var p = Base("Powerhouse");
+            p.RiskAppetite = 0.55; p.WPressure = 1.5; p.WLength = 0.9; p.WWidth = 0.5; p.WLow = 0.6; p.WShort = 0.1;
+            p.TouchPreference = 0.1; p.DeceptionChance = 0.1; p.PreparedPreference = 0.95; p.Discipline = 0.9; p.AppealTendency = 0.7;
+            return p;
+        }
+
+        /// <summary>Absorbs the pressure, then counters off the first short ball.</summary>
+        public static AiProfile CounterPuncher()
+        {
+            var p = Base("Counter-puncher");
+            p.RiskAppetite = 0.4; p.WPressure = 1.1; p.WLength = 0.8; p.WWidth = 0.8; p.WLow = 0.5; p.WShort = 0.6;
+            p.TouchPreference = 0.5; p.DeceptionChance = 0.2; p.Discipline = 1.0; p.AppealTendency = 0.8;
+            return p;
+        }
+
+        /// <summary>Holds and disguises: drops, flicks and boasts you don't see coming.</summary>
+        public static AiProfile Magician()
+        {
+            var p = Base("Magician");
+            p.RiskAppetite = 0.5; p.WPressure = 1.2; p.WLength = 0.6; p.WWidth = 0.4; p.WLow = 0.5; p.WShort = 0.7;
+            p.TouchPreference = 0.75; p.DeceptionChance = 0.6; p.PreparedPreference = 0.9; p.AppealTendency = 0.75;
+            return p;
+        }
+
+        /// <summary>Owns the T and takes everything early, low and hard.</summary>
+        public static AiProfile Volleyer()
+        {
+            var p = Base("Volleyer");
+            p.RiskAppetite = 0.55; p.WPressure = 1.4; p.WLength = 0.7; p.WWidth = 0.6; p.WLow = 0.8; p.WShort = 0.3;
+            p.TouchPreference = 0.3; p.DeceptionChance = 0.2; p.Discipline = 1.0; p.AppealTendency = 0.8;
+            return p;
+        }
+
         public static AiProfile ByName(string name)
         {
             switch ((name ?? "").ToLowerInvariant())
@@ -135,9 +173,40 @@ namespace SquashSim
                 case "attacker": return Attacker();
                 case "shotmaker": case "shot-maker": return ShotMaker();
                 case "grinder": return Grinder();
+                case "powerhouse": return Powerhouse();
+                case "counter": case "counter-puncher": return CounterPuncher();
+                case "magician": return Magician();
+                case "volleyer": return Volleyer();
                 default: return Retriever();
             }
         }
+
+        /// <summary>P6: the AI for an opponent id - a star (its style, its own tweaks, its name), a club player, or one of the
+        /// old personalities - at the difficulty the match was set at (a star's comes from its rating: Stars.DifficultyFor).</summary>
+        public static AiProfile For(string opponentId, double difficulty)
+        {
+            var star = Career.Stars.Find(opponentId);
+            if (star != null)
+            {
+                var p = ByName(star.Style);
+                p.RiskAppetite = Clamp01(p.RiskAppetite + star.Risk);
+                p.TouchPreference = Clamp01(p.TouchPreference + star.Touch);
+                p.DeceptionChance = Clamp01(p.DeceptionChance + star.Deception);
+                if (star.Discipline > 0) p.Discipline = star.Discipline;
+                p = p.WithDifficulty(difficulty);
+                p.Name = Career.Stars.FullName(star);
+                return p;
+            }
+            if (Career.Stars.ParseClub(opponentId, out string style, out int rating))
+            {
+                var p = ByName(style).WithDifficulty(difficulty);
+                p.Name = "Club " + Career.Roster.StyleName(style);
+                return p;
+            }
+            return ByName(opponentId).WithDifficulty(difficulty);
+        }
+
+        static double Clamp01(double v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
     }
 
     public sealed class OpponentBrain : IAthleteBrain
@@ -499,7 +568,8 @@ namespace SquashSim
 
         const double ArcadeAimNoiseScale = GameTuning.Ai.AimNoiseScale, ArcadeGapWeight = GameTuning.Ai.GapWeight, ArcadeChoiceNoise = GameTuning.Ai.ChoiceNoise;
         double _aimPX, _aimPY, _aChargeFor, _releaseLead, _aReleaseAt = -1;
-        bool _aHolding, _aBoast, _boastTapped;
+        bool _aHolding, _aBoast, _boastTapped, _rechecked;
+        const double LateRecheck = 0.12;
         /// <summary>The last shot it chose (tests and diagnostics): "straight", "cross", "lob", "drop", "kill", "boast".</summary>
         public string ArcadeShot { get; private set; }
 
@@ -532,12 +602,19 @@ namespace SquashSim
                 var pred = ctrl.Prediction;
                 if (!_decided && pred.Valid && !m.Ball.Asleep && pred.Time < DecisionLead)
                 {
-                    ChooseArcadeShot(m, ctrl, me);
-                    _decided = true; _boastTapped = false;
+                    ChooseArcadeShot(m, ctrl, me, false);
+                    _decided = true; _boastTapped = false; _rechecked = false;
                     // Its timing error: early or late around the contact - but never later than the contact itself. A
                     // lead under the prediction's refresh step was never reached, so it held on until the ball died:
                     // the "it just stood there and let it bounce twice" of the back corners (2026-10-20, ~20% of turns).
                     _releaseLead = System.Math.Max(GameTuning.Ai.MinReleaseLead, 0.05 + Gauss() * Profile.TriggerJitter);
+                }
+                // P6: just before contact, a good player looks again: a ball that's got behind it can't be driven
+                // through its own body - it picks a line that's clear (often the boast)
+                if (_decided && !_rechecked && pred.Valid && pred.Time < LateRecheck)
+                {
+                    _rechecked = true;
+                    if (Uniform() < Profile.Skill) ChooseArcadeShot(m, ctrl, me, true);
                 }
                 if (_decided)
                 {
@@ -571,7 +648,7 @@ namespace SquashSim
         /// weighted by the profile (length, width, low, short, touch) and less when risky from deep. A softmax pick
         /// (a little randomness), then the aim point strays by the difficulty's aim noise.
         /// </summary>
-        void ChooseArcadeShot(MatchSimulation m, TestPlayerController ctrl, int me)
+        void ChooseArcadeShot(MatchSimulation m, TestPlayerController ctrl, int me, bool late)
         {
             var c = PhysicsConfig.Current.ArcadeHit;
             var pred = ctrl.Prediction;
@@ -592,10 +669,29 @@ namespace SquashSim
             };
             double[] score = new double[o.Length];
             double max = double.MinValue;
+            // where I'll be at contact: the spot I'm running to (else here), then the auto-step toward the ball
+            double sx = ctrl.Player.Pos.X, sz = ctrl.Player.Pos.Z;
+            if (!late && ctrl.Assist.HasIdealSpot) { sx = ctrl.Assist.IdealSpot.X; sz = ctrl.Assist.IdealSpot.Z; }
+            {
+                double ldx = bx - sx, ldz = bz - sz, ld = System.Math.Sqrt(ldx * ldx + ldz * ldz);
+                double step = System.Math.Min(ld - c.Reach * 0.6, c.LungeMax);
+                if (step > 0 && ld > 1e-6) { sx += ldx / ld * step; sz += ldz / ld * step; }
+            }
             for (int i = 0; i < o.Length; i++)
             {
                 double gap = System.Math.Sqrt((o[i].zx - opp.X) * (o[i].zx - opp.X) + (o[i].zz - opp.Z) * (o[i].zz - opp.Z));
                 score[i] = o[i].w + ArcadeGapWeight * Profile.Skill * gap;      // a better player reads where you are
+                // P6: a shot whose path to the front wall runs through my own body is an own goal - avoided the more, the
+                // better the player (the No. 1 lost a fifth of its rallies to "ball hit the striker")
+                double tx = o[i].x;
+                if (o[i].b)
+                {
+                    // a boast: a straight line to the aim's mirror image across the side wall it goes off
+                    int bs = ArcadeStroke.BoastTarget(bx, tx, out double land);
+                    tx = 2 * bs * CourtDimensions.HALF_W - land;
+                }
+                double clear = OwnPathClearance(bx, bz, tx, sx, sz);
+                if (clear < OwnPathMargin) score[i] -= (late ? 4 : 1) * OwnPathPenalty * (0.3 + 0.7 * Profile.Skill) * (1 - clear / OwnPathMargin);
                 if (score[i] > max) max = score[i];
             }
             double temp = 0.3 + ArcadeChoiceNoise * (1 - Profile.Skill), sum = 0;     // and picks less at random
@@ -608,9 +704,22 @@ namespace SquashSim
             double noise = Profile.AimNoise * ArcadeAimNoiseScale;
             _aimPX = Clamp(s.x + Gauss() * noise, -CourtDimensions.HALF_W + 0.15, CourtDimensions.HALF_W - 0.15);
             _aimPY = Clamp(s.y + Gauss() * noise * 0.45, 0.65, CourtDimensions.FRONT_WALL_OUT_H - 0.5);
-            _aChargeFor = s.ch;
+            if (late) { if (s.b != _aBoast) _boastTapped = false; }      // the charge is already held: only the line and the boast change
+            else _aChargeFor = s.ch;
             _aBoast = s.b;
         }
+
+        /// <summary>P6: the gap between my body and the ball's straight path from the contact (bx, bz) to the front wall at x
+        /// (top view, the body's and the ball's radii taken off; below 0: through me).</summary>
+        static double OwnPathClearance(double bx, double bz, double tx, double sx, double sz)
+        {
+            double px = tx - bx, pz = -bz;                                   // to the front wall (z = 0)
+            double len2 = px * px + pz * pz;
+            double u = len2 < 1e-9 ? 0 : Clamp(((sx - bx) * px + (sz - bz) * pz) / len2, 0, 1);
+            double cx = bx + px * u - sx, cz = bz + pz * u - sz;
+            return System.Math.Sqrt(cx * cx + cz * cz) - PhysicsConfig.Current.Player.Radius - PhysicsConfig.Current.Ball.Radius;
+        }
+        public const double OwnPathMargin = 0.35, OwnPathPenalty = 6.0;
 
         void ResetTurn()
         {
@@ -666,6 +775,7 @@ namespace SquashSim
             var s = m.Players[1 - me].Player.Pos;
             double bx = it.TargetX, bz = it.TargetZ;
             double clear = 2 * PhysicsConfig.Current.Player.Radius + it.AccessClearance + ShadowAccessMargin;
+            double me0x = m.Players[me].Player.Pos.X;
 
             for (int iter = 0; iter < 3; iter++)
             {
@@ -690,8 +800,9 @@ namespace SquashSim
                 }
                 // 3. The line from the hitting point to the front wall.
                 double lineHalf = it.LineHalfWidth + PhysicsConfig.Current.Player.Radius + ShadowLineMargin;
+                // (P6: on the side of the line I'm on now - crossing it to reach the T's side is how strokes are given)
                 if (tz < bz && System.Math.Abs(tx - bx) < lineHalf)
-                    tx = bx + (tx >= bx ? 1 : -1) * lineHalf;
+                    tx = bx + (me0x >= bx ? 1 : -1) * lineHalf;
                 tx = Clamp(tx, -HALF_W + 0.35, HALF_W - 0.35);
                 tz = Clamp(tz, 1.0, LENGTH - 0.35);
             }

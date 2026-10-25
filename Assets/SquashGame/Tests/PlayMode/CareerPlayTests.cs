@@ -162,7 +162,7 @@ namespace SquashGame.Tests
             var m = fe.Match;
             Assert.That(m.Demo, Is.False);
             Assert.That(m.Settings.Career, Is.True);
-            Assert.That(m.Settings.Opponent, Is.EqualTo(c.Pro(opp).Style));
+            Assert.That(m.Settings.Opponent, Is.EqualTo(c.Pro(opp).OpponentId));
             Assert.That(m.Settings.Difficulty, Is.EqualTo((float)c.Pro(opp).Strength).Within(1e-6));
             Assert.That(m.Names[0], Is.EqualTo("TESTER"));
             Assert.That(m.Names[1], Is.EqualTo(c.Pro(opp).Bug));

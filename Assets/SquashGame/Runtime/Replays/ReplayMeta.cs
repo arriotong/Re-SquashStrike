@@ -29,6 +29,11 @@ namespace SquashGame.Replays
             if (s.Online) f.Meta[Opponent] = string.IsNullOrEmpty(s.P2Name) ? "Online" : s.P2Name;
             else if (s.TwoPlayer) f.Meta[Opponent] = "Player 2";
             else if (s.Opponent == "wallbot") f.Meta[Opponent] = "Wall-bot";
+            else if (SquashSim.Career.Stars.Describe(s.Opponent).rating > 0)
+            {
+                var d = SquashSim.Career.Stars.Describe(s.Opponent);                  // P6: a star or a club player
+                f.Meta[Opponent] = d.name + " (" + d.rating + ")";
+            }
             else
             {
                 int d = s.Difficulty < 0.34f ? 0 : s.Difficulty < 0.67f ? 1 : 2;

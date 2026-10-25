@@ -328,7 +328,9 @@ namespace SquashSim.Tests
             Assert.That(notTrying, Is.EqualTo(0), "the AI never asks when it was not trying");
             Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(12), "at most one appeal for nothing a game (12 games)");
             Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(System.Math.Max(1, s.Count("Let"))), "and fewer than the good ones");
-            Assert.That(s.CallShare, Is.InRange(0.003, 0.06), "calls: rare (1.5-3% on the full survey)");
+            // P6: the AI keeps to its own side of the striker's line now - 1.0% on the full 48-game survey, so 12 games may see none
+            Assert.That(s.CallShare, Is.InRange(0.0, 0.06), "calls: rare (about 1% on the full survey)");
+            Assert.That(s.FlaggedShare, Is.GreaterThan(0.01), "but the referee is still watching: turns are flagged");
         }
     }
 }

@@ -24,21 +24,29 @@ namespace SquashSim.Career
     {
         public int Id;
         public string First, Last, Nat;
-        public string Style;          // retriever / attacker / shotmaker / grinder
+        public string Style;          // retriever / attacker / shotmaker / grinder (P6: and powerhouse / counter / magician / volleyer)
         public double Strength;
+        /// <summary>P6: a star's id (Stars) - its name can be edited, its rating and signature come with it; "" for the rest.</summary>
+        public string StarId = "";
         public int Age;
         public bool Retired;
         public int RetiredSeason = -1;      // P3-R4: for the news
 
-        public string Name { get { return First + " " + Last; } }
+        public string Name { get { var s = StarOf; return s != null ? Stars.FullName(s) : First + " " + Last; } }
         /// <summary>The score bug's name: "SURNAME".</summary>
-        public string Bug { get { return Last.ToUpperInvariant(); } }
+        public string Bug { get { var s = StarOf; return (s != null ? Stars.LastName(s) : Last).ToUpperInvariant(); } }
+        public Star StarOf { get { return string.IsNullOrEmpty(StarId) ? null : Stars.Find(StarId); } }
+        /// <summary>The opponent id for a match against this pro (a star's own; else the style).</summary>
+        public string OpponentId { get { return string.IsNullOrEmpty(StarId) ? Style : "star:" + StarId; } }
     }
 
     public static class Roster
     {
         public static readonly string[] Styles = { "retriever", "attacker", "shotmaker", "grinder" };
         public static readonly string[] StyleNames = { "Retriever", "Attacker", "Shot-maker", "Grinder" };
+        /// <summary>P6: every style (the stars' four more included).</summary>
+        public static readonly string[] AllStyles = { "retriever", "attacker", "shotmaker", "grinder", "powerhouse", "counter", "magician", "volleyer" };
+        public static readonly string[] AllStyleNames = { "Retriever", "Attacker", "Shot-maker", "Grinder", "Powerhouse", "Counter-puncher", "Magician", "Volleyer" };
 
         /// <summary>The scouting card's lines for a style.</summary>
         public static string[] StyleLines(string style)
@@ -48,11 +56,15 @@ namespace SquashSim.Career
                 case "attacker": return new[] { "Hits low and hard - expect the kill.", "Takes risks to end rallies: keep it tight and make them stretch." };
                 case "shotmaker": return new[] { "Loves the drop and the boast from the front.", "Disguises a lot - stay on the T and don't commit early." };
                 case "grinder": return new[] { "Goes for length all day - be ready deep.", "Gives nothing away: you'll have to work for every point." };
+                case "powerhouse": return new[] { "Pace off both sides, taken early.", "Make them bend low: lobs and short balls take the power away." };
+                case "counter": return new[] { "Soaks up your pressure, then counters your first short ball.", "Be patient: only go short when they're stretched." };
+                case "magician": return new[] { "Holds the ball and disguises everything.", "Watch the racket, not the body - and stay on the T." };
+                case "volleyer": return new[] { "Owns the T and volleys everything.", "Lob over them and get them moving to the back." };
                 default: return new[] { "Gets everything back - be patient.", "Safe height, deep length: wait for the short ball." };
             }
         }
 
-        public static string StyleName(string style) { int i = Array.IndexOf(Styles, style); return i >= 0 ? StyleNames[i] : style; }
+        public static string StyleName(string style) { int i = Array.IndexOf(AllStyles, style); return i >= 0 ? AllStyleNames[i] : style; }
 
         public static readonly string[] Nations =
         {
@@ -111,23 +123,40 @@ namespace SquashSim.Career
         /// never got past Challenger 6 in a season (2026-10-25 playtest); 2.2 softens the bottom half.</summary>
         public const double RosterCurve = 2.2;
 
-        /// <summary>The roster, best first (index 0 = strongest).</summary>
+        /// <summary>The roster, best first (index 0 = strongest). P6: the top 50 are the stars (Stars); below them a rating
+        /// from 77 down to 55 on the same curve, so a rating means the same everywhere.</summary>
         public static List<Pro> Generate(uint seed)
         {
             var rng = new CareerRng(seed, 1);
             var list = new List<Pro>();
             var usedLast = new HashSet<string>();
+            var stars = Stars.All();
+            foreach (var st in stars) usedLast.Add(st.Last);
             int n = Tour.RosterSize;
             for (int i = 0; i < n; i++)
             {
-                double u = 1.0 - (double)i / (n - 1);
-                double s = 0.60 * Math.Pow(u, RosterCurve) + rng.Between(-0.015, 0.015);
+                if (i < stars.Count)
+                {
+                    var st = stars[i];
+                    list.Add(new Pro { Id = i + 1, First = st.First, Last = st.Last, Nat = st.Nat, Style = st.Style, StarId = st.Id, Age = st.Age,
+                                       Strength = Math.Round(Stars.Difficulty(st.Rating), 4) });
+                    continue;
+                }
+                double u = (double)(n - 1 - i) / (n - 1 - stars.Count);                     // 1 at No. 51 .. 0 at the last
+                double rating = 55 + (Stars.All()[stars.Count - 1].Rating - 1 - 55) * Math.Pow(u, RosterCurve);
                 var p = NewPro(rng, usedLast, i + 1);
-                p.Strength = Clamp(s);
+                p.Strength = Clamp(Stars.Difficulty((int)Math.Round(rating)) + rng.Between(-0.003, 0.003));
                 p.Age = 19 + rng.Range(17);
                 list.Add(p);
             }
             return list;
+        }
+
+        /// <summary>A pro's rating (55..99) for the cards: a star's own, else from its strength.</summary>
+        public static int RatingOf(Pro p)
+        {
+            var s = p.StarOf;
+            return s != null ? s.Rating : Stars.RatingFor(p.Strength);
         }
 
         static Pro NewPro(CareerRng rng, HashSet<string> usedLast, int id)
@@ -162,6 +191,12 @@ namespace SquashSim.Career
                 var p = pros[i];
                 if (p.Retired) continue;
                 p.Age++;
+                if (!string.IsNullOrEmpty(p.StarId))
+                {
+                    // a star keeps their level; they retire late
+                    if (p.Age >= 37 || (p.Age >= 35 && rng.Next() < 0.2)) { p.Retired = true; p.RetiredSeason = season; var r = NewPro(rng, usedLast, nextId++); r.Age = 18 + rng.Range(3); r.Strength = Clamp(rng.Between(0.0, 0.05)); joined.Add(r); }
+                    continue;
+                }
                 double drift = p.Age < 24 ? rng.Between(0.0, 0.04)
                              : p.Age < 30 ? rng.Between(-0.015, 0.025)
                              : p.Age < 33 ? rng.Between(-0.03, 0.01)

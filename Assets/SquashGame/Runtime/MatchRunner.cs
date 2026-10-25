@@ -78,6 +78,19 @@ namespace SquashGame
         public List<SquashSim.RunMod> Mods, OppMods;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
+
+        /// <summary>P6: a star or club opponent's rating sets the difficulty; a star brings its attributes, signature shots
+        /// and kit (unless these settings already carry their own). Returns itself.</summary>
+        public MatchSettings Dressed()
+        {
+            Difficulty = (float)SquashSim.Career.Stars.DifficultyFor(Opponent, Difficulty);
+            var st = SquashSim.Career.Stars.Find(Opponent);
+            if (st == null) return this;
+            if (OppAttributes == null) OppAttributes = st.Attributes.Clone();
+            if (OppMods == null) OppMods = new List<SquashSim.RunMod>(st.Signature);
+            if (KitSeed == 0) KitSeed = st.KitSeed;
+            return this;
+        }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
         public static MatchSettings QuickGame(string opponent = "retriever")
         {
@@ -105,7 +118,6 @@ namespace SquashGame
         public int LastCallStriker { get; private set; } = -1;
         int _reviewFrames;
 
-        public static readonly string[] Opponents = { "retriever", "attacker", "shotmaker", "grinder", "wallbot" };
         public string OpponentName { get; private set; }
         /// <summary>HUD names for athlete 0 and 1.</summary>
         public readonly string[] Names = { "YOU", "OPPONENT" };
@@ -241,7 +253,10 @@ namespace SquashGame
             }
             else
             {
-                OpponentName = Settings.Opponent == "wallbot" ? "WALL-BOT" : AiProfile.ByName(Settings.Opponent).WithDifficulty(Settings.Difficulty).Name.ToUpperInvariant();
+                var star = SquashSim.Career.Stars.Find(Settings.Opponent);
+                OpponentName = Settings.Opponent == "wallbot" ? "WALL-BOT"
+                             : star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant()           // P6: the score bug's surname
+                             : AiProfile.For(Settings.Opponent, Settings.Difficulty).Name.ToUpperInvariant();
                 if (!string.IsNullOrEmpty(Settings.P2Name)) OpponentName = Settings.P2Name;
                 Names[0] = string.IsNullOrEmpty(Settings.P1Name) ? "YOU" : Settings.P1Name; Names[1] = OpponentName;
             }

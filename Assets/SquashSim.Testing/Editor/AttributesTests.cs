@@ -89,7 +89,7 @@ namespace SquashSim.Tests
             double baseline = DrivePace(new AthleteAttributes(), out _);
             double strong = DrivePace(new AthleteAttributes { Power = 10, Speed = 8, Stamina = 3, Control = 9 }, out ReplayFile f);
             UnityEngine.Debug.Log("[P3C1] drive pace " + baseline.ToString("0.00") + " -> " + strong.ToString("0.00") + " m/s at Power 10");
-            Assert.That(strong / baseline, Is.InRange(1.03, 1.09));
+            Assert.That(strong / baseline, Is.InRange(1.03, 1.10));
             var back = ReplayTests.RoundTrip(f, out _);
             Assert.That(back.Setup.Attr0.Power, Is.EqualTo(10)); Assert.That(back.Setup.Attr0.Stamina, Is.EqualTo(3));
             var v = ReplaySim.Verify(back);

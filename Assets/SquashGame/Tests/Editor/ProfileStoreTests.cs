@@ -33,15 +33,15 @@ namespace SquashGame.Tests
         {
             var p = ProfileStore.Current;
             p.Settings.Assisted = true; p.Settings.AimSpeed = 1.4f; p.Settings.MasterVolume = 0.5f;
-            p.Choices.Opponent = 3; p.Choices.Difficulty = 2;
+            p.Choices.OpponentId = "star:s10"; p.Choices.Length = 2;
             ProfileStore.Save();
             ProfileStore.Reset();
             var q = ProfileStore.Current;
             Assert.That(q.Settings.Assisted, Is.True);
             Assert.That(q.Settings.AimSpeed, Is.EqualTo(1.4f));
             Assert.That(q.Settings.MasterVolume, Is.EqualTo(0.5f));
-            Assert.That(q.Choices.Opponent, Is.EqualTo(3));
-            Assert.That(q.Choices.Difficulty, Is.EqualTo(2));
+            Assert.That(q.Choices.OpponentId, Is.EqualTo("star:s10"));
+            Assert.That(q.Choices.Length, Is.EqualTo(2));
             Assert.That(q.Version, Is.EqualTo(ProfileStore.CurrentVersion));
         }
 

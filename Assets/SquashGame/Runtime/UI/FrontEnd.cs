@@ -122,6 +122,7 @@ namespace SquashGame.UI
             // P2-M6: finished matches go into the replay library, described for its cards
             Replays.ReplayLibrary.Hook();
             Replays.ReplayMeta.Hook();
+            Profile.PlayerNames.Load();                                      // P6: your names for the stars
 
             if (Match != null)
             {
@@ -385,10 +386,10 @@ namespace SquashGame.UI
             SceneManager.LoadScene(MatchScene);
         }
 
-        /// <summary>The match setup, with this difficulty picked (the Academy's last lesson).</summary>
+        /// <summary>The match setup, with an opponent of about this difficulty picked (the Academy's last lesson: 0, the easiest).</summary>
         public static void LaunchQuickMatch(int difficulty)
         {
-            ProfileStore.Current.Choices.Difficulty = difficulty;
+            ProfileStore.Current.Choices.OpponentId = MatchChoices.OldToId(difficulty);
             OpenOnLoad = () => new QuickMatchScreen();
             StartAtTitle = false;
             ProfileStore.Save();

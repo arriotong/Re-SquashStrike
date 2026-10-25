@@ -35,9 +35,12 @@ namespace SquashSim.Tests
             double Mean(int top, int bottom) { double s = 0; for (int i = top - 1; i < bottom; i++) s += pros[i].Strength; return s / (bottom - top + 1); }
             Debug.Log("[Career] strengths by place: 1-32 " + Mean(1, 32).ToString("0.00") + ", 33-140 " + Mean(33, 140).ToString("0.00") +
                       ", 141-300 " + Mean(141, 300).ToString("0.00") + ", 301-480 " + Mean(301, 480).ToString("0.00"));
-            Assert.That(Mean(1, 32), Is.GreaterThan(0.5));
+            // P6: the top 50 are the stars (strength from their rating: the No. 1 plays at 1.0); the rest fall away below them
+            Assert.That(Mean(1, 32), Is.GreaterThan(Mean(33, 140)));
+            Assert.That(Mean(33, 140), Is.GreaterThan(Mean(141, 300)));
+            Assert.That(Mean(141, 300), Is.GreaterThan(Mean(301, 480)));
             Assert.That(Mean(401, 480), Is.LessThan(0.03));
-            Assert.That(pros[0].Strength, Is.InRange(0.55, Roster.MaxStrength));
+            Assert.That(pros[0].Strength, Is.EqualTo(1.0));
         }
 
         [Test] public void TheRallyModelIsFairAndScoresLegally()

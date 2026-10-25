@@ -108,6 +108,23 @@ namespace SquashSim.Modes
             return _all;
         }
 
+        /// <summary>P6: who a scenario's opponent is - the star of its style whose rating plays nearest its difficulty (the
+        /// scenario keeps its own difficulty: only the name, the face and the personal touches are the star's).</summary>
+        public static Career.Star StarOf(Scenario s)
+        {
+            Career.Star best = null;
+            double gap = double.MaxValue;
+            foreach (var st in Career.Stars.All())
+            {
+                if (st.Style != s.Opponent) continue;
+                double g = Math.Abs(Career.Stars.Difficulty(st.Rating) - s.Difficulty);
+                if (g < gap) { gap = g; best = st; }
+            }
+            return best;
+        }
+
+        public static string OpponentId(Scenario s) { var st = StarOf(s); return st != null ? "star:" + st.Id : s.Opponent; }
+
         public static Scenario Find(string id) { foreach (var s in All()) if (s.Id == id) return s; return null; }
 
         public static List<Scenario> InGroup(int g) { return All().FindAll(s => s.Group == g); }

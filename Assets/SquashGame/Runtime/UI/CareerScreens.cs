@@ -280,11 +280,12 @@ namespace SquashGame.UI
             int opp = c.NextOpponent();
             if (opp < 0) return;
             var pro = c.Pro(opp);
+            var star = pro.StarOf;
             KitDirector.OpponentPreview = null;
             fe.StartMatch(new MatchSettings
             {
                 TwoPlayer = false,
-                Opponent = pro.Style,
+                Opponent = pro.OpponentId,                                  // P6: a star plays as themselves (style, rating, signature)
                 Difficulty = (float)pro.Strength,
                 GamesToWin = c.S.GamesToWin,
                 Scoring = c.S.English ? "english" : "par",
@@ -292,11 +293,11 @@ namespace SquashGame.UI
                 Career = true,
                 P1Name = c.BugOf(You),
                 P2Name = pro.Bug,
-                KitSeed = KitSeed(c, pro.Id),                              // the pro's own kit, the same every match
+                KitSeed = star != null ? star.KitSeed : KitSeed(c, pro.Id),  // the pro's own kit, the same every match
                 Court = CourtFor(c.S.Current != null ? c.S.Current.Tier : 0),  // the bigger the event, the bigger the stage
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
                 Attributes = c.S.Attributes != null ? c.S.Attributes.Clone() : null,    // P3-R3: your athlete as you trained it
-            });
+            }.Dressed());
         }
 
         /// <summary>Your match is over (post-match Continue, or retiring): record it and go back to the hub.</summary>
@@ -435,7 +436,7 @@ namespace SquashGame.UI
                 string round = Tour.RoundName(c.PlayersLeft);
                 MatchCard = AddTo(row, new CardItem(round + " v " + p.Last, s.Current.Name.ToUpperInvariant() + "  ·  " + Career.TierName(s.Current.Tier).ToUpperInvariant(),
                         () => Fe.Push(new MatchPreviewScreen(opp)), CardSize.Hero).Vignette("them")
-                    .Line(Career.Rank(c.RankOf(opp)) + " " + p.Nat + "  ·  " + Roster.StyleName(p.Style) + "  ·  head to head " + w + "-" + l + "  ·  form " + Career.Form(c, opp))
+                    .Line(Career.Rank(c.RankOf(opp)) + " " + p.Nat + "  ·  " + Roster.StyleName(p.Style) + " " + Roster.RatingOf(p) + "  ·  head to head " + w + "-" + l + "  ·  form " + Career.Form(c, opp))
                     .Badge(() => c.IsRival(opp) ? "RIVAL" : round.ToUpperInvariant(), true));
                 MatchCard.Root.AddToClassList("k-card--match");
                 Career.TierOn(MatchCard.Art, s.Current.Tier);
@@ -838,8 +839,11 @@ namespace SquashGame.UI
             var kick = Kit.L(them, c.IsRival(_opp) ? "★ RIVAL" : "OPPONENT", "k-vs-kicker");
             if (c.IsRival(_opp)) kick.AddToClassList("k-cr-rivalkick");
             Kit.L(them, p.Name, "k-vs-name");
-            Kit.L(them, Career.Rank(rb).ToUpperInvariant() + "  ·  " + p.Nat + "  ·  " + Roster.StyleName(p.Style).ToUpperInvariant(), "k-vs-meta");
+            Kit.L(them, Career.Rank(rb).ToUpperInvariant() + "  ·  " + p.Nat + "  ·  " + Roster.StyleName(p.Style).ToUpperInvariant() + "  ·  RATED " + Roster.RatingOf(p), "k-vs-meta");
+            var star = p.StarOf;
+            if (star != null) Kit.L(them, "“" + star.Title + "”  " + star.Bio, "k-cr-callout");          // P6: the stars' own story
             foreach (var line in Roster.StyleLines(p.Style)) Kit.L(them, line, "k-cr-callout");
+            if (star != null) Kit.L(them, "Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "k-cr-callout");
         }
 
         static void Row(VisualElement tape, string name, string a, string b, int better)

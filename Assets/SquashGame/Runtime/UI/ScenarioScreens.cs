@@ -38,12 +38,13 @@ namespace SquashGame.UI
 
         public static MatchSettings Settings(Scenario s)
         {
+            var star = Scenarios.StarOf(s);
             return new MatchSettings
             {
-                Opponent = s.Opponent, Difficulty = (float)s.Difficulty, GamesToWin = s.GamesToWin, Scoring = s.Scoring, WarmUp = false,
+                Opponent = Scenarios.OpponentId(s), KitSeed = star != null ? star.KitSeed : 0u, Difficulty = (float)s.Difficulty, GamesToWin = s.GamesToWin, Scoring = s.Scoring, WarmUp = false,
                 Scenario = s.Id, StartPoints0 = s.StartPoints0, StartPoints1 = s.StartPoints1, StartGames0 = s.StartGames0, StartGames1 = s.StartGames1,
                 StartServer = s.StartServer, Court = Courts.ForCareerTier(s.CourtTier), CrowdFill = Courts.CrowdForCareerTier(s.CourtTier),
-                P2Name = Roster.StyleName(s.Opponent).ToUpperInvariant(),
+                P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : Roster.StyleName(s.Opponent).ToUpperInvariant(),
             };
         }
 
@@ -79,6 +80,13 @@ namespace SquashGame.UI
             fe.Push(new ScenarioScreen(s != null ? s.Group : 0));
         }
 
+        /// <summary>P6: "V KAI TEOH (COUNTER-PUNCHER)" - the star a scenario is played against.</summary>
+        public static string Opp(Scenario s)
+        {
+            var st = Scenarios.StarOf(s);
+            return (st != null ? ("V " + SquashSim.Career.Stars.FullName(st)).ToUpperInvariant() + "  ·  " : "") + Roster.StyleName(s.Opponent).ToUpperInvariant();
+        }
+
         public static string StarText(int n) { return new string('★', Mathf.Clamp(n, 0, 3)) + new string('☆', 3 - Mathf.Clamp(n, 0, 3)); }
     }
 
@@ -111,7 +119,7 @@ namespace SquashGame.UI
                 {
                     var s = sc;
                     string art = Arts[(g * 5 + k++) % Arts.Length];                    // 2026-10-25 playtest: each card its own picture
-                    var card = AddTo(row, new CardItem(s.Name, s.Score + "  ·  " + Roster.StyleName(s.Opponent).ToUpperInvariant(), () => ScenarioFlow.Play(Fe, s))
+                    var card = AddTo(row, new CardItem(s.Name, s.Score + "  ·  " + ScenarioFlow.Opp(s), () => ScenarioFlow.Play(Fe, s))
                         .Drawn(art, new Color32(18, 20, 28, 255), g == 2 ? (Color)new Color32(255, 184, 59, 255) : new Color32(200, 255, 61, 255))
                         .Line(s.Story + "\n★ win   ★ " + s.Star2Text.ToLowerInvariant() + "   ★ " + s.Star3Text.ToLowerInvariant())
                         .Badge(() => ScenarioFlow.StarText(ScenarioFlow.StarsOf(s.Id)), ScenarioFlow.StarsOf(s.Id) == 3));

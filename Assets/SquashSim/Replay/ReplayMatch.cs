@@ -37,6 +37,17 @@ namespace SquashSim.Replays
             if (s.ParPoints > 0) m.ParPoints = s.ParPoints;                    // P5: a Gauntlet floor's game to 7
         }
 
+        /// <summary>P6: a star opponent brings its rating (the difficulty), attributes and signature shots - filled into the
+        /// setup before the match (so the replay records them as played), unless the setup already carries its own.</summary>
+        public static void DressStar(ReplaySetup s)
+        {
+            var star = Career.Stars.Find(s.Opponent);
+            if (Career.Stars.ParseClub(s.Opponent, out _, out _) || star != null) s.Difficulty = (float)Career.Stars.DifficultyFor(s.Opponent, s.Difficulty);
+            if (star == null) return;
+            if (s.Attr1 == null) s.Attr1 = star.Attributes.Clone();
+            if (s.Mods1 == null) s.Mods1 = new List<RunMod>(star.Signature);
+        }
+
         /// <summary>The match itself (Configure first): the opponent in slot 1 unless two play; everyone plays the simple
         /// hitting system, aiming at the front wall - the AI too. The wall-bot keeps the physical swing.</summary>
         public static MatchSimulation Build(ReplaySetup s)
@@ -69,7 +80,7 @@ namespace SquashSim.Replays
         public static IAthleteBrain Opponent(ReplaySetup s)
         {
             if (s.Opponent == "wallbot") return new WallBot(s.BotSeed);
-            return new OpponentBrain(AiProfile.ByName(s.Opponent).WithDifficulty(s.Difficulty), s.BotSeed);
+            return new OpponentBrain(AiProfile.For(s.Opponent, s.Difficulty), s.BotSeed);           // P6: a star, a club player, or a style
         }
 
         /// <summary>The athletes a person plays (recorded): athlete 0, and athlete 1 when two play.</summary>

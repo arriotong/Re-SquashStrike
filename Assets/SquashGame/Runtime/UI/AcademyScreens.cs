@@ -409,7 +409,7 @@ namespace SquashGame.UI
         {
             var next = Lessons.Next(_l);
             bool academyIsPrimary = false;
-            if (_finished) AddTo(Root, new PrimaryItem("Quick Match on Easy", () => FrontEnd.LaunchQuickMatch(0)));
+            if (_finished) AddTo(Root, new PrimaryItem("Play a Quick Match", () => FrontEnd.LaunchQuickMatch(0)));
             else if (next != null) AddTo(Root, new PrimaryItem("Next: " + next.Title, () => { Fe.Clear(); Fe.Academy.Play(next); }));
             else { AddTo(Root, new PrimaryItem("Academy", () => Fe.BackToAcademyMenu())); academyIsPrimary = true; }
 

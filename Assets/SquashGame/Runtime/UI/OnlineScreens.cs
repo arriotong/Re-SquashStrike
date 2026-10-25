@@ -84,7 +84,7 @@ namespace SquashGame.UI
         {
             var p = Kit.Panel(Content, "WHO ARE YOU?"); p.AddToClassList("on-panel");
             _name = AddTo(p, new TextItem("Name", OnlineService.Me.Name, Hub_MaxName));
-            _note = Kit.L(p, "Other players see this in rooms, matches and the leaderboard. Change it any time in Settings > Gameplay.", "k-cr-note");
+            _note = Kit.L(p, "Other players see this in rooms, matches and the leaderboard. Change it any time in your profile (your tag on the main menu).", "k-cr-note");
             AddTo(Root, new PrimaryItem("Play as this name", Done));
         }
 

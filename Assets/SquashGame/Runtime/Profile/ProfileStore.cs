@@ -51,6 +51,8 @@ namespace SquashGame.Profile
     public sealed class MenuChoices
     {
         public int Opponent = 0, Difficulty = 0, Length = 0, Scoring = 0;      // 2026-10-25 playtest: a first match is one game on Easy
+        /// <summary>P6: Quick Match's opponent (a Stars.QuickLadder id; Opponent / Difficulty are read once, from an older save).</summary>
+        public string OpponentId = "club:retriever:62";
         public int VsLength = 2, VsScoring = 0;
         public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.All index
     }
@@ -156,7 +158,7 @@ namespace SquashGame.Profile
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 5;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet
+        public const int CurrentVersion = 6;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet; 6: P6 the stars
         public const string FileName = "profile.json";
 
         /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
@@ -168,7 +170,7 @@ namespace SquashGame.Profile
         public static PlayerProfile Current { get { if (_current == null) _current = Load(); return _current; } }
 
         /// <summary>Forget the cached profile (tests).</summary>
-        public static void Reset() { _current = null; }
+        public static void Reset() { _current = null; PlayerNames.Reset(); }
 
         public static PlayerProfile Load()
         {
@@ -229,6 +231,8 @@ namespace SquashGame.Profile
             if (g.Gacha.ShopBought == null) g.Gacha.ShopBought = new List<string>();
             if (string.IsNullOrEmpty(g.Loadout.Trail)) g.Loadout.Trail = "trail_classic";
             if (g.Gauntlet.Run != null && !g.Gauntlet.Run.Active) g.Gauntlet.Run = null;             // JsonUtility's empty object
+            if (p.Version < 6) p.Choices.OpponentId = UI.MatchChoices.OldToId(p.Choices.Difficulty);   // P6: Easy / Medium / Hard -> a club player, a star
+            if (System.Array.IndexOf(UI.MatchChoices.Ladder, p.Choices.OpponentId) < 0) p.Choices.OpponentId = UI.MatchChoices.Ladder[0];
             if (p.Version < 5) g.Gauntlet.Run = null;                     // P5: a run of the old Gauntlet ends (its best floor is kept)
             if (g.Gauntlet.Talents == null) g.Gauntlet.Talents = new List<SquashSim.RunMod>();
             if (g.Gauntlet.Codex == null) g.Gauntlet.Codex = new List<SquashSim.RunMod>();

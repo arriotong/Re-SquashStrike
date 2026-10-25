@@ -64,15 +64,15 @@ namespace SquashGame.UI
         {
             int f = run.Floor;
             var fl = Gauntlet.Floor(run, f);
-            var traits = fl.Traits.FindAll(t => t.Level > 0);
+            var star = Gauntlet.StarFor(f);
             return new MatchSettings
             {
-                Opponent = fl.Style, Difficulty = (float)fl.Difficulty, GamesToWin = 1, Scoring = "par", WarmUp = false,
+                Opponent = fl.OpponentId, Difficulty = (float)fl.Difficulty, GamesToWin = 1, Scoring = "par", WarmUp = false,
                 Gauntlet = true, ParPoints = fl.Points,
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
-                OppAttributes = fl.Attributes, OppMods = traits.Count > 0 ? traits : null,
+                OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = Courts.ForCareerTier(CourtTier(f)), CrowdFill = Courts.CrowdForCareerTier(CourtTier(f)),
-                P2Name = fl.Kind == FloorKind.Boss ? fl.Name.ToUpperInvariant() : fl.Kind == FloorKind.Elite ? "ELITE  ·  FLOOR " + f : "FLOOR " + f,
+                P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : "FLOOR " + f,
             };
         }
 
@@ -285,9 +285,10 @@ namespace SquashGame.UI
             // the next floor
             var fl = Gauntlet.Floor(run, run.Floor);
             var next = Kit.Panel(grid, fl.Kind == FloorKind.Boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "NEXT"); next.AddToClassList("gt-main");
-            Kit.L(next, (fl.Kind == FloorKind.Boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
+            Kit.L(next, (fl.Kind == FloorKind.Boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
             foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
             if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
+            if (fl.Signature.Count > 0) Kit.L(next, "Signature: " + string.Join(", ", fl.Signature.ConvertAll(m => { var a = GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "gt-trait");
             var court = Courts.Find(Courts.ForCareerTier(GauntletFlow.CourtTier(run.Floor)));
             Kit.L(next, "One game to " + fl.Points + (Gauntlet.HeadStart(run) > 0 ? ", you start " + Gauntlet.HeadStart(run) + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
             var me = Kit.Panel(grid, "YOUR BUILD"); me.AddToClassList("gt-side");
@@ -307,10 +308,8 @@ namespace SquashGame.UI
             return string.Join(",  ", l);
         }
 
-        static string Level(double d)
-        {
-            return d < 0.15 ? "EASY" : d < 0.3 ? "MEDIUM" : d < 0.5 ? "HARD" : d < 0.75 ? "VERY HARD" : "ELITE";
-        }
+        /// <summary>P6: how strong, as a rating (no more Easy / Medium / Hard).</summary>
+        static string Level(double d) { return "PLAYS LIKE A " + SquashSim.Career.Stars.RatingFor(d); }
 
         /// <summary>The run's abilities, each with its level as pips.</summary>
         static void Build(VisualElement panel, GauntletRun run)

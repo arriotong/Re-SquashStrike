@@ -87,11 +87,11 @@ static class RogueBench
     static (bool, int, int, int) Floor(GauntletRun run, uint seed)
     {
         var f = Gauntlet.Floor(run, run.Floor);
-        var traits = f.Traits.FindAll(t => t.Level > 0);
+        var traits = Gauntlet.OppMods(f);
         var s = new ReplaySetup
         {
             Opponent = f.Style, Difficulty = (float)f.Difficulty, GamesToWin = 1, Scoring = "par", ParPoints = f.Points, BotSeed = seed, Lets = true,
-            Attr0 = Gauntlet.Attributes(run), Mods0 = Gauntlet.SimMods(run), Attr1 = f.Attributes, Mods1 = traits.Count > 0 ? traits : null,
+            Attr0 = Gauntlet.Attributes(run), Mods0 = Gauntlet.SimMods(run), Attr1 = f.Attributes, Mods1 = traits,
             EachGame0 = Gauntlet.HeadStart(run),
         };
         ReplayMatch.Configure(s);

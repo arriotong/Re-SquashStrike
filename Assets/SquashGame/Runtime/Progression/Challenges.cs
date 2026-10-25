@@ -100,7 +100,7 @@ namespace SquashGame.Progression
 
             // ---- daily ----
             D("win2", "win", "Win {0} matches", 2, Won);
-            D("winhard", "win", "Win a match on Hard", 1, e => e.Match != null && e.Match.Won && e.Match.AgainstHard ? 1 : 0);
+            D("winhard", "win", "Win a match against an 85+ opponent", 1, e => e.Match != null && e.Match.Won && e.Match.AgainstHard ? 1 : 0);
             D("notins", "win", "Win a match without hitting the tin", 1, e => M(e, f => f.Won && f.Tins == 0 ? 1 : 0));
             D("comeback", "win", "Win a game from 0-5 down", 1, e => M(e, f => f.CameBackFrom0_5 ? 1 : 0));
             D("rallies30", "rallies", "Win {0} rallies", 30, e => M(e, f => f.RalliesWon));

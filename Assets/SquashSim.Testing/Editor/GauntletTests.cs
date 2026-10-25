@@ -36,7 +36,16 @@ namespace SquashSim.Tests
             Assert.That(f5.Kind, Is.EqualTo(FloorKind.Elite)); Assert.That(f5.Traits.Count, Is.EqualTo(1)); Assert.That(f5.Title, Does.StartWith("Elite"));
             var f10 = Gauntlet.Floor(run, 10);
             Assert.That(f10.Kind, Is.EqualTo(FloorKind.Boss)); Assert.That(f10.Points, Is.EqualTo(11));
-            Assert.That(f10.Name, Is.EqualTo(Gauntlet.Bosses[0].name)); Assert.That(f10.Traits.Count, Is.EqualTo(1), "the first boss: one trait");
+            Assert.That(f10.Name, Is.EqualTo(SquashSim.Career.Stars.FullName(SquashSim.Career.Stars.Find("s45"))), "P6: the first boss is the world No. 45");
+            Assert.That(f10.OpponentId, Is.EqualTo("star:s45")); Assert.That(f10.Signature, Is.Not.Empty, "with their signature shots");
+            Assert.That(f10.Traits.Count, Is.EqualTo(1), "the first boss: one trait");
+            Assert.That(f5.OpponentId, Does.StartWith("star:"), "an elite is a star too");
+            var f100 = Gauntlet.Floor(run, 100);
+            Assert.That(f100.OpponentId, Is.EqualTo("star:s01"), "floor 100: the world No. 1");
+            Assert.That(f100.Difficulty, Is.EqualTo(1.0));
+            Assert.That(Gauntlet.Floor(run, 90).OpponentId, Is.EqualTo("star:s05"));
+            Assert.That(Gauntlet.Floor(run, 110).OpponentId, Is.EqualTo("star:s10"), "then round the top 10");
+            Assert.That(Gauntlet.Floor(run, 7).OpponentId, Is.EqualTo(Gauntlet.Floor(run, 7).Style), "an ordinary floor: a style");
             Assert.That(Gauntlet.Floor(run, 20).Traits.Count, Is.EqualTo(2), "from the second: two");
             Assert.That(Gauntlet.Difficulty(20), Is.GreaterThan(Gauntlet.Difficulty(2)));
             Assert.That(Gauntlet.Difficulty(200), Is.EqualTo(1.0));

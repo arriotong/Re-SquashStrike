@@ -31,7 +31,8 @@ namespace SquashGame.Progression
     {
         public bool Won, Career, TwoPlayer;
         public bool Online, Ranked;            // P2-M8
-        public bool AgainstHard;               // Quick Match on Hard (or harder)
+        public bool AgainstHard;               // P6: against an opponent rated 85 or more (was: Quick Match on Hard)
+        public bool AgainstNo1;                // P6: against the world No. 1 (any mode)
         public int GamesToWin;
         public List<int[]> Games = new List<int[]>();   // [you, them] per finished game
         public int RalliesWon, Rallies, LongestRally;
@@ -75,7 +76,8 @@ namespace SquashGame.Progression
             // ---- matches ----
             A("Matches", "bagel", "Eleven-love", "Win a game without losing a point.", AchTier.Gold, "shirt_blacklime");
             A("Matches", "comeback", "Comeback", "Win a game from 0-5 down.", AchTier.Silver, "title_comeback");
-            A("Matches", "beat_hard", "Giant killer", "Beat a Hard opponent in a Quick Match.", AchTier.Silver, "frame_black");
+            A("Matches", "beat_hard", "Giant killer", "Beat an opponent rated 85 or more in a Quick Match.", AchTier.Silver, "frame_black");
+            A("Matches", "beat_no1", "The Hammer falls", "Beat the world No. 1.", AchTier.Gold);
             A("Matches", "bo5", "The long game", "Win a best-of-5 match.", AchTier.Bronze);
             A("Matches", "wins25", "Regular", "Win 25 matches.", AchTier.Silver, null, 25);
             // ---- shots ----
@@ -137,6 +139,7 @@ namespace SquashGame.Progression
             foreach (var g in f.Games) if (g[0] > 0 && g[1] == 0) { l.Add("bagel"); break; }
             if (f.CameBackFrom0_5) l.Add("comeback");
             if (f.Won && f.AgainstHard && !f.Career) l.Add("beat_hard");
+            if (f.Won && f.AgainstNo1) l.Add("beat_no1");
             if (f.Won && f.GamesToWin >= 3) l.Add("bo5");
             if (f.MostGreatHitsInAGame >= 10) l.Add("great10");
             if (f.Nicks >= 5) l.Add("nicks5");

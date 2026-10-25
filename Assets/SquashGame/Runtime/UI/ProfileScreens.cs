@@ -119,6 +119,7 @@ namespace SquashGame.UI
             var more = Kit.Box(names, "pf-more");
             AddTo(more, new ActionItem("Your kit", () => { Save(); Fe.Push(new LockerRoomScreen()); }, "▶"));
             AddTo(more, new ActionItem("All stats", () => { Save(); Fe.Push(new StatsScreen()); }, "▶"));
+            AddTo(more, new ActionItem("Player names", () => { Save(); Fe.Push(new PlayerEditorScreen()); }, "▶"));      // P6: rename the stars
             AddTo(Root, new PrimaryItem("Save", () => { Save(); Fe.Pop(); }));
         }
 

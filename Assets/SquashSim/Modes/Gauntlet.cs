@@ -58,6 +58,9 @@ namespace SquashSim.Modes
         public int Points;
         public List<RunMod> Traits = new List<RunMod>();
         public AthleteAttributes Attributes;            // null: neutral
+        /// <summary>P6: a boss or an elite is a star (Stars): their id ("star:s45"; else the style), and a boss's signature shots.</summary>
+        public string OpponentId;
+        public List<RunMod> Signature = new List<RunMod>();
     }
 
     public static class Gauntlet
@@ -65,16 +68,23 @@ namespace SquashSim.Modes
         public const int StartLives = 3, MaxLives = 6, PurseCoins = 40;
         public static readonly string[] Styles = { "retriever", "attacker", "shotmaker", "grinder" };
 
-        /// <summary>The legends at every 10th floor, in turn (fictional).</summary>
-        public static readonly (string name, string title, string style)[] Bosses =
+        /// <summary>P6: the star a boss or elite floor is (null: an ordinary floor). Bosses climb the world ranking - floor 10 the
+        /// No. 45 ... floor 90 the No. 5, and floor 100 the world No. 1; then round the top 10 again, the No. 1 every 100th floor.
+        /// Elites are the stars just below the next boss (floor 5 the No. 48 ...); past 100, from 11 to 30.</summary>
+        public static Career.Star StarFor(int floor)
         {
-            ("Marek Stahl", "The Wall", "retriever"),
-            ("Aiko Tanabe", "The Assassin", "attacker"),
-            ("Ruben Okafor", "The Magician", "shotmaker"),
-            ("Hollis Brandt", "The Machine", "grinder"),
-            ("Sola Vance", "The Storm", "attacker"),
-            ("Ilya Korsak", "The Ghost", "retriever"),
-        };
+            var all = Career.Stars.All();
+            var kind = KindOf(floor);
+            if (kind == FloorKind.Normal) return null;
+            if (kind == FloorKind.Boss)
+            {
+                if (floor % 100 == 0) return Career.Stars.No1;
+                int c = (floor % 100) / 10 - 1;                                  // 0..8 within the hundred
+                return all[(floor < 100 ? 45 - 5 * c : 10 - c) - 1];
+            }
+            if (floor < 100) return all[Math.Max(2, 50 - floor / 2) - 1];
+            return all[10 + (int)(Hash((uint)floor) % 20u)];
+        }
 
         /// <summary>The traits an elite can have (and a boss two of): RunMods ids on the opponent, and their names.</summary>
         public static readonly (string id, string name, string text)[] Traits =
@@ -117,24 +127,31 @@ namespace SquashSim.Modes
         public static FloorKind KindOf(int floor) { return floor % 10 == 0 ? FloorKind.Boss : floor % 5 == 0 ? FloorKind.Elite : FloorKind.Normal; }
 
         /// <summary>The AI's difficulty on a floor: from the easiest, a slow climb - the game's Medium about floor 20, Hard about
-        /// 37, the top past 125 (MatchBench --rogue: a median player clears about 10 floors).</summary>
+        /// 37, the top past 125 (MatchBench --rogue: a median player clears about 9 floors, 40% beat the first boss).</summary>
         public static double Difficulty(int floor) { return Math.Min(1.0, Start + Climb * (Math.Max(1, floor) - 1)); }
-        public const double Start = 0.0, Climb = 0.008;
+        public const double Start = 0.0, Climb = 0.0055;     // P6: 0.008 after the AI learned to keep out of its own shot and the line (median 8 floors)
 
         public static FloorInfo Floor(GauntletRun run, int floor)
         {
             var f = new FloorInfo { Kind = KindOf(floor), Difficulty = Difficulty(floor), Points = KindOf(floor) == FloorKind.Boss ? 11 : 7 };
             uint h = Mix(run.Seed, (uint)floor);
+            var star = StarFor(floor);
+            if (star != null)
+            {
+                f.Style = star.Style; f.Name = Career.Stars.FullName(star); f.OpponentId = "star:" + star.Id;
+            }
             if (f.Kind == FloorKind.Boss)
             {
-                var b = Bosses[(floor / 10 - 1) % Bosses.Length];
-                f.Style = b.style; f.Name = b.name; f.Title = b.title;
+                f.Title = star.Title;
                 f.Difficulty = Math.Min(1.0, f.Difficulty + 0.02);
+                if (star == Career.Stars.No1) f.Difficulty = 1.0;               // the world No. 1 plays at their very best
+                f.Signature.AddRange(star.Signature);
             }
-            else
+            else if (star == null)
             {
                 f.Style = Styles[(int)(h % (uint)Styles.Length)];
                 f.Name = "Floor " + floor;
+                f.OpponentId = f.Style;
             }
             int traits = f.Kind == FloorKind.Boss ? (floor >= 20 ? 2 : 1) : f.Kind == FloorKind.Elite ? 1 : 0;
             if (floor > 40) traits++;                                         // late floors: every opponent has one more
@@ -164,6 +181,14 @@ namespace SquashSim.Modes
             f.Traits.RemoveAll(t => t.Id == "e_wall");                        // the Wall is its attributes, not a sim trait
             if (wall) f.Traits.Add(new RunMod { Id = "e_wall", Level = 0 });   // (kept for its name)
             return f;
+        }
+
+        /// <summary>The opponent's abilities in the sim: its traits (the ones that act) and a boss's signature shots.</summary>
+        public static List<RunMod> OppMods(FloorInfo f)
+        {
+            var l = f.Traits.FindAll(t => t.Level > 0);
+            l.AddRange(f.Signature);
+            return l.Count > 0 ? l : null;
         }
 
         public static string TraitNames(FloorInfo f)

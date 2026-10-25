@@ -89,7 +89,16 @@ namespace SquashGame.UI
 
     public static class MatchChoices
     {
-        public static readonly string[] OpponentLabels = { "Retriever", "Attacker", "Shot-maker", "Grinder", "Wall-bot" };
+        /// <summary>P6: Quick Match's opponents, easiest first (two club players, then stars up to the world No. 1).</summary>
+        public static string[] Ladder { get { return SquashSim.Career.Stars.QuickLadder; } }
+        public static int LadderIndex(string id) { return Math.Max(0, Array.IndexOf(Ladder, id)); }
+        /// <summary>An older save's Easy / Medium / Hard as the ladder's opponent.</summary>
+        public static string OldToId(int difficulty) { return Ladder[difficulty <= 0 ? 0 : difficulty == 1 ? 1 : 3]; }
+        /// <summary>"Zayn Mahrous  99" (the carousel).</summary>
+        public static string Label(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  " + d.rating; }
+        /// <summary>"Zayn Mahrous  ·  99  ·  Powerhouse" (the PLAY card).</summary>
+        public static string Line(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  ·  " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style); }
+        /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };
         /// <summary>Balanced with MatchBench --balance (human-style model wins ~55 / 44 / 29% of rallies).</summary>
         public static readonly float[] DifficultyValues = System.Array.ConvertAll(SquashSim.GameTuning.Ai.Levels, v => (float)v);
@@ -170,12 +179,12 @@ namespace SquashGame.UI
             Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
             Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (" + IntentSource.Keys("Appeal") + ") when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
             Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
+            var ch = ProfileStore.Current.Choices;
+            Row(g, new SelectorItem("Quick Match scoring", MatchChoices.ScoringLabels, () => ch.Scoring, i => { ch.Scoring = i; Changed(false); }), VersusScreen.ScoringHint);
             Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Classic: close behind the back wall, the ball's pace easy to read. High: looking down on the court. Low glass: close behind the glass. TV: the broadcast view from far up in the stands.");
             // P2-M8: online
+            // (your online name is your player name: your profile, from the tag on the main menu - P6 made room here for the scoring)
             var me = Online.OnlineService.Me;
-            var name = new TextItem("Online name", me.Name, 16);
-            name.Field.RegisterValueChangedCallback(e => { var n = (e.newValue ?? "").Trim(); if (n.Length > 0) { me.Name = n; me.NameChosen = true; } });
-            Row(g, name, "The name other players see online. From your next connection.");
             var server = new TextItem("Online server", string.IsNullOrWhiteSpace(me.Server) ? Online.OnlineService.DefaultServer : me.Server, 120);
             server.Field.RegisterValueChangedCallback(e => { me.Server = (e.newValue ?? "").Trim(); Online.OnlineService.Disconnect(); });
             Row(g, server, "Where online play connects. The game's own server is the default; ws://localhost:5180/ws plays against a server on this PC (testing)."); 

@@ -240,6 +240,9 @@
     -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 0 30px rgba(200, 255, 61, 0.6);
 }
 .k-vs-mid .k-sel-label { width: 140px; }
+/* P6: the opponent ladder's names ("Rafael Montoya  92") and the courts fit the middle column */
+.k-vs-mid .k-carousel { width: auto; height: 88px; }
+.k-vs-mid .k-car-value { width: 330px; font-size: 36px; }
 
 /* ---------- pause: a side panel ---------- */
 .k-side {
@@ -1006,6 +1009,11 @@
 .k-chip-item.fe-item--focused > .k-chip { border-color: rgb(200, 255, 61); background-color: rgba(30, 36, 18, 0.95); }
 .pf-grid { flex-direction: row; align-items: flex-start; }
 .pf-panel { width: 560px; margin-right: 24px; }
+/* P6: the name editor's player carousel */
+.pf-panel .k-carousel { width: auto; height: 76px; padding: 0 12px; }
+.pf-panel .k-car-value { width: 250px; font-size: 28px; }
+.pf-panel .k-car-arrow { padding: 0 10px; }
+.pf-panel .k-car-count { display: none; }                       /* the rank is in the value */
 .pf-you { width: 420px; margin-right: 24px; align-items: center; }
 .pf-pic { width: 300px; height: 360px; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
 .pf-level { font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
