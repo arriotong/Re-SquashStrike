@@ -33,6 +33,10 @@ namespace SquashGame.Athlete
         bool _bodyBuilt;
 
         public Transform Racket { get; private set; }
+        MeshRenderer _frameRenderer;
+        Material _frameGlow;
+        /// <summary>P4: the frame is drawn glowing (tests).</summary>
+        public bool FrameGlowing { get; private set; }
         /// <summary>The racket's pose in the hand (HoldRacketInHand): hand-local position and rotation.</summary>
         public Vector3 GripLocalPos { get; private set; }
         public Quaternion GripLocalRot { get; private set; } = Quaternion.identity;
@@ -82,6 +86,13 @@ namespace SquashGame.Athlete
             _headbandGo.SetActive(k.HasHeadband); _headband.color = k.Headband;
             _wristbandGo.SetActive(k.HasWristband); _wristband.color = k.Wristband;
             _frame.color = k.Frame; _grip.color = k.Grip;
+            // P4: an Epic / Legendary / gold frame glows (an HDR unlit copy: the bloom picks it up)
+            if (_frameRenderer != null)
+            {
+                if (k.FrameGlow) { _frameGlow.color = new Color(k.Frame.r * 1.8f, k.Frame.g * 1.8f, k.Frame.b * 1.8f, 1f); _frameRenderer.sharedMaterial = _frameGlow; }
+                else _frameRenderer.sharedMaterial = _frame;
+            }
+            FrameGlowing = k.FrameGlow;
             _strings.color = new Color(Mathf.Min(1f, k.Strings.r * 1.15f), Mathf.Min(1f, k.Strings.g * 1.15f), Mathf.Min(1f, k.Strings.b * 1.15f), 0.6f);   // readable at TV zoom
             ShowHair(k.HairStyle);
             _hair.color = k.Hair;
@@ -198,6 +209,8 @@ namespace SquashGame.Athlete
             _grip = palette.LitColor(Greybox.Hex(0x23272c));
             _strings = palette.Clear(Greybox.Hex(0xdde2e8, 0.30f));
             AddPart(Racket, "racket_frame", parts.Frame, _frame, true);
+            _frameRenderer = Racket.Find("racket_frame").GetComponent<MeshRenderer>();
+            _frameGlow = palette.UnlitColor(Color.white);
             AddPart(Racket, "racket_handle", parts.Handle, _grip, true);
             AddPart(Racket, "racket_stringBed", parts.Bed, _strings, false);
 

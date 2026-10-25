@@ -255,6 +255,42 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P3_Scenario_Result.png");
         }
 
+        /// <summary>P4-G3: drop gear in play - a legendary racket glows, your shots trail in your colour; the Locker's "???".</summary>
+        [UnityTest]
+        public IEnumerator DropGearGlowsAndTrails()
+        {
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            var arena = GearDrops.Banner("arena");
+            var frame = arena.Of(Rarity.Legendary).Find(i => i.Slot == Slot.Frame);
+            var trail = arena.Of(Rarity.Legendary).Find(i => i.Slot == Slot.Trail);
+            var p = ProfileStore.Current.Progress;
+            p.Owned.Add(frame.Id); p.Owned.Add(trail.Id); p.Owned.Add(arena.Items[2].Id + "_gold");
+            p.Loadout.Frame = frame.Id; p.Loadout.Trail = trail.Id;
+            ProfileStore.Save();
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "YOUR KIT");
+            yield return Tap(kb.eKey); yield return Tap(kb.eKey);                        // RACKET
+            yield return Wait(1.0f, () => false);
+            yield return CaptureUI(fe, "P4_Locker_Racket.png");
+            yield return Tap(kb.escapeKey);
+
+            fe.StartMatch(MatchSettings.QuickGame());
+            var r = fe.Match;
+            r.SetAutopilot(new SquashSim.OpponentBrain(SquashSim.AiProfile.ByName("attacker").WithDifficulty(0.8), 5));
+            var rig = GameObject.Find("Athlete0").GetComponent<Athlete.AthleteRig>();
+            var ball = Object.FindFirstObjectByType<BallView>();
+            yield return Wait(30f, () => r.LastRacketContact != null && r.LastRacketContact.PlayerIndex == 0 && r.Ball.Vel.Z < -8);
+            yield return null; yield return null;
+            Assert.That(rig.FrameGlowing, Is.True, "a legendary frame glows");
+            Assert.That(ball.TrailColour, Is.EqualTo(trail.A), "your shots trail in your colour");
+            yield return CaptureUI(fe, "P4_Glow_Trail.png");
+        }
+
         [UnityTest]
         public IEnumerator AWonMatchGivesXpALevelAndAchievements()
         {

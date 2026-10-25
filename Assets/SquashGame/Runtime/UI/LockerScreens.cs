@@ -42,6 +42,7 @@ namespace SquashGame.UI
         {
             Slot = slot;
             _items = Cosmetics.InSlot(slot);
+            _items.RemoveAll(i => i.Gold && !Rewards.Owns(i.Id));        // P4: a gold edition shows once you have it
             _browse = Mathf.Max(0, _items.FindIndex(i => i.Id == P.Loadout.Get(slot)));
             Root.RemoveFromClassList("fe-item");
             Root.AddToClassList("k-slot");
@@ -133,6 +134,7 @@ namespace SquashGame.UI
                 case Slot.Strings: p.lineWidth = 1.5f; for (int i = 0; i < 5; i++) { float t = .22f + i * .14f; p.BeginPath(); p.MoveTo(V(t, .16f)); p.LineTo(V(t, .84f)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.16f, t)); p.LineTo(V(.84f, t)); p.Stroke(); } break;
                 case Slot.Celebration: Poly(V(.5f, .08f), V(.6f, .38f), V(.92f, .38f), V(.66f, .56f), V(.76f, .88f), V(.5f, .68f), V(.24f, .88f), V(.34f, .56f), V(.08f, .38f), V(.4f, .38f)); break;
                 case Slot.Banner: Poly(V(.15f, .2f), V(.85f, .2f), V(.85f, .8f), V(.15f, .8f)); break;
+                case Slot.Trail: p.lineWidth = 5f; p.BeginPath(); p.MoveTo(V(.12f, .82f)); p.LineTo(V(.6f, .4f)); p.Stroke(); p.BeginPath(); p.Arc(V(.7f, .3f), w * 0.13f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); break;
                 default: p.lineWidth = 3f; for (int i = 0; i < 3; i++) { p.BeginPath(); p.MoveTo(V(.18f, .3f + i * .2f)); p.LineTo(V(i == 2 ? .6f : .82f, .3f + i * .2f)); p.Stroke(); } break;
             }
         }
@@ -158,7 +160,11 @@ namespace SquashGame.UI
                 var it = items[i];
                 var sw = Kit.Box(this, "k-sw");
                 bool text = row.Slot == Slot.Celebration || row.Slot == Slot.Title;
-                if (text) { sw.AddToClassList("k-sw--text"); Kit.L(sw, it.Name, "k-sw-name"); }
+                bool mystery = it.Unlock == UnlockKind.Gacha && !Rewards.Owns(it.Id);           // P4: a drop you haven't pulled
+                if (it.Rarity >= 0) { var bar = Kit.Box(sw, "k-sw-rarity"); bar.style.backgroundColor = GearDrops.RarityColours[it.Rarity]; }
+                if (it.Gold) Kit.L(sw, "★", "k-sw-gold");
+                if (mystery) { sw.AddToClassList("k-sw--mystery"); Kit.L(sw, "?", "k-sw-q"); }
+                else if (text) { sw.AddToClassList("k-sw--text"); Kit.L(sw, it.Name, "k-sw-name"); }
                 else
                 {
                     sw.style.backgroundColor = it.None ? new Color(0.12f, 0.13f, 0.16f) : it.A;
@@ -166,7 +172,7 @@ namespace SquashGame.UI
                     if (it.None) Kit.L(sw, "NONE", "k-sw-name");
                 }
                 if (i == row.BrowseIndex) sw.AddToClassList("k-sw--on");
-                if (!Rewards.Owns(it.Id)) { sw.AddToClassList("k-sw--locked"); Kit.L(sw, it.Unlock == UnlockKind.Level ? "LV " + it.Level : "★", "k-sw-lock"); }
+                if (!Rewards.Owns(it.Id) && !mystery) { sw.AddToClassList("k-sw--locked"); Kit.L(sw, it.Unlock == UnlockKind.Level ? "LV " + it.Level : "★", "k-sw-lock"); }
                 if (it.Id == worn) Kit.L(sw, "✓", "k-sw-worn");
             }
             Kit.L(this, to < n ? "▶" : "", "k-sw-more");
@@ -239,7 +245,7 @@ namespace SquashGame.UI
             // ---- the kit, in three tabs of a few slots each; your athlete (or racket) live in the middle ----
             Wardrobe("CLOTHES", new[] { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Headband, Slot.Wristband }, "you");
             Wardrobe("LOOK", new[] { Slot.Body, Slot.Skin, Slot.Hair, Slot.HairColour, Slot.Celebration }, "you");
-            Wardrobe("RACKET", new[] { Slot.Frame, Slot.Grip, Slot.Strings }, "racket");
+            Wardrobe("RACKET", new[] { Slot.Frame, Slot.Grip, Slot.Strings, Slot.Trail }, "racket");
 
             // ---- CARD ----
             var card = Kit.Box(Page("CARD"), "k-lk");
@@ -289,7 +295,9 @@ namespace SquashGame.UI
             var it = r.Browsing;
             tab.Info.Clear();
             Kit.L(tab.Info, Cosmetics.SlotNames[(int)r.Slot].ToUpperInvariant(), "k-panel-title");
-            Kit.L(tab.Info, it.Name, "k-lk-item");
+            bool mystery = it.Unlock == UnlockKind.Gacha && !r.Owned;
+            Kit.L(tab.Info, mystery ? "???" : it.Name + (it.Gold ? "  ★" : ""), "k-lk-item");
+            if (it.Rarity >= 0) { var rl = Kit.L(tab.Info, GearDrops.RarityNames[it.Rarity].ToUpperInvariant() + (it.Gold ? "  ·  GOLD EDITION" : "") + (it.Glow ? "  ·  GLOWS" : ""), "k-lk-rarity"); rl.style.color = it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[it.Rarity]; }
             var state = Kit.L(tab.Info, r.Worn ? "✓  WORN" : r.Owned ? "OWNED  ·  ENTER TO WEAR" : "LOCKED", "k-lk-state");
             state.AddToClassList(r.Worn ? "k-lk-state--worn" : r.Owned ? "k-lk-state--owned" : "k-lk-state--locked");
             if (!r.Owned) Kit.L(tab.Info, "Unlock: " + it.HowToUnlock, "k-lk-how");

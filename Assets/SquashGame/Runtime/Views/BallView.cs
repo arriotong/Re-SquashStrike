@@ -37,6 +37,10 @@ namespace SquashGame
         static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
 
         SimRunnerBase _runner;
+        int _trailFor = -2;
+        static readonly Color ClassicTrail = new Color(1f, 0.95f, 0.8f);
+        /// <summary>P4: the trail's colour now (tests).</summary>
+        public Color TrailColour { get; private set; }
         Transform _ball, _shadow, _rim;
         Material _ballMat, _shadowMat;
         TrailRenderer _trail;
@@ -88,6 +92,18 @@ namespace SquashGame
             _trail.startWidth = visualRadius * 1.2f;
             _trail.time = LongTrail ? 1.4f : GameplayCameraRig.Preset == GameplayCameraRig.TV ? 0.06f : 0.16f;   // the long TV lens: a short smear
             _trail.endWidth = 0f;
+            // P4: your shots trail in your Shot trail colour (Gear Drops); everyone else's in the classic one
+            var hit = _runner.LastRacketContact;
+            int striker = hit != null ? hit.PlayerIndex : -1;
+            if (striker != _trailFor)
+            {
+                _trailFor = striker;
+                Color c = striker == 0 ? Progression.Cosmetics.KitOf(Progression.KitDirector.You()).Trail : ClassicTrail;
+                var tg = new Gradient();
+                tg.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) }, new[] { new GradientAlphaKey(striker == 0 && c != ClassicTrail ? 0.55f : 0.32f, 0f), new GradientAlphaKey(0f, 1f) });
+                _trail.colorGradient = tg;
+                TrailColour = c;
+            }
             // Only a struck ball smears: one carried in the hand (or tossed to serve) moves no faster than a runner.
             _trail.emitting = LongTrail || V3.Length(ball.Vel) > 7.0;
 

@@ -926,3 +926,10 @@
 .sc-result { width: 1100px; margin-bottom: 12px; }
 .sc-result-stars { font-size: 34px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .sc-total { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---- P4: Gear Drops in the Locker ---- */
+.k-sw-rarity { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; }
+.k-sw-gold { position: absolute; top: 2px; right: 4px; font-size: 13px; color: rgb(255, 215, 106); }
+.k-sw--mystery { background-color: rgb(20, 22, 28); }
+.k-sw-q { font-size: 26px; color: rgba(255, 255, 255, 0.35); -unity-text-align: middle-center; flex-grow: 1; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-lk-rarity { font-size: 12px; letter-spacing: 2px; margin: 2px 0 6px 0; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
