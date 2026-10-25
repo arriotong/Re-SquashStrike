@@ -32,6 +32,7 @@ namespace SquashGame.Progression
         public int XpBefore;
         public readonly List<Item> Unlocked = new List<Item>();
         public readonly List<Achievement> Achieved = new List<Achievement>();
+        public readonly List<string> Challenges = new List<string>();      // P3-R2: challenges finished by this result
         public bool LevelledUp { get { return ToLevel > FromLevel; } }
         public bool Any { get { return Xp > 0 || Unlocked.Count > 0 || Achieved.Count > 0; } }
     }
@@ -111,6 +112,12 @@ namespace SquashGame.Progression
             return it.Unlock == UnlockKind.Free || P.Owned.Contains(id);
         }
 
+        /// <summary>P3-R2: XP from outside the usual sources (a challenge), with its line.</summary>
+        public static void AddXp(RewardResult r, string line, int xp) { Xp(r, line, xp); }
+
+        /// <summary>P3-R2: an item given outright (a challenge reward).</summary>
+        public static void Grant(RewardResult r, string id) { Unlock(Cosmetics.Find(id), r); }
+
         static void Unlock(Item it, RewardResult r)
         {
             if (it == null || it.Unlock == UnlockKind.Free || P.Owned.Contains(it.Id)) return;
@@ -185,6 +192,7 @@ namespace SquashGame.Progression
             {
                 Count(r, "rallies100", P.Stats.RalliesWon);
                 Count(r, "wins25", P.Stats.MatchesWon);
+                Challenges.Record(r, new ChallengeEvent { Match = f });
             }
             return End(r);
         }
@@ -202,6 +210,7 @@ namespace SquashGame.Progression
             if (streakMode && score >= 25) ids.Add("streak25");
             Achieve(r, ids);
             ArcadeSweep(r);
+            Challenges.Record(r, new ChallengeEvent { Arcade = !drill, ArcadeStars = fresh });
             return End(r);
         }
 
@@ -262,6 +271,7 @@ namespace SquashGame.Progression
             foreach (var m in c.S.Matches) { run = m.Won ? run + 1 : 0; best = Math.Max(best, run); }
             if (best >= 10) ids.Add("streak10");
             Achieve(r, ids);
+            Challenges.Record(r, new ChallengeEvent { CareerTitle = e.YouReached == 0 });
             return End(r);
         }
     }

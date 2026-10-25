@@ -21,7 +21,7 @@ namespace SquashGame.Progression
 {
     public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body }
 
-    public enum UnlockKind { Free, Level, Achievement }
+    public enum UnlockKind { Free, Level, Achievement, Challenge }
 
     public sealed class Item
     {
@@ -43,6 +43,7 @@ namespace SquashGame.Progression
                 {
                     case UnlockKind.Level: return "Level " + Level;
                     case UnlockKind.Achievement: { var a = Achievements.Find(Achievement); return "Achievement: " + (a != null ? a.Name : Achievement); }
+                    case UnlockKind.Challenge: return Achievement;      // the challenge note ("A 7-day streak")
                     default: return "";
                 }
             }
@@ -181,6 +182,21 @@ namespace SquashGame.Progression
                                                ("title_world", "World Champion"), ("title_no1", "World No. 1"), ("title_nick", "Nick Hunter"),
                                                ("title_marathon", "Marathon Man"), ("title_sharpshooter", "Sharpshooter"), ("title_comeback", "Comeback Kid") })
                 Add(Slot.Title, id, name, Color.white, Color.white, UnlockKind.Achievement);
+
+            // ---- P3-R2: the challenge collection (streaks and weeklies only) ----
+            Item Ch(Slot slot, string id, string name, uint a, uint b, string how) { var it = Add(slot, id, name, H(a), H(b), UnlockKind.Challenge); it.Achievement = how; return it; }
+            Ch(Slot.Title, "ch_title_regular", "Regular", 0xffffff, 0xffffff, "A 3-day challenge streak");
+            Ch(Slot.Shirt, "ch_shirt_dawn", "Dawn patrol", 0xff771c, 0x6fb8ff, "A 7-day challenge streak");
+            Ch(Slot.Frame, "ch_frame_ember", "Ember", 0xff4a1c, 0xff4a1c, "A 14-day challenge streak");
+            Ch(Slot.Title, "ch_title_everyday", "Every Day", 0xffffff, 0xffffff, "A 30-day challenge streak");
+            Ch(Slot.Shirt, "ch_shirt_pinstripe", "Pinstripe", 0x2b2f38, 0xf2f2ee, "A weekly challenge (1st)");
+            Ch(Slot.Banner, "ch_banner_aurora", "Aurora", 0x0e2a28, 0xff6fae, "A weekly challenge (2nd)");
+            Ch(Slot.Shoes, "ch_shoes_volt", "Volt", 0xc8ff3d, 0xc8ff3d, "A weekly challenge (3rd)");
+            Ch(Slot.Wristband, "ch_wrist_flame", "Flame", 0xff771c, 0xff771c, "A weekly challenge (4th)");
+            Ch(Slot.Socks, "ch_socks_hoop", "Red hoop", 0xd8382f, 0xd8382f, "A weekly challenge (5th)");
+            Ch(Slot.Grip, "ch_grip_tiger", "Tiger", 0xff8a1c, 0xff8a1c, "A weekly challenge (6th)");
+            Ch(Slot.Strings, "ch_strings_neon", "Neon", 0xff2bd6, 0xff2bd6, "A weekly challenge (7th)");
+            Ch(Slot.Title, "ch_title_weekly", "Weekly Warrior", 0xffffff, 0xffffff, "A weekly challenge (8th)");
 
             // achievements' rewards: those items unlock there, not on the level table
             foreach (var a in Achievements.All())

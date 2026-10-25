@@ -31,9 +31,10 @@ namespace SquashGame.Tests
             foreach (var f in Directory.GetFiles(_dir)) File.Delete(f);
             ProfileStore.Folder = _dir;
             ProfileStore.Reset();
+            Challenges.Enabled = false;               // exact XP here; ChallengeTests cover the challenges
         }
 
-        [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); }
+        [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); Challenges.Enabled = true; }
 
         [Test] public void TheNextUnlockIsAlwaysInView()
         {

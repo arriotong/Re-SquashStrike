@@ -156,6 +156,31 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
         }
 
+        /// <summary>P3-R2: the CHALLENGES tab and the challenges screen, with one daily half done.</summary>
+        [UnityTest]
+        public IEnumerator TheChallengesTabAndScreen()
+        {
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            var st = Challenges.Current();
+            st.Daily[0].Progress = System.Math.Max(0, Challenges.Find(st.Daily[0].Id).Target - 1);
+            st.Daily[1].Progress = Challenges.Find(st.Daily[1].Id).Target; st.Daily[1].Done = true;
+            st.Streak = 2; st.LastStreakDay = st.Day; st.BestStreak = 4;
+            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "TODAY");
+            Assert.That(fe.Top, Is.InstanceOf<ChallengesScreen>());
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "P3_Challenges.png");
+            yield return Tap(kb.escapeKey);
+            Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "P3_Hub_Challenges.png");
+        }
+
         [UnityTest]
         public IEnumerator AWonMatchGivesXpALevelAndAchievements()
         {

@@ -103,6 +103,7 @@ namespace SquashGame.Profile
         public Progression.Loadout Loadout = new Progression.Loadout();
         public List<AchievementState> Achievements = new List<AchievementState>();
         public Progression.LifetimeStats Stats = new Progression.LifetimeStats();
+        public Progression.ChallengeState Challenges = new Progression.ChallengeState();     // P3-R2
     }
 
     [Serializable]
@@ -119,7 +120,7 @@ namespace SquashGame.Profile
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 2;              // 2: P2-M5 progression
+        public const int CurrentVersion = 3;              // 2: P2-M5 progression; 3: P3-R2 challenges
         public const string FileName = "profile.json";
 
         /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
@@ -179,6 +180,9 @@ namespace SquashGame.Profile
             if (g.Loadout == null) g.Loadout = new Progression.Loadout();
             if (g.Achievements == null) g.Achievements = new List<AchievementState>();
             if (g.Stats == null) g.Stats = new Progression.LifetimeStats();
+            if (g.Challenges == null) g.Challenges = new Progression.ChallengeState();
+            if (g.Challenges.Daily == null) g.Challenges.Daily = new List<Progression.ChallengeProgress>();
+            if (g.Challenges.Weekly == null) g.Challenges.Weekly = new Progression.ChallengeProgress();
             // (future versions: migrate fields here)
             p.Version = CurrentVersion;
             return p;

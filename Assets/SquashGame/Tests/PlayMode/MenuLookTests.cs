@@ -58,7 +58,7 @@ namespace SquashGame.Tests
             Assert.That(MenuCinematics.Scene, Is.EqualTo(3), "its own set of angles");
             yield return null; yield return null;
             Assert.That(Vector3.Distance(cam.position, b), Is.GreaterThan(1.0f), "a new card, a new set of angles");
-            foreach (var tab in new[] { "CAREER", "ACADEMY", "LOCKER" })
+            foreach (var tab in new[] { "CHALLENGES", "CAREER", "ACADEMY", "LOCKER" })
             {
                 yield return Tap(kb.eKey);
                 Assert.That(menu.Tabs.Current, Is.EqualTo(tab));

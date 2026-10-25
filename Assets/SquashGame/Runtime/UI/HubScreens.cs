@@ -39,6 +39,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
+            { "TODAY", 3 }, { "THIS WEEK", 0 },
         };
 
         protected override void Compose()
@@ -54,6 +55,15 @@ namespace SquashGame.UI
                 .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
             AddTo(play, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen())).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
                 .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS"));
+
+            // ---- CHALLENGES (P3-R2): today's three, the week's one, the streak ----
+            var ch = Kit.Box(Page("CHALLENGES"), "k-row");
+            AddTo(ch, new CardItem("TODAY", "DAILY CHALLENGES", () => Fe.Push(new ChallengesScreen()), CardSize.Hero)
+                .Drawn("chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255))
+                .Line(ChallengeText.Today).Badge(() => ChallengeText.DoneToday() + " / " + Challenges.DailyCount + "  ·  STREAK " + Challenges.StreakNow(), true));
+            AddTo(ch, new CardItem("THIS WEEK", "WEEKLY CHALLENGE", () => Fe.Push(new ChallengesScreen()))
+                .Drawn("clock", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
+                .Line(ChallengeText.Week).Badge(() => "+" + Challenges.WeeklyXp + " XP"));
 
             // ---- CAREER ----
             var career = Kit.Box(Page("CAREER"), "k-row");

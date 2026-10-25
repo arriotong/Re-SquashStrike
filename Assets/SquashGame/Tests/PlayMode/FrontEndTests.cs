@@ -182,7 +182,7 @@ namespace SquashGame.Tests
             Assert.That(fe.Match.Demo, Is.True);
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
-            foreach (var tab in new[] { "CAREER", "ACADEMY", "LOCKER" })
+            foreach (var tab in new[] { "CHALLENGES", "CAREER", "ACADEMY", "LOCKER" })
             {
                 yield return Tap(kb.eKey);
                 yield return Wait(0.4f, () => false);
