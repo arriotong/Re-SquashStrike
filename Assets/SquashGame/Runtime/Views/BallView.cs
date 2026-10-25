@@ -98,9 +98,10 @@ namespace SquashGame
             if (striker != _trailFor)
             {
                 _trailFor = striker;
-                Color c = striker == 0 ? Progression.Cosmetics.KitOf(Progression.KitDirector.You()).Trail : ClassicTrail;
+                int me = _runner.HumanIndex;
+                Color c = striker == me ? Progression.Cosmetics.KitOf(Progression.KitDirector.You()).Trail : ClassicTrail;
                 var tg = new Gradient();
-                tg.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) }, new[] { new GradientAlphaKey(striker == 0 && c != ClassicTrail ? 0.55f : 0.32f, 0f), new GradientAlphaKey(0f, 1f) });
+                tg.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) }, new[] { new GradientAlphaKey(striker == me && c != ClassicTrail ? 0.55f : 0.32f, 0f), new GradientAlphaKey(0f, 1f) });
                 _trail.colorGradient = tg;
                 TrailColour = c;
             }

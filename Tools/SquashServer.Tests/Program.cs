@@ -139,8 +139,9 @@ namespace SquashServer.Tests
             catch (Exception e) { _fail++; Console.WriteLine("  FAIL  " + name + ": " + e.Message); }
         }
 
-        static int Main()
+        static int Main(string[] args)
         {
+            if (args.Length >= 1 && args[0] == "--soak") return Soak.Run(args.Length >= 2 ? int.Parse(args[1]) : 20);
             Console.WriteLine("re:SquashStrike server tests");
 
             Test("Elo", () =>
@@ -364,9 +365,9 @@ namespace SquashServer.Tests
 
     static class Program_Server
     {
-        public static Microsoft.AspNetCore.Builder.WebApplication Start(int port, out Hub hub)
+        public static Microsoft.AspNetCore.Builder.WebApplication Start(int port, out Hub hub, HubOptions opt = null)
         {
-            var app = SquashServer.Program.Build(null, "http://127.0.0.1:" + port, null, null, out hub);
+            var app = SquashServer.Program.Build(null, "http://127.0.0.1:" + port, null, opt, out hub);
             app.StartAsync().Wait();
             return app;
         }

@@ -126,6 +126,15 @@ namespace SquashGame.Profile
         public int BestFloor, BestScore, Runs;
     }
 
+    /// <summary>P2-M8: who you are online - no account: a random id and secret made here the first time (the server
+    /// knows you by them), the name you play under, the server, and your rating as the server last said.</summary>
+    [Serializable]
+    public sealed class OnlineIdentity
+    {
+        public string Id = "", Secret = "", Name = "", Server = "";
+        public int Rating = 1000, Rank, Games;
+    }
+
     [Serializable]
     public sealed class PlayerProfile
     {
@@ -136,6 +145,7 @@ namespace SquashGame.Profile
         public CoachChoices Coach = new CoachChoices();
         public AcademyProgress Academy = new AcademyProgress();
         public Progress Progress = new Progress();
+        public OnlineIdentity Online = new OnlineIdentity();
     }
 
     public static class ProfileStore
@@ -195,6 +205,7 @@ namespace SquashGame.Profile
             if (p.Academy == null) p.Academy = new AcademyProgress();
             if (p.Academy.Done == null) p.Academy.Done = new List<string>();
             if (p.Progress == null) p.Progress = new Progress();
+            if (p.Online == null) p.Online = new OnlineIdentity();
             var g = p.Progress;
             if (g.Owned == null) g.Owned = new List<string>();
             if (g.Seen == null) g.Seen = new List<string>();

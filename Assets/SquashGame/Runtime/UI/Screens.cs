@@ -171,6 +171,14 @@ namespace SquashGame.UI
             Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (" + IntentSource.Keys("Appeal") + ") when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
             Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
             Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Classic: close behind the back wall, the ball's pace easy to read. High: looking down on the court. Low glass: close behind the glass. TV: the broadcast view from far up in the stands.");
+            // P2-M8: online
+            var me = Online.OnlineService.Me;
+            var name = new TextItem("Online name", me.Name, 16);
+            name.Field.RegisterValueChangedCallback(e => { var n = (e.newValue ?? "").Trim(); if (n.Length > 0) me.Name = n; });
+            Row(g, name, "The name other players see online. From your next connection.");
+            var server = new TextItem("Online server", string.IsNullOrWhiteSpace(me.Server) ? Online.OnlineService.DefaultServer : me.Server, 120);
+            server.Field.RegisterValueChangedCallback(e => { me.Server = (e.newValue ?? "").Trim(); Online.OnlineService.Disconnect(); });
+            Row(g, server, "Where online play connects: ws://localhost:5180/ws for a server on this PC, or the address it was deployed to (wss://...fly.dev/ws)."); 
             Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
             Kit.L(g, "Court sounds from real recordings on freesound.org, including \"je_racketballcourt.wav\" by cmusounddesign (CC BY 4.0).", "k-set-hint");
         }

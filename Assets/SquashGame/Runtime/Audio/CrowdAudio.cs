@@ -123,7 +123,7 @@ namespace SquashGame.Audio
 
         void OnStepped(IReadOnlyList<SimEvent> events)
         {
-            if (!Live) return;
+            if (!Live || Runner.CatchingUp) return;
             var mr = Runner as MatchRunner;
             int shots = mr != null && mr.Sim != null ? mr.Sim.Referee.Shots : 0;
             for (int i = 0; i < events.Count; i++)

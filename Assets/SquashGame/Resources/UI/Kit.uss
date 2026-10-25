@@ -969,3 +969,24 @@
 .gd-card-slot { font-size: 12px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .gd-card-tag { position: absolute; right: 14px; bottom: 12px; font-size: 13px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .gd-card-tag--new { color: rgb(200, 255, 61); }
+
+/* P2-M8 online */
+.hud-net {
+    position: absolute; right: 20px; top: 20px; padding: 4px 12px; border-radius: 6px;
+    font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.8); background-color: rgba(12, 13, 16, 0.80);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.hud-net--warn { color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); }
+.on-grid { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.on-panel { width: 520px; margin-right: 24px; margin-bottom: 16px; }
+.on-board { width: 620px; margin-right: 24px; }
+.on-state { font-size: 30px; color: rgb(255, 255, 255); margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); white-space: normal; }
+.on-time { font-size: 54px; color: rgb(200, 255, 61); margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.on-code { font-size: 64px; letter-spacing: 12px; color: rgb(200, 255, 61); margin-top: 8px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.on-rows { margin-bottom: 8px; }
+.on-row { flex-direction: row; padding: 4px 8px; border-radius: 4px; }
+.on-row--you { background-color: rgba(200, 255, 61, 0.18); }
+.on-row-rank { width: 44px; color: rgba(255, 255, 255, 0.6); font-size: 16px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.on-row-name { flex-grow: 1; color: rgb(255, 255, 255); font-size: 18px; }
+.on-row-wl { width: 90px; color: rgba(255, 255, 255, 0.6); font-size: 16px; -unity-text-align: middle-right; }
+.on-row-rating { width: 80px; color: rgb(200, 255, 61); font-size: 18px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

@@ -36,7 +36,9 @@ namespace SquashServer
         {
             var port = Environment.GetEnvironmentVariable("PORT") ?? "5180";
             var data = Environment.GetEnvironmentVariable("SQUASH_DATA") ?? "data/squash.json";
-            var app = Build(args, "http://0.0.0.0:" + port, data, null, out var hub);
+            var opt = new HubOptions();
+            if (int.TryParse(Environment.GetEnvironmentVariable("SQUASH_RANKED_GAMES"), out int g)) opt.RankedGamesToWin = Math.Clamp(g, 1, 3);   // the soak: shorter matches
+            var app = Build(args, "http://0.0.0.0:" + port, data, opt, out var hub);
             Console.WriteLine("re:SquashStrike server on port " + port + ", data " + data);
             app.Run();
             lock (hub.Gate) hub.Store.Save();

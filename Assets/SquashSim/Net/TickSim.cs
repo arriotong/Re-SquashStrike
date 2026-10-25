@@ -37,6 +37,8 @@ namespace SquashSim.Net
         public readonly List<ulong> Hashes = new List<ulong>();
         /// <summary>A rally just ended (its index and record).</summary>
         public event Action<int, RallyRec> RallyDone;
+        /// <summary>After each sim step, its place in the tick (0..3): the game draws and plays sounds from it.</summary>
+        public event Action<int> Stepped;
 
         public static double TickSeconds { get { return StepsPerTick * PhysicsConfig.Current.Sim.FixedDt; } }
         /// <summary>A tick in real seconds (the game runs at GameTuning.Speed.Game of real time).</summary>
@@ -84,6 +86,14 @@ namespace SquashSim.Net
 
         public bool CanStep { get { return !Over && _in[0].ContainsKey(Tick) && _in[1].ContainsKey(Tick); } }
 
+        /// <summary>How many ticks in a row could be simulated now (counted up to <paramref name="max"/>).</summary>
+        public int ReadyTicks(int max)
+        {
+            int n = 0;
+            while (n < max && _in[0].ContainsKey(Tick + n) && _in[1].ContainsKey(Tick + n)) n++;
+            return n;
+        }
+
         /// <summary>Simulate every tick both inputs are in for. How many ran.</summary>
         public int StepAll()
         {
@@ -119,6 +129,7 @@ namespace SquashSim.Net
                     Hashes.Add(rec.Hash);
                     RallyDone?.Invoke(Hashes.Count - 1, rec);
                 }
+                Stepped?.Invoke(s);
             }
             Tick = t + 1;
         }

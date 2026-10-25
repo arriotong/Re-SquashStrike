@@ -124,7 +124,7 @@ namespace SquashGame.Progression
             r.TicketWhy.Add(why);
         }
 
-        public const int WinsPerTicket = 3, DailyTickets = 2, GoalTickets = 2;
+        public const int WinsPerTicket = 3, DailyTickets = 2, GoalTickets = 2, RankedWinTickets = 1;
 
         /// <summary>P3-R2: XP from outside the usual sources (a challenge), with its line.</summary>
         public static void AddXp(RewardResult r, string line, int xp) { Xp(r, line, xp); }
@@ -215,6 +215,7 @@ namespace SquashGame.Progression
                     var w = GearDrops.Wallet;
                     w.WinsTowardTicket++;
                     if (w.WinsTowardTicket >= WinsPerTicket) { w.WinsTowardTicket = 0; Ticket(r, 1, 0, WinsPerTicket + " wins"); }
+                    if (f.Ranked) Ticket(r, RankedWinTickets, 0, "Ranked win");             // P2-M8
                 }
             }
             return End(r);

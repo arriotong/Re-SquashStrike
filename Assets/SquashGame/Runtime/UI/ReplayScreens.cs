@@ -40,7 +40,7 @@ namespace SquashGame.UI
             return "";
         }
 
-        public static string Mode(ReplayEntry e) { return e.Mode == "career" ? "CAREER" : e.Mode == "versus" ? "LOCAL VERSUS" : "QUICK MATCH"; }
+        public static string Mode(ReplayEntry e) { return e.Mode == "career" ? "CAREER" : e.Mode == "versus" ? "LOCAL VERSUS" : e.Mode == "ranked" ? "RANKED" : e.Mode == "online" ? "ONLINE" : "QUICK MATCH"; }
         public static string When(ReplayEntry e) { return e.When.ToString("d MMM  HH:mm").ToUpperInvariant(); }
         public static string Title(ReplayEntry e) { return e.Mode == "versus" ? e.P1 + " v " + e.P2 : "v " + e.Opponent; }
         public static string Seconds(float s) { int t = Mathf.Max(0, Mathf.RoundToInt(s)); return (t / 60) + ":" + (t % 60).ToString("00"); }

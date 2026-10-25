@@ -19,11 +19,19 @@
 // a real match (not the menus' demo) is recorded by a MatchRecorder: the
 // sim steps on the quantised copy of each person's input. When the
 // match ends - or is left - ReplayFinished hands the file on.
+//
+// P2-M8 online: BeginOnline plays a match against someone on another
+// machine. A LockstepSession steps the sim a tick (4 steps) at a time
+// from both players' inputs; this machine steers athlete Me. No pause
+// (Esc opens the menu over the match, which plays on), no slow motion,
+// no automatic reviews; neutral attributes; the session records it.
 // ===========================================================
 
 using System.Collections.Generic;
 using SquashSim;
+using SquashSim.Net;
 using SquashSim.Replays;
+using SquashGame.Online;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -58,6 +66,10 @@ namespace SquashGame
         public int StartPoints0, StartPoints1, StartGames0, StartGames1, StartServer = -1;
         /// <summary>P3-C1: every game starts at this score (the Gauntlet's head start).</summary>
         public int EachGame0, EachGame1;
+        /// <summary>P2-M8: an online match (ranked or not; the server's id for it); the opponent's kit as they wear it (JSON).</summary>
+        public bool Online, Ranked;
+        public long MatchId;
+        public string OppKit;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -105,6 +117,7 @@ namespace SquashGame
         /// <summary>Play the menus' demo: two AIs, on and on (a new match when one ends).</summary>
         public void BeginDemo()
         {
+            EndOnline(true);
             EndRecording(true);
             Settings = new MatchSettings { Opponent = "attacker", Difficulty = 0.42f, GamesToWin = 1, Scoring = "par", WarmUp = false };
             Input.UseDevices(null);
@@ -147,6 +160,7 @@ namespace SquashGame
         {
             _autopilot = brain != null ? new PersonStandIn(brain) : null;
             if (brain == null || Demo || InSetup) return;
+            if (OnlineMatch != null) { _autoIntent = new InputIntent(); return; }       // online: the session records it
             _autoIntent = new InputIntent();
             Recorder = new MatchRecorder(Sim, _setup, new[] { _autoIntent, Settings.TwoPlayer && Input2 != null ? Input2.Intent : null },
                                          Application.version, System.DateTime.Now.Ticks);
@@ -254,6 +268,7 @@ namespace SquashGame
         /// <summary>Start a match with these settings (from the setup panel, or a test).</summary>
         public void BeginMatch(MatchSettings s)
         {
+            EndOnline(true);
             EndRecording(true);
             Settings = s.Clone();
             if (!string.IsNullOrEmpty(Settings.Court)) Courts.CurrentId = Settings.Court;     // CourtView rebuilds on the next frame
@@ -288,6 +303,7 @@ namespace SquashGame
         /// <summary>Back to the pre-match panel.</summary>
         public void ReturnToSetup()
         {
+            EndOnline(true);
             EndRecording(true);
             InSetup = true;
             if (ReplayActive) StopReplay();
@@ -302,6 +318,7 @@ namespace SquashGame
 
         protected override IntentSource SourceFor(int i)
         {
+            if (OnlineMatch != null) return i == OnlineMatch.Me ? Input : null;
             if (i == 0) return Input;
             return i == 1 && Settings.TwoPlayer ? Input2 : null;
         }
@@ -309,6 +326,7 @@ namespace SquashGame
         protected override void OnDestroy()
         {
             if (Input2 != null) Input2.Dispose();
+            EndOnline(true);
             EndRecording(true);
             base.OnDestroy();
         }
@@ -389,6 +407,7 @@ namespace SquashGame
 
         protected override void Update()
         {
+            if (OnlineMatch != null) { OnlineUpdate(); return; }
             if (FramesActive) { base.Update(); return; }   // P2-M6: the replay theatre plays recorded frames; the demo waits
             if (InSetup) return;          // the panel is up: nothing moves (the views keep the last frame)
             if (Demo)
@@ -435,5 +454,111 @@ namespace SquashGame
 
         /// <summary>The same settings again (new opponent seed).</summary>
         public void RestartMatch() { BeginMatch(Settings); }
+
+        // ---------------- P2-M8 online ----------------
+
+        /// <summary>The online match playing (null: not online). This machine plays athlete OnlineMatch.Me.</summary>
+        public LockstepSession OnlineMatch { get; private set; }
+        public override int HumanIndex { get { return OnlineMatch != null ? OnlineMatch.Me : 0; } }
+        readonly InputIntent _still = new InputIntent();
+        double _sinceTick;
+        bool _onlinePublished;
+        ITransport _link;
+        /// <summary>Ticks in a row ready to run that count as catching up (no sounds for them).</summary>
+        public const int CatchUpTicks = 12;
+
+        /// <summary>Play the match the server started, over this link.</summary>
+        public void BeginOnline(MatchStartInfo info, ITransport link)
+        {
+            EndOnline(false);
+            EndRecording(true);
+            Settings = new MatchSettings
+            {
+                Online = true, Ranked = info.Ranked, MatchId = info.MatchId, GamesToWin = info.Setup.GamesToWin, Scoring = info.Setup.Scoring,
+                Court = Courts.Find(info.Court) != null ? info.Court : "show", P2Name = info.OppName, OppKit = info.OppKit,
+            };
+            Courts.CurrentId = Settings.Court;
+            Courts.CrowdFill = 1f;
+            Input.UseDevices(null);
+            if (Input2 != null) { Input2.Dispose(); Input2 = null; }
+            if (Sim != null) Sim.RallyEnded -= OnRallyEnded;
+            var s = new LockstepSession(info, link, Application.version, System.DateTime.Now.Ticks);
+            _link = link;
+            OnlineMatch = s;
+            OnlineService.Session = s;
+            _setup = info.Setup;
+            Sim = s.Sim;
+            Sim.RallyEnded += OnRallyEnded;
+            s.Core.Stepped += OnOnlineStep;
+            OpponentName = string.IsNullOrEmpty(info.OppName) ? "OPPONENT" : info.OppName.ToUpperInvariant();
+            Names[s.Me] = "YOU"; Names[s.Them] = OpponentName;
+            ClearDebugHistory();
+            Demo = false; InSetup = false; DeviceLost = null;
+            _onlinePublished = false; _sinceTick = 0; _replayRequested = false;
+            Clock.Resume();
+            Clock.TimeScale = GameSpeed;
+            Clock.Flush();
+            SnapViews();
+        }
+
+        void OnOnlineStep(int i) { AfterSimStep(i == 0); _sinceTick = 0; }
+
+        /// <summary>Done with the online match: a forfeit first if it is still on (<paramref name="leave"/>); the recording is handed on.</summary>
+        void EndOnline(bool leave)
+        {
+            var s = OnlineMatch;
+            if (s == null) return;
+            if (leave && !s.Finished) OnlineService.Leave();
+            PublishOnline();
+            s.Core.Stepped -= OnOnlineStep;
+            OnlineMatch = null;
+            if (OnlineService.Session == s) OnlineService.Session = null;
+            CatchingUp = false;
+            Clock.Resume();
+        }
+
+        void PublishOnline()
+        {
+            var s = OnlineMatch;
+            if (s == null || _onlinePublished) return;
+            _onlinePublished = true;
+            if (!s.Finished) s.Core.Close(false);                       // left part-way: retired
+            if (s.File.Rallies.Count == 0) return;
+            var d = DescribeReplay; if (d != null) d(s.File, this);
+            var h = ReplayFinished; if (h != null) h(s.File);
+        }
+
+        /// <summary>The online frame: input in, the link read, this client's input out for each tick due, every tick
+        /// both inputs are in for stepped, the view drawn between the last two ticks.</summary>
+        void OnlineUpdate()
+        {
+            var s = OnlineMatch;
+            float rawDt = Time.unscaledDeltaTime;
+            Input.Sample(rawDt);
+            if (Input.ConsumePause() && !UI.FrontEnd.BlocksGamePause) Clock.TogglePause();   // the menu only: the match plays on
+            OnlineService.Pump();
+            if (OnlineMatch != s) return;                                     // the link brought the match again (back after a drop)
+            if (_link != null && _link != OnlineService.Transport)            // a link of its own (tests): read here
+                while (_link.TryReceive(out var msg)) s.Handle(msg);
+            bool ready = Input.ConsumeReady();
+            if (ready && !Clock.Paused && Sim.Phase == MatchPhase.GameOver) s.Command(ReplayCommand.NextGame);
+            float dt = rawDt * (float)(Clock.TimeScale / GameSpeed);           // tests run it faster (SetTimeScale); play: 1
+            _sinceTick += dt;
+            if (!s.Finished)
+            {
+                CatchingUp = s.Core.ReadyTicks(CatchUpTicks) >= CatchUpTicks;
+                InputIntent live = Input.Intent;
+                if (Clock.Paused) { live.ClearEdges(); live = _still; }        // the menu is up: stand still
+                System.Action<InputIntent> fill = null;
+                if (_autopilot != null && _autoIntent != null) { live = _autoIntent; fill = x => _autopilot.Fill(x, Sim, s.Me, LockstepSession.TickSeconds); }
+                s.Pump(dt, live, IntentSource.Assisted, ShotLines, fill);
+                CatchingUp = false;
+            }
+            if (s.Finished && !_onlinePublished) PublishOnline();
+            ShowBetween((float)(_sinceTick / LockstepSession.TickRealSeconds));
+        }
+
+        /// <summary>Leave the online match for the menus (a forfeit if it is still on).</summary>
+        public void LeaveOnline() { EndOnline(true); }
     }
 }

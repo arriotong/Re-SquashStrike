@@ -6,8 +6,11 @@
 //                     the Locker Room's preview is on the court)
 //   the opponent      a Quick Match personality's signature kit, a
 //                     career pro's kit (MatchSettings.KitSeed), or
-//                     player 2's kit in Local Versus - then an away
-//                     shirt if it would look like yours
+//                     player 2's kit in Local Versus, or what an online
+//                     opponent wears (P2-M8) - then an away shirt if it
+//                     would look like yours
+//   online            you may be athlete 1: "you" is the runner's
+//                     HumanIndex, not athlete 0
 // ===========================================================
 
 using SquashGame.Profile;
@@ -42,8 +45,20 @@ namespace SquashGame.Progression
             int w = r.Sim.Score.MatchWinner;
             if (w < 0) return null;
             if (w != i) return "dejected";
-            if (i == 0 || r.Settings.TwoPlayer) { var c = Cosmetics.Find(i == 0 ? You().Celebration : "cel_fist"); return c != null && c.Pose != null ? c.Pose : "cel_fist"; }
+            int me = r.HumanIndex;
+            if (i == me || r.Settings.TwoPlayer) { var c = Cosmetics.Find(i == me ? You().Celebration : "cel_fist"); return c != null && c.Pose != null ? c.Pose : "cel_fist"; }
             return "cel_raise";
+        }
+
+        /// <summary>Athlete i's kit in this match: yours on your athlete, the opponent's on theirs.</summary>
+        public static Loadout For(MatchRunner r, int i) { return i == (r != null ? r.HumanIndex : 0) ? You() : Opponent(r); }
+
+        /// <summary>An online opponent's kit as they sent it (their Locker Room loadout; a signature kit if it does not read).</summary>
+        static Loadout Worn(string json)
+        {
+            try { var l = string.IsNullOrEmpty(json) ? null : UnityEngine.JsonUtility.FromJson<Loadout>(json); if (l != null && !string.IsNullOrEmpty(l.Shirt)) return l; }
+            catch (System.Exception) { }
+            return Cosmetics.Signature("attacker");
         }
 
         public static Loadout Opponent(MatchRunner r)
@@ -54,6 +69,7 @@ namespace SquashGame.Progression
             string mine = me.Shirt;
             if (_theirs != null && ReferenceEquals(s, _for) && mine == _mine) return _theirs;
             Loadout raw = s == null ? Cosmetics.Signature("attacker")
+                        : s.Online ? Worn(s.OppKit)
                         : s.TwoPlayer ? PlayerTwo
                         : s.KitSeed != 0 ? Cosmetics.AiKit(s.KitSeed)
                         : Cosmetics.Signature(s.Opponent);

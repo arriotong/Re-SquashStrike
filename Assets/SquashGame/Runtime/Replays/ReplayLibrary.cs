@@ -38,11 +38,12 @@ namespace SquashGame.Replays
         public int Rallies, Tagged;
         public bool Pinned;
         public string Fingerprint;
+        public int You;                  // P2-M8: the athlete you played (online: 0 or 1)
 
         public DateTime When { get { return new DateTime(Created); } }
         public bool SameVersion { get { return Fingerprint == SimFingerprint.Current.ToString("x16"); } }
-        /// <summary>"W", "L", "RET" from player 1's side.</summary>
-        public string Result { get { return Retired ? "RET" : Winner == 0 ? "W" : Winner == 1 ? "L" : "–"; } }
+        /// <summary>"W", "L", "RET" from your side.</summary>
+        public string Result { get { return Retired ? "RET" : Winner < 0 ? "–" : Winner == You ? "W" : "L"; } }
     }
 
     [Serializable]
@@ -109,7 +110,7 @@ namespace SquashGame.Replays
                 Id = id, Created = when.Ticks, Mode = f.Get("mode", "quick"), P1 = f.Get("p1", "YOU"), P2 = f.Get("p2", "OPPONENT"),
                 Opponent = f.Get("opponent", f.Get("p2")), Event = f.Get("event"), Round = f.Get("round"), CareerKey = f.Get("career"),
                 Scores = Highlights.GameScores(f), Winner = f.Winner, Retired = f.Retired, Rallies = f.Rallies.Count, Tagged = Highlights.Count(f),
-                Fingerprint = f.Fingerprint.ToString("x16"),
+                Fingerprint = f.Fingerprint.ToString("x16"), You = f.Get("you", "0") == "1" ? 1 : 0,
             };
             File.WriteAllBytes(PathOf(e), f.ToBytes());
             Index.Entries.Add(e);

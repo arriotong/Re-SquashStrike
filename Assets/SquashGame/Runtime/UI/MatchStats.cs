@@ -110,11 +110,12 @@ namespace SquashGame.UI
                 }
             }
             var sc = _sim.Score;
-            if (!sc.GameOver && sc.Points[0] == 0 && sc.Points[1] >= 5) _down05 = true;
+            int me = _runner.HumanIndex;                                // P2-M8: online you may be athlete 1
+            if (!sc.GameOver && sc.Points[me] == 0 && sc.Points[1 - me] >= 5) _down05 = true;
             if (ph != _lastPhase && (ph == MatchPhase.GameOver || ph == MatchPhase.MatchOver))
             {
                 Games.Add(new[] { sc.Points[0], sc.Points[1] });
-                if (_down05 && sc.GameWinner == 0) Players[0].CameBack = true;
+                if (_down05 && sc.GameWinner == me) Players[me].CameBack = true;
                 _down05 = false;
                 Players[0].GreatThisGame = 0; Players[1].GreatThisGame = 0;
             }
@@ -172,16 +173,17 @@ namespace SquashGame.UI
             }
             _lastStriker = -1; _lastTech = null; _server = -1;
         }
-            /// <summary>The match for player 0, summed up for the rewards and achievements (P2-M5).</summary>
+        /// <summary>The match for you (athlete 0; online the one you played), summed up for the rewards and achievements (P2-M5).</summary>
         public Progression.MatchFacts Facts(MatchRunner r)
         {
-            var me = Players[0];
-            var them = Players[1];
+            int h = r.HumanIndex;
+            var me = Players[h];
+            var them = Players[1 - h];
             var s = r.Settings;
             var last = r.Sim.LastOutcome;
             var f = new Progression.MatchFacts
             {
-                Won = r.Sim.Score.MatchWinner == 0, Career = s.Career, TwoPlayer = s.TwoPlayer,
+                Won = r.Sim.Score.MatchWinner == h, Career = s.Career, TwoPlayer = s.TwoPlayer, Online = s.Online, Ranked = s.Ranked,
                 AgainstHard = !s.TwoPlayer && s.Opponent != "wallbot" && s.Difficulty >= 0.42f - 1e-4f,
                 GamesToWin = s.GamesToWin,
                 RalliesWon = me.Rallies, Rallies = Players[0].Rallies + Players[1].Rallies, LongestRally = LongestRally,
@@ -194,9 +196,9 @@ namespace SquashGame.UI
                 Lets = me.Lets, Strokes = me.Strokes, NoLets = me.NoLets,
                 LetsAgainst = them.Lets, StrokesAgainst = them.Strokes, NoLetsAgainst = them.NoLets,
                 WonAfterLet = me.WonAfterLet,
-                MatchPointOnAStroke = r.Sim.Score.MatchWinner == 0 && last != null && last.Kind == RallyEnd.Stroke && last.Winner == 0,
+                MatchPointOnAStroke = r.Sim.Score.MatchWinner == h && last != null && last.Kind == RallyEnd.Stroke && last.Winner == h,
             };
-            foreach (var g in Games) f.Games.Add(new[] { g[0], g[1] });
+            foreach (var g in Games) f.Games.Add(new[] { g[h], g[1 - h] });
             return f;
         }
     }

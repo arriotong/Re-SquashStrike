@@ -30,6 +30,7 @@ namespace SquashGame.Progression
     public sealed class MatchFacts
     {
         public bool Won, Career, TwoPlayer;
+        public bool Online, Ranked;            // P2-M8
         public bool AgainstHard;               // Quick Match on Hard (or harder)
         public int GamesToWin;
         public List<int[]> Games = new List<int[]>();   // [you, them] per finished game

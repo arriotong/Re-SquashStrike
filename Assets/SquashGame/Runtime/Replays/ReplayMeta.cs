@@ -22,10 +22,12 @@ namespace SquashGame.Replays
         public static void Describe(ReplayFile f, MatchRunner r)
         {
             var s = r.Settings;
-            f.Meta[Mode] = s.Career ? "career" : s.TwoPlayer ? "versus" : "quick";
+            f.Meta[Mode] = s.Online ? (s.Ranked ? "ranked" : "online") : s.Career ? "career" : s.TwoPlayer ? "versus" : "quick";
+            f.Meta["you"] = r.HumanIndex.ToString();                        // P2-M8: online you may be athlete 1
             f.Meta[P1] = r.Names[0];
             f.Meta[P2] = r.Names[1];
-            if (s.TwoPlayer) f.Meta[Opponent] = "Player 2";
+            if (s.Online) f.Meta[Opponent] = string.IsNullOrEmpty(s.P2Name) ? "Online" : s.P2Name;
+            else if (s.TwoPlayer) f.Meta[Opponent] = "Player 2";
             else if (s.Opponent == "wallbot") f.Meta[Opponent] = "Wall-bot";
             else
             {
@@ -40,8 +42,8 @@ namespace SquashGame.Replays
                 int opp = c.NextOpponent();
                 if (opp >= 0) f.Meta[Opponent] = c.NameOf(opp);
             }
-            f.Meta[Kit0] = JsonUtility.ToJson(KitDirector.You());
-            f.Meta[Kit1] = JsonUtility.ToJson(KitDirector.Opponent(r));
+            f.Meta[Kit0] = JsonUtility.ToJson(KitDirector.For(r, 0));
+            f.Meta[Kit1] = JsonUtility.ToJson(KitDirector.For(r, 1));
         }
 
         /// <summary>A kit as it was worn in the replay (null: not recorded).</summary>

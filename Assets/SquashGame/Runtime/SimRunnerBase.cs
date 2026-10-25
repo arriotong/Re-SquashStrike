@@ -179,6 +179,8 @@ namespace SquashGame
         public readonly List<SimEvent> RecentEvents = new List<SimEvent>();
         public const int RecentEventMax = 24;
         public SimEvent LastImpact { get; private set; }
+        /// <summary>P2-M8: stepping through a lot of play at once (back after a dropped connection): no sounds for it.</summary>
+        public bool CatchingUp { get; protected set; }
         public SimEvent LastRacketContact { get; private set; }
         public string LastFirstWall { get; private set; }
         bool _awaitingFirstWall;
@@ -385,8 +387,15 @@ namespace SquashGame
 
         void OnFixedStep(double dt)
         {
-            _prev = _curr;
             SimStep(dt);
+            AfterSimStep(true);
+        }
+
+        /// <summary>What follows a sim step: the snapshots, the review history, strokes, the trail, the events.
+        /// <paramref name="movePrev"/>: this step starts a new interpolation span (online: only a tick's first step).</summary>
+        protected void AfterSimStep(bool movePrev)
+        {
+            if (movePrev) _prev = _curr;
             _curr = RenderSnapshot.Capture(Ball, Athletes);
             _history[_historyHead] = _curr;
             _historyHead = (_historyHead + 1) % HistorySteps;
@@ -438,6 +447,9 @@ namespace SquashGame
             var handler = Stepped;
             if (handler != null) handler(events);
         }
+
+        /// <summary>P2-M8 online: draw between the last two ticks (the sim steps a tick at a time there).</summary>
+        protected void ShowBetween(float alpha) { View = RenderSnapshot.Lerp(_prev, _curr, Interpolate ? Mathf.Clamp01(alpha) : 1f); }
 
         /// <summary>Show the current state with no interpolation (after a reset or teleport).</summary>
         protected void SnapViews()

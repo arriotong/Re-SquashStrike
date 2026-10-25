@@ -44,6 +44,8 @@ namespace SquashGame
         int _lastGames = -1;
         // PR5
         readonly Label _ball = new Label(), _rally = new Label(), _introNames = new Label(), _introSub = new Label();
+        readonly Label _net = new Label();                       // P2-M8: ping, input delay; waiting / reconnecting
+        public string NetText { get { return _net.style.display == DisplayStyle.Flex ? _net.text : null; } }
         readonly VisualElement _intro = new VisualElement();
         MatchSimulation _introFor;
         float _introLeft;
@@ -112,6 +114,7 @@ namespace SquashGame
             _let.Add(letWord); _let.Add(_letKey); _let.style.display = DisplayStyle.None; Add(_let);
             _ball.AddToClassList("hud-ball"); Add(_ball);
             _rally.AddToClassList("hud-rally"); Add(_rally);
+            _net.AddToClassList("hud-net"); _net.pickingMode = PickingMode.Ignore; Add(_net);
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
             _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
@@ -176,12 +179,12 @@ namespace SquashGame
                 {
                     // P2-M7: the decision big, why in plain words, who gets the point
                     banner = UI.CallWords.Decision(o);
-                    sub = UI.CallWords.Reason(o, names, r.LastCallStriker, twoPlayer ? -1 : r.HumanIndex) + "   ·   " + point + "V  review";
+                    sub = UI.CallWords.Reason(o, names, r.LastCallStriker, twoPlayer ? -1 : r.HumanIndex) + "   ·   " + point + (r.OnlineMatch != null ? "" : "V  review");
                 }
                 else
                 {
                     banner = o.Reason;
-                    sub = point + "V  replay";
+                    sub = point + (r.OnlineMatch != null ? "" : "V  replay");
                 }
             }
             if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused)
@@ -217,6 +220,7 @@ namespace SquashGame
             if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
             _banner.style.fontSize = 40 * CallTextScale;
             LetChip(r, m, twoPlayer);
+            NetChip(r);
             Broadcast(r, m, s, names);
         }
 
@@ -246,6 +250,22 @@ namespace SquashGame
             }
             _intro.style.display = intro ? DisplayStyle.Flex : DisplayStyle.None;
             _intro.EnableInClassList("hud-intro--in", intro && _introLeft < 3.4f && _introLeft > 0.3f);
+        }
+
+        /// <summary>P2-M8: online, top right: the ping and the input delay; a word when the other's input is late or the link is down.</summary>
+        void NetChip(MatchRunner r)
+        {
+            var s = r.OnlineMatch;
+            string t = null;
+            if (s != null && !s.Finished)
+            {
+                bool down = Online.OnlineService.State != Online.NetState.Online;
+                double ping = Online.OnlineService.Ping;
+                t = down ? "RECONNECTING..." : s.Resuming ? "CATCHING UP..." : s.WaitingSeconds > 0.15 ? "WAITING FOR OPPONENT" :
+                    (ping >= 0 ? UI.OnlineText.Ms(ping) : "--") + "  ·  DELAY " + s.Delay;
+                _net.EnableInClassList("hud-net--warn", down || s.WaitingSeconds > 0.15);
+            }
+            Show(_net, t);
         }
 
         /// <summary>LET? over the local striker while asking would be granted; held a moment after it stops being so.</summary>

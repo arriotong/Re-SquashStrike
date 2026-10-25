@@ -178,6 +178,7 @@ namespace SquashGame.Audio
 
         void OnStepped(IReadOnlyList<SimEvent> events)
         {
+            if (Runner.CatchingUp) return;                      // P2-M8: catching up after a dropped link
             for (int i = 0; i < events.Count; i++)
             {
                 SimEvent e = events[i];

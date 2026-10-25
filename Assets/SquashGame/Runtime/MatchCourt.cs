@@ -48,9 +48,8 @@ namespace SquashGame
                 athlete.transform.SetParent(transform, false);
                 athlete.Build(Runner, i, Palette, colours[i]);
                 // P2-M5: dressed - you in your loadout, the opponent in theirs (Progression.KitDirector)
-                if (i == 0) athlete.KitSource = Progression.KitDirector.You;
-                else athlete.KitSource = () => Progression.KitDirector.Opponent(Runner);
                 int who = i;
+                athlete.KitSource = () => Progression.KitDirector.For(Runner, who);          // online you may be athlete 1
                 athlete.MomentSource = () => Progression.KitDirector.Moment(Runner, who);   // the celebration
             }
 

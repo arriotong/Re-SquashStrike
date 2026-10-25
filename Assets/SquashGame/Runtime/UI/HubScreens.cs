@@ -3,8 +3,8 @@
 // UI redesign U2: the main menu hub, the versus screen, the pause panel
 // and the full-time screen.
 //
-//   MainMenuScreen    after 2K's tile hub: PLAY / CAREER / ACADEMY /
-//                     LOCKER tabs, at most 4 cards in view, the slow-
+//   MainMenuScreen    after 2K's tile hub: PLAY / ONLINE / CAREER /
+//                     ACADEMY / LOCKER tabs, at most 4 cards in view, the slow-
 //                     motion rally behind; Settings (Y) and Quit (X)
 //   QuickMatchScreen  a versus screen: you (live, in your kit) on the
 //                     left, the opponent (live, in their kit) on the
@@ -16,6 +16,7 @@
 // ===========================================================
 
 using System.Collections.Generic;
+using SquashGame.Online;
 using SquashGame.Profile;
 using SquashGame.Progression;
 using SquashSim;
@@ -40,6 +41,7 @@ namespace SquashGame.UI
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
             { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
+            { "ONLINE QUICK MATCH", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
         protected override void Compose()
@@ -55,6 +57,21 @@ namespace SquashGame.UI
                 .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
             AddTo(play, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen())).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
                 .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS"));
+
+            // ---- ONLINE (P2-M8): against people, through the relay server ----
+            var on = Kit.Box(Page("ONLINE"), "k-row");
+            AddTo(on, new CardItem("RANKED", "ONLINE", () => Fe.Push(new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
+                .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
+                .Line(() => "Climb the ladder  ·  best of 3  ·  a ticket for every win").Badge(OnlineText.Rating, true));
+            AddTo(on, new CardItem("ONLINE QUICK MATCH", "ONLINE", () => Fe.Push(new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
+                .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
+                .Line("The next player looking  ·  unrated").Badge(OnlineText.Status));
+            AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => Fe.Push(new PrivateRoomScreen()))
+                .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(200, 255, 61, 255))
+                .Line("Play a friend with a 5-letter code"));
+            AddTo(on, new CardItem("LEADERBOARD", "ONLINE", () => Fe.Push(new LeaderboardScreen()))
+                .Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
+                .Line(() => "Playing as " + OnlineService.Me.Name));
 
             // ---- CHALLENGES (P3-R2): today's three, the week's one, the streak ----
             var ch = Kit.Box(Page("CHALLENGES"), "k-row");
@@ -322,6 +339,19 @@ namespace SquashGame.UI
             if (st != null)
                 Kit.L(Content, "Rallies won " + st.Players[0].Rallies + "–" + st.Players[1].Rallies + "   ·   Winners " + st.Players[0].Winners + "   ·   Errors " + st.Players[0].Errors, "k-side-stats");
             bool career = m.Settings.Career, gauntlet = m.Settings.Gauntlet;
+            if (m.Settings.Online)
+            {
+                // P2-M8: online the match plays on behind this; leaving is a forfeit
+                Kit.L(Content, "The match carries on while this is open - your player stands still.", "k-side-stats");
+                Add(new ActionItem("Back to the match", () => Fe.Resume(), "▶"));
+                Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
+                Add(new ActionItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
+                Add(new ActionItem("Leave: forfeit the match", () => Fe.Push(new ConfirmScreen(m.Settings.Ranked ? "Forfeit? It counts as a ranked loss." : "Leave the match? It counts as a loss.", () => Fe.QuitToMenu()))));
+                var op = new PromptBar(); op.AddToClassList("k-prompts--side");
+                op.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back to the match"));
+                Root.Add(op);
+                return;
+            }
             Add(new ActionItem("Resume", () => Fe.Resume(), "▶"));
             if (!career && !gauntlet) Add(new ActionItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
             Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
@@ -353,7 +383,8 @@ namespace SquashGame.UI
         {
             var m = Fe.Match;
             int w = m.Sim.Score.MatchWinner;
-            if (w < 0) w = m.Sim.Score.GameWinner;
+            if (m.OnlineMatch != null && m.OnlineMatch.EndReason != "") w = m.OnlineMatch.Winner;      // P2-M8: a forfeit, a desync
+            else if (w < 0) w = m.Sim.Score.GameWinner;
             return w < 0 ? "Match over" : (m.Settings.TwoPlayer ? m.Names[w] + " wins" : (w == m.HumanIndex ? "You win" : m.Names[w] + " wins"));
         }
 
@@ -365,11 +396,14 @@ namespace SquashGame.UI
             double tier = 0;
             var career = CareerStore.Current;
             if (m.Settings.Career && career != null && career.S.Current != null) tier = Rewards.TierFactor[SquashSim.Career.Tour.Band(career.S.Current.Tier)];
-            Reward = Rewards.Match(st.Facts(m), tier);
+            var online = m.OnlineMatch;
+            bool playedOut = online == null || online.EndReason == "";
+            Reward = playedOut ? Rewards.Match(st.Facts(m), tier) : null;           // online: a forfeit or a desync earns nothing
 
             // the primary first (it has the focus): Rematch, or Continue in a career
             bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
-            if (m.Settings.Career) AddTo(Root, new PrimaryItem("Continue", () => Career.Record(Fe, won, false)));
+            if (m.Settings.Online) OnlineButtons(m);
+            else if (m.Settings.Career) AddTo(Root, new PrimaryItem("Continue", () => Career.Record(Fe, won, false)));
             else if (m.Settings.Gauntlet) AddTo(Root, new PrimaryItem("Continue", () => GauntletFlow.AfterMatch(Fe, won, Margin())));
             else if (m.Settings.Scenario != null) AddTo(Root, new PrimaryItem("Continue", () => ScenarioFlow.AfterMatch(Fe, st.Facts(m))));
             else AddTo(Root, new PrimaryItem("Rematch", () => Fe.Restart()));
@@ -397,10 +431,11 @@ namespace SquashGame.UI
             High(hrow, st.LongestRally.ToString(), "LONGEST RALLY");
             High(hrow, (System.Math.Max(a.TopPace, b.TopPace) * 3.6).ToString("0"), "TOP KM/H");
             High(hrow, a.GreatHits.ToString(), "GREAT HITS");
-            right.Add(new RewardStrip(Reward));
-            Fe.ToastAchievements(Reward);
+            if (m.Settings.Online) OnlinePanel(right, m);
+            if (Reward != null) { right.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }
 
-            if (m.Settings.Scenario != null)
+            if (m.Settings.Online) { }
+            else if (m.Settings.Scenario != null)
             {
                 var more = Kit.Box(Root, "k-ft-more");
                 AddTo(more, new ActionItem("Try again", () => Fe.Restart()));
@@ -424,6 +459,53 @@ namespace SquashGame.UI
             }
         }
 
+        // ---- P2-M8: online ----
+        Label _rating, _rematch;
+        PrimaryItem _again;
+
+        void OnlineButtons(MatchRunner m)
+        {
+            bool room = !m.Settings.Ranked && m.OnlineMatch != null && !OnlineService.OpponentLeftRoom && FromRoom;
+            if (room)
+            {
+                _again = AddTo(Root, new PrimaryItem("Rematch", () => { OnlineService.Rematch(); _asked = true; }));
+                _again.Enabled = () => !_asked && !OnlineService.OpponentLeftRoom;
+            }
+            else
+            {
+                var kind = m.Settings.Ranked ? SquashSim.Net.QueueKind.Ranked : SquashSim.Net.QueueKind.Quick;
+                AddTo(Root, new PrimaryItem(m.Settings.Ranked ? "Play ranked again" : "Play again", () => { OnlineService.Leave(); Fe.QuitToMenu(); Fe.Push(new OnlineSearchScreen(kind)); }));
+            }
+            var more = Kit.Box(Root, "k-ft-more");
+            AddTo(more, new ActionItem("Main menu", () => { OnlineService.Leave(); Fe.QuitToMenu(); }));
+        }
+        bool _asked;
+        /// <summary>The match came from a private room (the server keeps the room for a rematch).</summary>
+        static bool FromRoom { get { return Online.OnlineService.InRoom; } }
+
+        void OnlinePanel(VisualElement right, MatchRunner m)
+        {
+            var p = Kit.Panel(right, m.Settings.Ranked ? "RANKED" : "ONLINE");
+            string ending = OnlineText.Ending(m);
+            if (ending != "") Kit.L(p, ending, "k-cr-note");
+            _rating = Kit.L(p, "", "on-state");
+            _rematch = Kit.L(p, "", "k-cr-note");
+            UpdateOnline();
+        }
+
+        void UpdateOnline()
+        {
+            if (_rating == null) return;
+            var e = OnlineService.LastEnd;
+            if (Fe.Match.Settings.Ranked)
+                _rating.text = e == null ? "Rating: waiting for the server" : !e.Rated ? "Unrated  ·  " + e.RatingAfter
+                    : "Rating " + e.RatingBefore + "  →  " + e.RatingAfter + "   (" + (e.RatingAfter >= e.RatingBefore ? "+" : "") + (e.RatingAfter - e.RatingBefore) + ")";
+            else _rating.text = "v " + Fe.Match.OpponentName + "  ·  unrated";
+            _rematch.text = OnlineService.OpponentLeftRoom ? "Your opponent has left." : _asked ? "Waiting for them to say yes..." : OnlineService.OpponentWantsRematch ? "They want a rematch!" : "";
+        }
+
+        public override void Tick(float dt) { UpdateOnline(); }
+
         static void High(VisualElement parent, string value, string name)
         {
             var b = Kit.Box(parent, "k-ft-high");
@@ -440,7 +522,8 @@ namespace SquashGame.UI
 
         public override void Back()
         {
-            if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
+            if (Fe.Match.Settings.Online) { OnlineService.Leave(); Fe.QuitToMenu(); }
+            else if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
             else if (Fe.Match.Settings.Gauntlet) GauntletFlow.AfterMatch(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, Margin());
             else if (Fe.Match.Settings.Scenario != null) ScenarioFlow.AfterMatch(Fe, Fe.Stats.Facts(Fe.Match));
             else Fe.QuitToMenu();

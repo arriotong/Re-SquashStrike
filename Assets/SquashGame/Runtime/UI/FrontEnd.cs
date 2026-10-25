@@ -296,6 +296,15 @@ namespace SquashGame.UI
             ClearEdges();
         }
 
+        /// <summary>P2-M8: the online match the server started (from the lobby screens, a rematch, or back after a drop).</summary>
+        public void StartOnline(SquashSim.Net.MatchStartInfo info, SquashSim.Net.ITransport link = null)
+        {
+            Clear();
+            Stats.Reset();
+            Match.BeginOnline(info, link ?? Online.OnlineService.Transport);
+            ClearEdges();
+        }
+
         public void Restart()
         {
             Clear();
@@ -409,6 +418,13 @@ namespace SquashGame.UI
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             _input.Sample(dt);
+            // P2-M8: the online link; a match the server started begins here
+            Online.OnlineService.Pump();
+            if (Online.OnlineService.Pending != null)
+            {
+                if (Match != null && !(Top is TheatrePlayerScreen) && !(Top is MatchReplayScreen)) StartOnline(Online.OnlineService.TakePending());
+                else if (Match == null) { Online.OnlineService.TakePending(); Online.OnlineService.Leave(); }
+            }
             TickToasts(dt);
             if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else if (Academy != null) AcademyScreens(dt); else PracticeScreens();
             if (Top != null)
@@ -439,9 +455,11 @@ namespace SquashGame.UI
         {
             var m = Match;
             bool playing = !m.Demo && !m.InSetup && m.Sim != null;
+            bool onlineOver = m.OnlineMatch != null && m.OnlineMatch.Finished;
+            if (onlineOver && Top is PauseScreen) Resume();                        // online: the match ended under the menu
             if (playing && Top == null && m.Clock.Paused && m.DeviceLost == null && !m.ReplayActive) Push(new PauseScreen());
             if (Top is PauseScreen && !m.Clock.Paused) Pop();                      // resumed with Esc / Start
-            if (playing && Top == null && m.Sim.Phase == MatchPhase.MatchOver)
+            if (playing && Top == null && (m.Sim.Phase == MatchPhase.MatchOver || onlineOver))
             {
                 _matchOverFor += dt;
                 if (_matchOverFor > 1.6f) Push(new PostMatchScreen());
