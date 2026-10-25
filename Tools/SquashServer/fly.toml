@@ -1,0 +1,34 @@
+# re:SquashStrike relay server on Fly.io. Deploy from the repository root:
+#   fly deploy . --config Tools/SquashServer/fly.toml --dockerfile Tools/SquashServer/Dockerfile
+# (see Tools/SquashServer/README.md for the first launch)
+
+app = "re-squashstrike"            # app names are global: change it if this one is taken
+primary_region = "lhr"
+
+[env]
+  PORT = "8080"
+  SQUASH_DATA = "/data/squash.json"
+
+# the players and ratings live on a volume (fly volumes create squash_data --size 1)
+[[mounts]]
+  source = "squash_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # matches are live on this one machine: keep it running
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -7,7 +7,8 @@
 //   client -> server   Hello, CreateRoom, JoinRoom, Queue, Cancel,
 //                      Rematch, Leave, Ping
 //   server -> client   Welcome, RoomCreated, MatchStart, MatchEnd,
-//                      OpponentLeft, Error, Pong
+//                      OpponentLeft, Error, Pong, Frames (every frame
+//                      so far, to a client back after a dropped link)
 //   relayed (client -> server -> the other client)
 //                      Input (one tick's frame), Command, RallyHash
 // ===========================================================
@@ -22,7 +23,7 @@ namespace SquashSim.Net
     public enum Msg : byte
     {
         Hello = 1, Welcome, CreateRoom, RoomCreated, JoinRoom, Queue, Cancel, MatchStart, Input, Command, RallyHash,
-        Ping, Pong, MatchEnd, Error, Leave, Rematch, OpponentLeft,
+        Ping, Pong, MatchEnd, Error, Leave, Rematch, OpponentLeft, Frames,
     }
 
     public enum QueueKind : byte { Quick = 0, Ranked = 1 }
@@ -37,6 +38,7 @@ namespace SquashSim.Net
         public string Court = "show";
         public string OppName = "", OppKit = "";
         public int OppRating, MyRating;
+        public bool Resuming;                // back after a dropped connection (Frames follow)
         public ReplaySetup Setup = new ReplaySetup { TwoPlayer = true, GamesToWin = 2, Scoring = "par" };
     }
 
@@ -46,6 +48,15 @@ namespace SquashSim.Net
         public string Reason = "";           // "", "forfeit", "desync", "left"
         public int RatingBefore, RatingAfter;
         public bool Rated;
+    }
+
+    /// <summary>A run of one player's frames from a tick on (Last: the run ends there).</summary>
+    public sealed class FramesInfo
+    {
+        public int Slot;
+        public long Start;
+        public bool Last;
+        public QFrame[] Frames = new QFrame[0];
     }
 
     public static class NetMessages
@@ -85,10 +96,16 @@ namespace SquashSim.Net
                 w.Write(m.OppName ?? ""); w.Write(m.OppKit ?? ""); w.Write(m.OppRating); w.Write(m.MyRating);
                 var s = m.Setup;
                 w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Lets);
+                w.Write(m.Resuming);
             });
         }
 
         public static byte[] Input(long tick, QFrame f) { return Build(Msg.Input, w => { w.Write(tick); WriteFrame(w, f); }); }
+        public static byte[] Frames(int slot, long start, bool last, QFrame[] frames, int from = 0, int count = -1)
+        {
+            if (count < 0) count = frames.Length - from;
+            return Build(Msg.Frames, w => { w.Write(slot); w.Write(start); w.Write(last); w.Write(count); for (int i = 0; i < count; i++) WriteFrame(w, frames[from + i]); });
+        }
         public static byte[] Command(long tick, ReplayCommand kind) { return Build(Msg.Command, w => { w.Write(tick); w.Write((byte)kind); }); }
         public static byte[] RallyHash(int rally, ulong hash, int winner) { return Build(Msg.RallyHash, w => { w.Write(rally); w.Write(hash); w.Write(winner); }); }
 
@@ -128,7 +145,17 @@ namespace SquashSim.Net
                 OppName = r.ReadString(), OppKit = r.ReadString(), OppRating = r.ReadInt32(), MyRating = r.ReadInt32(),
             };
             i.Setup = new ReplaySetup { TwoPlayer = true, Scoring = r.ReadString(), GamesToWin = r.ReadInt32(), BotSeed = r.ReadUInt32(), FirstServer = r.ReadInt32(), Lets = r.ReadBoolean() };
+            i.Resuming = r.ReadBoolean();
             return i;
+        }
+
+        public static FramesInfo ReadFrames(byte[] m)
+        {
+            var r = Read(m);
+            var f = new FramesInfo { Slot = r.ReadInt32(), Start = r.ReadInt64(), Last = r.ReadBoolean() };
+            f.Frames = new QFrame[r.ReadInt32()];
+            for (int i = 0; i < f.Frames.Length; i++) f.Frames[i] = ReadFrame(r);
+            return f;
         }
 
         public static MatchEndInfo ReadMatchEnd(byte[] m)
