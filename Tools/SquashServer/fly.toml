@@ -3,7 +3,7 @@
 # (see Tools/SquashServer/README.md for the first launch)
 
 app = "re-squashstrike"            # app names are global: change it if this one is taken
-primary_region = "lhr"
+primary_region = "syd"
 
 [env]
   PORT = "8080"

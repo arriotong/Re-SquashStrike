@@ -47,7 +47,7 @@ Do this once, from the repository root. It needs your own Fly.io account; `fly a
 ```bash
 fly auth login
 fly apps create re-squashstrike          # or another free name (then change `app` in fly.toml)
-fly volumes create squash_data --size 1 --region lhr -a re-squashstrike
+fly volumes create squash_data --size 1 --region syd -a re-squashstrike
 fly deploy . --config Tools/SquashServer/fly.toml --dockerfile Tools/SquashServer/Dockerfile
 ```
 
