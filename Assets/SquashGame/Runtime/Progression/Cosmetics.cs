@@ -199,6 +199,12 @@ namespace SquashGame.Progression
             Ch(Slot.Strings, "ch_strings_neon", "Neon", 0xff2bd6, 0xff2bd6, "A weekly challenge (7th)");
             Ch(Slot.Title, "ch_title_weekly", "Weekly Warrior", 0xffffff, 0xffffff, "A weekly challenge (8th)");
 
+            // ---- P3-R5: the Gauntlet's milestones ----
+            Ch(Slot.Banner, "gt_banner_iron", "Iron", 0x1c1e22, 0x8a9099, "Gauntlet: clear floor 5");
+            Ch(Slot.Shoes, "gt_shoes_ember", "Ember", 0xff4a1c, 0xff4a1c, "Gauntlet: clear floor 10");
+            Ch(Slot.Frame, "gt_frame_storm", "Storm", 0x3ba3ff, 0x3ba3ff, "Gauntlet: clear floor 15");
+            Ch(Slot.Title, "gt_title_unbroken", "Unbroken", 0xffffff, 0xffffff, "Gauntlet: clear floor 20");
+
             // ---- P3-R4: the sponsors' shirts (sign a deal in the career) ----
             foreach (var (id, brand, a, b) in new[] {
                 ("sp_kestrel", "Kestrel Sportswear", 0x1f5a35u, 0xffb83bu), ("sp_halden", "Halden Rackets", 0xf2f2eeu, 0xd8382fu),

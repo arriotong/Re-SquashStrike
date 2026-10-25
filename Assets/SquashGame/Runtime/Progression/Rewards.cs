@@ -246,6 +246,20 @@ namespace SquashGame.Progression
             return End(r);
         }
 
+        public const int GauntletFloorXp = 40, GauntletFloorStepXp = 10;
+        public static readonly int[] GauntletMilestones = { 5, 10, 15, 20 };
+        public static readonly string[] GauntletItems = { "gt_banner_iron", "gt_shoes_ember", "gt_frame_storm", "gt_title_unbroken" };
+
+        /// <summary>P3-R5: a Gauntlet floor won (the floors won so far, this one included).</summary>
+        public static RewardResult GauntletFloor(int floorsWon)
+        {
+            var r = Begin();
+            Xp(r, "Gauntlet floor " + floorsWon, GauntletFloorXp + GauntletFloorStepXp * floorsWon);
+            for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) Grant(r, GauntletItems[i]);
+            Challenges.Record(r, new ChallengeEvent { GauntletFloor = floorsWon });
+            return End(r);
+        }
+
         /// <summary>A career event finished: how far you got, the ranking, rivals, streaks.</summary>
         public static RewardResult CareerEvent(SquashSim.Career.CareerSession c, SquashSim.Career.EventState e)
         {

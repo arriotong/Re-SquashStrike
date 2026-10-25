@@ -131,7 +131,7 @@ namespace SquashGame.Progression
         }
 
         /// <summary>The new modes register themselves here as they arrive (R5 the Gauntlet, R6 Scenarios).</summary>
-        public static readonly HashSet<string> Modes = new HashSet<string>();
+        public static readonly HashSet<string> Modes = new HashSet<string> { "gauntlet" };
         static bool ModeOpen(string id) { return Modes.Contains(id); }
 
         public static ChallengeDef Find(string id) { foreach (var d in All()) if (d.Id == id) return d; return null; }

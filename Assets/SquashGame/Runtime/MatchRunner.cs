@@ -48,6 +48,8 @@ namespace SquashGame
         public string Court;
         /// <summary>How full the stands are, 0..1 (0 = full: the default).</summary>
         public float CrowdFill;
+        /// <summary>P3-R5: a Gauntlet floor (the post-match and pause screens go back to the run).</summary>
+        public bool Gauntlet;
         /// <summary>P3-C1: your athlete's attributes (null = neutral: the game as it always was).</summary>
         public SquashSim.AthleteAttributes Attributes;
         /// <summary>P3-C1: start part-way (Scenarios): points [you, them], games [you, them], who serves (-1: the usual).</summary>

@@ -39,7 +39,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "TODAY", 3 }, { "THIS WEEK", 0 },
+            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 },
         };
 
         protected override void Compose()
@@ -64,6 +64,10 @@ namespace SquashGame.UI
             AddTo(ch, new CardItem("THIS WEEK", "WEEKLY CHALLENGE", () => Fe.Push(new ChallengesScreen()))
                 .Drawn("clock", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
                 .Line(ChallengeText.Week).Badge(() => "+" + Challenges.WeeklyXp + " XP"));
+
+            AddTo(ch, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()))
+                .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
+                .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
 
             // ---- CAREER ----
             var career = Kit.Box(Page("CAREER"), "k-row");
@@ -309,12 +313,13 @@ namespace SquashGame.UI
             var st = Fe.Stats;
             if (st != null)
                 Kit.L(Content, "Rallies won " + st.Players[0].Rallies + "–" + st.Players[1].Rallies + "   ·   Winners " + st.Players[0].Winners + "   ·   Errors " + st.Players[0].Errors, "k-side-stats");
-            bool career = m.Settings.Career;
+            bool career = m.Settings.Career, gauntlet = m.Settings.Gauntlet;
             Add(new ActionItem("Resume", () => Fe.Resume(), "▶"));
-            if (!career) Add(new ActionItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
+            if (!career && !gauntlet) Add(new ActionItem("Restart match", () => Fe.Push(new ConfirmScreen("Restart the match?", () => Fe.Restart()))));
             Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ActionItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
             if (career) Add(new ActionItem("Quit: retire from the match", () => Fe.Push(new RetireScreen())));
+            else if (gauntlet) Add(new ActionItem("Quit: forfeit the floor", () => Fe.Push(new ConfirmScreen("Forfeit this floor? It costs a life.", () => GauntletFlow.AfterMatch(Fe, false, 0)))));
             else Add(new ActionItem("Quit to menu", () => Fe.Push(new ConfirmScreen("Leave the match?", () => Fe.QuitToMenu()))));
             var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
             prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Resume"));
@@ -357,6 +362,7 @@ namespace SquashGame.UI
             // the primary first (it has the focus): Rematch, or Continue in a career
             bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
             if (m.Settings.Career) AddTo(Root, new PrimaryItem("Continue", () => Career.Record(Fe, won, false)));
+            else if (m.Settings.Gauntlet) AddTo(Root, new PrimaryItem("Continue", () => GauntletFlow.AfterMatch(Fe, won, Margin())));
             else AddTo(Root, new PrimaryItem("Rematch", () => Fe.Restart()));
 
             // the score line: names, games, each game as a chip
@@ -385,7 +391,7 @@ namespace SquashGame.UI
             right.Add(new RewardStrip(Reward));
             Fe.ToastAchievements(Reward);
 
-            if (!m.Settings.Career)
+            if (!m.Settings.Career && !m.Settings.Gauntlet)
             {
                 var more = Kit.Box(Root, "k-ft-more");                        // bottom left, opposite the primary
                 AddTo(more, new ActionItem("Change settings", () =>
@@ -411,9 +417,17 @@ namespace SquashGame.UI
             Kit.L(b, name, "k-ft-high-n");
         }
 
+        /// <summary>The last game's winning margin (the Gauntlet scores it).</summary>
+        int Margin()
+        {
+            var g = Fe.Stats != null && Fe.Stats.Games.Count > 0 ? Fe.Stats.Games[Fe.Stats.Games.Count - 1] : null;
+            return g == null ? 0 : System.Math.Abs(g[0] - g[1]);
+        }
+
         public override void Back()
         {
             if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
+            else if (Fe.Match.Settings.Gauntlet) GauntletFlow.AfterMatch(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, Margin());
             else Fe.QuitToMenu();
         }
     }

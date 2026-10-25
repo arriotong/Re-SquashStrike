@@ -913,3 +913,11 @@
 .k-cr-sp-line { font-size: 14px; margin-top: 4px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-cr-sp-clause { font-size: 13px; margin-top: 10px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-cr-res-goals { width: 1000px; margin-top: 10px; }
+
+/* ---- P3-R5: the Gauntlet ---- */
+.gt-grid { flex-direction: row; align-items: flex-start; margin-top: 10px; }
+.gt-main { width: 900px; margin-right: 20px; }
+.gt-side { width: 620px; }
+.gt-big { font-size: 34px; margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gt-text { font-size: 16px; margin: 4px 0; white-space: normal; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gt-hearts { font-size: 40px; color: rgb(255, 90, 74); margin-bottom: 4px; }

@@ -181,6 +181,48 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P3_Hub_Challenges.png");
         }
 
+        /// <summary>P3-R5: the Gauntlet - start a run, a floor won (perks), a floor's match from the screen.</summary>
+        [UnityTest]
+        public IEnumerator TheGauntletRunsFloorByFloor()
+        {
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "GAUNTLET");
+            Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P3_Gauntlet_Start.png");
+            yield return Tap(kb.enterKey);                                            // Start a run
+            yield return null;
+            Assert.That(GauntletFlow.Run, Is.Not.Null);
+            Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P3_Gauntlet_Floor.png");
+
+            GauntletFlow.AfterMatch(fe, true, 6);                                    // as if floor 1 was won 11-5
+            yield return null; yield return null;
+            Assert.That(GauntletFlow.Run.AwaitingPerk, Is.True);
+            Assert.That(ProfileStore.Current.Progress.Xp, Is.GreaterThan(0), "the floor's XP");
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "P3_Gauntlet_Perks.png");
+            yield return Tap(kb.enterKey);                                            // the first perk
+            yield return null;
+            Assert.That(GauntletFlow.Run.Perks.Count, Is.EqualTo(1));
+            Assert.That(GauntletFlow.Run.Floor, Is.EqualTo(2));
+
+            var settings = GauntletFlow.Settings(GauntletFlow.Run);
+            Assert.That(settings.Gauntlet, Is.True); Assert.That(settings.GamesToWin, Is.EqualTo(1));
+            Assert.That(settings.Difficulty, Is.EqualTo((float)SquashSim.Modes.Gauntlet.Difficulty(2)));
+            GauntletFlow.Play(fe);
+            yield return Wait(2f, () => fe.Match != null && fe.Match.Settings.Gauntlet);
+            Assert.That(fe.Match.Settings.Gauntlet, Is.True, "floor 2 is under way");
+            GauntletFlow.Abandon();
+        }
+
         [UnityTest]
         public IEnumerator AWonMatchGivesXpALevelAndAchievements()
         {
