@@ -37,7 +37,7 @@ namespace SquashGame.UI
                 case NetState.Online: return "ONLINE" + (OnlineService.Ping >= 0 ? "  ·  " + Ms(OnlineService.Ping) : "");
                 case NetState.Connecting: return "CONNECTING";
                 case NetState.Failed: return "OFFLINE";
-                default: return "NOT CONNECTED";
+                default: return "READY";                          // 2026-10-25 playtest: "NOT CONNECTED" read as "the servers are down"
             }
         }
 
@@ -58,6 +58,51 @@ namespace SquashGame.UI
                 default: return "";
             }
         }
+    }
+
+    // ---------------- your name (asked once) ----------------
+
+    /// <summary>The first visit to ONLINE: the name other players will see, then on to where you were going.</summary>
+    public sealed class OnlineNameScreen : GameScreen
+    {
+        readonly System.Func<MenuScreen> _then;
+        TextItem _name;
+        Label _note;
+        public OnlineNameScreen(System.Func<MenuScreen> then) { _then = then; }
+        protected override string Kicker { get { return "ONLINE"; } }
+        protected override string Title { get { return "Your name online"; } }
+        protected override bool ShowChip { get { return false; } }
+
+        /// <summary>Open <paramref name="screen"/>, asking for a name first if it hasn't been picked.</summary>
+        public static void Go(FrontEnd fe, System.Func<MenuScreen> screen)
+        {
+            if (OnlineService.Me.NameChosen) fe.Push(screen());
+            else fe.Push(new OnlineNameScreen(screen));
+        }
+
+        protected override void Compose()
+        {
+            var p = Kit.Panel(Content, "WHO ARE YOU?"); p.AddToClassList("on-panel");
+            _name = AddTo(p, new TextItem("Name", OnlineService.Me.Name, Hub_MaxName));
+            _note = Kit.L(p, "Other players see this in rooms, matches and the leaderboard. Change it any time in Settings > Gameplay.", "k-cr-note");
+            AddTo(Root, new PrimaryItem("Play as this name", Done));
+        }
+
+        const int Hub_MaxName = 16;
+
+        void Done()
+        {
+            _name.StopTyping();
+            var n = _name.Value.Trim();
+            if (n.Length == 0) { _note.text = "Type a name first."; return; }
+            var me = OnlineService.Me;
+            me.Name = n; me.NameChosen = true;
+            ProfileStore.Save();
+            OnlineService.Disconnect();                           // the next hello carries the new name
+            Fe.Replace(_then());
+        }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
     }
 
     // ---------------- the queue ----------------

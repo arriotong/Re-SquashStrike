@@ -107,6 +107,9 @@ namespace SquashSim.Career
         }
 
         public const double MaxStrength = 0.62;
+        /// <summary>How fast strength falls down the list (top unchanged). 1.6 made the lower tours a wall: a median player
+        /// never got past Challenger 6 in a season (2026-10-25 playtest); 2.2 softens the bottom half.</summary>
+        public const double RosterCurve = 2.2;
 
         /// <summary>The roster, best first (index 0 = strongest).</summary>
         public static List<Pro> Generate(uint seed)
@@ -118,7 +121,7 @@ namespace SquashSim.Career
             for (int i = 0; i < n; i++)
             {
                 double u = 1.0 - (double)i / (n - 1);
-                double s = 0.60 * Math.Pow(u, 1.6) + rng.Between(-0.015, 0.015);
+                double s = 0.60 * Math.Pow(u, RosterCurve) + rng.Between(-0.015, 0.015);
                 var p = NewPro(rng, usedLast, i + 1);
                 p.Strength = Clamp(s);
                 p.Age = 19 + rng.Range(17);

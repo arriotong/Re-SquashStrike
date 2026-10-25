@@ -44,6 +44,8 @@ namespace SquashGame.UI
             Root.Insert(0, TopBar);
             var fade = Kit.Box(null, "k-fade"); Root.Insert(0, fade);          // the bottom darkens so cards read over the court
             fade.style.backgroundImage = new StyleBackground(Palette.BottomFade());
+            var top = Kit.Box(null, "k-fade-top"); Root.Insert(0, top);         // and the top, so the tabs read over a court sign
+            top.style.backgroundImage = new StyleBackground(Palette.TopFade());
             Content.AddToClassList("k-content");
 
             Compose();

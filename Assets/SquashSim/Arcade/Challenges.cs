@@ -74,8 +74,8 @@ namespace SquashSim.Arcade
                 case ArcadeMode.Precision: c.Balls = 20; c.RingRadius = new[] { 0.65, 0.50, 0.38 }[level]; break;
                 case ArcadeMode.ShotMenu:
                     c.Balls = 20;
-                    c.Shots = level == 0 ? new[] { "drive", "lob", "drop" }
-                            : level == 1 ? new[] { "drive", "lob", "drop", "kill" }
+                    c.Shots = level == 0 ? new[] { "drive", "kill", "lob" }                 // the drop only on Hard (see DefaultStars)
+                            : level == 1 ? new[] { "drive", "lob", "kill", "boast" }
                             : new[] { "drive", "lob", "drop", "kill", "boast" };
                     break;
                 case ArcadeMode.Streak: c.RingRadius = new[] { 0.60, 0.48, 0.38 }[level]; break;
@@ -95,8 +95,10 @@ namespace SquashSim.Arcade
                 // MatchBench --arcade, 20 plays each (2026-10-18): 1 star ~ 70% of the bot's median, 2 ~ its top quarter, 3 ~ its best.
                 case ArcadeMode.TimeAttack: return new[] { new[] { 2200, 3700, 4600 }, new[] { 1800, 2850, 3900 }, new[] { 1250, 2400, 2700 } }[level];
                 case ArcadeMode.Precision: return new[] { new[] { 3700, 5900, 7700 }, new[] { 2600, 5350, 6250 }, new[] { 2250, 4100, 4850 } }[level];
-                case ArcadeMode.ShotMenu: return new[] { new[] { 850, 1425, 2150 }, new[] { 1100, 1900, 2850 }, new[] { 1300, 2100, 2800 } }[level];
-                case ArcadeMode.Streak: return new[] { new[] { 2, 4, 7 }, new[] { 2, 4, 6 }, new[] { 2, 3, 6 } }[level];
+                // 2026-10-25 playtest: Easy called the drop (the hardest shot to land) and scored below Hard - the drop is
+                // Hard's now, the stars re-measured; Streak Hard's first star was above the median player
+                case ArcadeMode.ShotMenu: return new[] { new[] { 1600, 2600, 4300 }, new[] { 1600, 2850, 4350 }, new[] { 1200, 2100, 2500 } }[level];
+                case ArcadeMode.Streak: return new[] { new[] { 2, 4, 7 }, new[] { 2, 4, 6 }, new[] { 1, 3, 6 } }[level];
                 case ArcadeMode.ServeTargets: return new[] { new[] { 1700, 3100, 4750 }, new[] { 1600, 3000, 4450 }, new[] { 1550, 2850, 4300 } }[level];
                 case ArcadeMode.WallRally: return new[] { new[] { 300, 975, 1650 }, new[] { 250, 600, 1450 }, new[] { 150, 450, 1350 } }[level];
             }
@@ -125,8 +127,8 @@ namespace SquashSim.Arcade
             _all.Add(Drill(DrillKind.Length, "Length", "Drive it deep: the first bounce behind the service box.", 20, 0, new[] { 7, 12, 15 }));
             _all.Add(Drill(DrillKind.Drop, "Drop", "Soft and short: the first bounce in front of the short line (aim low, no charge).", 20, 0, new[] { 7, 10, 13 }));
             _all.Add(Drill(DrillKind.BoastDrive, "Boast-Drive", "Boast, then drive, then boast... as the feeder alternates.", 20, 0, new[] { 8, 13, 16 }));
-            _all.Add(Drill(DrillKind.Ghosting, "Ghosting", "No ball: touch the lit spots and come back to the T. 45 seconds.", 0, 45, new[] { 12, 18, 24 }));
-            _all.Add(Drill(DrillKind.NickHunt, "Nick Hunt", "Kill it into the join of the wall and the floor.", 20, 0, new[] { 1, 2, 4 }));
+            _all.Add(Drill(DrillKind.Ghosting, "Ghosting", "No ball: touch the lit spots and come back to the T. 45 seconds.", 0, 45, new[] { 16, 22, 26 }));          // 2026-10-25: 24 was below the bot's median
+            _all.Add(Drill(DrillKind.NickHunt, "Nick Hunt", "Kill it into the join of the wall and the floor.", 20, 0, new[] { 1, 3, 4 }));          // with near-nicks (ArcadeSession.NearNick)
             return _all;
         }
 

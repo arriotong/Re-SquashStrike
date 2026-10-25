@@ -16,11 +16,16 @@ namespace SquashSim.Career
         /// <summary>Your match against a pro: return won, the score, rallies won / played.</summary>
         public delegate bool PlayMatch(CareerSession c, Pro opp, out string score, out int ralliesWon, out int ralliesTotal);
 
-        /// <summary>Months until the season's end (or count months), entering the best event each time.</summary>
-        public static void Months(CareerSession c, int months, PlayMatch play, Action<CareerSession, EventState> afterEvent = null)
+        /// <summary>Months until the season's end (or count months), entering the best event each time.
+        /// <paramref name="spendPoints"/>: spend training points as they come, round the attributes (as a player would).</summary>
+        public static void Months(CareerSession c, int months, PlayMatch play, Action<CareerSession, EventState> afterEvent = null, bool spendPoints = false)
         {
+            int next = 0;
             for (int k = 0; k < months; k++)
             {
+                if (spendPoints)
+                    for (int guard = 0; c.S.TrainingPoints > 0 && guard < 16; guard++)
+                        c.Spend(CareerSession.AttributeNames[next++ % CareerSession.AttributeNames.Length]);
                 Tier best = (Tier)(-1);
                 foreach (var t in c.EventsNow()) if (c.CanEnter(t) && (int)t > (int)best) best = t;
                 if ((int)best < 0) { c.Skip(); afterEvent?.Invoke(c, null); continue; }

@@ -28,13 +28,13 @@ namespace SquashGame
         /// <summary>Practice: a long "where that went" trail (else the short one).</summary>
         public static bool LongTrail;
         /// <summary>PR2: the drawn ball's smallest diameter on screen, in pixels at 1080p.</summary>
-        public const float MinPixels = 5f;
+        public const float MinPixels = 8f;                 // 2026-10-25 playtest: 5 px was lost against the show court wall
         /// <summary>PR2: the last drawn diameter in metres (for tests).</summary>
         public float DrawnDiameter { get; private set; }
 
         // Cold: a real ball's near-black (it was a dark blue, lost against the show court's blue front wall).
         static readonly Color Cold = new Color(0.07f, 0.07f, 0.09f);
-        static readonly Color Hot = new Color(0.95f, 0.35f, 0.15f);
+        static readonly Color Hot = new Color(1f, 0.62f, 0.18f);         // a bright orange: it stands off the blue front wall (was a dark red)
 
         SimRunnerBase _runner;
         int _trailFor = -2;
@@ -55,7 +55,7 @@ namespace SquashGame
             var rimMat = palette.UnlitColor(new Color(0.96f, 0.95f, 0.88f));
             rimMat.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Front);
             _rim = Greybox.Primitive(PrimitiveType.Sphere, "BallRim", _ball, rimMat, false).transform;
-            _rim.localScale = Vector3.one * 1.22f;
+            _rim.localScale = Vector3.one * 1.4f;                // a rim that still shows at the ball's smallest size
 
             _shadowMat = palette.Clear(new Color(0, 0, 0, 0.4f));
             var shadow = Greybox.MeshObject("BallShadow", transform, Greybox.Disc(0.5f, 20), _shadowMat);

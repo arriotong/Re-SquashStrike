@@ -101,9 +101,12 @@ namespace SquashGame.UI
     public sealed class SlotIcon : VisualElement
     {
         readonly Slot _slot;
-        public SlotIcon(Slot slot)
+        readonly Color _tint;
+        /// <param name="tint">The shape's colour (Gear Drops draws an item in its own colour); white by default.</param>
+        public SlotIcon(Slot slot, Color? tint = null)
         {
             _slot = slot;
+            _tint = tint ?? new Color(1, 1, 1, 0.85f);
             AddToClassList("k-slot-icon");
             pickingMode = PickingMode.Ignore;
             generateVisualContent += Paint;
@@ -113,9 +116,10 @@ namespace SquashGame.UI
         {
             var r = contentRect; if (r.width < 4) return;
             var p = mgc.painter2D;
-            float w = r.width, h = r.height;
-            p.strokeColor = new Color(1, 1, 1, 0.85f); p.fillColor = new Color(1, 1, 1, 0.85f); p.lineWidth = 2.5f;
-            Vector2 V(float x, float y) { return new Vector2(x * w, y * h); }
+            float w = Mathf.Min(r.width, r.height), h = w;                   // square, centred (a wide card would stretch it)
+            float ox = (r.width - w) * 0.5f, oy = (r.height - h) * 0.5f;
+            p.strokeColor = _tint; p.fillColor = _tint; float k = Mathf.Max(1f, w / 40f); p.lineWidth = 2.5f * k;
+            Vector2 V(float x, float y) { return new Vector2(ox + x * w, oy + y * h); }
             void Poly(params Vector2[] pts) { p.BeginPath(); p.MoveTo(pts[0]); for (int i = 1; i < pts.Length; i++) p.LineTo(pts[i]); p.ClosePath(); p.Fill(); }
             switch (_slot)
             {
@@ -127,15 +131,15 @@ namespace SquashGame.UI
                 case Slot.Body: p.BeginPath(); p.Arc(V(.5f, .22f), w * 0.12f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); Poly(V(.3f, .4f), V(.7f, .4f), V(.62f, .9f), V(.38f, .9f)); break;
                 case Slot.Hair: p.BeginPath(); p.Arc(V(.5f, .55f), w * 0.32f, Angle.Degrees(180), Angle.Degrees(360)); p.ClosePath(); p.Fill(); break;
                 case Slot.HairColour: for (int i = 0; i < 3; i++) { p.BeginPath(); p.Arc(V(.28f + i * .22f, .5f), w * 0.1f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); } break;
-                case Slot.Headband: p.lineWidth = 6f; p.BeginPath(); p.Arc(V(.5f, .62f), w * 0.34f, Angle.Degrees(200), Angle.Degrees(340)); p.Stroke(); break;
-                case Slot.Wristband: p.lineWidth = 7f; p.BeginPath(); p.Arc(V(.5f, .5f), w * 0.26f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); break;
-                case Slot.Frame: p.lineWidth = 4f; p.BeginPath(); p.Arc(V(.5f, .36f), w * 0.24f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.5f, .6f)); p.LineTo(V(.5f, .92f)); p.Stroke(); break;
-                case Slot.Grip: p.lineWidth = 9f; p.BeginPath(); p.MoveTo(V(.5f, .12f)); p.LineTo(V(.5f, .88f)); p.Stroke(); p.strokeColor = new Color(0, 0, 0, 0.6f); p.lineWidth = 2f; for (int i = 0; i < 5; i++) { p.BeginPath(); p.MoveTo(V(.42f, .2f + i * .14f)); p.LineTo(V(.58f, .28f + i * .14f)); p.Stroke(); } break;
-                case Slot.Strings: p.lineWidth = 1.5f; for (int i = 0; i < 5; i++) { float t = .22f + i * .14f; p.BeginPath(); p.MoveTo(V(t, .16f)); p.LineTo(V(t, .84f)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.16f, t)); p.LineTo(V(.84f, t)); p.Stroke(); } break;
+                case Slot.Headband: p.lineWidth = 6f * k; p.BeginPath(); p.Arc(V(.5f, .62f), w * 0.34f, Angle.Degrees(200), Angle.Degrees(340)); p.Stroke(); break;
+                case Slot.Wristband: p.lineWidth = 7f * k; p.BeginPath(); p.Arc(V(.5f, .5f), w * 0.26f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); break;
+                case Slot.Frame: p.lineWidth = 4f * k; p.BeginPath(); p.Arc(V(.5f, .36f), w * 0.24f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.5f, .6f)); p.LineTo(V(.5f, .92f)); p.Stroke(); break;
+                case Slot.Grip: p.lineWidth = 9f * k; p.BeginPath(); p.MoveTo(V(.5f, .12f)); p.LineTo(V(.5f, .88f)); p.Stroke(); p.strokeColor = new Color(0, 0, 0, 0.6f); p.lineWidth = 2f * k; for (int i = 0; i < 5; i++) { p.BeginPath(); p.MoveTo(V(.42f, .2f + i * .14f)); p.LineTo(V(.58f, .28f + i * .14f)); p.Stroke(); } break;
+                case Slot.Strings: p.lineWidth = 1.5f * k; for (int i = 0; i < 5; i++) { float t = .22f + i * .14f; p.BeginPath(); p.MoveTo(V(t, .16f)); p.LineTo(V(t, .84f)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.16f, t)); p.LineTo(V(.84f, t)); p.Stroke(); } break;
                 case Slot.Celebration: Poly(V(.5f, .08f), V(.6f, .38f), V(.92f, .38f), V(.66f, .56f), V(.76f, .88f), V(.5f, .68f), V(.24f, .88f), V(.34f, .56f), V(.08f, .38f), V(.4f, .38f)); break;
                 case Slot.Banner: Poly(V(.15f, .2f), V(.85f, .2f), V(.85f, .8f), V(.15f, .8f)); break;
-                case Slot.Trail: p.lineWidth = 5f; p.BeginPath(); p.MoveTo(V(.12f, .82f)); p.LineTo(V(.6f, .4f)); p.Stroke(); p.BeginPath(); p.Arc(V(.7f, .3f), w * 0.13f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); break;
-                default: p.lineWidth = 3f; for (int i = 0; i < 3; i++) { p.BeginPath(); p.MoveTo(V(.18f, .3f + i * .2f)); p.LineTo(V(i == 2 ? .6f : .82f, .3f + i * .2f)); p.Stroke(); } break;
+                case Slot.Trail: p.lineWidth = 5f * k; p.BeginPath(); p.MoveTo(V(.12f, .82f)); p.LineTo(V(.6f, .4f)); p.Stroke(); p.BeginPath(); p.Arc(V(.7f, .3f), w * 0.13f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); break;
+                default: p.lineWidth = 3f * k; for (int i = 0; i < 3; i++) { p.BeginPath(); p.MoveTo(V(.18f, .3f + i * .2f)); p.LineTo(V(i == 2 ? .6f : .82f, .3f + i * .2f)); p.Stroke(); } break;
             }
         }
     }

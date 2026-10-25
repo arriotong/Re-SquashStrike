@@ -50,7 +50,7 @@ namespace SquashGame.Profile
     [Serializable]
     public sealed class MenuChoices
     {
-        public int Opponent = 0, Difficulty = 1, Length = 2, Scoring = 0;
+        public int Opponent = 0, Difficulty = 0, Length = 0, Scoring = 0;      // 2026-10-25 playtest: a first match is one game on Easy
         public int VsLength = 2, VsScoring = 0;
         public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.All index
     }
@@ -133,6 +133,8 @@ namespace SquashGame.Profile
     {
         public string Id = "", Secret = "", Name = "", Server = "";
         public int Rating = 1000, Rank, Games;
+        /// <summary>The name was picked (asked once, on the first visit to ONLINE).</summary>
+        public bool NameChosen;
     }
 
     [Serializable]

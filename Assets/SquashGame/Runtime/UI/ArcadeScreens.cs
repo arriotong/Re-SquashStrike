@@ -61,16 +61,16 @@ namespace SquashGame.UI
         };
         public static Color Bg(int i) { return Bgs[((i % Bgs.Length) + Bgs.Length) % Bgs.Length]; }
 
-        /// <summary>"60 s  ·  rings 1.1 m  ·  feed 22 m/s  ·  both sides".</summary>
+        /// <summary>"60 s  ·  big rings  ·  gentle feed  ·  both sides" (2026-10-25 playtest: words, not metres and m/s).</summary>
         public static string Rules(Challenge c)
         {
             var parts = new System.Collections.Generic.List<string>();
             if (c.Seconds > 0) parts.Add(c.Seconds.ToString("0") + " s");
             if (c.Balls > 0) parts.Add(c.Balls + " balls");
             if (c.Mode == ArcadeMode.TimeAttack || c.Mode == ArcadeMode.Precision || c.Mode == ArcadeMode.Streak || c.Mode == ArcadeMode.WallRally)
-                parts.Add("rings " + (c.RingRadius * 2).ToString("0.0") + " m");
+                parts.Add(c.RingRadius >= 0.5 ? "big rings" : c.RingRadius >= 0.4 ? "medium rings" : "small rings");
             if (c.Mode == ArcadeMode.ShotMenu && c.Shots != null) parts.Add(string.Join(" / ", c.Shots));
-            if (c.Mode != ArcadeMode.ServeTargets && c.Drill != DrillKind.Ghosting) parts.Add("feed " + c.FeedSpeed.ToString("0") + " m/s");
+            if (c.Mode != ArcadeMode.ServeTargets && c.Drill != DrillKind.Ghosting) parts.Add(c.FeedSpeed <= 23 ? "gentle feed" : c.FeedSpeed <= 26 ? "quicker feed" : "fast feed");
             if (c.Mode != ArcadeMode.ServeTargets && c.Drill != DrillKind.Ghosting) parts.Add(c.FeedBothSides ? "both sides" : "forehand side");
             return string.Join("  ·  ", parts);
         }

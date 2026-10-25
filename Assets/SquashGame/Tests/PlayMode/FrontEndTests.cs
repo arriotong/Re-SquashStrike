@@ -188,7 +188,7 @@ namespace SquashGame.Tests
                 yield return Wait(0.4f, () => false);
                 yield return CaptureUI(fe, "U2_Hub_" + tab + ".png");
             }
-            for (int i = 0; i < 3; i++) yield return Tap(kb.qKey);
+            for (int i = 0; i < 5; i++) yield return Tap(kb.qKey);                // LOCKER back to PLAY (ONLINE added a tab)
             yield return Tap(kb.enterKey);
             yield return CaptureUI(fe, "P2M1_UI_3_QuickMatch.png");
             yield return Tap(kb.escapeKey);

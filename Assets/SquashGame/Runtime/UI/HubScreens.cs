@@ -41,7 +41,7 @@ namespace SquashGame.UI
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
             { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
-            { "ONLINE QUICK MATCH", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
+            { "QUICK PLAY", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
         protected override void Compose()
@@ -60,13 +60,13 @@ namespace SquashGame.UI
 
             // ---- ONLINE (P2-M8): against people, through the relay server ----
             var on = Kit.Box(Page("ONLINE"), "k-row");
-            AddTo(on, new CardItem("RANKED", "ONLINE", () => Fe.Push(new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
+            AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
                 .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
                 .Line(() => "Climb the ladder  ·  best of 3  ·  a ticket for every win").Badge(OnlineText.Rating, true));
-            AddTo(on, new CardItem("ONLINE QUICK MATCH", "ONLINE", () => Fe.Push(new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
+            AddTo(on, new CardItem("QUICK PLAY", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
                 .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
                 .Line("The next player looking  ·  unrated").Badge(OnlineText.Status));
-            AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => Fe.Push(new PrivateRoomScreen()))
+            AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new PrivateRoomScreen()))
                 .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(200, 255, 61, 255))
                 .Line("Play a friend with a 5-letter code"));
             AddTo(on, new CardItem("LEADERBOARD", "ONLINE", () => Fe.Push(new LeaderboardScreen()))
@@ -220,6 +220,7 @@ namespace SquashGame.UI
                 AddTo(mid, new SelectorItem("Difficulty", MatchChoices.DifficultyLabels, () => C.Difficulty, v => C.Difficulty = v, true)).Enabled = () => C.Opponent != 4;
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.Scoring, v => C.Scoring = v));
+                Kit.L(mid, ScoringHint, "k-vs-hint");
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
                 AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
             }
@@ -227,6 +228,7 @@ namespace SquashGame.UI
             {
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.VsLength, v => C.VsLength = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.VsScoring, v => C.VsScoring = v));
+                Kit.L(mid, ScoringHint, "k-vs-hint");
                 AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.All[v].Id; }));
                 AddTo(mid, new SelectorItem("Controls", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
@@ -244,6 +246,9 @@ namespace SquashGame.UI
         }
 
         static string[] Short(string[] l) { return new[] { "1 game", "Best of 3", "Best of 5" }; }
+
+        /// <summary>2026-10-25 playtest: the two scorings in plain words, under the choice.</summary>
+        public const string ScoringHint = "PAR-11: every rally scores, first to 11.  English: only the server scores, first to 9.";
 
         protected override void SetPrompts()
         {
@@ -424,7 +429,13 @@ namespace SquashGame.UI
                 .Row("Winners", a.Winners, b.Winners)
                 .Row("Errors", a.Errors, b.Errors, null, null, true)
                 .Row("Great hits", a.GreatHits, b.GreatHits)
-                .Row("Top pace", a.TopPace * 3.6, b.TopPace * 3.6, (a.TopPace * 3.6).ToString("0"), (b.TopPace * 3.6).ToString("0")));
+                .Row("Top pace", a.TopPace * 3.6, b.TopPace * 3.6, (a.TopPace * 3.6).ToString("0"), (b.TopPace * 3.6).ToString("0"))
+                // 2026-10-25 playtest: the panel was half empty - the shot mix and the T as well
+                .Row("Aces", a.Aces, b.Aces)
+                .Row("Nicks", a.Nicks, b.Nicks)
+                .Row("Drops and kills", a.Drops + a.Kills, b.Drops + b.Kills)
+                .Row("Boasts", a.Boasts, b.Boasts)
+                .Row("Time on the T", a.TSeconds, b.TSeconds, a.TSeconds.ToString("0") + " s", b.TSeconds.ToString("0") + " s"));
             var right = Kit.Box(cols, "k-ft-right");
             var hi = Kit.Panel(right, "HIGHLIGHTS");
             var hrow = Kit.Box(hi, "k-ft-highs");

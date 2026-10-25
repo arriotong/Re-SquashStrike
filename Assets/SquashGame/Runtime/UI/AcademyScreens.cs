@@ -245,14 +245,51 @@ namespace SquashGame.UI
         /// <summary>The game waits while the panel is up (the quiz itself; not the failed panel).</summary>
         protected virtual bool PausesGame { get { return true; } }
         public override void OnShow() { base.OnShow(); if (PausesGame) Fe.Runner.Clock.Pause(); }
-        public override void OnHide() { if (PausesGame) Fe.Runner.Clock.Resume(); }
-
         /// <summary>"CALL 2 OF 3  ·  1 RIGHT" (top right of the panel).</summary>
         protected void Count()
         {
             var s = Fe.Academy.Session;
             Kit.L(Root, "CALL " + Mathf.Min(s.QuizAsked, 3) + " OF 3   ·   " + s.QuizRight + " RIGHT", "k-quiz-count");
         }
+
+        // 2026-10-25 playtest: the ball is a few pixels by the tin from the back of the court - a ring shows where to look
+        VisualElement _ring;
+        /// <summary>The ring round the ball is on screen (tests).</summary>
+        public bool RingShown { get { return _ring != null && _ring.style.display == DisplayStyle.Flex; } }
+
+        protected void RingTheBall()
+        {
+            _ring = new VisualElement(); _ring.AddToClassList("k-quiz-ring"); _ring.pickingMode = PickingMode.Ignore;
+            _ring.style.display = DisplayStyle.None;
+            // styled here: the panel's root (where it lives, above the menus) doesn't have the kit's style sheet
+            var s = _ring.style;
+            s.position = Position.Absolute; s.width = 72; s.height = 72;
+            s.borderTopLeftRadius = s.borderTopRightRadius = s.borderBottomLeftRadius = s.borderBottomRightRadius = 36;
+            s.borderTopWidth = s.borderBottomWidth = s.borderLeftWidth = s.borderRightWidth = 4;
+            var lime = new Color(0.78f, 1f, 0.24f);
+            s.borderTopColor = s.borderBottomColor = s.borderLeftColor = s.borderRightColor = lime;
+            s.backgroundColor = new Color(0.78f, 1f, 0.24f, 0.08f);
+        }
+
+        public override void Tick(float dt)
+        {
+            if (_ring == null || Root.panel == null) return;
+            var top = Root.panel.visualTree;                                   // panel coordinates, nothing between
+            if (_ring.parent != top)
+            {
+                foreach (var old in top.Query(className: "k-quiz-ring").ToList()) old.RemoveFromHierarchy();   // one ring only
+                top.Add(_ring);
+            }
+            var cam = Camera.main;
+            Vector3 ball = Fe.Runner.View.BallPos;
+            bool on = cam != null && cam.WorldToScreenPoint(ball).z > 0;
+            _ring.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!on) return;
+            Vector2 p = RuntimePanelUtils.CameraTransformWorldToPanel(Root.panel, ball, cam);
+            _ring.style.left = p.x - 36f; _ring.style.top = p.y - 36f;
+        }
+
+        public override void OnHide() { if (_ring != null) _ring.RemoveFromHierarchy(); if (PausesGame) Fe.Runner.Clock.Resume(); }
 
         protected void ShowPrompts(params (PromptBar.Btn, string)[] items)
         {
@@ -280,6 +317,7 @@ namespace SquashGame.UI
                 card.Root.AddToClassList("k-card--answer");
             }
             ShowPrompts((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Make the call"));
+            RingTheBall();
         }
 
         /// <summary>Give this answer (the cards; tests).</summary>

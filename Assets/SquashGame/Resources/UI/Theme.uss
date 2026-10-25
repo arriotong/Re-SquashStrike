@@ -331,7 +331,7 @@
 .cr-cal-mine { width: 360px; font-size: 13px; color: rgb(200, 255, 61); -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 /* ---------- Progression (P2-M5): the reward strip, toasts ---------- */
-.rw { margin: 0 0 14px 0; padding: 8px 14px; background-color: rgba(200, 255, 61, 0.06); border-radius: 8px; border-width: 1px; border-color: rgba(200, 255, 61, 0.25); }
+.rw { margin: 0 0 14px 0; padding: 8px 14px; background-color: rgb(20, 24, 14); border-radius: 8px; border-width: 1px; border-color: rgba(200, 255, 61, 0.25); }
 .rw-head { flex-direction: row; justify-content: space-between; align-items: center; }
 .rw-level { font-size: 18px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.9); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .rw-level--up { color: rgb(200, 255, 61); text-shadow: 0 0 12px rgba(200, 255, 61, 0.7); }

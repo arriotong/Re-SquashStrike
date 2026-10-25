@@ -174,7 +174,7 @@ namespace SquashGame.UI
             // P2-M8: online
             var me = Online.OnlineService.Me;
             var name = new TextItem("Online name", me.Name, 16);
-            name.Field.RegisterValueChangedCallback(e => { var n = (e.newValue ?? "").Trim(); if (n.Length > 0) me.Name = n; });
+            name.Field.RegisterValueChangedCallback(e => { var n = (e.newValue ?? "").Trim(); if (n.Length > 0) { me.Name = n; me.NameChosen = true; } });
             Row(g, name, "The name other players see online. From your next connection.");
             var server = new TextItem("Online server", string.IsNullOrWhiteSpace(me.Server) ? Online.OnlineService.DefaultServer : me.Server, 120);
             server.Field.RegisterValueChangedCallback(e => { me.Server = (e.newValue ?? "").Trim(); Online.OnlineService.Disconnect(); });

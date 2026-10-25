@@ -83,6 +83,8 @@ namespace SquashGame
 
         /// <summary>P2-M5: the Locker Room's shots - a slow orbit close to your athlete, or the racket up close.</summary>
         public const int LockerScene = 100, RacketScene = 101;
+        /// <summary>How close the orbit lets the camera come to the other athlete (m).</summary>
+        public const float OpponentClearance = 1.6f;
         static float _orbit;
         static Vector3 _subject;
 
@@ -95,7 +97,27 @@ namespace SquashGame
             _orbit += dt * (racket ? 0.25f : 0.18f);
             float r = racket ? 1.3f : 3.1f, h = racket ? 1.2f : 1.25f, look = racket ? 0.95f : 0.8f;
             Vector3 pos = _subject + new Vector3(Mathf.Sin(_orbit) * r, h, Mathf.Cos(_orbit) * r);
+            // 2026-10-25 playtest: the other athlete walked into the lens (an arm across the shot) - the orbit hurries past them
+            if (a != null && a.Length > 1)
+            {
+                var o = a[1].Player.Pos;
+                Vector3 toCam = new Vector3(pos.x - (float)o.X, 0f, pos.z - (float)o.Z);
+                float d = toCam.magnitude;
+                if (d < OpponentClearance)
+                {
+                    _orbit += dt * 1.6f;
+                    if (d > 0.01f) pos += toCam / d * (OpponentClearance - d);       // and steps round them meanwhile
+                }
+            }
             pos.x = Mathf.Clamp(pos.x, -3.0f, 3.0f); pos.z = Mathf.Clamp(pos.z, 0.3f, 9.5f);
+            // ...and by a side wall the clamp pulled the camera into your own athlete: hurry past those angles, and look
+            // down from higher meanwhile
+            float near = new Vector2(pos.x - _subject.x, pos.z - _subject.z).magnitude;
+            if (near < r * 0.65f)
+            {
+                _orbit += dt * 1.6f;
+                pos.y += (r * 0.65f - near) * 1.4f;
+            }
             cam.fieldOfView = racket ? 44f : 48f;
             cam.transform.position = SimToWorld.Pos(pos.x, pos.y, pos.z);
             cam.transform.LookAt(SimToWorld.Pos(_subject.x, look, _subject.z), Vector3.up);

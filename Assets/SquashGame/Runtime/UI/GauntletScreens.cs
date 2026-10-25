@@ -155,8 +155,11 @@ namespace SquashGame.UI
                     AddTo(row, new CardItem(p.Name, "PERK", () => { Gauntlet.Choose(run, pick); ProfileStore.Save(); Fe.Replace(new GauntletScreen()); })
                         .Drawn(PerkArt(id), new Color32(20, 24, 16, 255), PerkArt(id) == "stripes" ? new Color(0.78f, 1f, 0.24f, 0.10f) : (Color)new Color32(200, 255, 61, 255)).Line(p.Text));
                 }
+                // 2026-10-25 playtest: the run's panel and the perk cards overlapped - one line for the run here
+                var a = run.Attributes;
+                Kit.L(grid, GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  floor " + run.Floor + "  ·  Speed " + a.Speed + "  ·  Stamina " + a.Stamina +
+                            "  ·  Power " + a.Power + "  ·  Control " + a.Control + (run.Perks.Count == 0 ? "" : "  ·  " + string.Join(", ", run.Perks.ConvertAll(id => Gauntlet.Find(id).Name))), "gt-line");
                 Kit.L(Content, "Pick one - it lasts for the rest of the run.", "k-cr-note");
-                Status(grid, run);
                 return;
             }
 

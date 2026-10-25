@@ -21,6 +21,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace SquashGame.Tests
 {
@@ -237,6 +238,14 @@ namespace SquashGame.Tests
                 yield return null;                                                    // drawn at the end of the frame
                 Assert.That(lines.Marking, Is.True, "where the ball went is marked while you make the call");
                 Assert.That(r.Clock.Paused, Is.True, "the game waits for the call");
+                // 2026-10-25 playtest: one ring, round the ball
+                var quiz = (QuizScreen)fe.Top;
+                Assert.That(quiz.RingShown, Is.True, "the ball is ringed");
+                var rings = quiz.Root.panel.visualTree.Query(className: "k-quiz-ring").ToList();
+                Assert.That(rings.Count, Is.EqualTo(1), "one ring");
+                Vector2 bp = UnityEngine.UIElements.RuntimePanelUtils.CameraTransformWorldToPanel(quiz.Root.panel, r.View.BallPos, Camera.main);
+                yield return null;                                                    // laid out
+                Assert.That(Vector2.Distance(rings[0].worldBound.center, bp), Is.LessThan(12f), "centred on the ball");
                 var question = s.Current.Question;
                 int right = System.Array.IndexOf(question.Choices, RulesQuiz.Answer(question));
                 yield return Choose(kb, fe, (right + 1) % question.Choices.Length);

@@ -678,7 +678,14 @@ namespace SquashGame.UI
             var c = Career.C;
             var rows = new List<CareerSession.Row>();
             if (_rankFilter == 0) rows = c.Ranking().GetRange(0, Mathf.Min(15, c.Ranking().Count));
-            else if (_rankFilter == 1 && !c.IsRanked(You)) { Kit.L(_table, "You're not on the world ranking yet: your first event puts you on it.", "k-cr-empty"); return; }
+            else if (_rankFilter == 1 && !c.IsRanked(You))
+            {
+                // 2026-10-25 playtest: not one big empty panel - the foot of the ladder, where your first event puts you
+                Kit.L(_table, "You're not on the world ranking yet. Your first event puts you on it - about here:", "k-cr-note");
+                var all = c.Ranking();
+                int from = Mathf.Max(0, all.Count - 10);
+                rows = all.GetRange(from, all.Count - from);
+            }
             else if (_rankFilter == 1) rows = Career.Around(c, You, 7);
             else foreach (var id in c.Rivals()) foreach (var r in c.Ranking()) if (r.Id == id) rows.Add(r);
             if (rows.Count == 0) { Kit.L(_table, "No rivals yet. A pro who beats you twice becomes one.", "k-cr-empty"); return; }

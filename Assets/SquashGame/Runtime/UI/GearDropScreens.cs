@@ -28,11 +28,16 @@ namespace SquashGame.UI
             return w.Tickets + (w.Tickets == 1 ? " TICKET" : " TICKETS") + "   ·   " + w.TenTickets + " x10   ·   " + w.Coins.ToString("N0") + " COINS";
         }
 
-        /// <summary>An item as a small swatch (its colours), for cards.</summary>
+        /// <summary>An item for cards: its shape (a shirt, a shoe, a racket...) in its own colour, on a backing that contrasts with it
+        /// (2026-10-25 playtest: flat colour blocks didn't read as gear, and dark items vanished on the dark cards).</summary>
         public static VisualElement Swatch(Item it, string cls = "gd-sw")
         {
             var sw = new VisualElement(); sw.AddToClassList(cls); sw.pickingMode = PickingMode.Ignore;
-            sw.style.backgroundColor = it.A;
+            float lum = 0.2126f * it.A.r + 0.7152f * it.A.g + 0.0722f * it.A.b;
+            sw.style.backgroundColor = lum > 0.55f ? new Color(0.13f, 0.14f, 0.17f) : new Color(0.82f, 0.84f, 0.87f);
+            var icon = new SlotIcon(it.Slot, new Color(it.A.r, it.A.g, it.A.b, 1f));
+            icon.AddToClassList("gd-icon");
+            sw.Add(icon);
             if (it.B != it.A) { var b = new VisualElement(); b.AddToClassList("gd-sw-b"); b.style.backgroundColor = it.B; b.pickingMode = PickingMode.Ignore; sw.Add(b); }
             return sw;
         }

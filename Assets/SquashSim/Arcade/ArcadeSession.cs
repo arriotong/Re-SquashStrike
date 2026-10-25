@@ -369,9 +369,18 @@ namespace SquashSim.Arcade
             }
         }
 
+        /// <summary>Nick Hunt: a first bounce this close to a side wall counts too - a real nick was a 2% shot, so most
+        /// players scored nothing (2026-10-25 playtest).</summary>
+        public const double NearNick = 0.18;
+
         void JudgeFloor(SimEvent e)
         {
             var mode = Challenge.Mode;
+            if (Challenge.Drill == DrillKind.NickHunt)
+            {
+                if (System.Math.Abs(e.Point.X) > HALF_W - NearNick) Hit(Targets.Count > 0 ? Targets[0] : null, e.Point, 100);
+                return;
+            }
             if (mode == ArcadeMode.ServeTargets)
             {
                 bool legal = e.Point.X * ServeSide < 0 && e.Point.Z > SHORT_LINE_Z;

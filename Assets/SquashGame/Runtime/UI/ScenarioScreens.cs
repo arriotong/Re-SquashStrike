@@ -84,6 +84,7 @@ namespace SquashGame.UI
 
     public sealed class ScenarioScreen : GameScreen
     {
+        static readonly string[] Arts = { "rings", "clock", "chevrons", "trophy", "bracket", "wall", "corner", "split", "nick", "menu", "drop", "angle", "spots", "stripes", "trophy" };
         readonly int _startGroup;
         public ScenarioScreen(int group = 0) { _startGroup = group; }
         protected override string Kicker { get { return "CHALLENGES  ·  SCENARIOS"; } }
@@ -105,11 +106,13 @@ namespace SquashGame.UI
             {
                 int group = g;
                 var row = Kit.Box(Page(Scenarios.GroupNames[g].ToUpperInvariant()), "k-row");
+                int k = 0;
                 foreach (var sc in Scenarios.InGroup(g))
                 {
                     var s = sc;
+                    string art = Arts[(g * 5 + k++) % Arts.Length];                    // 2026-10-25 playtest: each card its own picture
                     var card = AddTo(row, new CardItem(s.Name, s.Score + "  ·  " + Roster.StyleName(s.Opponent).ToUpperInvariant(), () => ScenarioFlow.Play(Fe, s))
-                        .Drawn(g == 0 ? "rings" : g == 1 ? "chevrons" : "trophy", new Color32(18, 20, 28, 255), g == 2 ? (Color)new Color32(255, 184, 59, 255) : new Color32(200, 255, 61, 255))
+                        .Drawn(art, new Color32(18, 20, 28, 255), g == 2 ? (Color)new Color32(255, 184, 59, 255) : new Color32(200, 255, 61, 255))
                         .Line(s.Story + "\n★ win   ★ " + s.Star2Text.ToLowerInvariant() + "   ★ " + s.Star3Text.ToLowerInvariant())
                         .Badge(() => ScenarioFlow.StarText(ScenarioFlow.StarsOf(s.Id)), ScenarioFlow.StarsOf(s.Id) == 3));
                     card.Root.AddToClassList("k-card--scenario");

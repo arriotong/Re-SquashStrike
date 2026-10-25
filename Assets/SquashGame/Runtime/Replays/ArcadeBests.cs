@@ -19,10 +19,13 @@ namespace SquashGame.Replays
     public static class ArcadeBests
     {
         const uint Magic = 0x4C415353;     // "SSAL"
+        const uint Magic2 = 0x32415353;    // "SSA2": 2026-10-25, after the playtest retune
+        /// <summary>Levels whose rules changed in the 2026-10-25 retune: a best kept before it would play out differently now.</summary>
+        static readonly HashSet<string> Retuned = new HashSet<string> { "shotmenu-easy", "shotmenu-medium", "drill-nickhunt" };
         static string Folder { get { return Path.Combine(ReplayLibrary.Folder, "arcade"); } }
         static string PathOf(string id) { return Path.Combine(Folder, id + ".log"); }
 
-        public static bool Has(string challengeId) { return !string.IsNullOrEmpty(challengeId) && File.Exists(PathOf(challengeId)); }
+        public static bool Has(string challengeId) { return !string.IsNullOrEmpty(challengeId) && File.Exists(PathOf(challengeId)) && Load(challengeId, out _) != null; }
 
         /// <summary>Keep a play as this level's best (with its score, to check it plays back to the same).</summary>
         public static void Save(InputLog log, int score)
@@ -38,7 +41,11 @@ namespace SquashGame.Replays
         public static InputLog Load(string challengeId, out int score)
         {
             score = 0;
-            try { return FromBytes(File.ReadAllBytes(PathOf(challengeId)), out score); }
+            try
+            {
+                var log = FromBytes(File.ReadAllBytes(PathOf(challengeId)), out score, out bool old);
+                return old && Retuned.Contains(challengeId) ? null : log;
+            }
             catch (System.Exception e) { Debug.LogWarning("[Replays] could not read the arcade best: " + e.Message); return null; }
         }
 
@@ -57,15 +64,21 @@ namespace SquashGame.Replays
                 foreach (var (fr, n) in runs) { w.Write(n); Write(w, fr); }
             }
             var file = new MemoryStream();
-            using (var w = new BinaryWriter(file, Encoding.UTF8, true)) w.Write(Magic);
+            using (var w = new BinaryWriter(file, Encoding.UTF8, true)) w.Write(Magic2);
             using (var z = new DeflateStream(file, System.IO.Compression.CompressionLevel.Optimal, true)) { raw.Position = 0; raw.CopyTo(z); }
             return file.ToArray();
         }
 
-        public static InputLog FromBytes(byte[] bytes, out int score)
+        public static InputLog FromBytes(byte[] bytes, out int score) { return FromBytes(bytes, out score, out _); }
+
+        /// <param name="old">Kept before the 2026-10-25 retune.</param>
+        public static InputLog FromBytes(byte[] bytes, out int score, out bool old)
         {
             var file = new MemoryStream(bytes);
-            using (var h = new BinaryReader(file, Encoding.UTF8, true)) if (h.ReadUInt32() != Magic) throw new InvalidDataException("not an arcade log");
+            uint magic;
+            using (var h = new BinaryReader(file, Encoding.UTF8, true)) magic = h.ReadUInt32();
+            if (magic != Magic && magic != Magic2) throw new InvalidDataException("not an arcade log");
+            old = magic == Magic;
             var raw = new MemoryStream();
             using (var z = new DeflateStream(file, CompressionMode.Decompress)) z.CopyTo(raw);
             raw.Position = 0;

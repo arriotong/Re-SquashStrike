@@ -109,5 +109,22 @@ namespace SquashGame.UI
             return _bottom;
         }
         static Texture2D _bottom;
+
+        /// <summary>2026-10-25 playtest: the top of the screen darkens too, so the tabs read over a court sign behind them.</summary>
+        public static Texture2D TopFade()
+        {
+            if (_top != null) return _top;
+            const int n = 128;
+            _top = new Texture2D(1, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave };
+            for (int i = 0; i < n; i++)
+            {
+                float u = i / (n - 1f);                                   // 1 = top row of the texture
+                float a = Mathf.Lerp(0f, 0.9f, Mathf.SmoothStep(0.15f, 1f, u));
+                _top.SetPixel(0, i, new Color(0.02f, 0.024f, 0.03f, a));
+            }
+            _top.Apply();
+            return _top;
+        }
+        static Texture2D _top;
     }
 }
