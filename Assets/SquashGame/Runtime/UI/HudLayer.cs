@@ -161,7 +161,8 @@ namespace SquashGame
             _games.text = "GAMES " + s.Games[0] + "-" + s.Games[1];
             _games.style.display = s.GamesToWin > 1 ? DisplayStyle.Flex : DisplayStyle.None;
             string server = !twoPlayer && s.Server == r.HumanIndex ? "You serve" : names[s.Server] + " serves";
-            _meta.text = server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box";
+            _meta.text = server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box" +
+                         (r.Settings.FocusCharges > 0 ? "   ·   FOCUS " + r.FocusLeft + "  (" + IntentSource.FocusKey + ")" : "");     // P5
 
             // ---- banners ----
             string banner = null, sub = null, centre = null, prompt = null, key = null;

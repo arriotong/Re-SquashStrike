@@ -185,7 +185,7 @@ namespace SquashGame.Tests
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":3,\"Progress\":{\"Xp\":900}}");
             ProfileStore.Reset();
             var p = ProfileStore.Current;
-            Assert.That(p.Version, Is.EqualTo(4));
+            Assert.That(p.Version, Is.EqualTo(ProfileStore.CurrentVersion));
             Assert.That(p.Progress.Wallet.Tickets, Is.EqualTo(GearDrops.StartTickets));
             Assert.That(p.Progress.Loadout.Trail, Is.EqualTo("trail_classic"));
         }

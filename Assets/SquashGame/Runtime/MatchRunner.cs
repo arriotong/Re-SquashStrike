@@ -72,6 +72,8 @@ namespace SquashGame
         public string OppKit;
         /// <summary>P5 the Gauntlet: a game to this many (0: the scoring's own); the opponent's attributes; both sides' run abilities.</summary>
         public int ParPoints;
+        /// <summary>P5: Focus charges each game (the Gauntlet's slow motion; 0: none).</summary>
+        public int FocusCharges;
         public SquashSim.AthleteAttributes OppAttributes;
         public List<SquashSim.RunMod> Mods, OppMods;
 
@@ -277,6 +279,7 @@ namespace SquashGame
             EndOnline(true);
             EndRecording(true);
             Settings = s.Clone();
+            _focusGame = -1;                                                  // P5: a fresh set of Focus charges
             if (!string.IsNullOrEmpty(Settings.Court)) Courts.CurrentId = Settings.Court;     // CourtView rebuilds on the next frame
             Courts.CrowdFill = Settings.CrowdFill > 0f ? Settings.CrowdFill : 1f;
             if (Settings.TwoPlayer && !CanPlayTwoPlayer) Settings.TwoPlayer = false;
@@ -445,6 +448,16 @@ namespace SquashGame
                 ReviewingCall = ReplayActive && UI.CallWords.IsCall(Sim.LastOutcome); _reviewFrames = 0;
             }
 
+            // P5 Focus: a charge of slow motion in a rally (charges each game)
+            bool focus = Input.ConsumeFocus();
+            int gamesNow = Sim.Score.Games[0] + Sim.Score.Games[1];
+            if (gamesNow != _focusGame) { _focusGame = gamesNow; FocusLeft = Settings.FocusCharges; }
+            if (focus && FocusLeft > 0 && Sim.Phase == MatchPhase.Rally && !SlowMoActive && !Clock.Paused)
+            {
+                FocusLeft--;
+                SlowMo(FocusSeconds, FocusScale);
+            }
+
             // Ready (Enter / pad Y) from either player. Consumed every frame so a Y pressed
             // as an appeal in a rally never skips the next break.
             bool ready = Input.ConsumeReady();
@@ -460,6 +473,12 @@ namespace SquashGame
 
         /// <summary>The same settings again (new opponent seed).</summary>
         public void RestartMatch() { BeginMatch(Settings); }
+
+        /// <summary>P5 Focus: charges left this game; how long and how slow a charge is.</summary>
+        public int FocusLeft { get; private set; }
+        int _focusGame = -1;
+        public const float FocusSeconds = 1.6f;
+        public const double FocusScale = 0.35;
 
         // ---------------- P2-M8 online ----------------
 

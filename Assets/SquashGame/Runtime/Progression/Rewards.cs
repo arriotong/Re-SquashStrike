@@ -271,14 +271,29 @@ namespace SquashGame.Progression
         public static readonly int[] GauntletMilestones = { 5, 10, 15, 20 };
         public static readonly string[] GauntletItems = { "gt_banner_iron", "gt_shoes_ember", "gt_frame_storm", "gt_title_unbroken" };
 
-        /// <summary>P3-R5: a Gauntlet floor won (the floors won so far, this one included).</summary>
-        public static RewardResult GauntletFloor(int floorsWon)
+        /// <summary>P3-R5: a Gauntlet floor won (the floors won so far, this one included; P5: a boss).</summary>
+        public static RewardResult GauntletFloor(int floorsWon, bool boss = false)
         {
             var r = Begin();
             Xp(r, "Gauntlet floor " + floorsWon, GauntletFloorXp + GauntletFloorStepXp * floorsWon);
             Ticket(r, 1, 0, "a Gauntlet floor");
+            if (boss) { Xp(r, "A boss beaten", GauntletBossXp); Ticket(r, 2, 0, "a boss"); }
+            var ids = new List<string>();
+            if (boss) ids.Add("gt_boss");
+            if (floorsWon >= 30) ids.Add("gt_floor30");
+            Achieve(r, ids);
             for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) { Grant(r, GauntletItems[i]); Ticket(r, 0, 1, "floor " + floorsWon); }
-            Challenges.Record(r, new ChallengeEvent { GauntletFloor = floorsWon });
+            Challenges.Record(r, new ChallengeEvent { GauntletFloor = floorsWon, GauntletBoss = boss });
+            return End(r);
+        }
+
+        public const int GauntletBossXp = 150;
+
+        /// <summary>P5: an evolution taken in a Gauntlet run.</summary>
+        public static RewardResult GauntletEvolved()
+        {
+            var r = Begin();
+            Achieve(r, new[] { "gt_evolve" });
             return End(r);
         }
 

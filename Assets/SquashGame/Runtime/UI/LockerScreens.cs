@@ -494,7 +494,7 @@ namespace SquashGame.UI
         protected override string Kicker { get { return "LOCKER ROOM"; } }
         protected override string Title { get { return "Achievements"; } }
         protected override bool ShowChip { get { return false; } }
-        static readonly string[] Groups = { "Firsts", "Rallies", "Matches", "Shots", "Target Arcade", "Career", "Ranking", "Hidden" };
+        static readonly string[] Groups = { "Firsts", "Rallies", "Matches", "Shots", "Target Arcade", "Career", "Ranking", "Gauntlet", "Hidden" };
         static readonly string[] RankingIds = { "top20", "top10", "no1", "rival", "streak10" };
         /// <summary>The tab an achievement is on (the career's are split: events, then ranking).</summary>
         static string TabOf(Achievement a) { return a.Group == "Career" && System.Array.IndexOf(RankingIds, a.Id) >= 0 ? "Ranking" : a.Group; }

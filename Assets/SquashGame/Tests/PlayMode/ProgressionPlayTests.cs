@@ -181,8 +181,9 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P3_Hub_Challenges.png");
         }
 
-        /// <summary>P3-R5: the Gauntlet - start a run, a floor won (perks), a floor's match from the screen.</summary>
-        [UnityTest]
+        /// <summary>P5: the Gauntlet roguelite - start a run, a floor won (the pick), a real floor played (a game to 7) and back,
+        /// talents bought with coins, the codex.</summary>
+        [UnityTest, Timeout(600000)]
         public IEnumerator TheGauntletRunsFloorByFloor()
         {
             LocalMatchTests.FreshProfile();
@@ -203,23 +204,66 @@ namespace SquashGame.Tests
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P3_Gauntlet_Floor.png");
 
-            GauntletFlow.AfterMatch(fe, true, 6);                                    // as if floor 1 was won 11-5
+            GauntletFlow.AfterMatch(fe, true, 4);                                    // as if floor 1 was won 7-3
             yield return null; yield return null;
-            Assert.That(GauntletFlow.Run.AwaitingPerk, Is.True);
+            var run = GauntletFlow.Run;
+            Assert.That(run.AwaitingPick, Is.True);
+            Assert.That(run.Offer.Count, Is.EqualTo(3), "three cards");
+            Assert.That(run.Coins, Is.GreaterThan(0), "coins from the floor");
             Assert.That(ProfileStore.Current.Progress.Xp, Is.GreaterThan(0), "the floor's XP");
             yield return Wait(0.6f, () => false);
             yield return CaptureUI(fe, "P3_Gauntlet_Perks.png");
-            yield return Tap(kb.enterKey);                                            // the first perk
+            string first = run.Offer[0];
+            yield return Tap(kb.enterKey);                                            // the first card
             yield return null;
-            Assert.That(GauntletFlow.Run.Perks.Count, Is.EqualTo(1));
-            Assert.That(GauntletFlow.Run.Floor, Is.EqualTo(2));
+            Assert.That(run.AwaitingPick, Is.False);
+            Assert.That(run.Floor, Is.EqualTo(2));
+            var ab = SquashSim.Modes.GauntletAbilities.Find(first);
+            if (ab.Kind != SquashSim.Modes.AbilityKind.Instant) Assert.That(SquashSim.Modes.Gauntlet.Level(run, first), Is.EqualTo(1), "picked: " + first);
 
-            var settings = GauntletFlow.Settings(GauntletFlow.Run);
+            var settings = GauntletFlow.Settings(run);
             Assert.That(settings.Gauntlet, Is.True); Assert.That(settings.GamesToWin, Is.EqualTo(1));
+            Assert.That(settings.ParPoints, Is.EqualTo(7), "a game to 7");
             Assert.That(settings.Difficulty, Is.EqualTo((float)SquashSim.Modes.Gauntlet.Difficulty(2)));
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P5_Gauntlet_NextFloor.png");
+
+            // ---- floor 2, played for real (an autopilot), and back to the run ----
             GauntletFlow.Play(fe);
-            yield return Wait(2f, () => fe.Match != null && fe.Match.Settings.Gauntlet);
-            Assert.That(fe.Match.Settings.Gauntlet, Is.True, "floor 2 is under way");
+            yield return Wait(2f, () => fe.Match != null && fe.Match.Settings.Gauntlet && !fe.Match.Demo);
+            var r = fe.Match;
+            Assert.That(PhysicsConfig.Current.Match.ParPoints, Is.EqualTo(7), "the match plays to 7");
+            r.SetAutopilot(new OpponentBrain(AiProfile.ByName("attacker").WithDifficulty(0.9), 5));
+            r.SetTimeScale(12);
+            yield return Wait(240f, () => fe.Top is PostMatchScreen);
+            r.SetTimeScale(SimRunnerBase.GameSpeed);
+            Assert.That(fe.Top, Is.InstanceOf<PostMatchScreen>(), "full time");
+            int w = r.Sim.Score.MatchWinner, pts = r.Sim.Score.Points[w];
+            Assert.That(pts == 7 || pts - r.Sim.Score.Points[1 - w] == 2, Is.True, "a game to 7: " + pts);
+            bool won = w == 0;
+            int lives = run.Lives;
+            yield return Tap(kb.enterKey);                                            // Continue
+            yield return Wait(2f, () => fe.Top is GauntletScreen);
+            Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>(), "back to the run");
+            if (won) Assert.That(GauntletFlow.Run.AwaitingPick, Is.True, "won: a pick");
+            else Assert.That(GauntletFlow.Run.Lives, Is.EqualTo(lives - 1), "lost: a heart");
+
+            // ---- talents and the codex ----
+            GauntletFlow.Abandon();
+            Assert.That(GauntletFlow.State.Coins, Is.GreaterThan(0), "the run's coins are kept");
+            GauntletFlow.State.Coins += 500;
+            fe.Push(new TalentsScreen());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P5_Talents.png");
+            Assert.That(GauntletFlow.BuyTalent("reroll"), Is.True);
+            Assert.That(SquashSim.Modes.GauntletTalents.Level(GauntletFlow.State.Talents, "reroll"), Is.EqualTo(1));
+            fe.Pop();
+            fe.Push(new CodexScreen());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "P5_Codex.png");
+            fe.Pop();
+            GauntletFlow.NewRun();
+            Assert.That(GauntletFlow.Run.Rerolls, Is.EqualTo(2), "the talent counts in the next run");
             GauntletFlow.Abandon();
         }
 

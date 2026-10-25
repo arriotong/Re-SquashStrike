@@ -47,6 +47,7 @@ namespace SquashGame.Progression
         public bool Arcade;                      // a Target Arcade play
         public int ArcadeStars;                  // new stars it earned
         public int GauntletFloor;                // the floor just won (0 = none)
+        public bool GauntletBoss;                // P5: that floor was a boss
         public int ScenarioStars;                // stars a scenario play earned (3 = a perfect one)
         public bool CareerTitle;                 // a career event won
     }
@@ -127,6 +128,7 @@ namespace SquashGame.Progression
             D("w_arcade6", "arcade", "Earn {0} Target Arcade stars this week", 6, e => e.ArcadeStars, true, () => stars(6));
             D("w_career5", "career", "Win {0} career matches this week", 5, e => e.Match != null && e.Match.Career && e.Match.Won ? 1 : 0, true, career);
             D("w_gauntlet8", "modes", "Reach floor {0} of the Gauntlet", 8, e => e.GauntletFloor >= 8 ? 8 : 0, true, () => ModeOpen("gauntlet"));
+            D("w_gauntletboss", "modes", "Beat a Gauntlet boss", 1, e => e.GauntletBoss ? 1 : 0, true, () => ModeOpen("gauntlet"));
             return _all;
         }
 

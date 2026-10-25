@@ -69,6 +69,7 @@ public static class Program
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
+        if (Array.IndexOf(args, "--rogue") >= 0) { RogueBench.Run(Arg(args, "--games") != null ? games : 20, Arg(args, "--policy") ?? "greedy", int.Parse(Arg(args, "--talents") ?? "0")); return 0; }
         if (Array.IndexOf(args, "--season") >= 0) { CareerBench.Season(int.Parse(Arg(args, "--seasons") ?? "1")); return 0; }
         if (Array.IndexOf(args, "--career-calibrate") >= 0) { CareerBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
         if (Array.IndexOf(args, "--let-survey") >= 0) { Console.Write(SquashSim.LetSurvey.Run(Arg(args, "--games") != null ? games : 48, Array.IndexOf(args, "--no-appeals") < 0,

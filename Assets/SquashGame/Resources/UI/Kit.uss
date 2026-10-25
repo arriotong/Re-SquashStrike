@@ -1014,3 +1014,13 @@
 .pf-row { flex-direction: row; justify-content: space-between; padding: 8px 0; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
 .pf-row-k { font-size: 16px; color: rgba(255, 255, 255, 0.65); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .pf-row-v { font-size: 18px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* P5 the Gauntlet roguelite */
+.gt-more { flex-direction: row; margin-top: 14px; }
+.gt-unlock { font-size: 18px; margin-bottom: 10px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.gt-trait { font-size: 16px; margin: 6px 0; white-space: normal; color: rgb(255, 120, 90); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gt-ab { flex-direction: row; justify-content: space-between; padding: 4px 0; }
+.gt-ab-name { font-size: 17px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gt-ab-pips { font-size: 14px; color: rgba(255, 255, 255, 0.75); }
+.gt-codex { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.gt-codex-panel { width: 330px; margin-right: 16px; margin-bottom: 14px; }

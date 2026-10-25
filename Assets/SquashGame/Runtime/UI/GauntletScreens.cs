@@ -1,9 +1,17 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/UI/GauntletScreens.cs
-// P3-R5: the Gauntlet's screen and flow (the rules: SquashSim.Modes.
-// Gauntlet). One screen shows where the run stands - the next floor, or
-// the perks to pick from after a floor won, or the run's end - and plays
-// the floors; the match comes back here through GauntletFlow.
+// P5: the Gauntlet roguelite's screens and flow (the rules: SquashSim.
+// Modes.Gauntlet, GauntletAbilities, GauntletTalents).
+//
+//   GauntletFlow     a run in the profile: start one (with the talents),
+//                    the floor's match settings (game to 7, the build, the
+//                    opponent's traits), its end (score, coins, the pick,
+//                    a boss's unlock), the run's end (coins banked)
+//   GauntletScreen   home (start, talents, codex, records) - the pick
+//                    after a floor (3-4 cards; reroll; banish) - the next
+//                    floor (the opponent, your build)
+//   TalentsScreen    permanent upgrades for coins
+//   CodexScreen      every ability: seen or not, its best level
 // ===========================================================
 
 using System.Collections.Generic;
@@ -12,6 +20,7 @@ using SquashGame.Progression;
 using SquashSim;
 using SquashSim.Career;
 using SquashSim.Modes;
+using Rarity = SquashSim.Modes.Rarity;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -22,44 +31,55 @@ namespace SquashGame.UI
         static GauntletState G { get { var p = ProfileStore.Current.Progress; if (p.Gauntlet == null) p.Gauntlet = new GauntletState(); return p.Gauntlet; } }
         public static GauntletRun Run { get { var r = G.Run; return r != null && r.Active ? r : null; } }
         public static GauntletState State { get { return G; } }
+        static List<RunMod> Talents { get { if (G.Talents == null) G.Talents = new List<RunMod>(); return G.Talents; } }
         /// <summary>The floor's reward, shown once on the Gauntlet screen.</summary>
         public static RewardResult LastReward;
+        /// <summary>What a boss gave (an ability unlocked), shown once.</summary>
+        public static string LastUnlock;
 
         public static void NewRun()
         {
-            G.Run = Gauntlet.NewRun(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u);
+            G.Run = Gauntlet.NewRun(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u, Talents);
             G.Runs++;
+            Codex(G.Run);
             ProfileStore.Save();
         }
 
         public static void Abandon() { if (G.Run != null) { Finish(G.Run); G.Run = null; ProfileStore.Save(); } }
 
+        /// <summary>A run's end: its coins kept, the records.</summary>
         static void Finish(GauntletRun run)
         {
             G.BestFloor = Mathf.Max(G.BestFloor, run.FloorsWon);
             G.BestScore = Mathf.Max(G.BestScore, run.Score);
+            G.Coins += run.Coins;
+            G.BossesBeaten += run.BossesBeaten;
+            run.Coins = 0;                                                     // banked (a finished run shown again does not pay twice)
         }
 
-        /// <summary>The court a floor is played on: the club for the first floors, the arena by floor 12.</summary>
-        public static int CourtTier(int floor) { return Mathf.Clamp(floor - 1, 0, 12); }
+        /// <summary>The court a floor is played on: the club first, the arena by floor 12, then round again.</summary>
+        public static int CourtTier(int floor) { return (floor - 1) % 13; }
 
         public static MatchSettings Settings(GauntletRun run)
         {
             int f = run.Floor;
-            string opp = Gauntlet.Opponent(run, f);
+            var fl = Gauntlet.Floor(run, f);
+            var traits = fl.Traits.FindAll(t => t.Level > 0);
             return new MatchSettings
             {
-                Opponent = opp, Difficulty = (float)Gauntlet.Difficulty(f), GamesToWin = 1, Scoring = "par", WarmUp = false,
-                Gauntlet = true, Attributes = run.Attributes.Clone(), EachGame0 = run.HeadStart,
+                Opponent = fl.Style, Difficulty = (float)fl.Difficulty, GamesToWin = 1, Scoring = "par", WarmUp = false,
+                Gauntlet = true, ParPoints = fl.Points,
+                Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
+                OppAttributes = fl.Attributes, OppMods = traits.Count > 0 ? traits : null,
                 Court = Courts.ForCareerTier(CourtTier(f)), CrowdFill = Courts.CrowdForCareerTier(CourtTier(f)),
-                P2Name = "FLOOR " + f,
+                P2Name = fl.Kind == FloorKind.Boss ? fl.Name.ToUpperInvariant() : fl.Kind == FloorKind.Elite ? "ELITE  ·  FLOOR " + f : "FLOOR " + f,
             };
         }
 
         public static void Play(FrontEnd fe)
         {
             var run = Run;
-            if (run == null || run.Over || run.AwaitingPerk) return;
+            if (run == null || run.Over || run.AwaitingPick) return;
             fe.StartMatch(Settings(run));
         }
 
@@ -67,12 +87,17 @@ namespace SquashGame.UI
         public static void AfterMatch(FrontEnd fe, bool won, int margin)
         {
             var run = Run;
+            LastUnlock = null;
             if (run != null)
             {
                 if (won)
                 {
-                    Gauntlet.Won(run, margin);
-                    LastReward = Rewards.GauntletFloor(run.FloorsWon);
+                    int aces = 0, nicks = 0;
+                    if (fe.Stats != null && fe.Match != null) { var facts = fe.Stats.Facts(fe.Match); aces = facts.Aces; nicks = facts.Nicks; }
+                    bool boss = Gauntlet.KindOf(run.Floor) == FloorKind.Boss;
+                    Gauntlet.Won(run, margin, aces, nicks, Talents);
+                    LastReward = Rewards.GauntletFloor(run.FloorsWon, boss);
+                    if (boss) LastUnlock = UnlockOne(run);
                 }
                 else
                 {
@@ -87,6 +112,53 @@ namespace SquashGame.UI
             fe.Push(new GauntletScreen());
         }
 
+        /// <summary>A boss beaten: one locked ability joins the cards for good (null: none left to unlock).</summary>
+        static string UnlockOne(GauntletRun run)
+        {
+            var locked = GauntletAbilities.All().FindAll(a => !GauntletTalents.Unlocked(Talents, a));
+            if (locked.Count == 0) return null;
+            var a = locked[(int)((run.Seed + (uint)run.Floor * 7919u) % (uint)locked.Count)];
+            Talents.Add(new RunMod { Id = "unlock_" + a.Id, Level = 1 });
+            return a.Name;
+        }
+
+        public static void Pick(string id)
+        {
+            var run = Run;
+            if (run == null) return;
+            if (Gauntlet.Pick(run, id))
+            {
+                Codex(run);
+                var a = GauntletAbilities.Find(id);
+                if (a != null && a.Kind == AbilityKind.Evolved) LastReward = Rewards.GauntletEvolved();
+            }
+            ProfileStore.Save();
+        }
+
+        public static bool Reroll() { var r = Run; bool ok = r != null && Gauntlet.Reroll(r, Talents); if (ok) ProfileStore.Save(); return ok; }
+        public static bool Banish(string id) { var r = Run; bool ok = r != null && Gauntlet.Banish(r, id, Talents); if (ok) ProfileStore.Save(); return ok; }
+
+        /// <summary>The codex keeps each ability's best level.</summary>
+        static void Codex(GauntletRun run)
+        {
+            if (G.Codex == null) G.Codex = new List<RunMod>();
+            foreach (var m in run.Abilities)
+            {
+                var c = G.Codex.Find(x => x.Id == m.Id);
+                if (c == null) G.Codex.Add(new RunMod { Id = m.Id, Level = m.Level });
+                else if (m.Level > c.Level) c.Level = m.Level;
+            }
+        }
+
+        public static bool BuyTalent(string id)
+        {
+            int coins = G.Coins;
+            bool ok = GauntletTalents.Buy(Talents, ref coins, id);
+            G.Coins = coins;
+            if (ok) ProfileStore.Save();
+            return ok;
+        }
+
         public static string Hearts(GauntletRun r)
         {
             int max = Mathf.Max(Gauntlet.StartLives, r.Lives);
@@ -96,8 +168,35 @@ namespace SquashGame.UI
         public static string Line()
         {
             var r = Run;
-            if (r == null || r.Over) return State.BestFloor > 0 ? "Best: floor " + State.BestFloor + "  ·  " + State.BestScore.ToString("N0") + " pts" : "How far can you go?";
+            if (r == null || r.Over) return State.BestFloor > 0 ? "Best: floor " + State.BestFloor + "  ·  " + State.BestScore.ToString("N0") + " pts  ·  " + State.Coins + " coins" : "Endless floors. Build your player. How far can you go?";
             return "Floor " + r.Floor + "  ·  " + Hearts(r) + "  ·  " + r.Score.ToString("N0") + " pts";
+        }
+
+        /// <summary>"●●●○○".</summary>
+        public static string Pips(int level, int max) { return new string('●', level) + new string('○', Mathf.Max(0, max - level)); }
+
+        public static Color RarityColour(Rarity r)
+        {
+            switch (r)
+            {
+                case Rarity.Rare: return new Color32(111, 184, 255, 255);
+                case Rarity.Epic: return new Color32(190, 110, 255, 255);
+                case Rarity.Legendary: return new Color32(255, 184, 59, 255);
+                default: return new Color32(200, 255, 61, 255);
+            }
+        }
+
+        public static string Art(Ability a)
+        {
+            switch (a.Kind)
+            {
+                case AbilityKind.Shot: return "rings";
+                case AbilityKind.Power: return "chevrons";
+                case AbilityKind.Evolved: return "trophy";
+                case AbilityKind.Stat: return "corner";
+                case AbilityKind.Perk: return "bracket";
+                default: return "trophy";
+            }
         }
     }
 
@@ -111,19 +210,21 @@ namespace SquashGame.UI
                 var r = GauntletFlow.Run;
                 if (r == null) return "The Gauntlet";
                 if (r.Over) return "Run over";
-                if (r.AwaitingPerk) return "Floor " + r.FloorsWon + " cleared";
-                return "Floor " + r.Floor;
+                if (r.AwaitingPick) return r.BossPick ? "Boss beaten - your reward" : "Floor " + r.FloorsWon + " cleared";
+                var f = Gauntlet.Floor(r, r.Floor);
+                return f.Kind == FloorKind.Boss ? "Boss: " + f.Name : (f.Kind == FloorKind.Elite ? "Elite floor " : "Floor ") + r.Floor;
             }
         }
         protected override bool ShowChip { get { return false; } }
+        bool _banishing;
 
         protected override void Compose()
         {
             var run = GauntletFlow.Run;
             var st = GauntletFlow.State;
+            if (GauntletFlow.LastReward != null) { Content.Add(new RewardStrip(GauntletFlow.LastReward)); Fe.ToastAchievements(GauntletFlow.LastReward); GauntletFlow.LastReward = null; }
+            if (GauntletFlow.LastUnlock != null) { Kit.L(Content, "UNLOCKED  ·  " + GauntletFlow.LastUnlock + " joins the cards", "gt-unlock"); GauntletFlow.LastUnlock = null; }
             var grid = Kit.Box(Content, "gt-grid");
-
-            if (GauntletFlow.LastReward != null) { Content.Insert(0, new RewardStrip(GauntletFlow.LastReward)); Fe.ToastAchievements(GauntletFlow.LastReward); GauntletFlow.LastReward = null; }
 
             if (run == null || run.Over)
             {
@@ -131,81 +232,178 @@ namespace SquashGame.UI
                 if (run != null)
                 {
                     Kit.L(about, "Floor " + run.FloorsWon + " cleared  ·  " + run.Score.ToString("N0") + " points", "gt-big");
-                    Kit.L(about, "Perks: " + (run.Perks.Count == 0 ? "none" : string.Join(", ", run.Perks.ConvertAll(id => Gauntlet.Find(id).Name))), "k-cr-note");
+                    Kit.L(about, run.BossesBeaten + (run.BossesBeaten == 1 ? " boss" : " bosses") + " beaten  ·  " + run.Picks + " abilities picked", "gt-text");
+                    Build(about, run);
                 }
                 else
                 {
-                    Kit.L(about, "One game to 11 a floor, against an opponent who gets better every floor.", "gt-text");
-                    Kit.L(about, "You have " + Gauntlet.StartLives + " lives: lose a floor and you play it again, a life down.", "gt-text");
-                    Kit.L(about, "Win one and pick a perk: speed, power, a 2-0 head start, an extra life...", "gt-text");
-                    Kit.L(about, "Floors 5, 10, 15 and 20 unlock Gauntlet kit.", "gt-text");
+                    Kit.L(about, "Endless floors: one game to 7 each. Every 5th an elite, every 10th a boss.", "gt-text");
+                    Kit.L(about, "Win a floor and pick one of three cards: new shots, powers and stats, or a level up. Two at the top can evolve.", "gt-text");
+                    Kit.L(about, "Lose a floor and it costs a heart. Coins from every floor buy talents that last.", "gt-text");
                 }
                 Records(grid, st);
-                AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));
+                AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));   // first: it has the focus
+                var more = Kit.Box(Content, "gt-more");
+                AddTo(more, new ActionItem("Talents  ·  " + st.Coins + " coins", () => Fe.Push(new TalentsScreen()), "▶"));
+                AddTo(more, new ActionItem("Codex", () => Fe.Push(new CodexScreen()), "▶"));
                 return;
             }
 
-            if (run.AwaitingPerk)
+            if (run.AwaitingPick)
             {
+                Kit.L(Content, GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins  ·  next: floor " + run.Floor +
+                               (run.BossPick ? "  ·  a boss's reward: every card takes two levels" : ""), "gt-line");
                 var row = Kit.Box(Content, "k-row");
                 foreach (var id in run.Offer)
                 {
-                    var p = Gauntlet.Find(id);
+                    var a = GauntletAbilities.Find(id);
+                    if (a == null) continue;
                     var pick = id;
-                    AddTo(row, new CardItem(p.Name, "PERK", () => { Gauntlet.Choose(run, pick); ProfileStore.Save(); Fe.Replace(new GauntletScreen()); })
-                        .Drawn(PerkArt(id), new Color32(20, 24, 16, 255), PerkArt(id) == "stripes" ? new Color(0.78f, 1f, 0.24f, 0.10f) : (Color)new Color32(200, 255, 61, 255)).Line(p.Text));
+                    int now = Gauntlet.Level(run, id), lvNext = Gauntlet.LevelAfter(run, id);
+                    string kicker = a.Kind == AbilityKind.Evolved ? "EVOLUTION" : a.Kind == AbilityKind.Instant ? "BONUS" : (now == 0 ? "NEW  ·  " : "LV " + now + " → " + lvNext + "  ·  ") + a.KindName.ToUpperInvariant();
+                    var card = AddTo(row, new CardItem(a.Name, kicker, () => { if (_banishing) { if (GauntletFlow.Banish(pick)) Fe.Replace(new GauntletScreen()); } else { GauntletFlow.Pick(pick); Fe.Replace(new GauntletScreen()); } })
+                        .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), GauntletFlow.RarityColour(a.Rarity))
+                        .Line(a.Level(Mathf.Max(1, lvNext)) + (a.Kind != AbilityKind.Instant && a.MaxLevel > 1 ? "\n" + GauntletFlow.Pips(lvNext, a.MaxLevel) : ""))
+                        .Badge(() => GauntletAbilities.RarityNames[(int)a.Rarity].ToUpperInvariant(), a.Rarity >= Rarity.Epic));
+                    card.Root.AddToClassList("gt-card");
                 }
-                // 2026-10-25 playtest: the run's panel and the perk cards overlapped - one line for the run here
-                var a = run.Attributes;
-                Kit.L(grid, GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  floor " + run.Floor + "  ·  Speed " + a.Speed + "  ·  Stamina " + a.Stamina +
-                            "  ·  Power " + a.Power + "  ·  Control " + a.Control + (run.Perks.Count == 0 ? "" : "  ·  " + string.Join(", ", run.Perks.ConvertAll(id => Gauntlet.Find(id).Name))), "gt-line");
-                Kit.L(Content, "Pick one - it lasts for the rest of the run.", "k-cr-note");
+                var acts = Kit.Box(Content, "gt-more");
+                if (run.Rerolls > 0) AddTo(acts, new ActionItem("Reroll  ·  " + run.Rerolls + " left", () => { if (GauntletFlow.Reroll()) Fe.Replace(new GauntletScreen()); }));
+                if (run.Banishes > 0)
+                {
+                    ActionItem b = null;
+                    b = AddTo(acts, new ActionItem("Banish a card  ·  " + run.Banishes + " left", () =>
+                    {
+                        _banishing = !_banishing;
+                        b.SetLabel(_banishing ? "Banishing: choose the card to strike" : "Banish a card  ·  " + run.Banishes + " left");
+                    }));
+                }
+                Kit.L(Content, "Pick one. " + (run.Banishes > 0 ? "Banish: choose it, then the card to strike out of this run." : ""), "k-cr-note");
                 return;
             }
 
             // the next floor
-            var next = Kit.Panel(grid, "NEXT"); next.AddToClassList("gt-main");
-            string opp = Gauntlet.Opponent(run, run.Floor);
-            double d = Gauntlet.Difficulty(run.Floor);
-            Kit.L(next, Roster.StyleName(opp).ToUpperInvariant() + "  ·  " + Level(d), "gt-big");
-            foreach (var line in Roster.StyleLines(opp)) Kit.L(next, line, "gt-text");
+            var fl = Gauntlet.Floor(run, run.Floor);
+            var next = Kit.Panel(grid, fl.Kind == FloorKind.Boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "NEXT"); next.AddToClassList("gt-main");
+            Kit.L(next, (fl.Kind == FloorKind.Boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
+            foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
+            if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
             var court = Courts.Find(Courts.ForCareerTier(GauntletFlow.CourtTier(run.Floor)));
-            Kit.L(next, "One game to 11" + (run.HeadStart > 0 ? ", you start " + run.HeadStart + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
-            Status(grid, run);
-            AddTo(Root, new PrimaryItem("Play floor " + run.Floor, () => GauntletFlow.Play(Fe)));
-            var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? It ends here.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
+            Kit.L(next, "One game to " + fl.Points + (Gauntlet.HeadStart(run) > 0 ? ", you start " + Gauntlet.HeadStart(run) + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
+            var me = Kit.Panel(grid, "YOUR BUILD"); me.AddToClassList("gt-side");
+            Kit.L(me, GauntletFlow.Hearts(run) + (run.Golden ? "   + golden racket" : ""), "gt-hearts");
+            Kit.L(me, run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins", "gt-text");
+            Build(me, run);
+            AddTo(Root, new PrimaryItem((fl.Kind == FloorKind.Boss ? "Face the boss" : "Play floor " + run.Floor), () => GauntletFlow.Play(Fe)));
+            var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? Its coins are kept.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
             quit.Root.AddToClassList("k-action--chip");
             AddTo(TopBar, quit);
         }
 
+        static string Traits(FloorInfo f)
+        {
+            var l = new List<string>();
+            foreach (var t in f.Traits) foreach (var tr in Gauntlet.Traits) if (tr.id == t.Id) l.Add(tr.name + (t.Level > 1 ? " " + t.Level : "") + " (" + tr.text + ")");
+            return string.Join(",  ", l);
+        }
+
         static string Level(double d)
         {
-            return d < 0.3 ? "EASY" : d < 0.5 ? "MEDIUM" : d < 0.65 ? "HARD" : d < 0.8 ? "VERY HARD" : "ELITE";
+            return d < 0.15 ? "EASY" : d < 0.3 ? "MEDIUM" : d < 0.5 ? "HARD" : d < 0.75 ? "VERY HARD" : "ELITE";
         }
 
-        static string PerkArt(string id)
+        /// <summary>The run's abilities, each with its level as pips.</summary>
+        static void Build(VisualElement panel, GauntletRun run)
         {
-            switch (id) { case "speed": return "chevrons"; case "life": return "trophy"; case "head": return "bracket"; case "golden": return "rings"; default: return "stripes"; }
-        }
-
-        static void Status(VisualElement grid, GauntletRun run)
-        {
-            var s = Kit.Panel(grid, "THE RUN"); s.AddToClassList("gt-side");
-            Kit.L(s, GauntletFlow.Hearts(run) + (run.Golden ? "   + golden racket" : ""), "gt-hearts");
-            Kit.L(s, run.Score.ToString("N0") + " points  ·  floor " + run.Floor, "gt-text");
-            var a = run.Attributes;
-            Kit.L(s, "Speed " + a.Speed + "  ·  Stamina " + a.Stamina + "  ·  Power " + a.Power + "  ·  Control " + a.Control, "k-cr-note");
-            if (run.HeadStart > 0) Kit.L(s, "Head start " + run.HeadStart + "-0 every game", "k-cr-note");
-            Kit.L(s, "Perks: " + (run.Perks.Count == 0 ? "none yet" : string.Join(", ", run.Perks.ConvertAll(id => Gauntlet.Find(id).Name))), "k-cr-note");
+            if (run.Abilities.Count == 0) { Kit.L(panel, "No abilities yet - win a floor to pick one.", "k-cr-note"); return; }
+            foreach (var m in run.Abilities)
+            {
+                var a = GauntletAbilities.Find(m.Id);
+                if (a == null) continue;
+                var r = Kit.Box(panel, "gt-ab");
+                var n = Kit.L(r, a.Name, "gt-ab-name"); n.style.color = GauntletFlow.RarityColour(a.Rarity);
+                Kit.L(r, a.MaxLevel > 1 ? GauntletFlow.Pips(m.Level, a.MaxLevel) : "", "gt-ab-pips");
+            }
+            Kit.L(panel, "Active " + Gauntlet.Count(run, true) + " / " + GauntletAbilities.ActiveSlots + "  ·  passive " + Gauntlet.Count(run, false) + " / " + GauntletAbilities.PassiveSlots, "k-cr-note");
         }
 
         static void Records(VisualElement grid, GauntletState st)
         {
             var r = Kit.Panel(grid, "RECORDS"); r.AddToClassList("gt-side");
             Kit.L(r, "Best floor " + st.BestFloor, "gt-big");
-            Kit.L(r, "Best score " + st.BestScore.ToString("N0") + "  ·  " + st.Runs + (st.Runs == 1 ? " run" : " runs"), "gt-text");
+            Kit.L(r, "Best score " + st.BestScore.ToString("N0") + "  ·  " + st.Runs + (st.Runs == 1 ? " run" : " runs") + "  ·  " + st.BossesBeaten + " bosses", "gt-text");
+            Kit.L(r, st.Coins + " coins to spend on talents", "gt-text");
         }
 
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+    }
+
+    // ---------------- talents ----------------
+
+    public sealed class TalentsScreen : GameScreen
+    {
+        protected override string Kicker { get { return "THE GAUNTLET  ·  " + GauntletFlow.State.Coins + " COINS"; } }
+        protected override string Title { get { return "Talents"; } }
+        protected override bool ShowChip { get { return false; } }
+        static readonly string[][] Pages = { new[] { "hearty", "reroll", "wider", "banish" }, new[] { "kit", "revive", "treasure" } };
+
+        protected override void Compose()
+        {
+            string[] names = { "THE RUN", "THE EDGE" };
+            for (int p = 0; p < Pages.Length; p++)
+            {
+                var row = Kit.Box(Page(names[p]), "k-row");
+                foreach (var id in Pages[p]) Card(row, GauntletTalents.Find(id));
+            }
+            var unlocks = GauntletTalents.All().FindAll(t => t.Unlocks != null);
+            for (int i = 0; i < unlocks.Count; i += 4)
+            {
+                var row = Kit.Box(Page(i == 0 ? "UNLOCKS" : "MORE UNLOCKS"), "k-row");
+                for (int k = i; k < i + 4 && k < unlocks.Count; k++) Card(row, unlocks[k]);
+            }
+        }
+
+        void Card(VisualElement row, Talent t)
+        {
+            if (t == null) return;
+            var owned = GauntletFlow.State.Talents;
+            AddTo(row, new CardItem(t.Name, "", () => { if (GauntletFlow.BuyTalent(t.Id)) Fe.Replace(new TalentsScreen()); })
+                .Drawn(t.Unlocks != null ? "rings" : "bracket", new Color32(20, 22, 30, 255), new Color32(255, 184, 59, 255))
+                .Line(t.Text + "\n" + (t.MaxLevel > 1 ? GauntletFlow.Pips(GauntletTalents.Level(owned, t.Id), t.MaxLevel) : ""))
+                .Badge(() => { int c = GauntletTalents.NextCost(owned, t.Id); return c < 0 ? (t.Unlocks != null ? "UNLOCKED" : "MAX") : c + " COINS"; },
+                       GauntletTalents.NextCost(owned, t.Id) >= 0 && GauntletTalents.NextCost(owned, t.Id) <= GauntletFlow.State.Coins));
+        }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Buy"), (PromptBar.Btn.Tabs, "Pages"), (PromptBar.Btn.B, "Back")); }
+    }
+
+    // ---------------- the codex ----------------
+
+    public sealed class CodexScreen : GameScreen
+    {
+        protected override string Kicker { get { return "THE GAUNTLET"; } }
+        protected override string Title { get { return "Codex"; } }
+        protected override bool ShowChip { get { return false; } }
+
+        protected override void Compose()
+        {
+            var st = GauntletFlow.State;
+            var grid = Kit.Box(Content, "gt-codex");
+            foreach (var kind in new[] { AbilityKind.Shot, AbilityKind.Power, AbilityKind.Evolved, AbilityKind.Stat, AbilityKind.Perk })
+            {
+                var p = Kit.Panel(grid, kind == AbilityKind.Evolved ? "EVOLUTIONS" : kind.ToString().ToUpperInvariant() + "S"); p.AddToClassList("gt-codex-panel");
+                foreach (var a in GauntletAbilities.All().FindAll(x => x.Kind == kind))
+                {
+                    var best = st.Codex != null ? st.Codex.Find(c => c.Id == a.Id) : null;
+                    bool open = GauntletTalents.Unlocked(st.Talents, a);
+                    var r = Kit.Box(p, "gt-ab");
+                    var n = Kit.L(r, open ? a.Name : a.Name + "  (locked)", "gt-ab-name");
+                    n.style.color = best != null ? GauntletFlow.RarityColour(a.Rarity) : new Color(1, 1, 1, open ? 0.55f : 0.3f);
+                    Kit.L(r, best != null ? (a.MaxLevel > 1 ? GauntletFlow.Pips(best.Level, a.MaxLevel) : "✓") : (a.Recipe != null ? GauntletAbilities.Find(a.Recipe[0]).Name + " + " + GauntletAbilities.Find(a.Recipe[1]).Name : "-"), "gt-ab-pips");
+                }
+            }
+        }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.B, "Back")); }
     }
 }

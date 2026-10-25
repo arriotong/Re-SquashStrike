@@ -124,6 +124,10 @@ namespace SquashGame.Profile
     {
         public SquashSim.Modes.GauntletRun Run;
         public int BestFloor, BestScore, Runs;
+        /// <summary>P5: coins kept between runs, the talents bought, the codex (each ability's best level), bosses beaten.</summary>
+        public int Coins, BossesBeaten;
+        public List<SquashSim.RunMod> Talents = new List<SquashSim.RunMod>();
+        public List<SquashSim.RunMod> Codex = new List<SquashSim.RunMod>();
     }
 
     /// <summary>P2-M8: who you are online - no account: a random id and secret made here the first time (the server
@@ -152,7 +156,7 @@ namespace SquashGame.Profile
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 4;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops
+        public const int CurrentVersion = 5;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet
         public const string FileName = "profile.json";
 
         /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
@@ -225,7 +229,16 @@ namespace SquashGame.Profile
             if (g.Gacha.ShopBought == null) g.Gacha.ShopBought = new List<string>();
             if (string.IsNullOrEmpty(g.Loadout.Trail)) g.Loadout.Trail = "trail_classic";
             if (g.Gauntlet.Run != null && !g.Gauntlet.Run.Active) g.Gauntlet.Run = null;             // JsonUtility's empty object
-            if (g.Gauntlet.Run != null) { if (g.Gauntlet.Run.Perks == null) g.Gauntlet.Run.Perks = new List<string>(); if (g.Gauntlet.Run.Offer == null) g.Gauntlet.Run.Offer = new List<string>(); if (g.Gauntlet.Run.Attributes == null) g.Gauntlet.Run.Attributes = new SquashSim.AthleteAttributes(); }
+            if (p.Version < 5) g.Gauntlet.Run = null;                     // P5: a run of the old Gauntlet ends (its best floor is kept)
+            if (g.Gauntlet.Talents == null) g.Gauntlet.Talents = new List<SquashSim.RunMod>();
+            if (g.Gauntlet.Codex == null) g.Gauntlet.Codex = new List<SquashSim.RunMod>();
+            if (g.Gauntlet.Run != null)
+            {
+                var r = g.Gauntlet.Run;
+                if (r.Abilities == null) r.Abilities = new List<SquashSim.RunMod>();
+                if (r.Offer == null) r.Offer = new List<string>();
+                if (r.Banished == null) r.Banished = new List<string>();
+            }
             if (g.Challenges.Daily == null) g.Challenges.Daily = new List<Progression.ChallengeProgress>();
             if (g.Challenges.Weekly == null) g.Challenges.Weekly = new Progression.ChallengeProgress();
             // (future versions: migrate fields here)

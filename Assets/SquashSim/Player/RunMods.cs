@@ -21,6 +21,8 @@
 //              momentum   3 rallies won in a row: drives and kills faster
 //              vampire    a winner gives stamina back
 //              second     the first fault each game is replayed
+//   stats      reach      Long Arms: reach x(1 + 3% a level)
+//              grace      Early Bird: the release grace x(1 + 12% a level)
 //   evolved    exec       nicks score more again
 //              ghost      once a rally, a ball out of reach is reached
 //              clock      straight drives: no spread, no mishit
@@ -136,6 +138,10 @@ namespace SquashSim
         public double CrossWiden { get { return 0.07 * Level("wide"); } }
         /// <summary>Hard serve: the charge bonus share (Thunder Serve).</summary>
         public double ServeBonus { get { return 1 + 0.3 * Level("thunder"); } }
+
+        /// <summary>Reach multiplier (Long Arms) and release-grace multiplier (Early Bird).</summary>
+        public double ReachBonus { get { return 1 + 0.03 * Level("reach"); } }
+        public double GraceBonus { get { return 1 + 0.12 * Level("grace"); } }
 
         /// <summary>Once a rally: reach this much further (Ghost).</summary>
         public double GhostReach { get { return Level("ghost") > 0 && !GhostUsed ? 1.6 : 1.0; } }

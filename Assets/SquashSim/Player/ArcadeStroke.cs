@@ -213,7 +213,7 @@ namespace SquashSim
         /// <summary>Horizontal distance from the athlete to the ball, if the ball is hittable at this height.</summary>
         double ReachScale { get { return Diving ? PhysicsConfig.Current.ArcadeHit.DiveReachScale : 1.0; } }
         /// <summary>P3-C1: the athlete's reach (exactly 1 when neutral).</summary>
-        static double AttrReach(TestPlayer p) { return p.Attributes.ReachScale; }
+        static double AttrReach(TestPlayer p) { return p.Mods != null ? p.Attributes.ReachScale * p.Mods.ReachBonus : p.Attributes.ReachScale; }
 
         bool InReach(TestPlayer p, BallState ball, ArcadeHitSection c, out double dist)
         {
@@ -252,6 +252,7 @@ namespace SquashSim
                     _charging = false;
                     _pending = c.Grace;
                     double graceScale = player.Attributes.GraceScale;          // P3-C1: exactly 1 when neutral
+                    if (player.Mods != null) graceScale *= player.Mods.GraceBonus;    // P5: Early Bird
                     if (graceScale != 1.0) _pending *= graceScale;
                     _pendingLive = false;
                     _pendingCharge = System.Math.Min(1, _charge / c.ChargeFull);
@@ -293,7 +294,7 @@ namespace SquashSim
                 if (ctrl.ContactEnabled) _pendingLive = true;
                 if (ctrl.ContactEnabled && InReach(player, ball, c, out double dist))
                 {
-                    _releaseWait = c.Grace * player.Attributes.GraceScale - _pending;
+                    _releaseWait = c.Grace * player.Attributes.GraceScale * (player.Mods != null ? player.Mods.GraceBonus : 1.0) - _pending;
                     _pending = -1;
                     return Hit(ctrl, ball, surfaces, dist, _pendingCharge, c);
                 }

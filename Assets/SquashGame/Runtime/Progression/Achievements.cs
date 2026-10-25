@@ -107,6 +107,10 @@ namespace SquashGame.Progression
             A("Career", "rival", "Rivalry", "Beat one of your rivals.", AchTier.Silver, "wristband_gold");
             A("Career", "streak10", "Unstoppable", "Win 10 career matches in a row.", AchTier.Gold, "banner_blackgold");
             // ---- hidden ----
+            // P5: the Gauntlet roguelite
+            A("Gauntlet", "gt_boss", "Boss slayer", "Beat a Gauntlet boss.", AchTier.Silver);
+            A("Gauntlet", "gt_evolve", "Evolution", "Take an evolution in a Gauntlet run.", AchTier.Silver);
+            A("Gauntlet", "gt_floor30", "Thirty floors", "Clear floor 30 of the Gauntlet.", AchTier.Gold);
             A("Hidden", "hitself", "Own goal", "Hit yourself with your own shot.", AchTier.Bronze, null, 1, true);
             A("Hidden", "tin3", "Tin man", "Three tins in a row.", AchTier.Bronze, null, 1, true);
             return _all;

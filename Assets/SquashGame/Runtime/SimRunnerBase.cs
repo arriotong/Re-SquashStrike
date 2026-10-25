@@ -305,6 +305,14 @@ namespace SquashGame
         public const double DiveSlowMoScale = GameTuning.Speed.DiveSlowMo;
         float _slowMo;
         readonly int[] _dives = new int[4];
+        /// <summary>P5 Focus: slow the game to <paramref name="scale"/> of its speed for <paramref name="seconds"/> real seconds.</summary>
+        public void SlowMo(float seconds, double scale)
+        {
+            _slowMo = seconds;
+            Clock.TimeScale = GameSpeed * scale;
+        }
+        public bool SlowMoActive { get { return _slowMo > 0; } }
+
         /// <summary>A local player started a dive (athlete index).</summary>
         public event System.Action<int> Dived;
 
