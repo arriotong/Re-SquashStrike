@@ -33,6 +33,8 @@ namespace SquashGame.Progression
         public readonly List<Item> Unlocked = new List<Item>();
         public readonly List<Achievement> Achieved = new List<Achievement>();
         public readonly List<string> Challenges = new List<string>();      // P3-R2: challenges finished by this result
+        public int Tickets, TenTickets;                                     // P4: Gear Drops tickets earned by this result
+        public readonly List<string> TicketWhy = new List<string>();
         public bool LevelledUp { get { return ToLevel > FromLevel; } }
         public bool Any { get { return Xp > 0 || Unlocked.Count > 0 || Achieved.Count > 0; } }
     }
@@ -111,6 +113,18 @@ namespace SquashGame.Progression
             if (it == null) return false;
             return it.Unlock == UnlockKind.Free || P.Owned.Contains(id);
         }
+
+        /// <summary>P4: Gear Drops tickets (and x10 tickets) earned, and why. Earned by playing - never bought.</summary>
+        public static void Ticket(RewardResult r, int tickets, int tens, string why)
+        {
+            if (tickets <= 0 && tens <= 0) return;
+            var w = GearDrops.Wallet;
+            w.Tickets += tickets; w.TenTickets += tens;
+            r.Tickets += tickets; r.TenTickets += tens;
+            r.TicketWhy.Add(why);
+        }
+
+        public const int WinsPerTicket = 3, DailyTickets = 2, GoalTickets = 2;
 
         /// <summary>P3-R2: XP from outside the usual sources (a challenge), with its line.</summary>
         public static void AddXp(RewardResult r, string line, int xp) { Xp(r, line, xp); }
@@ -196,6 +210,12 @@ namespace SquashGame.Progression
                 Count(r, "rallies100", P.Stats.RalliesWon);
                 Count(r, "wins25", P.Stats.MatchesWon);
                 Challenges.Record(r, new ChallengeEvent { Match = f });
+                if (f.Won)
+                {
+                    var w = GearDrops.Wallet;
+                    w.WinsTowardTicket++;
+                    if (w.WinsTowardTicket >= WinsPerTicket) { w.WinsTowardTicket = 0; Ticket(r, 1, 0, WinsPerTicket + " wins"); }
+                }
             }
             return End(r);
         }
@@ -255,7 +275,8 @@ namespace SquashGame.Progression
         {
             var r = Begin();
             Xp(r, "Gauntlet floor " + floorsWon, GauntletFloorXp + GauntletFloorStepXp * floorsWon);
-            for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) Grant(r, GauntletItems[i]);
+            Ticket(r, 1, 0, "a Gauntlet floor");
+            for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) { Grant(r, GauntletItems[i]); Ticket(r, 0, 1, "floor " + floorsWon); }
             Challenges.Record(r, new ChallengeEvent { GauntletFloor = floorsWon });
             return End(r);
         }
@@ -271,6 +292,7 @@ namespace SquashGame.Progression
             Xp(r, "Scenario", ScenarioPlayXp);
             int fresh = Math.Max(0, stars - bestBefore);
             Xp(r, fresh == 1 ? "A new star" : fresh + " new stars", fresh * ScenarioStarXp);
+            Ticket(r, fresh, 0, fresh == 1 ? "a new star" : "new stars");
             for (int i = 0; i < ScenarioMilestones.Length; i++) if (totalNow >= ScenarioMilestones[i]) Grant(r, ScenarioItems[i]);
             Challenges.Record(r, new ChallengeEvent { ScenarioStars = stars });
             return End(r);
@@ -305,7 +327,8 @@ namespace SquashGame.Progression
             if (best >= 10) ids.Add("streak10");
             Achieve(r, ids);
             // P3-R4: season goals done in this event's month
-            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) Xp(r, "Season goal: " + g.Text, GoalXp);
+            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) { Xp(r, "Season goal: " + g.Text, GoalXp); Ticket(r, GoalTickets, 0, "a season goal"); }
+            if (e.YouReached == 0) Ticket(r, SquashSim.Career.CareerSession.TitlePoints(e.Tier), 0, "a title");
             Challenges.Record(r, new ChallengeEvent { CareerTitle = e.YouReached == 0 });
             return End(r);
         }

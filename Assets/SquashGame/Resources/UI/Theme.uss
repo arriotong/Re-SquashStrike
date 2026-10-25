@@ -384,3 +384,5 @@
 .lk-ach-name { font-size: 16px; margin: 0; padding: 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .lk-ach-desc { font-size: 10px; margin: 0; padding: 0; color: rgba(255, 255, 255, 0.7); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .lk-ach-reward { font-size: 10px; margin: 2px 0 0 0; padding: 0; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+.rw-tickets { font-size: 12px; margin-top: 5px; color: rgb(255, 196, 64); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

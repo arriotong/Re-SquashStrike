@@ -157,6 +157,29 @@ namespace SquashGame.Tests
             Assert.That(GearDrops.ShopToday(), Is.Not.EqualTo(today), "new stock tomorrow");
         }
 
+        [Test] public void PlayingEarnsTickets()
+        {
+            Challenges.Enabled = false;
+            Give(0);
+            var won = new MatchFacts { Won = true, GamesToWin = 1, Rallies = 10, RalliesWon = 8, Games = new List<int[]> { new[] { 11, 4 } } };
+            Rewards.Match(won); Rewards.Match(won);
+            var third = Rewards.Match(won);
+            Assert.That(third.Tickets, Is.EqualTo(1), "every 3rd win");
+            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(1));
+            var floor = Rewards.GauntletFloor(5);
+            Assert.That(floor.Tickets, Is.EqualTo(1)); Assert.That(floor.TenTickets, Is.EqualTo(1), "a milestone floor: a x10");
+            var sc = Rewards.Scenario(3, 1, 3);
+            Assert.That(sc.Tickets, Is.EqualTo(2), "a ticket a new star");
+            Challenges.Enabled = true;
+            var r = new RewardResult();
+            var st = Challenges.Current();
+            var d = Challenges.Find(st.Daily[0].Id); st.Daily[0].Progress = d.Target - 1;
+            Challenges.Record(r, new ChallengeEvent { Match = new MatchFacts { Won = true, AgainstHard = true, Rallies = 40, RalliesWon = 40, LongestRally = 20, GreatHits = 20, Nicks = 5, Winners = 20,
+                Kills = 10, Drops = 10, WinningBoasts = 5, Aces = 2, TopPaceKmh = 140, CameBackFrom0_5 = true, TSeconds = 60, Seconds = 100, Games = new List<int[]> { new[] { 11, 0 } } },
+                ArcadeStars = 5, Arcade = true, GauntletFloor = 9, ScenarioStars = 3 });
+            Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets), "a daily pays tickets");
+        }
+
         [Test] public void AVersion3ProfileGetsAWallet()
         {
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":3,\"Progress\":{\"Xp\":900}}");

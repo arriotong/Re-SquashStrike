@@ -244,6 +244,7 @@ namespace SquashGame.Progression
                 int xp = (int)Math.Round(DailyXp * (1 + StreakBonus(s.Streak)));
                 Rewards.AddXp(r, "Challenge done: " + d.Describe(), xp);
                 r.Challenges.Add(d.Describe());
+                Rewards.Ticket(r, Rewards.DailyTickets, 0, "a daily challenge");
             }
             var w = s.Weekly;
             var wd = w != null ? Find(w.Id) : null;
@@ -258,6 +259,7 @@ namespace SquashGame.Progression
                         w.Done = true;
                         Rewards.AddXp(r, "Weekly done: " + wd.Describe(), WeeklyXp);
                         r.Challenges.Add(wd.Describe());
+                        Rewards.Ticket(r, 0, 1, "the weekly");
                         Rewards.Grant(r, WeeklyItems[s.WeekliesDone % WeeklyItems.Length]);
                         s.WeekliesDone++;
                     }

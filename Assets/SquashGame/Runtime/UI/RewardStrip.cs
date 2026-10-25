@@ -50,6 +50,13 @@ namespace SquashGame.UI
                 foreach (var it in r.Unlocked) row.Add(Swatch(it));
                 Add(row);
             }
+            // P4: the Gear Drops tickets this earned
+            if (r.Tickets > 0 || r.TenTickets > 0)
+            {
+                var t = new Label("TICKETS   " + (r.Tickets > 0 ? "+" + r.Tickets : "") + (r.Tickets > 0 && r.TenTickets > 0 ? "   " : "") + (r.TenTickets > 0 ? "+" + r.TenTickets + " x10" : "")
+                                  + "   ·   " + string.Join(", ", r.TicketWhy) + "   ·   pull them in Gear Drops (Locker)");
+                t.AddToClassList("rw-tickets"); Add(t);
+            }
             // P3-R1: what the next level brings - always something to play for
             int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);
             if (next > 0)
