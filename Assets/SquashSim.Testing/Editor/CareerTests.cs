@@ -137,6 +137,55 @@ namespace SquashSim.Tests
             Debug.Log("[Career] a month: " + events + " events, " + seen.Count + " players of " + Tour.RosterSize);
         }
 
+        // ---------------- P3-R3: player growth ----------------
+
+        [Test] public void WinsTitlesSeasonsAndTrainingEarnPoints()
+        {
+            var c = CareerSession.New("Grower", "ENG", 31);
+            Assert.That(c.S.TrainingPoints, Is.EqualTo(0));
+            Assert.That(c.S.Attributes.IsNeutral, Is.True, "everyone starts at 5");
+            int slot = c.S.Slot;
+            c.Train();
+            Assert.That(c.S.Slot, Is.EqualTo(slot + 1), "the month goes by");
+            Assert.That(c.S.TrainingPoints, Is.EqualTo(CareerSession.TrainingMonthPoints));
+            Assert.That(c.S.LastTrainedSlot, Is.EqualTo(slot));
+            int before = c.S.TrainingPoints;
+            SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
+            int wins = c.S.Matches.FindAll(m => m.Won).Count;
+            int titles = 0;
+            foreach (var r in c.S.Results) if (r.Player == CareerSession.You && r.Reached == 0) titles += CareerSession.TitlePoints(r.Tier);
+            Assert.That(c.S.TrainingPoints - before, Is.EqualTo(wins * CareerSession.PointsPerWin + titles + CareerSession.PointsPerSeason),
+                "a point a win, the titles' points, two at the season's end");
+            Assert.That(c.S.PointsEarned, Is.EqualTo(c.S.TrainingPoints));
+        }
+
+        [Test] public void SpendingRaisesAnAttributeToTen()
+        {
+            var c = CareerSession.New("Spender", "ENG", 32);
+            c.S.TrainingPoints = 8;
+            for (int i = 0; i < 5; i++) Assert.That(c.Spend("Speed"), Is.True);
+            Assert.That(c.S.Attributes.Speed, Is.EqualTo(10));
+            Assert.That(c.Spend("Speed"), Is.False, "10 is the top");
+            Assert.That(c.Spend("Nonsense"), Is.False);
+            Assert.That(c.S.TrainingPoints, Is.EqualTo(3));
+            Assert.That(c.Spend("Power"), Is.True);
+            Assert.That(c.AttributeEdge, Is.EqualTo(0.015 * (c.S.Attributes.Mean - 5)).Within(1e-4), "simulated matches feel it too");
+            c.S.TrainingPoints = 0;
+            Assert.That(c.Spend("Control"), Is.False, "no points, no spending");
+        }
+
+        [Test] public void AVersion2CareerUpgradesInPlace()
+        {
+            var c = CareerSession.New("Older", "ENG", 33);
+            c.S.Version = 2;
+            string json = JsonUtility.ToJson(c.S).Replace("\"Attributes\":", "\"Unused\":");     // as a v2 save: no attributes
+            var back = new CareerSession(JsonUtility.FromJson<CareerState>(json));
+            Assert.That(back.S.Version, Is.EqualTo(CareerState.CurrentVersion));
+            Assert.That(back.S.Attributes, Is.Not.Null);
+            Assert.That(back.S.Attributes.IsNeutral, Is.True);
+            Assert.That(back.S.Roster.Count, Is.EqualTo(c.S.Roster.Count), "the career is kept");
+        }
+
         static int HighestTier(CareerSession c, int seasons, double strength)
         {
             int best = 0;

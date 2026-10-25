@@ -43,7 +43,7 @@ namespace SquashGame.Profile
                 if (!File.Exists(path)) return null;
                 var s = JsonUtility.FromJson<CareerState>(File.ReadAllText(path));
                 if (s == null || s.Roster == null || s.Roster.Count == 0) return null;
-                if (s.Version < CareerState.CurrentVersion)
+                if (s.Version < 2)
                 {
                     // an older tour's career (v1: the 80-player ladder) can't be carried over: keep it aside, start afresh
                     File.Copy(path, path + ".v" + s.Version + ".bak", true);

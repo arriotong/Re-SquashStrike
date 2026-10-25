@@ -69,7 +69,7 @@ namespace SquashSim.Career
     [Serializable]
     public sealed class CareerState
     {
-        public const int CurrentVersion = 2;     // 2: the PSA system (2026-10-24); a version 1 career can't be read
+        public const int CurrentVersion = 3;     // 2: the PSA system (2026-10-24); 3: player growth (v2 careers upgrade in place)
         public int Version = CurrentVersion;
         public uint Seed;
         public string Name = "", Nat = "ENG";
@@ -86,6 +86,10 @@ namespace SquashSim.Career
         public EventState Current;          // the event you are in (null between events)
         public EventState Last;             // your last finished event (for the result screen)
         public bool SeasonJustEnded;        // the season summary is due
+        // P3-R3: player growth - your athlete's attributes (5 = where everyone starts) and the points to spend on them
+        public SquashSim.AthleteAttributes Attributes = new SquashSim.AthleteAttributes();
+        public int TrainingPoints, PointsEarned, MonthsTrained;
+        public int LastTrainedSlot = -1;
 
         public int Slot { get { return Season * Tour.SlotsPerSeason + Month; } }
     }

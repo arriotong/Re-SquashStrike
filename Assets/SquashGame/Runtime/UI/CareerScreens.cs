@@ -193,6 +193,8 @@ namespace SquashGame.UI
         {
             var s = c.S;
             var list = new List<(string, string)>();
+            if (s.TrainingPoints > 0) list.Add(("TRAINING", s.TrainingPoints + (s.TrainingPoints == 1 ? " point" : " points") + " to spend on your attributes - the PLAYER tab"));
+            if (s.LastTrainedSlot == s.Slot - 1) list.Add(("TRAINING BLOCK", "A month on the practice court: +" + CareerSession.TrainingMonthPoints + " points"));
             if (s.Last != null && s.Last.Slot == s.Slot - 1 && s.Last.YouReached >= 0)
                 list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last.YouReached) + " at the " + s.Last.Name));
             int mv = c.Movement(You), rank = c.RankOf(You);
@@ -266,6 +268,7 @@ namespace SquashGame.UI
                 KitSeed = KitSeed(c, pro.Id),                              // the pro's own kit, the same every match
                 Court = CourtFor(c.S.Current != null ? c.S.Current.Tier : 0),  // the bigger the event, the bigger the stage
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
+                Attributes = c.S.Attributes != null ? c.S.Attributes.Clone() : null,    // P3-R3: your athlete as you trained it
             });
         }
 
@@ -432,6 +435,12 @@ namespace SquashGame.UI
                     Career.TierOn(card.Art, (int)t);
                     _events.Add((card, t));
                 }
+                // P3-R3: or a month on the practice court
+                var train = AddTo(row, new CardItem("Training block", "TRAIN THIS MONTH", Train)
+                    .Drawn("stripes", new Color32(18, 30, 24, 255), new Color(0.78f, 1f, 0.24f, 0.08f))
+                    .Line("+" + CareerSession.TrainingMonthPoints + " training points\nThe month's events go on without you")
+                    .Badge(() => c.S.TrainingPoints > 0 ? c.S.TrainingPoints + " TO SPEND" : "+" + CareerSession.TrainingMonthPoints, true));
+                train.Root.AddToClassList("k-card--event");
             }
 
             // the ranking widget
@@ -536,6 +545,25 @@ namespace SquashGame.UI
             int best = CareerSession.Unranked;
             foreach (var sr in s.Seasons) best = Mathf.Min(best, sr.Rank);
             Kit.L(cs, "Best season finish " + (s.Seasons.Count == 0 ? "– (first season)" : Career.Rank(best)) + "   ·   rating " + s.Rating.ToString("0.00"), "k-cr-note");
+            // P3-R3: your attributes, and the points to spend on them
+            var at = Kit.Panel(mid, "ATTRIBUTES  ·  " + s.TrainingPoints + (s.TrainingPoints == 1 ? " POINT" : " POINTS") + " TO SPEND"); at.AddToClassList("k-cr-attr");
+            _attrTitle = at.Q<Label>(className: "k-panel-title");
+            foreach (var name in CareerSession.AttributeNames)
+            {
+                var n = name;
+                var r0 = Kit.Box(at, "k-cr-attr-row");
+                Kit.L(r0, n.ToUpperInvariant(), "k-cr-attr-name");
+                var bar = Kit.Box(r0, "k-cr-attr-bar");
+                var fill = Kit.Box(bar, "k-cr-attr-fill");
+                var val = Kit.L(r0, "", "k-cr-attr-val");
+                var plus = AddTo(r0, new ActionItem("+", () => { if (c.Spend(n)) { CareerStore.Save(); RefreshAttrs(); } }));
+                plus.Root.AddToClassList("k-cr-attr-plus");
+                plus.Enabled = () => c.S.TrainingPoints > 0 && CareerSession.Get(c.S.Attributes, n) < SquashSim.AthleteAttributes.Max;
+                Kit.L(at, AttrLine(n), "k-cr-attr-line");
+                _attrs.Add((n, fill, val));
+            }
+            RefreshAttrs();
+            Kit.L(at, "Points come from wins (+1), titles (+1 to +3), each season (+2) and training blocks (+" + CareerSession.TrainingMonthPoints + ").", "k-cr-note");
             var rv = Kit.Panel(mid, "RIVALS");
             var rivals = c.Rivals();
             if (rivals.Count == 0) Kit.L(rv, "None yet. A pro who beats you twice, or meets you in two finals, becomes one.", "k-cr-empty");
@@ -565,6 +593,32 @@ namespace SquashGame.UI
             var gear = new ActionItem("Match settings", () => Fe.Push(new CareerSettingsScreen()), PromptBar.Btn.Y);
             gear.Root.AddToClassList("k-action--chip");
             AddTo(TopBar, gear);
+        }
+
+        readonly List<(string name, VisualElement fill, Label val)> _attrs = new List<(string, VisualElement, Label)>();
+        Label _attrTitle;
+
+        static string AttrLine(string n)
+        {
+            switch (n)
+            {
+                case "Speed": return "Top speed and acceleration: up to +6% at 10";
+                case "Stamina": return "Tires slower - longer sprints, more dives: drain down to x0.7";
+                case "Power": return "Harder drives and kills: up to +6% pace";
+                default: return "Tighter shots at a stretch, fewer miss-hits: down to x0.6 spread";
+            }
+        }
+
+        void RefreshAttrs()
+        {
+            var s = Career.S;
+            foreach (var (n, fill, val) in _attrs)
+            {
+                double v = CareerSession.Get(s.Attributes, n);
+                fill.style.width = Length.Percent((float)(100 * v / SquashSim.AthleteAttributes.Max));
+                val.text = v.ToString("0");
+            }
+            if (_attrTitle != null) _attrTitle.text = "ATTRIBUTES  ·  " + s.TrainingPoints + (s.TrainingPoints == 1 ? " POINT" : " POINTS") + " TO SPEND";
         }
 
         void FillTable()
@@ -612,6 +666,13 @@ namespace SquashGame.UI
         void Skip()
         {
             Career.C.Skip();
+            CareerStore.Save();
+            Fe.Replace(new CareerHubScreen());
+        }
+
+        void Train()
+        {
+            Career.C.Train();
             CareerStore.Save();
             Fe.Replace(new CareerHubScreen());
         }

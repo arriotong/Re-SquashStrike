@@ -888,3 +888,13 @@
 .ch-streak-row { flex-direction: row; align-items: flex-end; }
 .ch-streak-n { font-size: 84px; margin: -12px 10px -10px 0; color: rgb(255, 119, 28); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .ch-streak-k { font-size: 18px; letter-spacing: 3px; margin-bottom: 8px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---- P3-R3: career attributes ---- */
+.k-cr-attr { margin-bottom: 16px; }
+.k-cr-attr-row { flex-direction: row; align-items: center; margin-top: 8px; }
+.k-cr-attr-name { width: 110px; font-size: 15px; letter-spacing: 1px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-cr-attr-bar { flex-grow: 1; height: 10px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.k-cr-attr-fill { height: 10px; background-color: rgb(200, 255, 61); border-radius: 5px; }
+.k-cr-attr-val { width: 40px; font-size: 22px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-attr-plus { width: 44px; height: 36px; margin-left: 10px; padding: 0; justify-content: center; }
+.k-cr-attr-line { font-size: 11px; margin: 2px 0 0 110px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }

@@ -43,6 +43,7 @@ namespace SquashSim.Career
             for (int m = 0; m < Tour.SlotsPerSeason; m++) c.FinishSlot();
             s.Seasons.Clear();
             s.SeasonJustEnded = false;
+            s.TrainingPoints = 0; s.PointsEarned = 0;          // the year before you joined earns you nothing
             s.Last = null;
             return c;
         }
@@ -56,6 +57,8 @@ namespace SquashSim.Career
             if (S.Results == null) S.Results = new List<ResultRec>();
             if (S.Matches == null) S.Matches = new List<MatchRec>();
             if (S.Seasons == null) S.Seasons = new List<SeasonRec>();
+            if (S.Attributes == null) S.Attributes = new AthleteAttributes();
+            if (S.Version < CareerState.CurrentVersion) S.Version = CareerState.CurrentVersion;     // v2 -> v3: the defaults fill in
         }
 
         // ---------------- players ----------------
@@ -183,14 +186,14 @@ namespace SquashSim.Career
             return list.ToArray();
         }
 
-        /// <summary>The month's events worth showing you: the best three you may enter, and the next one up (a goal).</summary>
+        /// <summary>The month's events worth showing you: the best two you may enter, and the next one up (a goal).</summary>
         public List<Tier> EventsForYou()
         {
             var open = new List<Tier>();
             Tier next = (Tier)(-1);
             foreach (var t in EventsNow())
             {
-                if (CanEnter(t)) { if (open.Count < 3) open.Add(t); }
+                if (CanEnter(t)) { if (open.Count < 2) open.Add(t); }
                 else if (open.Count == 0) next = t;              // the smallest locked one above the open ones
             }
             var list = new List<Tier>();
@@ -347,6 +350,7 @@ namespace SquashSim.Career
             });
             PlayRound(e, won ? You : opp, score);
             if (!won) e.YouOut = true;
+            else Award(PointsPerWin);
         }
 
         /// <summary>The rally model plays your match (at your rating).</summary>
@@ -355,7 +359,7 @@ namespace SquashSim.Career
             int opp = NextOpponent();
             if (opp < 0) throw new InvalidOperationException("no match to simulate");
             var rng = new CareerRng(S.Seed, S.Slot * 16 + S.Current.Index, 5000 + PlayersLeft);
-            var res = RallyModel.Play(RallyModel.YouRally(S.Rating, Pro(opp).Strength), S.GamesToWin, S.English, rng);
+            var res = RallyModel.Play(RallyModel.YouRally(S.Rating + AttributeEdge, Pro(opp).Strength), S.GamesToWin, S.English, rng);
             RecordYours(res.AWon, res.Score, res.RalliesA, res.RalliesA + res.RalliesB, simulated: true);
             return res;
         }
@@ -427,6 +431,52 @@ namespace SquashSim.Career
         /// <summary>Not entering anything this month.</summary>
         public void Skip() { if (S.Current == null) FinishSlot(); }
 
+        // ---------------- P3-R3: player growth ----------------
+
+        public const int PointsPerWin = 1, PointsPerSeason = 2, TrainingMonthPoints = 3;
+
+        /// <summary>A title's points: 1 for a small Challenger, 2 up to Gold, 3 above.</summary>
+        public static int TitlePoints(int tier) { int b = Tour.Band(tier); return b <= 1 ? 1 : b <= 3 ? 2 : 3; }
+
+        void Award(int points) { if (points <= 0) return; S.TrainingPoints += points; S.PointsEarned += points; }
+
+        /// <summary>Your attributes' edge in a simulated match (a rating bonus: 0.015 per point of the mean above 5).</summary>
+        public double AttributeEdge { get { return S.Attributes == null ? 0 : System.Math.Round(0.015 * (S.Attributes.Mean - AthleteAttributes.Neutral), 4); } }
+
+        /// <summary>A month on the training court instead of an event: the events go on without you, you gain points.</summary>
+        public void Train()
+        {
+            if (S.Current != null) return;
+            Award(TrainingMonthPoints);
+            S.MonthsTrained++;
+            S.LastTrainedSlot = S.Slot;
+            FinishSlot();
+        }
+
+        /// <summary>Spend a point on an attribute ("Speed", "Stamina", "Power", "Control"). False when it can't.</summary>
+        public bool Spend(string attribute)
+        {
+            if (S.TrainingPoints <= 0) return false;
+            var a = S.Attributes;
+            double v = Get(a, attribute);
+            if (v < 0 || v >= AthleteAttributes.Max) return false;
+            Set(a, attribute, v + 1);
+            S.TrainingPoints--;
+            return true;
+        }
+
+        public static readonly string[] AttributeNames = { "Speed", "Stamina", "Power", "Control" };
+
+        public static double Get(AthleteAttributes a, string name)
+        {
+            switch (name) { case "Speed": return a.Speed; case "Stamina": return a.Stamina; case "Power": return a.Power; case "Control": return a.Control; default: return -1; }
+        }
+
+        static void Set(AthleteAttributes a, string name, double v)
+        {
+            switch (name) { case "Speed": a.Speed = v; break; case "Stamina": a.Stamina = v; break; case "Power": a.Power = v; break; case "Control": a.Control = v; break; }
+        }
+
         /// <summary>End the month: every event in it played out, points and prize money awarded; on to the next.</summary>
         public void FinishSlot()
         {
@@ -453,7 +503,7 @@ namespace SquashSim.Career
                     {
                         e.YouReached = reached; e.YouPoints = info.Points[reached]; e.YouPrize = info.Prize[reached];
                         S.Earnings += info.Prize[reached];
-                        if (reached == 0) S.Titles++;
+                        if (reached == 0) { S.Titles++; Award(TitlePoints(e.Tier)); }
                     }
                 }
             }
@@ -489,6 +539,7 @@ namespace SquashSim.Career
                 if (r.Player == You && r.Slot / Tour.SlotsPerSeason == season) { if (r.Reached == 0) rec.Titles++; rec.Earnings += Tour.Info((Tier)r.Tier).Prize[r.Reached]; }
             S.Seasons.Add(rec);
             S.SeasonJustEnded = true;
+            Award(PointsPerSeason);
             int next = S.NextId;
             Roster.NewSeason(S.Roster, S.Seed, season, ref next);
             S.NextId = next;
