@@ -105,6 +105,15 @@ namespace SquashGame.Profile
         public Progression.LifetimeStats Stats = new Progression.LifetimeStats();
         public Progression.ChallengeState Challenges = new Progression.ChallengeState();     // P3-R2
         public GauntletState Gauntlet = new GauntletState();                                  // P3-R5
+        public List<ScenarioRecord> Scenarios = new List<ScenarioRecord>();                   // P3-R6
+    }
+
+    /// <summary>P3-R6: a scenario's best stars.</summary>
+    [Serializable]
+    public sealed class ScenarioRecord
+    {
+        public string Id;
+        public int Stars, Plays, Wins;
     }
 
     /// <summary>P3-R5: the Gauntlet - the run in progress (if any) and the records.</summary>
@@ -191,6 +200,7 @@ namespace SquashGame.Profile
             if (g.Stats == null) g.Stats = new Progression.LifetimeStats();
             if (g.Challenges == null) g.Challenges = new Progression.ChallengeState();
             if (g.Gauntlet == null) g.Gauntlet = new GauntletState();
+            if (g.Scenarios == null) g.Scenarios = new List<ScenarioRecord>();
             if (g.Gauntlet.Run != null && !g.Gauntlet.Run.Active) g.Gauntlet.Run = null;             // JsonUtility's empty object
             if (g.Gauntlet.Run != null) { if (g.Gauntlet.Run.Perks == null) g.Gauntlet.Run.Perks = new List<string>(); if (g.Gauntlet.Run.Offer == null) g.Gauntlet.Run.Offer = new List<string>(); if (g.Gauntlet.Run.Attributes == null) g.Gauntlet.Run.Attributes = new SquashSim.AthleteAttributes(); }
             if (g.Challenges.Daily == null) g.Challenges.Daily = new List<Progression.ChallengeProgress>();

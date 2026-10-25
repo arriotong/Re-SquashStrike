@@ -205,6 +205,11 @@ namespace SquashGame.Progression
             Ch(Slot.Frame, "gt_frame_storm", "Storm", 0x3ba3ff, 0x3ba3ff, "Gauntlet: clear floor 15");
             Ch(Slot.Title, "gt_title_unbroken", "Unbroken", 0xffffff, 0xffffff, "Gauntlet: clear floor 20");
 
+            // ---- P3-R6: Scenarios' stars ----
+            Ch(Slot.Title, "sc_title_clutch", "Clutch", 0xffffff, 0xffffff, "Scenarios: 15 stars");
+            Ch(Slot.Shirt, "sc_shirt_ice", "Ice in the veins", 0xdff3ff, 0x6fb8ff, "Scenarios: 30 stars");
+            Ch(Slot.Title, "sc_title_legend", "Legend", 0xffffff, 0xffffff, "Scenarios: every star");
+
             // ---- P3-R4: the sponsors' shirts (sign a deal in the career) ----
             foreach (var (id, brand, a, b) in new[] {
                 ("sp_kestrel", "Kestrel Sportswear", 0x1f5a35u, 0xffb83bu), ("sp_halden", "Halden Rackets", 0xf2f2eeu, 0xd8382fu),

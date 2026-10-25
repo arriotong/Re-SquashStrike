@@ -260,6 +260,22 @@ namespace SquashGame.Progression
             return End(r);
         }
 
+        public const int ScenarioPlayXp = 30, ScenarioStarXp = 60;
+        public static readonly int[] ScenarioMilestones = { 15, 30, 45 };
+        public static readonly string[] ScenarioItems = { "sc_title_clutch", "sc_shirt_ice", "sc_title_legend" };
+
+        /// <summary>P3-R6: a scenario played - the stars it earned, the best before, the stars in total now.</summary>
+        public static RewardResult Scenario(int stars, int bestBefore, int totalNow)
+        {
+            var r = Begin();
+            Xp(r, "Scenario", ScenarioPlayXp);
+            int fresh = Math.Max(0, stars - bestBefore);
+            Xp(r, fresh == 1 ? "A new star" : fresh + " new stars", fresh * ScenarioStarXp);
+            for (int i = 0; i < ScenarioMilestones.Length; i++) if (totalNow >= ScenarioMilestones[i]) Grant(r, ScenarioItems[i]);
+            Challenges.Record(r, new ChallengeEvent { ScenarioStars = stars });
+            return End(r);
+        }
+
         /// <summary>A career event finished: how far you got, the ranking, rivals, streaks.</summary>
         public static RewardResult CareerEvent(SquashSim.Career.CareerSession c, SquashSim.Career.EventState e)
         {

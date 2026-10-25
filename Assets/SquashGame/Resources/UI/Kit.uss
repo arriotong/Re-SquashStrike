@@ -921,3 +921,8 @@
 .gt-big { font-size: 34px; margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .gt-text { font-size: 16px; margin: 4px 0; white-space: normal; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .gt-hearts { font-size: 40px; color: rgb(255, 90, 74); margin-bottom: 4px; }
+
+/* ---- P3-R6: Scenarios ---- */
+.sc-result { width: 1100px; margin-bottom: 12px; }
+.sc-result-stars { font-size: 34px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.sc-total { font-size: 14px; letter-spacing: 2px; margin-bottom: 8px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

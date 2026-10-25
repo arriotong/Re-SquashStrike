@@ -39,7 +39,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 },
+            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 },
         };
 
         protected override void Compose()
@@ -68,6 +68,10 @@ namespace SquashGame.UI
             AddTo(ch, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()))
                 .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
                 .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
+
+            AddTo(ch, new CardItem("SCENARIOS", "CLUTCH SITUATIONS", () => Fe.Push(new ScenarioScreen()))
+                .Drawn("rings", new Color32(16, 18, 30, 255), new Color32(255, 184, 59, 255))
+                .Line(() => "15 situations: save the match balls, win the decider").Badge(() => "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars, true));
 
             // ---- CAREER ----
             var career = Kit.Box(Page("CAREER"), "k-row");
@@ -363,6 +367,7 @@ namespace SquashGame.UI
             bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
             if (m.Settings.Career) AddTo(Root, new PrimaryItem("Continue", () => Career.Record(Fe, won, false)));
             else if (m.Settings.Gauntlet) AddTo(Root, new PrimaryItem("Continue", () => GauntletFlow.AfterMatch(Fe, won, Margin())));
+            else if (m.Settings.Scenario != null) AddTo(Root, new PrimaryItem("Continue", () => ScenarioFlow.AfterMatch(Fe, st.Facts(m))));
             else AddTo(Root, new PrimaryItem("Rematch", () => Fe.Restart()));
 
             // the score line: names, games, each game as a chip
@@ -391,7 +396,12 @@ namespace SquashGame.UI
             right.Add(new RewardStrip(Reward));
             Fe.ToastAchievements(Reward);
 
-            if (!m.Settings.Career && !m.Settings.Gauntlet)
+            if (m.Settings.Scenario != null)
+            {
+                var more = Kit.Box(Root, "k-ft-more");
+                AddTo(more, new ActionItem("Try again", () => Fe.Restart()));
+            }
+            else if (!m.Settings.Career && !m.Settings.Gauntlet)
             {
                 var more = Kit.Box(Root, "k-ft-more");                        // bottom left, opposite the primary
                 AddTo(more, new ActionItem("Change settings", () =>
@@ -428,6 +438,7 @@ namespace SquashGame.UI
         {
             if (Fe.Match.Settings.Career) Career.Record(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, false);
             else if (Fe.Match.Settings.Gauntlet) GauntletFlow.AfterMatch(Fe, Fe.Match.Sim.Score.MatchWinner == Fe.Match.HumanIndex, Margin());
+            else if (Fe.Match.Settings.Scenario != null) ScenarioFlow.AfterMatch(Fe, Fe.Stats.Facts(Fe.Match));
             else Fe.QuitToMenu();
         }
     }

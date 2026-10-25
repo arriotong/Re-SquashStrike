@@ -223,6 +223,38 @@ namespace SquashGame.Tests
             GauntletFlow.Abandon();
         }
 
+        /// <summary>P3-R6: Scenarios - the screen, a scenario's match starting part-way, its stars back on the screen.</summary>
+        [UnityTest]
+        public IEnumerator AScenarioStartsPartWayAndScoresStars()
+        {
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "SCENARIOS");
+            Assert.That(fe.Top, Is.InstanceOf<ScenarioScreen>());
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "P3_Scenarios.png");
+
+            var sc = SquashSim.Modes.Scenarios.Find("sixten");                      // a Comebacks one (locked: play it straight)
+            ScenarioFlow.Play(fe, sc);
+            yield return Wait(3f, () => fe.Match != null && fe.Match.Settings.Scenario == "sixten");
+            yield return Wait(1f, () => false);
+            Assert.That(fe.Match.Sim.Score.Points, Is.EqualTo(new[] { 6, 10 }), "6-10 down, as the story says");
+            yield return CaptureUI(fe, "P3_Scenario_Match.png");
+
+            var facts = new MatchFacts { Won = true, GamesToWin = 1, Rallies = 8, RalliesWon = 8, Tins = 0, Games = new System.Collections.Generic.List<int[]> { new[] { 12, 10 } } };
+            ScenarioFlow.AfterMatch(fe, facts);                                      // as if saved: 8 rallies, no tins
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<ScenarioScreen>());
+            Assert.That(ScenarioFlow.StarsOf("sixten"), Is.EqualTo(3), "the win, no tins, inside 9 rallies");
+            yield return Wait(1f, () => false);
+            yield return CaptureUI(fe, "P3_Scenario_Result.png");
+        }
+
         [UnityTest]
         public IEnumerator AWonMatchGivesXpALevelAndAchievements()
         {
