@@ -25,7 +25,7 @@ namespace SquashSim.Tests
 
         /// <summary>Play a recorded match. Person-steered athletes get an AI writing into their live intent once per frame
         /// (every <paramref name="frameSteps"/> steps), as a person's device is sampled once per frame.</summary>
-        static ReplayFile Play(ReplaySetup s, IAthleteBrain p0, IAthleteBrain p1 = null, Action<MatchSimulation, MatchRecorder> between = null,
+        internal static ReplayFile Play(ReplaySetup s, IAthleteBrain p0, IAthleteBrain p1 = null, Action<MatchSimulation, MatchRecorder> between = null,
                                int frameSteps = 4, double maxSeconds = 1500)
         {
             ReplayMatch.Configure(s);
@@ -53,7 +53,7 @@ namespace SquashSim.Tests
             return rec.File;
         }
 
-        static ReplayFile RoundTrip(ReplayFile f, out int bytes)
+        internal static ReplayFile RoundTrip(ReplayFile f, out int bytes)
         {
             var b = f.ToBytes();
             bytes = b.Length;

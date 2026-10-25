@@ -32,6 +32,8 @@ namespace SquashSim.Replays
             m.WarmUpEnabled = s.WarmUp;
             m.AutoNextGame = true;
             m.AppealsEnabled = s.Lets;               // P2-M7: the Lets setting, recorded with the match
+            m.StartPoints0 = s.StartPoints0; m.StartPoints1 = s.StartPoints1; m.StartGames0 = s.StartGames0; m.StartGames1 = s.StartGames1;   // P3-C1
+            m.StartServer = s.StartServer; m.EachGamePoints0 = s.EachGame0; m.EachGamePoints1 = s.EachGame1;
         }
 
         /// <summary>The match itself (Configure first): the opponent in slot 1 unless two play; everyone plays the simple
@@ -39,6 +41,7 @@ namespace SquashSim.Replays
         public static MatchSimulation Build(ReplaySetup s)
         {
             var sim = new MatchSimulation(s.FirstServer);
+            if (s.Attr0 != null) sim.Players[0].Player.Attributes.CopyFrom(s.Attr0);       // P3-C1 (neutral: no effect)
             sim.Bots[1] = s.TwoPlayer ? null : Opponent(s);
             if (!string.IsNullOrEmpty(s.Opponent0))
                 sim.Bots[0] = new OpponentBrain(AiProfile.ByName(s.Opponent0).WithDifficulty(s.Difficulty0), s.BotSeed ^ 0x9E3779B9u);

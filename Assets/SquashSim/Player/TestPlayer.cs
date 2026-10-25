@@ -48,6 +48,8 @@ namespace SquashSim
         public bool ArcadeMovement;
         /// <summary>Game only: the AI's hitting pace for its difficulty (exactly 1 in the lab: no effect).</summary>
         public double PaceScale = 1.0;
+        /// <summary>P3-C1: the athlete's attributes (career growth, Gauntlet perks). Neutral (all 5) changes nothing.</summary>
+        public readonly AthleteAttributes Attributes = new AthleteAttributes();
 
         public TestPlayer() : this(new V3(0, 0, 6.2)) { }
 

@@ -30,7 +30,9 @@ namespace SquashSim
             double max = PhysicsConfig.Current.Player.MaxSpeed;
             double frac = max > 0 ? p.Speed / max : 0;
             double s = p.Stamina;
-            s -= f.DrainRate * frac * frac * dt;
+            double drain = f.DrainRate * frac * frac * dt;
+            double k = p.Attributes.DrainScale;                    // P3-C1: exactly 1 when neutral
+            s -= k != 1.0 ? drain * k : drain;
             if (!rallyLive) s += f.RecoverBetweenRallies * dt;
             else if (p.Speed < f.StandingSpeed) s += f.RecoverStanding * dt;
             p.Stamina = s < f.Floor ? f.Floor : (s > 1 ? 1 : s);
@@ -49,6 +51,8 @@ namespace SquashSim
                 case ReachStates.Stretch: cost = f.StretchCost; break;
                 default: cost = 0; break;
             }
+            double k = p.Attributes.DrainScale;
+            if (k != 1.0) cost *= k;
             double s = p.Stamina - cost;
             p.Stamina = s < f.Floor ? f.Floor : s;
         }

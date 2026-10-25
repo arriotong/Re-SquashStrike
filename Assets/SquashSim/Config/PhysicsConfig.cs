@@ -293,6 +293,10 @@ namespace SquashSim
         public double WarmUpRefeedSeconds;  // a dead ball is fed again after this long
         public double BetweenGamesSeconds;  // break between games (real squash: 90 s); the ball cools
         public bool AutoNextGame;           // after the break, the next game starts by itself
+        // P3-C1: a match that starts mid-way (Scenarios) or with a head start each game (the Gauntlet's perk). All 0 = 0-0.
+        public int StartPoints0, StartPoints1, StartGames0, StartGames1;
+        public int StartServer = -1;        // who serves the first rally of a started-mid-way match (-1: the usual)
+        public int EachGamePoints0, EachGamePoints1;   // every game starts at this score
     }
 
     public sealed class SimConfig

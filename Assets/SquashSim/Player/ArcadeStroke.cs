@@ -126,7 +126,7 @@ namespace SquashSim
             if (intent.Sprint && moving && p.Stamina > c.WindedStamina)
             {
                 s *= c.SprintScale;
-                p.Stamina = System.Math.Max(0, p.Stamina - c.SprintDrain * dt);
+                p.Stamina = System.Math.Max(0, p.Stamina - c.SprintDrain * dt * p.Attributes.DrainScale);   // (x1 when neutral: exact)
             }
             return s;
         }
@@ -143,7 +143,7 @@ namespace SquashSim
                 if (m < 0.1) { mx = DMath.Sin(p.Facing); mz = -DMath.Cos(p.Facing); m = 1; }
                 _diveX = mx / m; _diveZ = mz / m;
                 _diveT = c.DiveSeconds;
-                p.Stamina = System.Math.Max(0, p.Stamina - c.DiveStamina);
+                p.Stamina = System.Math.Max(0, p.Stamina - c.DiveStamina * p.Attributes.DrainScale);   // (x1 when neutral: exact)
                 DiveCount++;
             }
             if (_diveT <= 0) return false;
@@ -387,13 +387,15 @@ namespace SquashSim
                 if (shot != "drop" && !touch) speed *= c.BoastPaceScale;
             }
             double spread = missRatio * missRatio * c.MaxSpread * (charge > GameTuning.Hit.FullChargeAt ? GameTuning.Hit.FullChargeSpreadCut : 1.0);
+            double control = player.Attributes.ControlScale;                 // P3-C1: exactly 1 when neutral
+            if (control != 1.0) spread *= control;
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
             if (Assisted) spread *= GameTuning.Hit.AssistSpreadScale;       // the easier mode: a little tighter
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
             ty += ey;
-            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early))
+            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early) * control)
             {
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - GameTuning.Hit.GrossMissTinDepth;                       // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
@@ -402,6 +404,8 @@ namespace SquashSim
             // The AI's difficulty (1 for a human): how hard its drives and kills are. Drops, boasts, lobs and serves
             // set their own pace (a softer drop just dies in the tin).
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
+            double power = player.Attributes.PowerScale;                     // P3-C1: the athlete's power (exactly 1 when neutral)
+            if (power != 1.0 && (shot == "drive" || shot == "kill")) speed *= power;
 
             // Drives, kills and boasts leave the front wall heading down (lobs, drops and serves keep their arc).
             _dip = c.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill" || boast);

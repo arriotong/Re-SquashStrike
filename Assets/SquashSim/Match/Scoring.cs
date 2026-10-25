@@ -48,7 +48,25 @@ namespace SquashSim
         {
             var m = PhysicsConfig.Current.Match;
             var sys = m.Scoring == "english" ? ScoringSystem.English : ScoringSystem.Par;
-            return new MatchScore(sys, firstServer, m.GamesToWin, m.EnglishSetTwo);
+            var s = new MatchScore(sys, m.StartServer >= 0 ? m.StartServer : firstServer, m.GamesToWin, m.EnglishSetTwo);
+            s.EachGame[0] = m.EachGamePoints0; s.EachGame[1] = m.EachGamePoints1;
+            if (s.EachGame[0] != 0 || s.EachGame[1] != 0) { s.Points[0] = s.EachGame[0]; s.Points[1] = s.EachGame[1]; }
+            if (m.StartPoints0 != 0 || m.StartPoints1 != 0 || m.StartGames0 != 0 || m.StartGames1 != 0)
+                s.StartAt(m.StartPoints0, m.StartPoints1, m.StartGames0, m.StartGames1);
+            return s;
+        }
+
+        /// <summary>P3-C1: every game starts at this score (the Gauntlet's head start). 0-0 normally.</summary>
+        public readonly int[] EachGame = new int[2];
+
+        /// <summary>P3-C1: begin part-way through (a Scenario): this game's points and the games already won. Before the first rally only.</summary>
+        public void StartAt(int p0, int p1, int g0, int g1)
+        {
+            if (Rallies > 0) return;
+            Points[0] = p0; Points[1] = p1;
+            Games[0] = g0 < 0 ? 0 : (g0 >= GamesToWin ? GamesToWin - 1 : g0);
+            Games[1] = g1 < 0 ? 0 : (g1 >= GamesToWin ? GamesToWin - 1 : g1);
+            // English at 8-all is already the set decision's moment: let it be decided on the next rally as usual
         }
 
         int BaseTarget
@@ -62,7 +80,7 @@ namespace SquashSim
 
         void ResetGame(int server)
         {
-            Points[0] = 0; Points[1] = 0;
+            Points[0] = EachGame != null ? EachGame[0] : 0; Points[1] = EachGame != null ? EachGame[1] : 0;
             Server = server;
             ServeSide = 1;
             GameTarget = BaseTarget;

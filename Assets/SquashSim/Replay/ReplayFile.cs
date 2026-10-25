@@ -43,6 +43,9 @@ namespace SquashSim.Replays
         public float Difficulty0 = 0.5f;
         /// <summary>Lets on (appeals and the referee's own swing call). Format 1 files predate it: off.</summary>
         public bool Lets = true;
+        /// <summary>P3-C1 (format 4): athlete 0's attributes; a start score; a head start each game. Older files: neutral, 0-0.</summary>
+        public AthleteAttributes Attr0 = new AthleteAttributes();
+        public int StartPoints0, StartPoints1, StartGames0, StartGames1, StartServer = -1, EachGame0, EachGame1;
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -106,7 +109,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 3;
+        public const int FormatVersion = 4;      // 4: P3-C1 attributes and start score
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -138,6 +141,9 @@ namespace SquashSim.Replays
                 var s = Setup;
                 w.Write(s.TwoPlayer); w.Write(s.Opponent ?? ""); w.Write(s.Difficulty); w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin);
                 w.Write(s.WarmUp); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Opponent0 ?? ""); w.Write(s.Difficulty0); w.Write(s.Lets);
+                var a = s.Attr0 ?? new AthleteAttributes();
+                w.Write(a.Speed); w.Write(a.Stamina); w.Write(a.Power); w.Write(a.Control);
+                w.Write(s.StartPoints0); w.Write(s.StartPoints1); w.Write(s.StartGames0); w.Write(s.StartGames1); w.Write(s.StartServer); w.Write(s.EachGame0); w.Write(s.EachGame1);
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -208,6 +214,12 @@ namespace SquashSim.Replays
                 s.WarmUp = r.ReadBoolean(); s.BotSeed = r.ReadUInt32(); s.FirstServer = r.ReadInt32();
                 s.Opponent0 = r.ReadString(); if (s.Opponent0.Length == 0) s.Opponent0 = null; s.Difficulty0 = r.ReadSingle();
                 s.Lets = version >= 2 && r.ReadBoolean();
+                if (version >= 4)
+                {
+                    s.Attr0 = new AthleteAttributes { Speed = r.ReadDouble(), Stamina = r.ReadDouble(), Power = r.ReadDouble(), Control = r.ReadDouble() };
+                    s.StartPoints0 = r.ReadInt32(); s.StartPoints1 = r.ReadInt32(); s.StartGames0 = r.ReadInt32(); s.StartGames1 = r.ReadInt32();
+                    s.StartServer = r.ReadInt32(); s.EachGame0 = r.ReadInt32(); s.EachGame1 = r.ReadInt32();
+                }
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)
                 {

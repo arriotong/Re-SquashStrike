@@ -27,6 +27,8 @@ namespace SquashSim
             bool wantsMove = intent.MoveMagnitude > 0.01;
             player.Adjusting = adjusting;
             if (player.SpeedScale != 1.0) maxSpeed *= player.SpeedScale;      // game only (sprint, dive recovery)
+            double attrSpeed = player.Attributes.SpeedScale;                  // P3-C1: exactly 1 when neutral
+            if (attrSpeed != 1.0) maxSpeed *= attrSpeed;
 
             // Match-only modifiers. All timers are zero in the lab, so this block
             // never runs there and the lab's arithmetic is exactly unchanged.
@@ -79,6 +81,7 @@ namespace SquashSim
 
             if (modified) rate *= modRate;
             if (tired) rate *= fatigueScale;
+            if (attrSpeed != 1.0) rate *= attrSpeed;
 
             double maxDelta = rate * dt;
             if (deltaMag > maxDelta && deltaMag > 1e-8)

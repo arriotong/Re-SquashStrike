@@ -48,6 +48,12 @@ namespace SquashGame
         public string Court;
         /// <summary>How full the stands are, 0..1 (0 = full: the default).</summary>
         public float CrowdFill;
+        /// <summary>P3-C1: your athlete's attributes (null = neutral: the game as it always was).</summary>
+        public SquashSim.AthleteAttributes Attributes;
+        /// <summary>P3-C1: start part-way (Scenarios): points [you, them], games [you, them], who serves (-1: the usual).</summary>
+        public int StartPoints0, StartPoints1, StartGames0, StartGames1, StartServer = -1;
+        /// <summary>P3-C1: every game starts at this score (the Gauntlet's head start).</summary>
+        public int EachGame0, EachGame1;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
         /// <summary>One game, no knock-up: straight to the first serve (tests, quick play).</summary>
@@ -187,6 +193,9 @@ namespace SquashGame
             {
                 TwoPlayer = s.TwoPlayer && Input2 != null, Opponent = s.Opponent, Difficulty = s.Difficulty, Scoring = s.Scoring,
                 GamesToWin = Mathf.Max(1, s.GamesToWin), WarmUp = s.WarmUp, BotSeed = BotSeed, FirstServer = 0, Lets = Lets,
+                Attr0 = s.Attributes != null ? s.Attributes.Clone() : new AthleteAttributes(),
+                StartPoints0 = s.StartPoints0, StartPoints1 = s.StartPoints1, StartGames0 = s.StartGames0, StartGames1 = s.StartGames1,
+                StartServer = s.StartServer, EachGame0 = s.EachGame0, EachGame1 = s.EachGame1,
             };
         }
 
