@@ -9,10 +9,16 @@
 //   replays, the checksum test).
 //
 //              at 0        at 10
-//   Speed      -6%         +6%     top speed and acceleration
+//   Speed      -9%         +9%     top speed and acceleration
 //   Stamina    x1.3        x0.7    stamina drain (running, sprints, dives)
-//   Power      -6%         +6%     drive and kill pace
-//   Control    x1.4        x0.6    aim spread and gross-miss chance
+//   Power      -9%         +9%     drive and kill pace
+//   Control    x1.5        x0.5    aim spread and gross-miss chance
+//   Speed      x0.95       x1.08   reach (how far from you the ball is hittable)
+//   Control    x0.8        x1.35   the grace after an early release
+//
+//   2026-10-25 playtest round 2: at +-6% / x0.6 a maxed career player
+//   was barely better - stronger now (replays kept before show as
+//   diverged where the athlete had trained attributes)
 // ===========================================================
 
 namespace SquashSim
@@ -35,10 +41,14 @@ namespace SquashSim
             return v < Neutral ? 1 + (at0 - 1) * (Neutral - v) / Neutral : 1 + (at10 - 1) * (v - Neutral) / Neutral;
         }
 
-        public double SpeedScale { get { return Scale(Speed, 0.94, 1.06); } }
+        public double SpeedScale { get { return Scale(Speed, 0.91, 1.09); } }
         public double DrainScale { get { return Scale(Stamina, 1.3, 0.7); } }
-        public double PowerScale { get { return Scale(Power, 0.94, 1.06); } }
-        public double ControlScale { get { return Scale(Control, 1.4, 0.6); } }
+        public double PowerScale { get { return Scale(Power, 0.91, 1.09); } }
+        public double ControlScale { get { return Scale(Control, 1.5, 0.5); } }
+        /// <summary>Reach and the release grace: points are won and lost on the timing of the hit, which spread, pace and
+        /// foot speed alone barely touched (2026-10-25: a maxed player won no more rallies).</summary>
+        public double ReachScale { get { return Scale(Speed, 0.95, 1.08); } }
+        public double GraceScale { get { return Scale(Control, 0.8, 1.35); } }
 
         public AthleteAttributes Clone() { return (AthleteAttributes)MemberwiseClone(); }
 

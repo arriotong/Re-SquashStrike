@@ -151,6 +151,8 @@ namespace SquashGame.UI
 
         public override void OnActionY() { Fe.Push(new SettingsScreen()); }
         public override void OnActionX() { Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame)); }
+        /// <summary>The player tag top right: your profile (names, record).</summary>
+        protected override System.Action OnChip { get { return () => Fe.Push(new ProfileScreen()); } }
 
         static int ArcadeStars() { int n = 0; foreach (var r in ProfileStore.Current.Arcade) n += r.Stars; return n; }
         static int Done() { int n = 0; foreach (var a in ProfileStore.Current.Progress.Achievements) if (a.Done) n++; return n; }
@@ -222,14 +224,14 @@ namespace SquashGame.UI
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.Scoring, v => C.Scoring = v));
                 Kit.L(mid, ScoringHint, "k-vs-hint");
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
-                AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
+                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
             }
             else
             {
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.VsLength, v => C.VsLength = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.VsScoring, v => C.VsScoring = v));
                 Kit.L(mid, ScoringHint, "k-vs-hint");
-                AddTo(mid, new SelectorItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.All[v].Id; }));
+                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.All[v].Id; }));
                 AddTo(mid, new SelectorItem("Controls", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
             // them
@@ -258,7 +260,7 @@ namespace SquashGame.UI
         void UpdateOpponent()
         {
             var p = ProfileStore.Current.Progress;
-            _youName.text = CareerStore.Current != null ? CareerStore.Current.S.Name : "Player";
+            _youName.text = PlayerName.Shown();
             var title = Cosmetics.Find(p.Loadout.Title);
             _youMeta.text = "LEVEL " + Rewards.LevelOf(p.Xp) + "  ·  " + (title != null ? title.Name.ToUpperInvariant() : "ROOKIE") + "  ·  " + (S.Assisted ? "ASSISTED" : "NON-ASSISTED");
             if (TwoPlayer)

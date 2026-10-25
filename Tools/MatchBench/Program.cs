@@ -75,7 +75,7 @@ public static class Program
                 Arg(args, "--levels") != null ? Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse) : null)); return 0; }
         if (Array.IndexOf(args, "--verify-replays") >= 0) return ReplayTool.Verify(Arg(args, "--verify-replays") ?? "Assets/SquashGame/Resources/Replays");
         if (Array.IndexOf(args, "--make-replays") >= 0) { ReplayTool.Make(Arg(args, "--out") ?? "../../Assets/SquashGame/Resources/Replays"); return 0; }
-        if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.NoLets = Array.IndexOf(args, "--no-lets") >= 0; PressAudit.NoLines = Array.IndexOf(args, "--no-lines") >= 0; PressAudit.Assisted = Array.IndexOf(args, "--assisted") >= 0; PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
+        if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.NoLets = Array.IndexOf(args, "--no-lets") >= 0; PressAudit.NoLines = Array.IndexOf(args, "--no-lines") >= 0; PressAudit.Assisted = Array.IndexOf(args, "--assisted") >= 0; PressAudit.Attr = double.Parse(Arg(args, "--attr") ?? "5"); PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--corner-audit") >= 0) { CornerAudit.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--p1") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.45")); return 0; }
         if (Array.IndexOf(args, "--press-audit") >= 0)
         {

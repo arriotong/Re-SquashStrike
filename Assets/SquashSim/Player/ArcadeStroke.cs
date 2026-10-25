@@ -212,12 +212,14 @@ namespace SquashSim
 
         /// <summary>Horizontal distance from the athlete to the ball, if the ball is hittable at this height.</summary>
         double ReachScale { get { return Diving ? PhysicsConfig.Current.ArcadeHit.DiveReachScale : 1.0; } }
+        /// <summary>P3-C1: the athlete's reach (exactly 1 when neutral).</summary>
+        static double AttrReach(TestPlayer p) { return p.Attributes.ReachScale; }
 
         bool InReach(TestPlayer p, BallState ball, ArcadeHitSection c, out double dist)
         {
             double dx = ball.Pos.X - p.Pos.X, dz = ball.Pos.Z - p.Pos.Z;
             dist = System.Math.Sqrt(dx * dx + dz * dz);
-            return dist <= c.Reach * ReachScale && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
+            return dist <= c.Reach * ReachScale * AttrReach(p) && ball.Pos.Y >= c.MinHeight && ball.Pos.Y <= c.MaxHeight;
         }
 
         /// <summary>One fixed step. Returns the contact event when the ball is hit.</summary>
@@ -248,6 +250,8 @@ namespace SquashSim
                 {
                     _charging = false;
                     _pending = c.Grace;
+                    double graceScale = player.Attributes.GraceScale;          // P3-C1: exactly 1 when neutral
+                    if (graceScale != 1.0) _pending *= graceScale;
                     _pendingLive = false;
                     _pendingCharge = System.Math.Min(1, _charge / c.ChargeFull);
                 }
@@ -288,7 +292,7 @@ namespace SquashSim
                 if (ctrl.ContactEnabled) _pendingLive = true;
                 if (ctrl.ContactEnabled && InReach(player, ball, c, out double dist))
                 {
-                    _releaseWait = c.Grace - _pending;
+                    _releaseWait = c.Grace * player.Attributes.GraceScale - _pending;
                     _pending = -1;
                     return Hit(ctrl, ball, surfaces, dist, _pendingCharge, c);
                 }
@@ -322,7 +326,7 @@ namespace SquashSim
         {
             var player = ctrl.Player;
             var aim = ctrl.Aim;
-            double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale - c.SweetSpot), 0, 1);
+            double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale * AttrReach(player) - c.SweetSpot), 0, 1);
             double early = ctrl.ServeStroke ? 1 : Clamp(_setTime / c.EarlyFull, 0, 1);
             LastEarliness = early;
             double bad = ctrl.ServeStroke ? 0 : Badness(dist, _setTime, c);

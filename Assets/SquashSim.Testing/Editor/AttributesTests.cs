@@ -27,11 +27,11 @@ namespace SquashSim.Tests
             Assert.That(n.SpeedScale, Is.EqualTo(1.0)); Assert.That(n.DrainScale, Is.EqualTo(1.0));
             Assert.That(n.PowerScale, Is.EqualTo(1.0)); Assert.That(n.ControlScale, Is.EqualTo(1.0));
             var top = new AthleteAttributes { Speed = 10, Stamina = 10, Power = 10, Control = 10 };
-            Assert.That(top.SpeedScale, Is.EqualTo(1.06).Within(1e-12)); Assert.That(top.DrainScale, Is.EqualTo(0.7).Within(1e-12));
-            Assert.That(top.PowerScale, Is.EqualTo(1.06).Within(1e-12)); Assert.That(top.ControlScale, Is.EqualTo(0.6).Within(1e-12));
+            Assert.That(top.SpeedScale, Is.EqualTo(1.09).Within(1e-12)); Assert.That(top.DrainScale, Is.EqualTo(0.7).Within(1e-12));
+            Assert.That(top.PowerScale, Is.EqualTo(1.09).Within(1e-12)); Assert.That(top.ControlScale, Is.EqualTo(0.5).Within(1e-12));
             var low = new AthleteAttributes { Speed = 0, Stamina = 0, Power = 0, Control = 0 };
-            Assert.That(low.SpeedScale, Is.EqualTo(0.94).Within(1e-12)); Assert.That(low.ControlScale, Is.EqualTo(1.4).Within(1e-12));
-            Assert.That(new AthleteAttributes { Speed = 7.5 }.SpeedScale, Is.EqualTo(1.03).Within(1e-12), "a straight line between");
+            Assert.That(low.SpeedScale, Is.EqualTo(0.91).Within(1e-12)); Assert.That(low.ControlScale, Is.EqualTo(1.5).Within(1e-12));
+            Assert.That(new AthleteAttributes { Speed = 7.5 }.SpeedScale, Is.EqualTo(1.045).Within(1e-12), "a straight line between");
         }
 
         static double TopSpeed(AthleteAttributes a)
@@ -51,7 +51,7 @@ namespace SquashSim.Tests
         [Test] public void SpeedRaisesTopSpeed()
         {
             double baseline = TopSpeed(new AthleteAttributes()), fast = TopSpeed(new AthleteAttributes { Speed = 10 });
-            Assert.That(fast / baseline, Is.EqualTo(1.06).Within(0.002));
+            Assert.That(fast / baseline, Is.EqualTo(1.09).Within(0.002));
         }
 
         [Test] public void StaminaCutsTheDrain()

@@ -165,12 +165,13 @@ namespace SquashSim.Tests
         [Test] public void SpendingRaisesAnAttributeToTen()
         {
             var c = CareerSession.New("Spender", "ENG", 32);
-            c.S.TrainingPoints = 8;
+            c.S.TrainingPoints = 14;
             for (int i = 0; i < 5; i++) Assert.That(c.Spend("Speed"), Is.True);
             Assert.That(c.S.Attributes.Speed, Is.EqualTo(10));
+            Assert.That(c.S.TrainingPoints, Is.EqualTo(3), "5 to 10 costs 1 + 2 + 2 + 3 + 3");
             Assert.That(c.Spend("Speed"), Is.False, "10 is the top");
             Assert.That(c.Spend("Nonsense"), Is.False);
-            Assert.That(c.S.TrainingPoints, Is.EqualTo(3));
+            Assert.That(CareerSession.CostToRaise(5), Is.EqualTo(1)); Assert.That(CareerSession.CostToRaise(7), Is.EqualTo(2)); Assert.That(CareerSession.CostToRaise(9), Is.EqualTo(3));
             Assert.That(c.Spend("Power"), Is.True);
             Assert.That(c.AttributeEdge, Is.EqualTo(0.015 * (c.S.Attributes.Mean - 5)).Within(1e-4), "simulated matches feel it too");
             c.S.TrainingPoints = 0;

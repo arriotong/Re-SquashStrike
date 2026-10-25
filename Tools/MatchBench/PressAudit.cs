@@ -124,6 +124,8 @@ static class PressAudit
     public static bool NoLines;
     /// <summary>--assisted: the person plays with Assisted controls.</summary>
     public static bool Assisted;
+    /// <summary>--attr N: the human-style player's four attributes (5 = neutral), for measuring what training buys.</summary>
+    public static double Attr = 5;
 
     public static double LastWinRate;
     /// <summary>Rally length in the last run: median and mean shots (the serve counts), share of rallies of 10+.</summary>
@@ -182,6 +184,7 @@ static class PressAudit
             m.Players[0].ArcadeHitEnabled = gameProfile;
             m.Players[0].Arcade.ShotLines = gameProfile && !NoLines;   // a person: the shot plays its line
             m.Players[0].Arcade.Assisted = gameProfile && Assisted;
+            if (Attr != 5) { var at = m.Players[0].Player.Attributes; at.Speed = at.Stamina = at.Power = at.Control = Attr; }
             Program.ArcadeAi(m);
             double dt = PhysicsConfig.Current.Sim.FixedDt;
             var c = m.Players[0];

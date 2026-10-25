@@ -461,15 +461,25 @@ namespace SquashSim.Career
             FinishSlot();
         }
 
-        /// <summary>Spend a point on an attribute ("Speed", "Stamina", "Power", "Control"). False when it can't.</summary>
+        /// <summary>Points to raise an attribute from <paramref name="v"/> by one: 1 up to 6, 2 up to 8, 3 above. 2026-10-25
+        /// playtest round 2: at a point a step the bench maxed every attribute (9.8 of 10) by the end of season 2.</summary>
+        public static int CostToRaise(double v) { return v < 6 ? 1 : v < 8 ? 2 : 3; }
+
+        /// <summary>Can this attribute be raised now (points enough, not at the top)?</summary>
+        public bool CanRaise(string attribute)
+        {
+            double v = Get(S.Attributes, attribute);
+            return v >= 0 && v < AthleteAttributes.Max && S.TrainingPoints >= CostToRaise(v);
+        }
+
+        /// <summary>Raise an attribute ("Speed", "Stamina", "Power", "Control") by one, for its cost. False when it can't.</summary>
         public bool Spend(string attribute)
         {
-            if (S.TrainingPoints <= 0) return false;
+            if (!CanRaise(attribute)) return false;
             var a = S.Attributes;
             double v = Get(a, attribute);
-            if (v < 0 || v >= AthleteAttributes.Max) return false;
+            S.TrainingPoints -= CostToRaise(v);
             Set(a, attribute, v + 1);
-            S.TrainingPoints--;
             return true;
         }
 

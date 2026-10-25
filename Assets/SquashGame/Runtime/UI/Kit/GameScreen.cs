@@ -11,6 +11,7 @@
 //   focus       2D: the arrows / stick go to the nearest choice
 // ===========================================================
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -25,6 +26,10 @@ namespace SquashGame.UI
         protected override string RootClass { get { return "k-screen"; } }
         /// <summary>Show the player chip top right.</summary>
         protected virtual bool ShowChip { get { return true; } }
+        /// <summary>What pressing the player tag does (null: it is just a tag). The main menu: your profile.</summary>
+        protected virtual Action OnChip { get { return null; } }
+        /// <summary>The tag as a menu item, when it does something.</summary>
+        public ChipItem ChipButton { get; private set; }
 
         protected VisualElement TopBar, TopLeft;
         public TabBar Tabs { get; private set; }
@@ -57,7 +62,12 @@ namespace SquashGame.UI
                 TopBar.Insert(1, Tabs);
                 ShowPage(0);
             }
-            if (ShowChip) { Chip = new PlayerChip(); TopBar.Add(Chip); }
+            if (ShowChip)
+            {
+                Chip = new PlayerChip();
+                if (OnChip != null) ChipButton = AddTo(TopBar, new ChipItem(Chip, OnChip));
+                else TopBar.Add(Chip);
+            }
             Prompts = new PromptBar();
             Root.Add(Prompts);
             SetPrompts();

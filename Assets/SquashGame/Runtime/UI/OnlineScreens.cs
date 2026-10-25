@@ -173,7 +173,7 @@ namespace SquashGame.UI
             var host = Kit.Panel(grid, "HOST A ROOM"); host.AddToClassList("on-panel");
             AddTo(host, new SelectorItem("Match", Lengths, () => _length, v => _length = v));
             AddTo(host, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => _scoring, v => _scoring = v));
-            AddTo(host, new SelectorItem("Court", Courts.Names, () => _court, v => { _court = v; Courts.CurrentId = Courts.All[v].Id; }));
+            AddTo(host, new CarouselItem("Court", Courts.Names, () => _court, v => { _court = v; Courts.CurrentId = Courts.All[v].Id; }));
             AddTo(host, new ActionItem("Make the room", MakeRoom, "▶"));
             _codeBig = Kit.L(host, "", "on-code");
             _host = Kit.L(host, "You pick the match; give the code to a friend.", "k-cr-note");

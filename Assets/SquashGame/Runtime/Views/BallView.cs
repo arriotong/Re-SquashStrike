@@ -25,6 +25,8 @@ namespace SquashGame
     {
         /// <summary>Accessibility setting: the drawn ball's size x this (render only; the physics ball is unchanged).</summary>
         public static float UserScale = 1f;
+        /// <summary>Drawn a little bigger than the physics ball for everyone (2026-10-25 playtest: still small from the Classic camera).</summary>
+        public const float BaseScale = 1.15f;
         /// <summary>Practice: a long "where that went" trail (else the short one).</summary>
         public static bool LongTrail;
         /// <summary>PR2: the drawn ball's smallest diameter on screen, in pixels at 1080p.</summary>
@@ -80,7 +82,7 @@ namespace SquashGame
             BallState ball = _runner.Ball;
             SimConfig cfg = PhysicsConfig.Current;
 
-            float visualRadius = (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale) * UserScale;
+            float visualRadius = (float)(cfg.Ball.Radius * cfg.Render.BallVisualScale) * BaseScale * UserScale;
             Vector3 p = _runner.View.BallPos;
             visualRadius = Mathf.Max(visualRadius, MinRadiusAt(p) * UserScale);
             DrawnDiameter = visualRadius * 2f;
