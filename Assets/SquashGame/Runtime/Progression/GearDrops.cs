@@ -87,6 +87,16 @@ namespace SquashGame.Progression
 
         static Color H(uint rgb) { return new Color(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f); }
 
+        /// <summary>A banner colour, nudged per item (hue, saturation, value) so no two pieces look the same.</summary>
+        static Color Shade(Color c, int i)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            h = Mathf.Repeat(h + ((i * 37) % 11 - 5) * 0.014f, 1f);
+            s = Mathf.Clamp01(s * (0.8f + ((i * 13) % 5) * 0.1f));
+            v = Mathf.Clamp(v * (0.78f + ((i * 7) % 6) * 0.08f), 0.06f, 1f);
+            return Color.HSVToRGB(h, s, v);
+        }
+
         // the order a banner's items are made in: rarity, slot (25)
         static readonly (Rarity r, Slot s)[] Plan =
         {
@@ -137,9 +147,8 @@ namespace SquashGame.Progression
                 {
                     var (r, slot) = Plan[i];
                     // colours: the banner's palette, a different pairing for each item (rarer: the accents)
-                    Color a = H(d.pal[(i * 2 + (int)r) % 3 + (r >= Rarity.Epic ? 3 : 0)]);
-                    Color c = H(d.pal[(i + 1 + (int)r * 2) % d.pal.Length]);
-                    if (c == a) c = H(d.pal[(i + 4) % d.pal.Length]);
+                    Color a = Shade(H(d.pal[(i * 5 + (int)r * 3) % d.pal.Length]), i);
+                    Color c = Shade(H(d.pal[(i * 5 + (int)r * 3 + 2) % d.pal.Length]), i + 7);
                     string id = "gd_" + d.id + "_" + i;
                     var it = add(slot, id, d.names[i], a, slot == Slot.Shirt || slot == Slot.Banner ? c : a, UnlockKind.Gacha);
                     it.Rarity = (int)r; it.Banner = d.id;

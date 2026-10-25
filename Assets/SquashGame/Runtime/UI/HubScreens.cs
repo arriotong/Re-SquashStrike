@@ -39,7 +39,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 },
+            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
         };
 
         protected override void Compose()
@@ -102,6 +102,10 @@ namespace SquashGame.UI
                 .Line(() => ProfileStore.Current.Progress.Stats.MatchesWon + " matches won"));
             AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
                 .Badge(() => Done() + " / " + Achievements.All().Count));
+            // P4: Gear Drops - kit and rackets by the pull, for tickets earned by playing
+            AddTo(locker, new CardItem("GEAR DROPS", "LOCKER ROOM", () => Fe.Push(new GearDropScreen())).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
+                .Line(() => "6 banners  ·  Pro Shop  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " coins")
+                .Badge(() => GearDrops.Wallet.Tickets + (GearDrops.Wallet.TenTickets > 0 ? " + " + GearDrops.Wallet.TenTickets + "×10" : "") + " TICKETS", GearDrops.CanPull(1)));
 
             // ---- REPLAYS (P2-M6) ----
             var rep = Kit.Box(Page("REPLAYS"), "k-row");

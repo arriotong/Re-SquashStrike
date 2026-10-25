@@ -291,6 +291,39 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P4_Glow_Trail.png");
         }
 
+        /// <summary>P4-G4: Gear Drops - a banner page, a x10 pull and its reveal, the Pro Shop.</summary>
+        [UnityTest]
+        public IEnumerator GearDropsPullAndShop()
+        {
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            InputSystem.AddDevice<Mouse>();
+            GearDrops.Wallet.Tickets = 25; GearDrops.Wallet.TenTickets = 1; GearDrops.Wallet.Coins = 2000;
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "GEAR DROPS");
+            Assert.That(fe.Top, Is.InstanceOf<GearDropScreen>());
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "P4_GearDrops_Banner.png");
+
+            var drops = GearDrops.Pull("arena", GearDrops.TenPull);
+            Assert.That(drops.Count, Is.EqualTo(10));
+            Assert.That(GearDrops.Wallet.TenTickets, Is.EqualTo(0), "the x10 ticket first");
+            fe.Push(new PullRevealScreen(drops, "arena"));
+            yield return Wait(4.5f, () => ((PullRevealScreen)fe.Top).Revealed >= 10);
+            Assert.That(((PullRevealScreen)fe.Top).Revealed, Is.EqualTo(10), "the cards turn over by themselves");
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "P4_GearDrops_Reveal.png");
+            fe.Top.Back();
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<GearDropScreen>());
+            ((GearDropScreen)fe.Top).Tabs.Select(GearDrops.Banners().Count);              // PRO SHOP
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "P4_GearDrops_Shop.png");
+        }
+
         [UnityTest]
         public IEnumerator AWonMatchGivesXpALevelAndAchievements()
         {
