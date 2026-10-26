@@ -95,7 +95,7 @@ namespace SquashSim.Career
             if (g.Done || g.Failed) return;
             g.Done = true; g.Progress = Math.Max(g.Progress, g.Kind == "titles" ? g.Target : 1);
             g.DoneSlot = S.Slot;
-            Award(g.Points);
+            GainXp(g.Points * GoalXpPerPoint);                          // P7: a goal's reward is XP now
             S.Earnings += g.Money;
             S.GoalsDone++;
         }

@@ -38,12 +38,13 @@ namespace SquashSim.Career
         public static CareerSession New(string name, string nat, uint seed, int gamesToWin = 2, bool english = false)
         {
             var s = new CareerState { Name = name, Nat = nat, Seed = seed, GamesToWin = gamesToWin, English = english, Season = 0, Month = 0 };
+            s.Attributes = new AthleteAttributes { Speed = StartStat, Stamina = StartStat, Power = StartStat, Control = StartStat };   // P7: you start weaker
             s.Roster = Roster.Generate(seed);
             var c = new CareerSession(s);
             for (int m = 0; m < Tour.SlotsPerSeason; m++) c.FinishSlot();
             s.Seasons.Clear();
             s.SeasonJustEnded = false;
-            s.TrainingPoints = 0; s.PointsEarned = 0;          // the year before you joined earns you nothing
+            s.TrainingPoints = 0; s.PointsEarned = 0; s.Xp = 0; // the year before you joined earns you nothing
             s.Earnings = 0; s.GoalsDone = 0; s.SponsorPaid = 0; s.SponsorNews = null; s.Sponsor = null;
             s.LastGoals = new List<GoalRec>();
             c.SetGoals();                                      // season 1's goals, from where you start (unranked)
@@ -358,7 +359,8 @@ namespace SquashSim.Career
             });
             PlayRound(e, won ? You : opp, score);
             if (!won) e.YouOut = true;
-            else { Award(PointsPerWin); GoalsAfterWin(S.Matches[S.Matches.Count - 1].OppRank); }
+            else GoalsAfterWin(S.Matches[S.Matches.Count - 1].OppRank);
+            if (!retired) GainXp(MatchXp(e.Tier, ralliesTotal, ralliesWon, won, simulated));   // P7 phase 2: every match grows you
         }
 
         /// <summary>The rally model plays your match (at your rating).</summary>
@@ -439,31 +441,65 @@ namespace SquashSim.Career
         /// <summary>Not entering anything this month.</summary>
         public void Skip() { if (S.Current == null) FinishSlot(); }
 
-        // ---------------- P3-R3: player growth ----------------
+        // ---------------- P7 phase 2: levels and four stats ----------------
+        // The user (2026-10-26): "start is everything -20% of the quick play character and maxed out is +20%", "each level up
+        // gives you one stat point". Stats run 0..10, 5 being the Quick Match player (AthleteAttributes: 4% a step); a new
+        // career starts at 1 in each; career XP from every match (more at the bigger events) makes levels; each level is a
+        // point; a point raises a stat by one. 36 points take you from the start to everything at 10.
 
-        public const int PointsPerWin = 1, PointsPerSeason = 2, TrainingMonthPoints = 3;
+        public const int StartStat = 1;
+        public const int TrainingMonthXp = 350, SeasonXp = 300, TitleXpBase = 150, GoalXpPerPoint = 120;
+        public const int RallyXp = 2, RallyWonXp = 3, WinXp = 60;
+        /// <summary>XP by the event's band (Challenger 3/6 .. the majors): the bigger the stage, the more you learn.</summary>
+        public static readonly double[] BandXp = { 1.0, 1.15, 1.35, 1.6, 2.0, 2.5 };
+        /// <summary>The points that take every stat from StartStat to the top: no more points past them.</summary>
+        public static int MaxPoints { get { return 4 * (int)(AthleteAttributes.Max - StartStat); } }
 
-        /// <summary>A title's points: 1 for a small Challenger, 2 up to Gold, 3 above.</summary>
-        public static int TitlePoints(int tier) { int b = Tour.Band(tier); return b <= 1 ? 1 : b <= 3 ? 2 : 3; }
+        /// <summary>XP from level to level + 1.</summary>
+        public static int XpNeed(int level) { return 250 + 50 * (level - 1); }
+        public static int XpFor(int level) { int t = 0; for (int l = 1; l < level; l++) t += XpNeed(l); return t; }
+        public static int LevelOf(int xp) { int l = 1; while (xp >= XpFor(l + 1)) l++; return l; }
+        public int Level { get { return LevelOf(S.Xp); } }
+        /// <summary>0..1 into the current level.</summary>
+        public float LevelProgress { get { int l = Level; return (float)(S.Xp - XpFor(l)) / XpNeed(l); } }
 
-        void Award(int points) { if (points <= 0) return; S.TrainingPoints += points; S.PointsEarned += points; }
+        /// <summary>A match's XP: its rallies (played, won) and the win, by the event's band; a simulated one 60%.</summary>
+        public static int MatchXp(int tier, int rallies, int ralliesWon, bool won, bool simulated)
+        {
+            double xp = (RallyXp * rallies + RallyWonXp * ralliesWon + (won ? WinXp : 0)) * BandXp[System.Math.Max(0, System.Math.Min(BandXp.Length - 1, Tour.Band(tier)))];
+            return (int)System.Math.Round(simulated ? xp * 0.6 : xp);
+        }
 
-        /// <summary>Your attributes' edge in a simulated match (a rating bonus: 0.015 per point of the mean above 5).</summary>
-        public double AttributeEdge { get { return S.Attributes == null ? 0 : System.Math.Round(0.015 * (S.Attributes.Mean - AthleteAttributes.Neutral), 4); } }
+        /// <summary>XP in: each level reached gives a stat point (until every stat could be at the top).</summary>
+        public void GainXp(int xp)
+        {
+            if (xp <= 0) return;
+            int before = Level;
+            S.Xp += xp;
+            int levels = Level - before;
+            int room = MaxPoints - S.PointsEarned;
+            int points = System.Math.Max(0, System.Math.Min(levels, room));
+            S.TrainingPoints += points; S.PointsEarned += points;
+        }
 
-        /// <summary>A month on the training court instead of an event: the events go on without you, you gain points.</summary>
+        /// <summary>A title's XP: TitleXpBase by the band.</summary>
+        public static int TitleXp(int tier) { return (int)System.Math.Round(TitleXpBase * BandXp[System.Math.Max(0, System.Math.Min(BandXp.Length - 1, Tour.Band(tier)))]); }
+
+        /// <summary>Your stats' edge in a simulated match (a rating bonus: 0.025 per point of the mean away from 5).</summary>
+        public double AttributeEdge { get { return S.Attributes == null ? 0 : System.Math.Round(0.025 * (S.Attributes.Mean - AthleteAttributes.Neutral), 4); } }
+
+        /// <summary>A month on the training court instead of an event: the events go on without you, you gain XP.</summary>
         public void Train()
         {
             if (S.Current != null) return;
-            Award(TrainingMonthPoints);
+            GainXp(TrainingMonthXp);
             S.MonthsTrained++;
             S.LastTrainedSlot = S.Slot;
             FinishSlot();
         }
 
-        /// <summary>Points to raise an attribute from <paramref name="v"/> by one: 1 up to 6, 2 up to 8, 3 above. 2026-10-25
-        /// playtest round 2: at a point a step the bench maxed every attribute (9.8 of 10) by the end of season 2.</summary>
-        public static int CostToRaise(double v) { return v < 6 ? 1 : v < 8 ? 2 : 3; }
+        /// <summary>P7 phase 2: a point raises a stat by one, at every level (levels are the pace now).</summary>
+        public static int CostToRaise(double v) { return 1; }
 
         /// <summary>Can this attribute be raised now (points enough, not at the top)?</summary>
         public bool CanRaise(string attribute)
@@ -483,7 +519,9 @@ namespace SquashSim.Career
             return true;
         }
 
-        public static readonly string[] AttributeNames = { "Speed", "Stamina", "Power", "Control" };
+        public static readonly string[] AttributeNames = { "Speed", "Power", "Control", "Stamina" };
+        /// <summary>What the game calls them ("Control" is Accuracy on screen).</summary>
+        public static string DisplayName(string attribute) { return attribute == "Control" ? "Accuracy" : attribute; }
 
         public static double Get(AthleteAttributes a, string name)
         {
@@ -521,7 +559,7 @@ namespace SquashSim.Career
                     {
                         e.YouReached = reached; e.YouPoints = info.Points[reached]; e.YouPrize = info.Prize[reached];
                         S.Earnings += info.Prize[reached];
-                        if (reached == 0) { S.Titles++; Award(TitlePoints(e.Tier)); SponsorTitle(); }
+                        if (reached == 0) { S.Titles++; GainXp(TitleXp(e.Tier)); SponsorTitle(); }
                         if (e.YouIn) GoalsAfterEvent(e, reached);
                     }
                 }
@@ -558,7 +596,7 @@ namespace SquashSim.Career
                 if (r.Player == You && r.Slot / Tour.SlotsPerSeason == season) { if (r.Reached == 0) rec.Titles++; rec.Earnings += Tour.Info((Tier)r.Tier).Prize[r.Reached]; }
             S.Seasons.Add(rec);
             S.SeasonJustEnded = true;
-            Award(PointsPerSeason);
+            GainXp(SeasonXp);
             SettleGoals(rec.Rank);
             SettleSponsor(rec.Rank);
             int next = S.NextId;

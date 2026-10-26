@@ -9,12 +9,15 @@
 //   replays, the checksum test).
 //
 //              at 0        at 10
-//   Speed      -9%         +9%     top speed and acceleration
-//   Stamina    x1.3        x0.7    stamina drain (running, sprints, dives)
-//   Power      -9%         +9%     drive and kill pace
-//   Control    x1.5        x0.5    aim spread and gross-miss chance
-//   Speed      x0.95       x1.08   reach (how far from you the ball is hittable)
+//   Speed      -20%        +20%    top speed and acceleration
+//   Stamina    x1.4        x0.6    stamina drain (the rally, running, charged strokes, sprints, dives)
+//   Power      -20%        +20%    drive and kill pace
+//   Control    x1.4        x0.6    aim spread and gross-miss chance ("Accuracy" in the game)
+//   Speed      x0.9        x1.1    reach (how far from you the ball is hittable)
 //   Control    x0.8        x1.35   the grace after an early release
+//
+//   P7 phase 2 (2026-10-26, the user: "start is everything -20% of the
+//   quick play character and maxed out is +20%"): each level is 4%.
 //
 //   2026-10-25 playtest round 2: at +-6% / x0.6 a maxed career player
 //   was barely better - stronger now (replays kept before show as
@@ -41,13 +44,13 @@ namespace SquashSim
             return v < Neutral ? 1 + (at0 - 1) * (Neutral - v) / Neutral : 1 + (at10 - 1) * (v - Neutral) / Neutral;
         }
 
-        public double SpeedScale { get { return Scale(Speed, 0.91, 1.09); } }
-        public double DrainScale { get { return Scale(Stamina, 1.3, 0.7); } }
-        public double PowerScale { get { return Scale(Power, 0.91, 1.09); } }
-        public double ControlScale { get { return Scale(Control, 1.5, 0.5); } }
+        public double SpeedScale { get { return Scale(Speed, 0.8, 1.2); } }
+        public double DrainScale { get { return Scale(Stamina, 1.4, 0.6); } }
+        public double PowerScale { get { return Scale(Power, 0.8, 1.2); } }
+        public double ControlScale { get { return Scale(Control, 1.4, 0.6); } }
         /// <summary>Reach and the release grace: points are won and lost on the timing of the hit, which spread, pace and
         /// foot speed alone barely touched (2026-10-25: a maxed player won no more rallies).</summary>
-        public double ReachScale { get { return Scale(Speed, 0.95, 1.08); } }
+        public double ReachScale { get { return Scale(Speed, 0.9, 1.1); } }
         public double GraceScale { get { return Scale(Control, 0.8, 1.35); } }
 
         public AthleteAttributes Clone() { return (AthleteAttributes)MemberwiseClone(); }

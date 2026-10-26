@@ -43,9 +43,10 @@ namespace SquashGame.Profile
                 if (!File.Exists(path)) return null;
                 var s = JsonUtility.FromJson<CareerState>(File.ReadAllText(path));
                 if (s == null || s.Roster == null || s.Roster.Count == 0) return null;
-                if (s.Version < 2)
+                if (s.Version < 4)
                 {
-                    // an older tour's career (v1: the 80-player ladder) can't be carried over: keep it aside, start afresh
+                    // an older tour's career can't be carried over (v1: the 80-player ladder; v2-3: before P7's levels and
+                    // world tour - the user chose "start fresh"): keep it aside, start afresh
                     File.Copy(path, path + ".v" + s.Version + ".bak", true);
                     File.Delete(path);
                     Debug.Log("Career: a version " + s.Version + " career was put aside (" + FileName + ".v" + s.Version + ".bak)");

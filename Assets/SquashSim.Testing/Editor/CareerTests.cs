@@ -142,43 +142,45 @@ namespace SquashSim.Tests
 
         // ---------------- P3-R3: player growth ----------------
 
-        [Test] public void WinsTitlesSeasonsAndTrainingEarnPoints()
+        // P7 phase 2: levels from career XP, a stat point a level, four stats from 1 to 10
+
+        [Test] public void MatchesMakeLevelsAndEachLevelIsAPoint()
         {
             var c = CareerSession.New("Grower", "ENG", 31);
             Assert.That(c.S.TrainingPoints, Is.EqualTo(0));
-            Assert.That(c.S.Attributes.IsNeutral, Is.True, "everyone starts at 5");
+            Assert.That(c.S.Xp, Is.EqualTo(0)); Assert.That(c.Level, Is.EqualTo(1));
+            Assert.That(c.S.Attributes.Speed, Is.EqualTo(CareerSession.StartStat), "you start weaker than a Quick Match player");
+            Assert.That(c.S.Attributes.Mean, Is.EqualTo(CareerSession.StartStat));
             int slot = c.S.Slot;
             c.Train();
             Assert.That(c.S.Slot, Is.EqualTo(slot + 1), "the month goes by");
-            Assert.That(c.S.TrainingPoints, Is.EqualTo(CareerSession.TrainingMonthPoints));
+            Assert.That(c.S.Xp, Is.EqualTo(CareerSession.TrainingMonthXp));
             Assert.That(c.S.LastTrainedSlot, Is.EqualTo(slot));
-            int before = c.S.TrainingPoints;
             SeasonRunner.Months(c, Tour.SlotsPerSeason, SeasonRunner.Model(0.45));
-            int wins = c.S.Matches.FindAll(m => m.Won).Count;
-            int titles = 0;
-            foreach (var r in c.S.Results) if (r.Player == CareerSession.You && r.Reached == 0) titles += CareerSession.TitlePoints(r.Tier);
-            int goals = 0;
-            foreach (var g in c.S.LastGoals) if (g.Done) goals += g.Points;
-            foreach (var g in c.Goals) if (g.Done) goals += g.Points;
-            Assert.That(c.S.TrainingPoints - before, Is.EqualTo(wins * CareerSession.PointsPerWin + titles + CareerSession.PointsPerSeason + goals),
-                "a point a win, the titles' points, two at the season's end, and the season goals'");
-            Assert.That(c.S.PointsEarned, Is.EqualTo(c.S.TrainingPoints));
+            Assert.That(c.Level, Is.GreaterThan(5), "a season of matches: levels");
+            Assert.That(c.S.PointsEarned, Is.EqualTo(System.Math.Min(c.Level - 1, CareerSession.MaxPoints)), "a point a level");
+            Assert.That(CareerSession.MatchXp((int)Tier.Diamond, 40, 25, true, false), Is.GreaterThan(CareerSession.MatchXp((int)Tier.Challenger3, 40, 25, true, false)), "the bigger stage teaches more");
+            Assert.That(CareerSession.MatchXp((int)Tier.Copper, 40, 25, true, true), Is.LessThan(CareerSession.MatchXp((int)Tier.Copper, 40, 25, true, false)), "simulated: less");
+            Assert.That(CareerSession.XpNeed(10), Is.GreaterThan(CareerSession.XpNeed(2)), "each level a little further");
         }
 
-        [Test] public void SpendingRaisesAnAttributeToTen()
+        [Test] public void APointRaisesAStatAndTheLevelsStopAtTheTop()
         {
             var c = CareerSession.New("Spender", "ENG", 32);
-            c.S.TrainingPoints = 14;
-            for (int i = 0; i < 5; i++) Assert.That(c.Spend("Speed"), Is.True);
+            c.S.TrainingPoints = 9;
+            for (int i = 0; i < 9; i++) Assert.That(c.Spend("Speed"), Is.True, "a point a step: " + i);
             Assert.That(c.S.Attributes.Speed, Is.EqualTo(10));
-            Assert.That(c.S.TrainingPoints, Is.EqualTo(3), "5 to 10 costs 1 + 2 + 2 + 3 + 3");
+            Assert.That(c.S.TrainingPoints, Is.EqualTo(0));
             Assert.That(c.Spend("Speed"), Is.False, "10 is the top");
             Assert.That(c.Spend("Nonsense"), Is.False);
-            Assert.That(CareerSession.CostToRaise(5), Is.EqualTo(1)); Assert.That(CareerSession.CostToRaise(7), Is.EqualTo(2)); Assert.That(CareerSession.CostToRaise(9), Is.EqualTo(3));
-            Assert.That(c.Spend("Power"), Is.True);
-            Assert.That(c.AttributeEdge, Is.EqualTo(0.015 * (c.S.Attributes.Mean - 5)).Within(1e-4), "simulated matches feel it too");
-            c.S.TrainingPoints = 0;
-            Assert.That(c.Spend("Control"), Is.False, "no points, no spending");
+            Assert.That(CareerSession.CostToRaise(1), Is.EqualTo(1)); Assert.That(CareerSession.CostToRaise(9), Is.EqualTo(1));
+            Assert.That(c.AttributeEdge, Is.EqualTo(0.025 * (c.S.Attributes.Mean - 5)).Within(1e-4), "simulated matches feel it too");
+            Assert.That(CareerSession.DisplayName("Control"), Is.EqualTo("Accuracy"));
+            // past the points that take every stat to the top, levels give no more
+            c.S.PointsEarned = CareerSession.MaxPoints - 1;
+            c.GainXp(CareerSession.XpFor(c.Level + 5) - c.S.Xp);
+            Assert.That(c.S.PointsEarned, Is.EqualTo(CareerSession.MaxPoints));
+            Assert.That(CareerSession.MaxPoints, Is.EqualTo(36), "1 to 10 in four stats");
         }
 
         [Test] public void AVersion2CareerUpgradesInPlace()

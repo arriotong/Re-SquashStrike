@@ -27,11 +27,11 @@ namespace SquashSim.Tests
             Assert.That(n.SpeedScale, Is.EqualTo(1.0)); Assert.That(n.DrainScale, Is.EqualTo(1.0));
             Assert.That(n.PowerScale, Is.EqualTo(1.0)); Assert.That(n.ControlScale, Is.EqualTo(1.0));
             var top = new AthleteAttributes { Speed = 10, Stamina = 10, Power = 10, Control = 10 };
-            Assert.That(top.SpeedScale, Is.EqualTo(1.09).Within(1e-12)); Assert.That(top.DrainScale, Is.EqualTo(0.7).Within(1e-12));
-            Assert.That(top.PowerScale, Is.EqualTo(1.09).Within(1e-12)); Assert.That(top.ControlScale, Is.EqualTo(0.5).Within(1e-12));
+            Assert.That(top.SpeedScale, Is.EqualTo(1.2).Within(1e-12)); Assert.That(top.DrainScale, Is.EqualTo(0.6).Within(1e-12));       // P7: +-20%
+            Assert.That(top.PowerScale, Is.EqualTo(1.2).Within(1e-12)); Assert.That(top.ControlScale, Is.EqualTo(0.6).Within(1e-12));
             var low = new AthleteAttributes { Speed = 0, Stamina = 0, Power = 0, Control = 0 };
-            Assert.That(low.SpeedScale, Is.EqualTo(0.91).Within(1e-12)); Assert.That(low.ControlScale, Is.EqualTo(1.5).Within(1e-12));
-            Assert.That(new AthleteAttributes { Speed = 7.5 }.SpeedScale, Is.EqualTo(1.045).Within(1e-12), "a straight line between");
+            Assert.That(low.SpeedScale, Is.EqualTo(0.8).Within(1e-12)); Assert.That(low.ControlScale, Is.EqualTo(1.4).Within(1e-12));
+            Assert.That(new AthleteAttributes { Speed = 7.5 }.SpeedScale, Is.EqualTo(1.1).Within(1e-12), "a straight line between");
         }
 
         static double TopSpeed(AthleteAttributes a)
@@ -51,7 +51,7 @@ namespace SquashSim.Tests
         [Test] public void SpeedRaisesTopSpeed()
         {
             double baseline = TopSpeed(new AthleteAttributes()), fast = TopSpeed(new AthleteAttributes { Speed = 10 });
-            Assert.That(fast / baseline, Is.EqualTo(1.09).Within(0.002));
+            Assert.That(fast / baseline, Is.EqualTo(1.2).Within(0.002));
         }
 
         [Test] public void StaminaCutsTheDrain()
@@ -66,8 +66,8 @@ namespace SquashSim.Tests
                 Fatigue.Update(p, true, 1.0);
                 return 1 - p.Stamina;
             }
-            Assert.That(Drain(10) / Drain(5), Is.EqualTo(0.7).Within(1e-9));
-            Assert.That(Drain(0) / Drain(5), Is.EqualTo(1.3).Within(1e-9));
+            Assert.That(Drain(10) / Drain(5), Is.EqualTo(0.6).Within(1e-9));
+            Assert.That(Drain(0) / Drain(5), Is.EqualTo(1.4).Within(1e-9));
         }
 
         /// <summary>Player 0's mean drive pace over a match with these attributes (an AI stands in for the person).</summary>
@@ -89,7 +89,7 @@ namespace SquashSim.Tests
             double baseline = DrivePace(new AthleteAttributes(), out _);
             double strong = DrivePace(new AthleteAttributes { Power = 10, Speed = 8, Stamina = 3, Control = 9 }, out ReplayFile f);
             UnityEngine.Debug.Log("[P3C1] drive pace " + baseline.ToString("0.00") + " -> " + strong.ToString("0.00") + " m/s at Power 10");
-            Assert.That(strong / baseline, Is.InRange(1.03, 1.10));
+            Assert.That(strong / baseline, Is.InRange(1.06, 1.22));                     // P7: Power 10 is +20% pace
             var back = ReplayTests.RoundTrip(f, out _);
             Assert.That(back.Setup.Attr0.Power, Is.EqualTo(10)); Assert.That(back.Setup.Attr0.Stamina, Is.EqualTo(3));
             var v = ReplaySim.Verify(back);

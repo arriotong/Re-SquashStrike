@@ -149,7 +149,7 @@ public static class CareerBench
             string what = e == null || !e.YouIn ? "skipped" : e.Name + " (" + Tour.Info((Tier)e.Tier).Name + "): " + CareerSession.ReachedLong(e.YouReached) + "  +" + e.YouPoints;
             int month = (cs.S.Month + Tour.SlotsPerSeason - 1) % Tour.SlotsPerSeason;
             Console.WriteLine("  " + Tour.Month(month) + "  " + what.PadRight(58) + " rank " + cs.RankOf(CareerSession.You).ToString().PadLeft(3) + "   rating " + cs.S.Rating.ToString("0.000") +
-                              "   attr " + (cs.S.Attributes != null ? cs.S.Attributes.Mean.ToString("0.0") : "-"));
+                              "   lvl " + c.Level + "  attr " + (cs.S.Attributes != null ? cs.S.Attributes.Mean.ToString("0.0") : "-"));
         }, spendPoints: true);
         int w = 0, l = 0;
         foreach (var mr in c.S.Matches) if (mr.Won) w++; else l++;

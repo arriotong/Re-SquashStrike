@@ -408,7 +408,7 @@ namespace SquashGame.Progression
             Achieve(r, ids);
             // P3-R4: season goals done in this event's month
             foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) { Xp(r, "Season goal: " + g.Text, GoalXp); Ticket(r, GoalTickets, 0, "a season goal"); }
-            if (e.YouReached == 0) Ticket(r, SquashSim.Career.CareerSession.TitlePoints(e.Tier), 0, "a title");
+            if (e.YouReached == 0) { int band = SquashSim.Career.Tour.Band(e.Tier); Ticket(r, band <= 1 ? 1 : band <= 3 ? 2 : 3, 0, "a title"); }   // 1 to 3 tickets by the event
             Challenges.Record(r, new ChallengeEvent { CareerTitle = e.YouReached == 0 });
             return End(r);
         }

@@ -69,7 +69,7 @@ namespace SquashSim.Career
     [Serializable]
     public sealed class CareerState
     {
-        public const int CurrentVersion = 3;     // 2: the PSA system (2026-10-24); 3: player growth (v2 careers upgrade in place)
+        public const int CurrentVersion = 4;     // 2: the PSA system (2026-10-24); 3: player growth; 4: P7 - levels, the world tour (older careers start afresh)
         public int Version = CurrentVersion;
         public uint Seed;
         public string Name = "", Nat = "ENG";
@@ -88,7 +88,8 @@ namespace SquashSim.Career
         public bool SeasonJustEnded;        // the season summary is due
         // P3-R3: player growth - your athlete's attributes (5 = where everyone starts) and the points to spend on them
         public SquashSim.AthleteAttributes Attributes = new SquashSim.AthleteAttributes();
-        public int TrainingPoints, PointsEarned, MonthsTrained;
+        public int TrainingPoints, PointsEarned, MonthsTrained;      // P7: TrainingPoints are the stat points your levels give
+        public int Xp;                                              // P7 phase 2: career XP (CareerSession.LevelOf)
         public int LastTrainedSlot = -1;
         // P3-R4: the season's goals (and last season's, for the review), sponsors
         public List<GoalRec> Goals = new List<GoalRec>(), LastGoals = new List<GoalRec>();
