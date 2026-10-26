@@ -53,6 +53,7 @@ namespace SquashGame.UI
             var main = Camera.main;
             if (main != null) { cam.clearFlags = main.clearFlags; cam.backgroundColor = main.backgroundColor; cam.cullingMask = main.cullingMask; }
             cam.enabled = false;
+            UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(cam).SetRenderer(GraphicsTier.LiteRenderer);   // batch 1: no ambient occlusion pass for a card
             cam.nearClipPlane = 0.05f; cam.farClipPlane = 80f;
             var rt = new RenderTexture(w, h, 16) { name = "vignette_" + shot, antiAliasing = 2 };
             cam.targetTexture = rt;

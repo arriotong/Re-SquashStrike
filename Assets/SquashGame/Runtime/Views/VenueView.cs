@@ -32,6 +32,8 @@ namespace SquashGame
     {
         /// <summary>Settings > Video > Venue: 0 off, 1 low, 2 high.</summary>
         public static int Detail = 2;
+        /// <summary>Batch 1: the picture grade (post-processing) - High only.</summary>
+        public static bool Post = true;
 
         const float ROW_DEPTH = 0.85f, ROW_RISE = 0.42f, CROWD_H = 0.95f;
         /// <summary>The first rows sit on the floor right by the glass; the rake starts behind them.</summary>
@@ -93,7 +95,7 @@ namespace SquashGame
                 case "arena": Arena(c); break;
                 default: ShowCourt(c); break;
             }
-            if (high) Grade(venue);
+            if (high && Post) Grade(venue);
         }
 
         // =====================================================================================
@@ -389,7 +391,7 @@ namespace SquashGame
 
             // The cube of screens overhead, the match live on every face.
             var screen = c.Palette.UnlitColor(new Color(1.1f, 1.1f, 1.1f));
-            screen.mainTexture = c.High ? LiveFeed(c.Venue) : (Texture)ProcTex.Screen();
+            screen.mainTexture = c.High && Post ? LiveFeed(c.Venue) : (Texture)ProcTex.Screen();
             Vector3 cube = W(0, 14f, L / 2);
             Greybox.Box("CubeFrame", c.Venue, c.Steel, cube, new Vector3(6.6f, 3.9f, 6.6f), false);
             Greybox.TexturedBox("CubeScreens", c.Venue, screen, cube, new Vector3(6.7f, 3.6f, 6.7f), new Vector2(6.7f, 3.6f), false);
@@ -446,7 +448,7 @@ namespace SquashGame
         static Material BigScreen(Ctx c, float y)
         {
             var screenMat = c.Palette.UnlitColor(new Color(1.1f, 1.1f, 1.1f));
-            screenMat.mainTexture = c.High ? LiveFeed(c.Venue) : (Texture)ProcTex.Screen();
+            screenMat.mainTexture = c.High && Post ? LiveFeed(c.Venue) : (Texture)ProcTex.Screen();
             Greybox.Box("ScreenFrame", c.Venue, c.Steel, W(0, y, -1.35), new Vector3(4.3f, 2.5f, 0.2f), false);
             Greybox.TexturedBox("Screen", c.Venue, screenMat, W(0, y, -1.22), new Vector3(4.0f, 2.25f, 0.04f), new Vector2(4.0f, 2.25f), false);
             Greybox.Box("ScreenCable", c.Venue, c.Steel, W(-1.8, y + 2.55, -1.35), new Vector3(0.03f, 2.6f, 0.03f), false);
@@ -739,6 +741,11 @@ namespace SquashGame
             var cam = new GameObject("LiveFeedCamera").AddComponent<Camera>();
             cam.transform.SetParent(venue, false);
             cam.targetTexture = rt;
+            // Batch 1 (2026-10-26): it drew the whole hall again every frame - half of all the drawing. Now a dozen frames a
+            // second, without the crowd (the screens are small; nobody counts the heads in them).
+            cam.enabled = false;
+            cam.cullingMask &= ~(1 << CrowdBuilder.Layer);
+            cam.gameObject.AddComponent<TimedCamera>().Fps = 12f;
             cam.fieldOfView = 46f;
             cam.depth = -5f;
             cam.clearFlags = CameraClearFlags.SolidColor;
@@ -749,6 +756,7 @@ namespace SquashGame
             var data = cam.GetUniversalAdditionalCameraData();
             data.renderPostProcessing = false;
             data.renderShadows = false;
+            data.SetRenderer(GraphicsTier.LiteRenderer);
             LiveCamera = cam;
             return rt;
         }
@@ -802,8 +810,9 @@ namespace SquashGame
             if (cam == null) return;
             var data = cam.GetUniversalAdditionalCameraData();
             bool high = Detail >= 2;
-            data.renderPostProcessing = high;
-            data.antialiasing = high ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.FastApproximateAntialiasing;
+            data.renderPostProcessing = high && Post;
+            data.SetRenderer(high && Post ? 0 : GraphicsTier.LiteRenderer);   // batch 1: ambient occlusion (an extra pass of everything) on High only
+            data.antialiasing = high && Post ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.FastApproximateAntialiasing;
             data.antialiasingQuality = AntialiasingQuality.High;
             if (Detail > 0) cam.backgroundColor = Greybox.Hex(0x07080b);
             cam.farClipPlane = Detail > 0 ? Mathf.Max(120f, Courts.Current.FarClip) : 120f;

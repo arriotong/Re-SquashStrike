@@ -6,7 +6,9 @@
 // clothes and skin tone, a little bigger or smaller, turned a little.
 //
 // Thousands of people at a handful of draw calls: the parts are merged
-// into one mesh per colour per stand section, and each section is split
+// into one mesh per stand section (batch 1, 2026-10-26: every colour in
+// one small palette texture, the parts' UVs pointing at theirs - it was a
+// mesh and a draw per colour, ~700 draws), and each section is split
 // into four groups that the CrowdMotion component bobs when the crowd
 // reacts (CrowdAudio -> VenueView.Excite). Seeded, so the same crowd is
 // in the same seats every match. Presentation only.
@@ -21,6 +23,8 @@ namespace SquashGame
     {
         public const float SeatPitch = 0.52f;          // seat to seat along a row
         public const int Groups = 4;
+        /// <summary>The crowd's layer: the arena's live feed leaves it out (batch 1: it drew the whole crowd again every frame).</summary>
+        public const int Layer = 8;
         public static int PeopleBuilt { get; private set; }
 
         // An evening crowd (2026-10-23, after the Canary Wharf photo): mostly dark and muted - navy, black, charcoal,
@@ -41,7 +45,9 @@ namespace SquashGame
         {
             public readonly List<Vector3> V = new List<Vector3>();
             public readonly List<Vector3> N = new List<Vector3>();
+            public readonly List<Vector2> UV = new List<Vector2>();
             public readonly List<int> T = new List<int>();
+            public Vector2 Cur;
         }
 
         /// <summary>The materials, one per colour, shared by every stand (made once per court build).</summary>
@@ -49,20 +55,37 @@ namespace SquashGame
         {
             public readonly Material[] Shirt, Trouser, Skin, Hair;
             public readonly Material ShoeMat;
+            /// <summary>The one material every person is drawn with: the colours above, side by side in a palette texture.</summary>
+            public readonly Material Mat;
+            internal readonly Dictionary<Material, Vector2> UV = new Dictionary<Material, Vector2>();
             public Palette(GreyboxPalette p)
             {
-                // Darker than their clothes: the stands sit in the hall's shadow, the court takes the light.
-                Material M(Color c) { var m = p.LitColor(c * 0.62f); m.SetFloat("_Smoothness", 0.15f); return m; }
+                // The colours are only tokens now (a part's colour): all of them are drawn by Mat.
+                var colours = new List<Color>();
+                Material M(Color c) { var m = new Material(p.Lit) { name = "crowd_" + colours.Count }; colours.Add(c); return m; }
                 Shirt = System.Array.ConvertAll(Shirts, M);
                 Trouser = System.Array.ConvertAll(Trousers, M);
                 Skin = System.Array.ConvertAll(Skins, M);
                 Hair = System.Array.ConvertAll(Hairs, M);
                 ShoeMat = M(Shoe);
+                // Darker than their clothes: the stands sit in the hall's shadow, the court takes the light.
+                var tex = new Texture2D(colours.Count, 1, TextureFormat.RGBA32, false) { name = "CrowdPalette", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+                for (int i = 0; i < colours.Count; i++) { var c = colours[i] * 0.62f; c.a = 1; tex.SetPixel(i, 0, c); }
+                tex.Apply(false, true);
+                Mat = p.LitColor(Color.white);
+                Mat.name = "Crowd";
+                Mat.SetTexture("_BaseMap", tex); Mat.mainTexture = tex;
+                Mat.SetFloat("_Smoothness", 0.15f);
+                int k = 0;
+                foreach (var arr in new[] { Shirt, Trouser, Skin, Hair, new[] { ShoeMat } })
+                    foreach (var m in arr) UV[m] = new Vector2((k++ + 0.5f) / colours.Count, 0.5f);
+                _current = this;
             }
 
             /// <summary>A material's place in this palette (so a cached crowd can be dressed in a new palette's materials).</summary>
             public int KeyOf(Material m)
             {
+                if (m == Mat) return 500;
                 int i;
                 if ((i = System.Array.IndexOf(Shirt, m)) >= 0) return i;
                 if ((i = System.Array.IndexOf(Trouser, m)) >= 0) return 100 + i;
@@ -73,6 +96,7 @@ namespace SquashGame
 
             public Material ByKey(int k)
             {
+                if (k == 500) return Mat;
                 if (k < 100) return Shirt[k];
                 if (k < 200) return Trouser[k - 100];
                 if (k < 300) return Skin[k - 200];
@@ -87,6 +111,7 @@ namespace SquashGame
         static readonly Dictionary<string, CachedStand> _cache = new Dictionary<string, CachedStand>();
 
         public static void ResetCount() { PeopleBuilt = 0; }
+        static Palette _current;
 
         /// <summary>One stand: rows of people. rowStart(i) is row i's front edge at floor level (the centre of its length),
         /// along its length axis, facing the court; tread(i) its tread height. Returns the four groups' transforms.</summary>
@@ -108,7 +133,7 @@ namespace SquashGame
                 foreach (var pt in hit.Parts)
                 {
                     var mat = pal.ByKey(pt.mat);
-                    Greybox.MeshObject(mat.name, groups[pt.group], pt.mesh, mat, false);
+                    Greybox.MeshObject(mat.name, groups[pt.group], pt.mesh, mat, false).layer = Layer;
                 }
                 PeopleBuilt += hit.People;
                 return groups;
@@ -137,9 +162,10 @@ namespace SquashGame
                 foreach (var kv in accs[g])
                 {
                     var m = new Mesh { name = name + "_crowd", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
-                    m.SetVertices(kv.Value.V); m.SetNormals(kv.Value.N); m.SetTriangles(kv.Value.T, 0);
+                    m.SetVertices(kv.Value.V); m.SetNormals(kv.Value.N); m.SetUVs(0, kv.Value.UV); m.SetTriangles(kv.Value.T, 0);
                     m.RecalculateBounds();
-                    Greybox.MeshObject(kv.Key.name, groups[g], m, kv.Key, false);
+                    m.UploadMeshData(true);                                       // no CPU copy kept
+                    Greybox.MeshObject(kv.Key.name, groups[g], m, kv.Key, false).layer = Layer;
                     made.Parts.Add((g, pal.KeyOf(kv.Key), m));
                 }
             made.People = PeopleBuilt - before;
@@ -215,9 +241,12 @@ namespace SquashGame
 
         // ---------------- geometry ----------------
 
+        /// <summary>The one mesh a group's people go into, set to paint with this colour.</summary>
         static Acc Get(Dictionary<Material, Acc> accs, Material m)
         {
-            if (!accs.TryGetValue(m, out var a)) accs[m] = a = new Acc();
+            var key = _current.Mat;
+            if (!accs.TryGetValue(key, out var a)) accs[key] = a = new Acc();
+            a.Cur = _current.UV[m];
             return a;
         }
 
@@ -241,13 +270,14 @@ namespace SquashGame
                     Vector3 p = Vector3.Scale(n + r * sr + u * su, h);
                     a.V.Add(m.MultiplyPoint3x4(p));
                     a.N.Add(m.MultiplyVector(n).normalized);
+                    a.UV.Add(a.Cur);
                 }
                 a.T.Add(b); a.T.Add(b + 2); a.T.Add(b + 1);
                 a.T.Add(b); a.T.Add(b + 3); a.T.Add(b + 2);
             }
         }
 
-        const int LON = 8, LAT = 6;
+        const int LON = 6, LAT = 5;          // batch 1: 60 triangles a round part (was 8 x 6: 96) - they are seen from afar
         static Vector3[] _unit;
 
         static void Ell(Dictionary<Material, Acc> accs, Material mat, Matrix4x4 frame, Vector3 centre, Vector3 size)
@@ -270,6 +300,7 @@ namespace SquashGame
             {
                 a.V.Add(m.MultiplyPoint3x4(Vector3.Scale(p, h)));
                 a.N.Add(m.MultiplyVector(new Vector3(p.x / h.x, p.y / h.y, p.z / h.z)).normalized);
+                a.UV.Add(a.Cur);
             }
             for (int i = 0; i < LAT; i++)
                 for (int j = 0; j < LON; j++)

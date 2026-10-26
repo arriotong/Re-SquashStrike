@@ -149,9 +149,9 @@ namespace SquashGame.UI
             Row(v, new SelectorItem("VSync", new[] { "Off", "On" }, () => S.VSync ? 1 : 0, i => { S.VSync = i == 1; Changed(true); }), "On: no tearing, a little more input delay.");
             var caps = new[] { 0, 60, 120, 144, 240 };
             Row(v, new SelectorItem("Frame cap", new[] { "Off", "60", "120", "144", "240" }, () => Math.Max(0, Array.IndexOf(caps, S.FrameCap)), i => { S.FrameCap = caps[i]; Changed(true); }), "The most frames a second (with VSync off).");
-            var q = new List<string> { "Default" }; q.AddRange(QualitySettings.names);
-            Row(v, new CarouselItem("Quality", q.ToArray(), () => S.Quality + 1, i => { S.Quality = i - 1; Changed(true); }), "Shadows and smoothing. The ball plays the same at every setting.");
-            Row(v, new SelectorItem("Venue", new[] { "Off", "Low", "High" }, () => S.Venue, i => { S.Venue = i; Changed(false); }), "The arena around the court: crowd, lights and screens. Low leaves out the extra lights and the picture grade; Off is the plain court.");
+            Row(v, new CarouselItem("Graphics", GraphicsTier.Names, () => Mathf.Clamp(S.Graphics, 0, GraphicsTier.Names.Length - 1), i => { S.Graphics = i; Changed(true); }),
+                "Auto suits this PC (now: " + GraphicsTier.Current + ") and goes easy on the battery when unplugged. Low and Battery saver paint the crowd and draw fewer pixels. The ball plays the same at every setting.");
+
 
             // ---- AUDIO ----
             var a = Panel("AUDIO");

@@ -67,6 +67,17 @@ namespace SquashGame.Tests
             Assert.That(PlayerNames.Import(), Is.EqualTo(-1), "no file: nothing");
         }
 
+        [Test] public void AnOlderSavesArenaSettingBecomesAGraphicsLevel()
+        {
+            File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":6,\"Settings\":{\"Venue\":1}}");
+            ProfileStore.Reset();
+            Assert.That(ProfileStore.Current.Settings.Graphics, Is.EqualTo(3), "a lowered arena: Low");
+            File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":6,\"Settings\":{\"Venue\":2}}");
+            ProfileStore.Reset();
+            Assert.That(ProfileStore.Current.Settings.Graphics, Is.EqualTo(0), "the full arena: Auto");
+            Assert.That(SquashGame.GraphicsTier.Names[ProfileStore.Current.Settings.Graphics], Is.EqualTo("Auto"));
+        }
+
         [Test] public void AnOlderSavesDifficultyBecomesAnOpponent()
         {
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":5,\"Choices\":{\"Opponent\":1,\"Difficulty\":2,\"Length\":1}}");

@@ -370,6 +370,7 @@ namespace SquashGame
         protected virtual void Update()
         {
             float rawDt = Time.unscaledDeltaTime;
+            GraphicsTier.Governor.Tick(rawDt);                               // batch 1: Auto holds the frame rate
             Input.Sample(rawDt);
             bool pause = Input.ConsumePause();
             pause |= SampleExtraInput(rawDt);

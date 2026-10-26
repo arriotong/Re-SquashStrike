@@ -24,6 +24,7 @@ using SquashSim;
 using SquashSim.Lab;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Profiling;
 
 namespace SquashGame
 {
@@ -87,10 +88,81 @@ namespace SquashGame
         // -perflog: every 5 s, the frame rate and how much sim time the step cap threw away (slow motion below 20 fps).
         static readonly bool PerfLog = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-perflog") >= 0;
         float _perfT, _perfWorst = 999f; int _perfFrames, _perfClamped; double _perfSim0 = -1;
+        // Batch 1 (2026-10-26): uncapped while logging, with the CPU / GPU split and what is drawn - where the frame goes
+        readonly List<float> _perfDts = new List<float>();
+        readonly FrameTiming[] _timing = new FrameTiming[1];
+        double _cpuSum, _gpuSum; int _timed;
+        ProfilerRecorder _batches, _tris, _setPass;
+
+        // -perftour (with -perflog): 25 s on the main menu, then a match against the world No. 1 with an AI in your shoes,
+        // then quit at 90 s - the same measurements every run, unattended
+        static readonly bool PerfTour = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-perftour") >= 0;
+        int _tourStep;
+
+        void Tour()
+        {
+            float t = Time.realtimeSinceStartup;
+            if (_fe == null) _fe = FindFirstObjectByType<UI.FrontEnd>();
+            if (_fe == null) return;
+            if (_tourStep == 0 && t > 25f)
+            {
+                _tourStep = 1;
+                Debug.Log("[perf] tour: the match");
+                _fe.StartMatch(new MatchSettings { Opponent = "star:s01", GamesToWin = 3, Scoring = "par" }.Dressed());
+            }
+            else if (_tourStep == 1 && Runner is MatchRunner r && !r.Demo && r.Sim != null)
+            {
+                _tourStep = 2;
+                r.Sim.Bots[0] = new OpponentBrain(AiProfile.For("star:s02", 0.6), 77);       // someone to play it out
+                r.Sim.Players[0].WallAimEnabled = true; r.Sim.Players[0].ArcadeHitEnabled = true;
+            }
+            else if (_tourStep >= 2 && PerfStrip && t > 50f + 10f * (_tourStep - 2) && _tourStep < 7)
+            {
+                // -perfstrip: every 10 s one more thing off, to see what each costs
+                switch (_tourStep)
+                {
+                    case 2: if (VenueView.LiveCamera != null) VenueView.LiveCamera.enabled = false; Debug.Log("[perf] strip: live feed off"); break;
+                    case 3:
+                        foreach (var mr in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                        { var mf = mr.GetComponent<MeshFilter>(); if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name.EndsWith("_crowd")) mr.enabled = false; }
+                        Debug.Log("[perf] strip: crowd off"); break;
+                    case 4:
+                        foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) l.shadows = LightShadows.None;
+                        Debug.Log("[perf] strip: shadows off"); break;
+                    case 5:
+                        foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type != LightType.Directional) l.enabled = false;
+                        Debug.Log("[perf] strip: spot and point lights off"); break;
+                    case 6:
+                        UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(Camera.main).renderPostProcessing = false;
+                        Debug.Log("[perf] strip: post off"); break;
+                }
+                _tourStep++;
+            }
+            else if (t > (PerfStrip ? 115f : 90f)) Application.Quit();
+        }
+        static readonly bool PerfStrip = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-perfstrip") >= 0;
+
+        UI.FrontEnd _fe;
+        string TopName()
+        {
+            if (_fe == null) _fe = FindFirstObjectByType<UI.FrontEnd>();
+            var t = _fe != null ? _fe.Top : null;
+            return t == null ? "match" : t.GetType().Name;
+        }
 
         void LogPerf()
         {
+            if (!_batches.Valid)
+            {
+                _batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count");
+                _tris = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
+                _setPass = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
+            }
+            QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
+            FrameTimingManager.CaptureFrameTimings();
+            if (FrameTimingManager.GetLatestTimings(1, _timing) > 0 && _timing[0].cpuMainThreadFrameTime > 0) { _cpuSum += _timing[0].cpuMainThreadFrameTime; _gpuSum += _timing[0].gpuFrameTime; _timed++; }
             float dt = Time.unscaledDeltaTime;
+            _perfDts.Add(dt);
             if (dt > 0.1f) Debug.Log("[perf] long frame " + (dt * 1000f).ToString("0") + " ms at frame " + Time.frameCount + " (" + Time.realtimeSinceStartup.ToString("0.00") + " s)");
             _perfT += dt; _perfFrames++;
             _perfWorst = Mathf.Min(_perfWorst, 1f / Mathf.Max(1e-4f, dt));
@@ -98,8 +170,14 @@ namespace SquashGame
             if (_perfSim0 < 0) _perfSim0 = Runner.Clock.SimulatedTime;
             if (_perfT < 5f) return;
             double sim = Runner.Clock.SimulatedTime - _perfSim0;
-            Debug.Log(string.Format("[perf] {0:0} fps avg, {1:0} worst, {2} clamped frames, sim/real {3:0.00} (scale {4}), venue {5}, {6}x{7}",
-                _perfFrames / _perfT, _perfWorst, _perfClamped, sim / _perfT, Runner.Clock.TimeScale, VenueView.Detail, Screen.width, Screen.height));
+            _perfDts.Sort();
+            float low1 = 1f / Mathf.Max(1e-4f, _perfDts[Mathf.Max(0, (int)(_perfDts.Count * 0.99f) - 1)]);
+            Debug.Log(string.Format("[perf] {0:0} fps avg, {1:0} 1%-low, {2:0} worst, {3} clamped frames, sim/real {4:0.00} (scale {5}), venue {6}, {7}x{8}",
+                _perfFrames / _perfT, low1, _perfWorst, _perfClamped, sim / _perfT, Runner.Clock.TimeScale, VenueView.Detail, Screen.width, Screen.height));
+            Debug.Log(string.Format("[perf]   cpu {0:0.0} ms, gpu {1:0.0} ms, batches {2}, setpass {3}, tris {4:0}k, quality {5}, screen {6}",
+                _timed > 0 ? _cpuSum / _timed : -1, _timed > 0 ? _gpuSum / _timed : -1, _batches.LastValue, _setPass.LastValue, _tris.LastValue / 1000.0,
+                QualitySettings.names[QualitySettings.GetQualityLevel()], TopName()));
+            _perfDts.Clear(); _cpuSum = 0; _gpuSum = 0; _timed = 0;
             _perfT = 0; _perfFrames = 0; _perfClamped = 0; _perfWorst = 999f; _perfSim0 = Runner.Clock.SimulatedTime;
         }
 
@@ -109,6 +187,7 @@ namespace SquashGame
             if (_fpsAccum >= 0.4f) { _fps = _fpsFrames / _fpsAccum; _fpsAccum = 0; _fpsFrames = 0; }
             if (Runner == null || Runner.Clock == null) return;
             if (PerfLog) LogPerf();
+            if (PerfTour) Tour();
 
             HandleKeys();
             UpdateCursor();

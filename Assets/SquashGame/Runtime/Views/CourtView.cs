@@ -18,6 +18,7 @@ namespace SquashGame
 
         GreyboxPalette _palette;
         int _builtDetail = -1;
+        GraphicsLevel _builtLevel;
         string _builtCourt;
         float _builtFill = -1f;
 
@@ -26,6 +27,7 @@ namespace SquashGame
             var total = System.Diagnostics.Stopwatch.StartNew();
             _palette = palette;
             _builtDetail = VenueView.Detail;
+            _builtLevel = GraphicsTier.Current;
             _builtCourt = Courts.CurrentId;
             _builtFill = Courts.CrowdFill;
             var theme = Courts.Current;
@@ -157,7 +159,7 @@ namespace SquashGame
             key.transform.SetParent(root, false);
             key.type = LightType.Directional;
             key.intensity = lit ? 0.85f : 1.1f;
-            key.shadows = LightShadows.Soft;
+            key.shadows = GraphicsTier.KeyShadows;          // batch 1: soft on High, hard below, none in Battery saver
             key.transform.rotation = Quaternion.LookRotation(SimToWorld.Pos(0, 0, 4) - SimToWorld.Pos(1.5, 7.5, 3.0));
 
             var fill = new GameObject("FillLight").AddComponent<Light>();
@@ -204,7 +206,7 @@ namespace SquashGame
         /// <summary>Settings > Video > Venue changed, or the court (Courts.CurrentId): rebuild the court and the venue in place.</summary>
         void Update()
         {
-            if (_palette == null || (_builtDetail == VenueView.Detail && _builtCourt == Courts.CurrentId && _builtFill == Courts.CrowdFill)) return;
+            if (_palette == null || (_builtDetail == VenueView.Detail && _builtLevel == GraphicsTier.Current && _builtCourt == Courts.CurrentId && _builtFill == Courts.CrowdFill)) return;
             for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
             Build(_palette);
         }

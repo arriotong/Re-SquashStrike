@@ -28,8 +28,9 @@ namespace SquashGame.Profile
         public int DisplayMode = 0;              // 0 fullscreen window, 1 exclusive, 2 windowed
         public bool VSync = true;
         public int FrameCap = 0;                 // 0 = none, else fps
-        public int Quality = -1;                 // QualitySettings level; -1 = leave
-        public int Venue = 2;                    // PR1: the arena around the court: 0 off, 1 low, 2 high
+        public int Quality = -1;                 // (before batch 1: a QualitySettings level - read once, from an older save)
+        public int Venue = 2;                    // (before batch 1: the arena 0 off, 1 low, 2 high - read once)
+        public int Graphics = 0;                 // batch 1: GraphicsTier.Names - 0 Auto, 1 High, 2 Medium, 3 Low, 4 Battery saver
         // ---- audio ----
         public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f, CrowdVolume = 0.8f;
         // ---- accessibility ----
@@ -158,11 +159,19 @@ namespace SquashGame.Profile
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 6;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet; 6: P6 the stars
+        public const int CurrentVersion = 7;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet; 6: P6 the stars; 7: Graphics
         public const string FileName = "profile.json";
 
-        /// <summary>Where the profile lives (tests may point it elsewhere).</summary>
-        public static string Folder = null;
+        /// <summary>Where the profile lives (tests may point it elsewhere; -profiledir PATH on the command line: perf runs leave
+        /// your own profile alone).</summary>
+        public static string Folder = ArgFolder();
+
+        static string ArgFolder()
+        {
+            var a = System.Environment.GetCommandLineArgs();
+            int i = System.Array.IndexOf(a, "-profiledir");
+            return i >= 0 && i + 1 < a.Length ? a[i + 1] : null;
+        }
         static string PathOf { get { return System.IO.Path.Combine(Folder ?? Application.persistentDataPath, FileName); } }
 
         static PlayerProfile _current;
@@ -233,6 +242,7 @@ namespace SquashGame.Profile
             if (g.Gauntlet.Run != null && !g.Gauntlet.Run.Active) g.Gauntlet.Run = null;             // JsonUtility's empty object
             if (p.Version < 6) p.Choices.OpponentId = UI.MatchChoices.OldToId(p.Choices.Difficulty);   // P6: Easy / Medium / Hard -> a club player, a star
             if (System.Array.IndexOf(UI.MatchChoices.Ladder, p.Choices.OpponentId) < 0) p.Choices.OpponentId = UI.MatchChoices.Ladder[0];
+            if (p.Version < 7) p.Settings.Graphics = p.Settings.Venue >= 2 ? 0 : 3;     // batch 1: a lowered arena -> Low, else Auto
             if (p.Version < 5) g.Gauntlet.Run = null;                     // P5: a run of the old Gauntlet ends (its best floor is kept)
             if (g.Gauntlet.Talents == null) g.Gauntlet.Talents = new List<SquashSim.RunMod>();
             if (g.Gauntlet.Codex == null) g.Gauntlet.Codex = new List<SquashSim.RunMod>();
@@ -316,12 +326,12 @@ namespace SquashGame.Profile
             Audio.CrowdAudio.Volume = Mathf.Clamp01(s.CrowdVolume);
             AudioListener.volume = Mathf.Clamp01(s.MasterVolume);
             BallView.UserScale = Mathf.Clamp(s.BallScale, 0.75f, 1.6f);
-            VenueView.Detail = Mathf.Clamp(s.Venue, 0, 2);
+            GraphicsTier.Apply(s.Graphics);                                 // batch 1: the arena, shadows, resolution
             HudLayer.CallTextScale = Mathf.Clamp(s.CallTextScale, 0.8f, 1.5f);
             if (!video || Application.isBatchMode) return;
-            QualitySettings.vSyncCount = s.VSync ? 1 : 0;
-            Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : -1;
-            if (s.Quality >= 0 && s.Quality < QualitySettings.names.Length) QualitySettings.SetQualityLevel(s.Quality, true);
+            bool saver = GraphicsTier.Current == GraphicsLevel.Saver;
+            QualitySettings.vSyncCount = s.VSync && !saver ? 1 : 0;
+            Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : saver ? 60 : -1;      // Battery saver: no more than 60
             var modes = new[] { FullScreenMode.FullScreenWindow, FullScreenMode.ExclusiveFullScreen, FullScreenMode.Windowed };
             var mode = modes[Mathf.Clamp(s.DisplayMode, 0, 2)];
             if (s.ResolutionW > 0 && s.ResolutionH > 0)
