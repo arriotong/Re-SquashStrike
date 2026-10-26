@@ -49,7 +49,7 @@ namespace SquashGame.UI
             // ---- PLAY ----
             var play = Kit.Box(Page("PLAY"), "k-row");
             AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
-                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length])
+                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length] + (C.Abilities ? "  ·  abilities on" : ""))
                 .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
             AddTo(play, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
                 .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
@@ -202,7 +202,7 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         protected static MenuChoices C { get { return ProfileStore.Current.Choices; } }
         protected static GameSettings S { get { return ProfileStore.Current.Settings; } }
-        Label _oppName, _oppStyle, _oppLines, _youName, _youMeta;
+        Label _oppName, _oppStyle, _oppLines, _youName, _youMeta, _abilityHint;
 
         protected override void Compose()
         {
@@ -223,6 +223,9 @@ namespace SquashGame.UI
                 var ladder = System.Array.ConvertAll(MatchChoices.Ladder, MatchChoices.Label);
                 AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
+                // batch 2: the arcade abilities, off unless asked for
+                AddTo(mid, new SelectorItem("Abilities", new[] { "Off", "On" }, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
+                _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
                 AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
             }
@@ -293,12 +296,23 @@ namespace SquashGame.UI
                 Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = false,
                                                   Court = Courts.All[Mathf.Clamp(C.VsCourt, 0, Courts.All.Length - 1)].Id });
             else
-                Fe.StartMatch(new MatchSettings
+            {
+                var s = new MatchSettings
                 {
                     TwoPlayer = false, Opponent = C.OpponentId,
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = false,
                     Court = Courts.All[Mathf.Clamp(C.Court, 0, Courts.All.Length - 1)].Id
-                }.Dressed());
+                }.Dressed();
+                if (C.Abilities)
+                {
+                    s.Mods = MatchChoices.AbilityKit();
+                    s.FocusCharges = MatchChoices.AbilityFocus;
+                    var theirs = s.OppMods != null ? new List<SquashSim.RunMod>(s.OppMods) : new List<SquashSim.RunMod>();
+                    theirs.AddRange(MatchChoices.AbilityKitForThem());
+                    s.OppMods = theirs;
+                }
+                Fe.StartMatch(s);
+            }
         }
 
         public override void OnShow() { base.OnShow(); MenuCinematics.Scene = TwoPlayer ? 1 : 0; }

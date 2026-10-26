@@ -102,16 +102,24 @@ namespace SquashGame.Tests
             var you = You();
             Assert.That(you.Worn.Shirt, Is.EqualTo("shirt_white"), "the demo's athlete wears it");
             Assert.That(you.Rig.RegionMaterial(Athlete.AthleteRig.Region.ShirtBody).color, Is.EqualTo(Cosmetics.Find("shirt_white").A));
-            yield return Tap(kb.enterKey);                                          // wear it
-            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"));
+            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "batch 2: yours is worn as you browse");
 
-            yield return Tap(kb.rightArrowKey);                                      // lime: locked (a level)
-            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_lime"));
+            // batch 2: only your own things until you ask - then the locked ones, after yours
+            foreach (var it in row.Items) Assert.That(Rewards.Owns(it.Id), Is.True, "only owned items: " + it.Id);
+            Assert.That(row.OwnedCount, Is.LessThan(row.TotalCount));
+            yield return Tap(kb.rKey);                                                 // Y: show locked
+            Assert.That(LockerRow.ShowLocked, Is.True);
+            Assert.That(row.Items.Count, Is.EqualTo(row.TotalCount));
+            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"), "still on the same shirt");
+            int firstLocked = row.Items.FindIndex(it => !Rewards.Owns(it.Id));
+            Assert.That(firstLocked, Is.EqualTo(row.OwnedCount), "the locked ones come after yours");
+            row.BrowseTo(firstLocked);                                               // (a click on its swatch)
             Assert.That(row.Owned, Is.False);
             yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_1_LockerRoom.png");
-            yield return Tap(kb.enterKey);
-            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "a locked item is not worn");
+            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "a locked item is only tried on");
+            yield return Tap(kb.rKey);                                                 // back to only mine
+            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"), "back on what is worn");
 
             // LOOK: a celebration plays on the athlete as you browse
             yield return Tap(kb.eKey);

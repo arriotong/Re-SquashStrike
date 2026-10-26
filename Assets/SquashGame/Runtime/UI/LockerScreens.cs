@@ -27,12 +27,17 @@ using UnityEngine.UIElements;
 
 namespace SquashGame.UI
 {
-    /// <summary>A slot on the rail: its icon, its name, what is browsed; ← → browses (and previews), Enter wears.</summary>
+    /// <summary>A slot on the rail: its icon, its name, what is browsed. Batch 2 (2026-10-26, "clearly see your owned
+    /// cosmetics and choose them without a problem"): your own things come first and the locked ones are hidden until
+    /// you ask (Y); ← → through your own things wears each at once (a locked one is only tried on).</summary>
     public sealed class LockerRow : MenuItem
     {
         public readonly Slot Slot;
-        readonly List<Item> _items;
+        readonly List<Item> _all;
+        List<Item> _items;
         int _browse;
+        /// <summary>Show the locked items too (Y on the Locker Room; off: only what you own).</summary>
+        public static bool ShowLocked;
         readonly Label _value = new Label(), _dot = new Label();
         static Progress P { get { return ProfileStore.Current.Progress; } }
         public override bool WantsSlant { get { return false; } }
@@ -41,9 +46,13 @@ namespace SquashGame.UI
         public LockerRow(Slot slot) : base(Cosmetics.SlotNames[(int)slot])
         {
             Slot = slot;
-            _items = Cosmetics.InSlot(slot);
-            _items.RemoveAll(i => i.Gold && !Rewards.Owns(i.Id));        // P4: a gold edition shows once you have it
-            _browse = Mathf.Max(0, _items.FindIndex(i => i.Id == P.Loadout.Get(slot)));
+            _all = Cosmetics.InSlot(slot);
+            _all.RemoveAll(i => i.Gold && !Rewards.Owns(i.Id));          // P4: a gold edition shows once you have it
+            // yours first (in the catalogue's order), then the rest
+            var mine = _all.FindAll(i => Rewards.Owns(i.Id));
+            mine.AddRange(_all.FindAll(i => !Rewards.Owns(i.Id)));
+            _all = mine;
+            Filter();
             Root.RemoveFromClassList("fe-item");
             Root.AddToClassList("k-slot");
             LabelEl.RemoveFromClassList("fe-item__label");
@@ -56,6 +65,19 @@ namespace SquashGame.UI
             _dot.text = "NEW"; _dot.AddToClassList("k-slot-new"); Root.Add(_dot);
         }
 
+        /// <summary>What ← → goes through: yours, or everything (ShowLocked). Kept on what is worn.</summary>
+        public void Filter()
+        {
+            string keep = _items != null && _items.Count > 0 ? Browsing.Id : P.Loadout.Get(Slot);
+            _items = ShowLocked ? new List<Item>(_all) : _all.FindAll(i => Rewards.Owns(i.Id));
+            if (_items.Count == 0) _items = new List<Item>(_all);
+            int k = _items.FindIndex(i => i.Id == keep);
+            _browse = k >= 0 ? k : Mathf.Max(0, _items.FindIndex(i => i.Id == P.Loadout.Get(Slot)));
+        }
+
+        public int OwnedCount { get { int n = 0; foreach (var i in _all) if (Rewards.Owns(i.Id)) n++; return n; } }
+        public int TotalCount { get { return _all.Count; } }
+
         public List<Item> Items { get { return _items; } }
         public int BrowseIndex { get { return _browse; } }
         public Item Browsing { get { return _items[_browse]; } }
@@ -64,10 +86,14 @@ namespace SquashGame.UI
         /// <summary>The slot has unlocked items not looked at yet.</summary>
         public bool HasNew { get { foreach (var i in _items) if (i.Unlock != UnlockKind.Free && P.Owned.Contains(i.Id) && !P.Seen.Contains(i.Id)) return true; return false; } }
 
-        public override void Change(int d)
+        public override void Change(int d) { BrowseTo(OptionItem.Step(_browse, d, _items.Count)); }
+
+        /// <summary>Go to item i of the list (← →, or a click on its swatch): yours is worn at once.</summary>
+        public void BrowseTo(int i)
         {
-            _browse = OptionItem.Step(_browse, d, _items.Count);
+            _browse = Mathf.Clamp(i, 0, _items.Count - 1);
             if (!P.Seen.Contains(Browsing.Id)) P.Seen.Add(Browsing.Id);
+            if (Owned && !Worn) { P.Loadout.Set(Slot, Browsing.Id); Sounds.Play("tick"); }
             Refresh();
             OnBrowse?.Invoke(this);
         }
@@ -91,7 +117,7 @@ namespace SquashGame.UI
         public override void Refresh()
         {
             base.Refresh();
-            _value.text = Browsing.Name + (Owned ? "" : "  ·  locked");
+            _value.text = (Worn ? "✓ " : "") + Browsing.Name + (Owned ? "" : "  ·  locked");
             _value.EnableInClassList("k-slot-value--locked", !Owned);
             _dot.style.display = HasNew ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -148,7 +174,7 @@ namespace SquashGame.UI
     public sealed class SwatchStrip : VisualElement
     {
         public const int Window = 9;
-        public SwatchStrip() { AddToClassList("k-swatches"); pickingMode = PickingMode.Ignore; }
+        public SwatchStrip() { AddToClassList("k-swatches"); }
 
         public void Show(LockerRow row)
         {
@@ -178,6 +204,8 @@ namespace SquashGame.UI
                 if (i == row.BrowseIndex) sw.AddToClassList("k-sw--on");
                 if (!Rewards.Owns(it.Id) && !mystery) { sw.AddToClassList("k-sw--locked"); Kit.L(sw, it.Unlock == UnlockKind.Level ? "LV " + it.Level : "★", "k-sw-lock"); }
                 if (it.Id == worn) Kit.L(sw, "✓", "k-sw-worn");
+                int at = i;
+                sw.RegisterCallback<ClickEvent>(e => { row.BrowseTo(at); e.StopPropagation(); });          // batch 2: click to pick
             }
             Kit.L(this, to < n ? "▶" : "", "k-sw-more");
         }
@@ -289,7 +317,17 @@ namespace SquashGame.UI
 
         protected override void SetPrompts()
         {
-            Prompts.Set((PromptBar.Btn.Move, "Browse"), (PromptBar.Btn.A, "Wear"), (PromptBar.Btn.B, "Back"), (PromptBar.Btn.Tabs, "Tabs"));
+            Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.Y, LockerRow.ShowLocked ? "Only mine" : "Show locked"), (PromptBar.Btn.B, "Done"), (PromptBar.Btn.Tabs, "Tabs"));
+        }
+
+        /// <summary>Y: show the locked items too, or only yours.</summary>
+        public override void OnActionY()
+        {
+            LockerRow.ShowLocked = !LockerRow.ShowLocked;
+            foreach (var i in Items) if (i is LockerRow row) { row.Filter(); row.Refresh(); }
+            _shown = null;
+            SetPrompts();
+            Sounds.Play("tick");
         }
 
         void Show(LockerRow r, bool browsed)
@@ -302,12 +340,11 @@ namespace SquashGame.UI
             bool mystery = it.Unlock == UnlockKind.Gacha && !r.Owned;
             Kit.L(tab.Info, mystery ? "???" : it.Name + (it.Gold ? "  ★" : ""), "k-lk-item");
             if (it.Rarity >= 0) { var rl = Kit.L(tab.Info, GearDrops.RarityNames[it.Rarity].ToUpperInvariant() + (it.Gold ? "  ·  GOLD EDITION" : "") + (it.Glow ? "  ·  GLOWS" : ""), "k-lk-rarity"); rl.style.color = it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[it.Rarity]; }
-            var state = Kit.L(tab.Info, r.Worn ? "✓  WORN" : r.Owned ? "OWNED  ·  ENTER TO WEAR" : "LOCKED", "k-lk-state");
+            var state = Kit.L(tab.Info, r.Worn ? "✓  WEARING" : r.Owned ? "OWNED" : "LOCKED  ·  TRYING ON", "k-lk-state");
             state.AddToClassList(r.Worn ? "k-lk-state--worn" : r.Owned ? "k-lk-state--owned" : "k-lk-state--locked");
             if (!r.Owned) Kit.L(tab.Info, "Unlock: " + it.HowToUnlock, "k-lk-how");
             if (it.Pose != null) Kit.L(tab.Info, "Plays when you win a match.", "k-lk-how");
-            int owned = 0; foreach (var x in r.Items) if (Rewards.Owns(x.Id)) owned++;
-            Kit.L(tab.Info, owned + " / " + r.Items.Count + " owned in this slot", "k-lk-count");
+            Kit.L(tab.Info, r.OwnedCount + " / " + r.TotalCount + " owned  ·  " + (LockerRow.ShowLocked ? "showing everything" : "showing yours"), "k-lk-count");
 
             // what the athlete (and the card) wear: everything browsed
             var l = ProfileStore.Current.Progress.Loadout.Clone();
@@ -338,7 +375,8 @@ namespace SquashGame.UI
         {
             KitDirector.Preview = null;
             KitDirector.PreviewPose = null;
-            foreach (var i in Items) if (i is LockerRow r) r.Revert();
+            foreach (var i in Items) if (i is LockerRow r) r.Revert();         // a locked item tried on comes off
+            LockerRow.ShowLocked = false;
             ProfileStore.Save();
         }
     }

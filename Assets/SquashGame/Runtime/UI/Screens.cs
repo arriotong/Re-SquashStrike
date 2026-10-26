@@ -98,6 +98,22 @@ namespace SquashGame.UI
         public static string Label(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  " + d.rating; }
         /// <summary>"Zayn Mahrous  ·  99  ·  Powerhouse" (the PLAY card).</summary>
         public static string Line(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  ·  " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style); }
+        /// <summary>Batch 2 (2026-10-26, the user: "make the special ability things available in quick play, optional"): Quick
+        /// Match's arcade kit - no choosing, the same every time. You: Focus twice a game and four shot techniques; both of
+        /// you: aces and nicks score 2 (the opponent keeps its own signature shots).</summary>
+        public const int AbilityFocus = 2;
+        public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKit()
+        {
+            SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("nick", 2), M("rail", 2), M("wide", 2), M("hlob", 2), M("ace", 1), M("nickbank", 1) };
+        }
+        public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKitForThem()
+        {
+            SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("nickbank", 1) };
+        }
+        public const string AbilityHint = "Abilities: Focus slow-mo twice a game, arcade shots, and aces and nicks score 2 - for them too.";
+
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };
         /// <summary>Balanced with MatchBench --balance (human-style model wins ~55 / 44 / 29% of rallies).</summary>

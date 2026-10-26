@@ -71,7 +71,8 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var qm = (QuickMatchScreen)fe.Top;
             var rows = qm.Reachable().FindAll(i => !(i is PrimaryItem));
-            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Opponent", "Match", "Court" }), "three rows, nothing else");
+            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Opponent", "Match", "Abilities", "Court" }), "four rows, nothing else (batch 2: abilities, off by default)");
+            Assert.That(ProfileStore.Current.Choices.Abilities, Is.False);
             Assert.That(ProfileStore.Current.Choices.OpponentId, Is.EqualTo(MatchChoices.Ladder[0]), "a new player starts at the bottom");
 
             var opp = (CarouselItem)rows[0];
@@ -88,6 +89,28 @@ namespace SquashGame.Tests
             Assert.That(r.Sim.Players[1].Player.Attributes.Power, Is.EqualTo(Stars.No1.Attributes.Power), "their own athlete");
             Assert.That(r.Sim.Players[1].Player.Mods, Is.Not.Null, "and their signature shots");
             Assert.That(r.Names[1], Is.EqualTo(Stars.No1.Last.ToUpperInvariant()), "the score bug");
+            Assert.That(r.Settings.FocusCharges, Is.EqualTo(0), "abilities off: no Focus");
+            Assert.That(r.Sim.Players[0].Player.Mods, Is.Null, "and no abilities for you");
+        }
+
+        [UnityTest]
+        public IEnumerator QuickMatchAbilitiesAreOptional()
+        {
+            InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            FrontEnd fe = null;
+            yield return Boot(f => fe = f);
+            fe.Push(new QuickMatchScreen());
+            yield return null; yield return null;
+            var qm = (QuickMatchScreen)fe.Top;
+            qm.Reachable().Find(i => i.Name == "Abilities").Change(1);
+            Assert.That(ProfileStore.Current.Choices.Abilities, Is.True);
+            yield return CaptureUI(fe, "B2_QuickMatch_Abilities.png");
+            qm.Reachable().Find(i => i is PrimaryItem).Submit();
+            yield return Wait(2f, () => fe.Top == null);
+            var r = fe.Match;
+            Assert.That(r.Settings.FocusCharges, Is.EqualTo(MatchChoices.AbilityFocus), "Focus, twice a game");
+            Assert.That(r.Sim.Players[0].Player.Mods, Is.Not.Null, "your arcade shots");
+            Assert.That(r.Settings.OppMods.Exists(m => m.Id == "ace"), Is.True, "aces count double for them too");
         }
 
         [UnityTest]
