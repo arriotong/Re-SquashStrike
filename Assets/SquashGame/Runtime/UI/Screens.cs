@@ -176,6 +176,7 @@ namespace SquashGame.UI
             Row(a, Volume("Referee", () => S.RefereeVolume, x => S.RefereeVolume = x), "The calls.");
             Row(a, Volume("Music", () => S.MusicVolume, x => S.MusicVolume = x), "The menus' music.");
             Row(a, Volume("Crowd", () => S.CrowdVolume, x => S.CrowdVolume = x), "The people watching: quiet in a rally, applause after it.");
+            if (Fe != null && Fe.Music != null) Kit.L(a, Audio.MusicLibrary.Credits(Fe.Music.Has), "k-set-hint");      // batch 6: CC BY - every song credited
 
             // ---- ACCESSIBILITY ----
             var acc = Panel("ACCESSIBILITY");

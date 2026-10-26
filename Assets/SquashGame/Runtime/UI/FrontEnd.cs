@@ -115,6 +115,7 @@ namespace SquashGame.UI
 
             _input = new MenuInput();
             Music = gameObject.AddComponent<Audio.MenuMusic>();
+            Music.OnSong = s => { if (Music.Level > 0.05f || Music.Want > 0.5f) Toast("NOW PLAYING", s.Title + "   ·   " + s.Artist); };   // batch 6
             // UI redesign: live 3D pictures for cards
             var vig = gameObject.AddComponent<Vignettes>();
             vig.Runner = runner;
@@ -441,7 +442,26 @@ namespace SquashGame.UI
             if (ArcadeHud != null) ArcadeHud.Refresh(Arcade, Top == null || Top is ArcadePauseScreen);
             if (LessonHud != null) LessonHud.Refresh(Academy, Top == null || Top is AcademyPauseScreen);
             if (PracticeHud != null) PracticeHud.Refresh(Top == null);
-            if (Music != null) Music.Want = MusicWanted();
+            if (Music != null) { Music.Want = MusicWanted(); Music.Mood = MoodFor(Top); }
+        }
+
+        /// <summary>Batch 6: which songs a screen wants - the career's, the Gauntlet's, the Locker's and online's, else the menu's
+        /// (the main menu by its tab).</summary>
+        public static Audio.MusicMood MoodFor(MenuScreen top)
+        {
+            if (top == null) return Audio.MusicMood.Menu;
+            string n = top.GetType().Name;
+            if (top is MainMenuScreen hub && hub.Tabs != null)
+            {
+                string tab = hub.Tabs.Current;
+                return tab == "CAREER" ? Audio.MusicMood.Career : tab == "LOCKER" || tab == "ONLINE" ? Audio.MusicMood.Locker : Audio.MusicMood.Menu;
+            }
+            if (top is CreatePlayerScreen || top is CareerHubScreen || top is MatchPreviewScreen || top is SimResultScreen || top is DrawScreen ||
+                top is EventResultScreen || top is SeasonSummaryScreen || top is SponsorScreen || top is CareerSettingsScreen) return Audio.MusicMood.Career;
+            if (top is GauntletScreen || top is TalentsScreen || top is CodexScreen) return Audio.MusicMood.Gauntlet;
+            if (top is LockerRoomScreen || top is GearDropScreen || top is PullRevealScreen || top is GoldPlateScreen ||
+                top is OnlineSearchScreen || top is PrivateRoomScreen || top is LeaderboardScreen || top is OnlineNameScreen) return Audio.MusicMood.Locker;
+            return Audio.MusicMood.Menu;
         }
 
         /// <summary>The home page's music: full on the title and the menus, low while watching a replay, off in play.</summary>

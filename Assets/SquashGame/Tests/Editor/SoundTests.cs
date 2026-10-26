@@ -38,6 +38,35 @@ namespace SquashGame.Tests
             UnityEngine.Debug.Log("[Sound] written to " + dir);
         }
 
+        [Test] public void EverySongIsCreditedAndEveryFileIsASong()
+        {
+            // batch 6: CC BY asks for credit - every song has its artist, licence and source; nothing in the folder unlisted
+            var files = new System.Collections.Generic.HashSet<string>();
+            foreach (var s in MusicLibrary.All)
+            {
+                Assert.That(s.Title, Is.Not.Empty); Assert.That(s.Artist, Is.Not.Empty);
+                Assert.That(s.Licence, Does.StartWith("CC BY"), s.File + ": attribution licences only");
+                Assert.That(s.Licence, Does.Not.Contain("NC"), s.File + ": nothing non-commercial");
+                Assert.That(s.Url, Does.StartWith("https://"));
+                Assert.That(files.Add(s.File), Is.True, "one entry a file: " + s.File);
+            }
+            string dir = Path.Combine(UnityEngine.Application.dataPath, "SquashGame", "Resources", "Music");
+            string credits = File.ReadAllText(Path.Combine(dir, "CREDITS.md"));
+            int present = 0;
+            foreach (var f in Directory.GetFiles(dir))
+            {
+                string ext = Path.GetExtension(f).ToLowerInvariant();
+                if (ext != ".mp3" && ext != ".ogg" && ext != ".wav") continue;
+                string id = Path.GetFileNameWithoutExtension(f);
+                Assert.That(files.Contains(id), Is.True, id + " is in the folder but not in MusicLibrary (so not credited)");
+                Assert.That(credits, Does.Contain("| " + id + " |"), id + " is in CREDITS.md");
+                Assert.That(UnityEngine.Resources.Load<UnityEngine.AudioClip>(MusicLibrary.Folder + id), Is.Not.Null, id + " loads");
+                present++;
+            }
+            Assert.That(present, Is.GreaterThan(0), "some songs");
+            Assert.That(MusicLibrary.Of(MusicMood.Gauntlet).Count, Is.GreaterThan(0));
+        }
+
         [Test] public void TheMenuMusicLoops()
         {
             float[] m = MenuMusicTrack.Render();
