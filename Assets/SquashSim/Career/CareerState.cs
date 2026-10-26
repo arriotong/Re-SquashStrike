@@ -29,6 +29,15 @@ namespace SquashSim.Career
         public int Prize;           // P7: your prize money from it (yours only: 0 for the pros)
     }
 
+    /// <summary>P7 phase 6: a title, for the trophy cabinet.</summary>
+    [Serializable]
+    public sealed class TrophyRec
+    {
+        public int Slot, Season, Tier, Opp;
+        public bool Home;
+        public string Event, City, OppName, Score;      // the final: whom you beat, and how (your side first)
+    }
+
     /// <summary>P7: a wildcard you used (2 in any 52 weeks, 1 of them at Bronze or above).</summary>
     [Serializable]
     public sealed class WildcardRec { public int Slot, Tier; }
@@ -63,6 +72,8 @@ namespace SquashSim.Career
         public bool Qualifying;         // P7: the qualifying event of a Diamond or the World Championship (no points: win it to play the main draw)
         public int Via;                 // P7: how you got in (CareerSession.Via)
         public int Cost;                // P7: what the trip cost you
+        public bool RoundRobin;         // P7 phase 6: the Tour Finals - groups, then semis and a final (Finals.cs)
+        public List<int> Seeds = new List<int>();   // the round robin's field, best first
         public List<RoundRec> Rounds = new List<RoundRec>();
         public bool YouIn, YouOut, Done;
         // your finish (set when the slot is finished)
@@ -96,6 +107,7 @@ namespace SquashSim.Career
         public List<string> GearOwned = new List<string>();
         public string Racket = "", Shoes = "", KitGear = "";
         public int GearSpent;
+        public List<TrophyRec> Trophies = new List<TrophyRec>();     // P7 phase 6
         public int NextId = Tour.RosterSize + 1;
         public List<Pro> Roster = new List<Pro>();
         public List<ResultRec> Results = new List<ResultRec>();

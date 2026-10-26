@@ -76,6 +76,7 @@ namespace SquashSim.Career
             if (S.Sponsor != null && string.IsNullOrEmpty(S.Sponsor.Brand)) S.Sponsor = null;      // JsonUtility's empty object
             if (S.Wildcards == null) S.Wildcards = new List<WildcardRec>();
             if (S.GearOwned == null) S.GearOwned = new List<string>();
+            if (S.Trophies == null) S.Trophies = new List<TrophyRec>();
             if (string.IsNullOrEmpty(S.City)) S.City = World.HomeOf(S.Nat);
             if (S.Version < CareerState.CurrentVersion) S.Version = CareerState.CurrentVersion;     // v2 -> v3: the defaults fill in
         }
@@ -347,6 +348,7 @@ namespace SquashSim.Career
         EventState Build(int index, List<int> field, bool withYou)
         {
             var ev = Tour.EventAt(S.Slot, index);
+            if (ev.Tier == Tier.WorldTourFinals && field.Count == 8) return BuildRoundRobin(index, field, withYou);   // P7 phase 6
             var e = new EventState { Slot = S.Slot, Tier = (int)ev.Tier, Index = index, Name = ev.Name, City = ev.City, YouIn = withYou };
             e.Rounds.Add(Draw(field, new CareerRng(S.Seed, S.Slot * 16 + index, 999)));
             if (withYou) ByeThrough(e);
@@ -435,7 +437,15 @@ namespace SquashSim.Career
         }
 
         /// <summary>The round you are about to play: players left ("Quarter-final" = 8).</summary>
-        public int PlayersLeft { get { return S.Current == null ? 0 : Open(S.Current).Players.Count; } }
+        public int PlayersLeft
+        {
+            get
+            {
+                if (S.Current == null) return 0;
+                if (S.Current.RoundRobin && S.Current.Rounds.Count <= GroupDays) return -S.Current.Rounds.Count;   // "Group match 2"
+                return Open(S.Current).Players.Count;
+            }
+        }
 
         /// <summary>Your match is over. Played matches move your rating; then the rest of the round is played out.</summary>
         public void RecordYours(bool won, string score, int ralliesWon = 0, int ralliesTotal = 0, bool simulated = false, bool retired = false)
@@ -446,11 +456,12 @@ namespace SquashSim.Career
             if (!simulated && !retired && ralliesTotal > 0) S.Rating = RallyModel.Rate(S.Rating, Pro(opp).Strength, ralliesWon, ralliesTotal);
             S.Matches.Add(new MatchRec
             {
-                Slot = S.Slot, Tier = e.Tier, Left = Open(e).Players.Count, Event = e.Name, Opp = opp, OppRank = RankOf(opp),
+                Slot = S.Slot, Tier = e.Tier, Left = PlayersLeft, Event = e.Name, Opp = opp, OppRank = RankOf(opp),
                 Won = won, Simulated = simulated, Retired = retired, Qual = e.Qualifying, Score = retired ? "retired" : score
             });
+            bool group = e.RoundRobin && e.Rounds.Count <= GroupDays;          // a group match lost isn't out (NextRoundRobin decides)
             PlayRound(e, won ? You : opp, score);
-            if (!won) e.YouOut = true;
+            if (!won && !group) e.YouOut = true;
             else GoalsAfterWin(S.Matches[S.Matches.Count - 1].OppRank);
             if (!retired) GainXp(MatchXp(e.Tier, ralliesTotal, ralliesWon, won, simulated));   // P7 phase 2: every match grows you
             if (e.Qualifying && e.Done && Winner(e) == You)
@@ -468,7 +479,7 @@ namespace SquashSim.Career
             int opp = NextOpponent();
             if (opp < 0) throw new InvalidOperationException("no match to simulate");
             var rng = new CareerRng(S.Seed, S.Slot * 16 + S.Current.Index, 5000 + PlayersLeft + (S.Current.Qualifying ? 100 : 0));
-            var res = RallyModel.Play(RallyModel.YouRally(S.Rating + AttributeEdge, Pro(opp).Strength), S.GamesToWin, S.English, rng);
+            var res = RallyModel.Play(RallyModel.YouRally(S.Rating + AttributeEdge, Pro(opp).Strength), GamesToWinNow, S.English, rng);
             RecordYours(res.AWon, res.Score, res.RalliesA, res.RalliesA + res.RalliesB, simulated: true);
             return res;
         }
@@ -490,10 +501,12 @@ namespace SquashSim.Career
                     continue;
                 }
                 var rng = new CareerRng(S.Seed, S.Slot * 16 + e.Index, stream + round * 64 + m);
-                var res = RallyModel.Play(RallyModel.ProRally(Pro(a).Strength, Pro(b).Strength), S.GamesToWin, S.English, rng);
+                int toWin = e.RoundRobin && e.Rounds.Count == GroupDays + 2 ? System.Math.Min(3, S.GamesToWin + 1) : S.GamesToWin;   // the Finals' final
+                var res = RallyModel.Play(RallyModel.ProRally(Pro(a).Strength, Pro(b).Strength), toWin, S.English, rng);
                 r.Winners.Add(res.AWon ? a : b);
                 r.Scores.Add(res.Score);
             }
+            if (e.RoundRobin) { NextRoundRobin(e); return; }
             if (r.Winners.Count == 1) { e.Done = true; return; }
             var next = new RoundRec();
             next.Players.AddRange(r.Winners);
@@ -525,6 +538,7 @@ namespace SquashSim.Career
         /// <summary>How far a player got: Reached index (0 = won), or -1 if not in it.</summary>
         public static int Reached(EventState e, int id)
         {
+            if (e.RoundRobin) return ReachedRoundRobin(e, id);
             if (!e.Rounds[0].Players.Contains(id)) return -1;
             for (int i = 0; i < e.Rounds.Count; i++)
             {
@@ -663,12 +677,13 @@ namespace SquashSim.Career
                     if (id == Bye) continue;
                     int reached = Reached(e, id);
                     int prize = id == You ? info.Prize[reached] : 0;
-                    S.Results.Add(new ResultRec { Player = id, Slot = S.Slot, Tier = e.Tier, Reached = reached, Points = info.Points[reached], Prize = prize });
+                    int points = e.RoundRobin ? RoundRobinPoints(e, id, reached) : info.Points[reached];
+                    S.Results.Add(new ResultRec { Player = id, Slot = S.Slot, Tier = e.Tier, Reached = reached, Points = points, Prize = prize });
                     if (id == You)
                     {
-                        e.YouReached = reached; e.YouPoints = info.Points[reached]; e.YouPrize = prize;
+                        e.YouReached = reached; e.YouPoints = points; e.YouPrize = prize;
                         Earn(prize);
-                        if (reached == 0) { S.Titles++; GainXp(TitleXp(e.Tier)); SponsorTitle(); }
+                        if (reached == 0) { S.Titles++; GainXp(TitleXp(e.Tier)); SponsorTitle(); AddTrophy(e); }
                         if (e.YouIn) GoalsAfterEvent(e, reached);
                     }
                 }
@@ -732,6 +747,10 @@ namespace SquashSim.Career
         {
             switch (reached) { case 0: return "W"; case 1: return "F"; case 2: return "SF"; case 3: return "QF"; case 4: return "R16"; case 5: return "R32"; default: return "R64"; }
         }
+
+        /// <summary>The finish in words, for this event (the Tour Finals' group: "Group stage").</summary>
+        public static string ReachedLong(EventState e, int reached) { return e != null && e.RoundRobin && reached == 3 ? "Group stage" : ReachedLong(reached); }
+        public static string ReachedShort(int tier, int reached) { return tier == (int)Tier.WorldTourFinals && reached == 3 ? "GRP" : ReachedShort(reached); }
 
         public static string ReachedLong(int reached)
         {

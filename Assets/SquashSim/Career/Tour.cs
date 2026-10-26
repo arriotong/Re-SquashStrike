@@ -201,6 +201,7 @@ namespace SquashSim.Career
         /// <summary>"Final", "Semi-final", ... for a round with this many players left.</summary>
         public static string RoundName(int playersLeft)
         {
+            if (playersLeft < 0) return "Group match " + (-playersLeft);      // the Tour Finals' round robin (P7 phase 6)
             switch (playersLeft)
             {
                 case 2: return "Final";

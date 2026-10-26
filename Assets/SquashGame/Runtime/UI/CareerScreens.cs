@@ -177,7 +177,7 @@ namespace SquashGame.UI
                 int slot = season * Tour.SlotsPerSeason + m;
                 int state = slot < s.Slot ? -1 : slot == s.Slot ? 0 : 1;
                 string note = "";
-                foreach (var r in s.Results) if (r.Player == You && r.Slot == slot) note = CareerSession.ReachedShort(r.Reached);
+                foreach (var r in s.Results) if (r.Player == You && r.Slot == slot) note = CareerSession.ReachedShort(r.Tier, r.Reached);
                 if (state == -1 && note == "") note = "–";
                 if (state == 0 && s.Current != null) note = "LIVE";
                 if (state == 1)
@@ -214,7 +214,7 @@ namespace SquashGame.UI
                 if (c.RankOf(id) < c.RankOf(You) && c.Movement(id) > 0) { list.Add(("RIVAL", c.NameOf(id) + " climbs to #" + c.RankOf(id) + " - ahead of you")); break; }
             if (s.LastTrainedSlot == s.Slot - 1) list.Add(("TRAINING BLOCK", "A week on the practice court: +" + CareerSession.TrainingWeekXp + " XP"));
             if (s.Last != null && s.Last.Slot == s.Slot - 1 && s.Last.YouReached >= 0)
-                list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last.YouReached) + " at the " + s.Last.Name));
+                list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last, s.Last.YouReached) + " at the " + s.Last.Name));
             int mv = c.Movement(You), rank = c.RankOf(You);
             if (mv == 0 && rank != CareerSession.Unranked && c.EventsOf(You) == 1) list.Add(("RANKINGS", "You're on the world ranking: a new entry at #" + rank));
             if (mv > 0) list.Add(("RANKINGS", "You climb " + mv + (mv == 1 ? " place" : " places") + " to #" + rank));
@@ -290,7 +290,7 @@ namespace SquashGame.UI
                 TwoPlayer = false,
                 Opponent = pro.OpponentId,                                  // P6: a star plays as themselves (style, rating, signature)
                 Difficulty = (float)pro.Strength,
-                GamesToWin = c.S.GamesToWin,
+                GamesToWin = c.GamesToWinNow,                               // P7 phase 6: the Finals' final is longer
                 Scoring = c.S.English ? "english" : "par",
                 WarmUp = ProfileStore.Current.Settings.WarmUp,                // batch 4
                 Career = true,
@@ -545,7 +545,7 @@ namespace SquashGame.UI
                 int slot = s.Season * Tour.SlotsPerSeason + m;
                 string mine = null; bool title = false;
                 foreach (var r in s.Results)
-                    if (r.Player == You && r.Slot == slot) { mine = CareerSession.ReachedShort(r.Reached) + "  ·  " + Career.TierName(r.Tier) + "  +" + r.Points; title = r.Reached == 0; }
+                    if (r.Player == You && r.Slot == slot) { mine = CareerSession.ReachedShort(r.Tier, r.Reached) + "  ·  " + Career.TierName(r.Tier) + "  +" + r.Points; title = r.Reached == 0; }
                 if (m == s.Week && s.Current != null) mine = "PLAYING  ·  " + s.Current.Name;
                 if (mine != null) { var lab = Kit.L(cell, mine, "k-cr-mine"); if (title) lab.AddToClassList("k-cr-mine--won"); }
             }
@@ -627,6 +627,8 @@ namespace SquashGame.UI
             Kit.L(card2, "GEAR  " + string.Join("  ·  ", gearNames) + (eff.Stability != SquashSim.AthleteAttributes.Neutral ? "  ·  stability " + eff.Stability.ToString("0") : ""), "k-cr-attr-line");
             var shop = AddTo(card2, new ActionItem("Equipment  ·  rackets, shoes, kit", () => Fe.Push(new EquipmentScreen())));
             shop.Root.AddToClassList("k-cr-eq-btn");
+            var cab = AddTo(card2, new ActionItem("Trophy cabinet  ·  " + c.Trophies.Count + (c.Trophies.Count == 1 ? " title" : " titles"), () => Fe.Push(new TrophyCabinetScreen())));
+            cab.Root.AddToClassList("k-cr-eq-btn");
             var rv = Kit.Box(card2, "k-cr-privals");
             Kit.L(rv, "RIVALS", "k-cr-attr-line");
             var rivals = c.Rivals();
@@ -977,6 +979,7 @@ namespace SquashGame.UI
         protected override void Compose()
         {
             var c = Career.C;
+            if (_e.RoundRobin) { ComposeRoundRobin(c); return; }
             var wrap = Kit.Box(Content, "k-cr-draw");
             _scroll = new ScrollView(ScrollViewMode.VerticalAndHorizontal);
             _scroll.AddToClassList("k-cr-draw-scroll");
@@ -1019,6 +1022,61 @@ namespace SquashGame.UI
 
             _detail = Kit.Panel(wrap, "MATCH");
             _detail.AddToClassList("k-cr-draw-detail");
+        }
+
+        /// <summary>P7 phase 6: the Tour Finals - each group's table and its matches, then the semis and the final.</summary>
+        void ComposeRoundRobin(CareerSession c)
+        {
+            var wrap = Kit.Box(Content, "k-rr");
+            var groups = CareerSession.Groups(_e);
+            for (int g = 0; g < 2; g++)
+            {
+                var p = Kit.Panel(wrap, "GROUP " + (g == 0 ? "A" : "B"));
+                p.AddToClassList("k-rr-group");
+                var table = CareerSession.Table(_e, g);
+                for (int i = 0; i < table.Count; i++)
+                {
+                    var st = table[i];
+                    var row = Kit.Box(p, "k-rr-row");
+                    if (st.Id == You) row.AddToClassList("k-rr-row--you");
+                    if (i < 2 && st.Played == CareerSession.GroupDays) row.AddToClassList("k-rr-row--through");
+                    Kit.L(row, (i + 1).ToString(), "k-rr-pos");
+                    Kit.L(row, "[" + st.Seed + "] " + Career.Short(c, st.Id), "k-rr-name");
+                    Kit.L(row, st.Wins + "-" + (st.Played - st.Wins), "k-rr-wl");
+                    int d = st.GamesFor - st.GamesAgainst;
+                    Kit.L(row, (d > 0 ? "+" : "") + d, "k-rr-diff");
+                }
+                Kit.L(p, "MATCHES", "k-rr-head");
+                for (int day = 0; day < CareerSession.GroupDays; day++)
+                {
+                    var r = day < _e.Rounds.Count ? _e.Rounds[day] : null;
+                    if (r == null) { Kit.L(p, "Day " + (day + 1) + "  ·  to be played", "k-rr-match"); continue; }
+                    for (int m = 0; m * 2 + 1 < r.Players.Count; m++)
+                    {
+                        int a = r.Players[2 * m], b = r.Players[2 * m + 1];
+                        if (!groups[g].Contains(a)) continue;
+                        string score = m < r.Scores.Count ? r.Scores[m] : null;
+                        int w = m < r.Winners.Count ? r.Winners[m] : -1;
+                        var l = Kit.L(p, "Day " + (day + 1) + "  ·  " + Career.Short(c, a) + (w == a ? " ✓" : "") + "  v  " + Career.Short(c, b) + (w == b ? " ✓" : "") + (score != null ? "   " + score : "   to play"), "k-rr-match");
+                        if (a == You || b == You) l.AddToClassList("k-rr-match--you");
+                    }
+                }
+            }
+            var ko = Kit.Panel(wrap, "SEMI-FINALS  ·  FINAL");
+            ko.AddToClassList("k-rr-ko");
+            string[] names = { "Semi-final 1  (A1 v B2)", "Semi-final 2  (B1 v A2)" };
+            var semis = _e.Rounds.Count > CareerSession.GroupDays ? _e.Rounds[CareerSession.GroupDays] : null;
+            for (int m = 0; m < 2; m++)
+            {
+                Kit.L(ko, names[m], "k-rr-head");
+                Kit.L(ko, semis == null ? "after the groups" : Career.Short(c, semis.Players[2 * m]) + "  v  " + Career.Short(c, semis.Players[2 * m + 1]) + (m < semis.Scores.Count ? "   " + semis.Scores[m] : ""), "k-rr-match");
+            }
+            var fin = _e.Rounds.Count > CareerSession.GroupDays + 1 ? _e.Rounds[CareerSession.GroupDays + 1] : null;
+            Kit.L(ko, "Final  ·  one game longer", "k-rr-head");
+            Kit.L(ko, fin == null ? "after the semis" : Career.Short(c, fin.Players[0]) + "  v  " + Career.Short(c, fin.Players[1]) + (fin.Scores.Count > 0 ? "   " + fin.Scores[0] : ""), "k-rr-match");
+            int champ = CareerSession.Winner(_e);
+            if (champ >= 0) Kit.L(ko, "CHAMPION  ·  " + Career.Short(c, champ), "k-rr-champ");
+            Kit.L(ko, "The Road's top 8. Two groups of four, everyone plays everyone; the top two go through. Points: 150 a group win, 150 more unbeaten, then 200 / 550 / 1,000.", "k-cr-note");
         }
 
         static string Entry(CareerSession c, int id, Dictionary<int, int> seeds, bool first)
@@ -1118,7 +1176,7 @@ namespace SquashGame.UI
             var col = Kit.Box(Content, "k-cr-result");
             var head = Kit.Box(col, "k-cr-res-head");
             head.Add(Career.Badge(_e.Tier, 56));
-            var st = new Stamp(_e.YouReached == 0 ? "CHAMPION" : CareerSession.ReachedLong(_e.YouReached).ToUpperInvariant(), 0.3f);
+            var st = new Stamp(_e.YouReached == 0 ? "CHAMPION" : CareerSession.ReachedLong(_e, _e.YouReached).ToUpperInvariant(), 0.3f);
             if (_e.YouReached != 0) st.AddToClassList("k-stamp--plain");
             head.Add(st);
             int champ = CareerSession.Winner(_e);

@@ -1094,3 +1094,41 @@
 .k-cr-privals { margin-top: 14px; }
 .k-cr-pcard .k-cr-attr-line { margin-left: 0; margin-top: 10px; }
 .k-cr-attr > .k-cr-attr-row { margin-top: 0; }
+
+/* ---------- P7 phase 6: the Tour Finals' groups ---------- */
+.k-rr { flex-direction: row; flex-grow: 1; align-items: flex-start; }
+.k-rr-group { width: 560px; }
+.k-rr-ko { flex-grow: 1; margin-right: 0; }
+.k-rr-row { flex-direction: row; align-items: center; height: 40px; padding: 0 10px; border-radius: 8px; margin-top: 4px; background-color: rgba(255, 255, 255, 0.04); }
+.k-rr-row--through { border-left-width: 3px; border-left-color: rgb(200, 255, 61); }
+.k-rr-row--you { background-color: rgba(52, 66, 24, 0.95); }
+.k-rr-pos { width: 30px; font-size: 18px; color: rgba(255, 255, 255, 0.5); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-rr-name { flex-grow: 1; font-size: 20px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-rr-wl { width: 60px; font-size: 18px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rr-diff { width: 50px; font-size: 14px; -unity-text-align: middle-right; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rr-head { margin-top: 18px; font-size: 10px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rr-match { margin-top: 6px; font-size: 13px; color: rgba(255, 255, 255, 0.8); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rr-match--you { color: rgb(200, 255, 61); }
+.k-rr-champ { margin-top: 20px; font-size: 26px; color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* ---------- P7 phase 6: the trophy cabinet ---------- */
+.k-tro-wrap { flex-direction: row; flex-grow: 1; }
+.k-tro-scroll { flex-grow: 1; margin-right: 24px; }
+.k-tro-shelf-name { margin: 10px 0 6px 0; font-size: 12px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-tro-shelf {
+    flex-direction: row; flex-wrap: wrap; padding: 14px 14px 0 14px; margin-bottom: 14px; border-radius: 12px;
+    background-color: rgba(16, 18, 22, 0.88); border-bottom-width: 6px; border-bottom-color: rgb(92, 62, 38);
+}
+.k-tro { width: 170px; height: 220px; margin: 0 14px 14px 0; padding: 8px; border-radius: 10px; align-items: center; border-width: 2px; border-color: rgba(0, 0, 0, 0); }
+.k-tro.fe-item--focused { border-color: rgb(200, 255, 61); background-color: rgba(200, 255, 61, 0.08); }
+.k-tro-art { width: 120px; height: 130px; }
+.k-tro-name { margin-top: 6px; font-size: 16px; white-space: normal; -unity-text-align: upper-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-tro-meta { font-size: 10px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-tro-count { position: absolute; right: 8px; top: 8px; padding: 1px 8px; border-radius: 10px; font-size: 13px; color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-tro-detail { width: 480px; margin: 0; }
+.k-tro-big { font-size: 36px; margin: 6px 0; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-tro-line { font-size: 14px; color: rgba(255, 255, 255, 0.7); margin-bottom: 14px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-tro-shelf { align-self: flex-start; min-width: 420px; }
+.k-tro-shelves { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.k-tro-band { margin-right: 20px; max-width: 1180px; }
+.k-tro-shelf { min-width: 0; }

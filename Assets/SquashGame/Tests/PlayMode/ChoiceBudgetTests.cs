@@ -29,7 +29,7 @@ namespace SquashGame.Tests
         static int Choices(MenuScreen s)
         {
             int n = 0;
-            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode) && !(it is MapPinItem)) n++;
+            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode) && !(it is MapPinItem) && !(it is TrophyItem)) n++;
             return n;
         }
 
@@ -93,6 +93,7 @@ namespace SquashGame.Tests
             var c = CareerStore.Current;
             yield return Check(fe, "Career hub (events)", new CareerHubScreen(), log);
             yield return Check(fe, "Equipment", new EquipmentScreen(), log);
+            yield return Check(fe, "Trophy cabinet", new TrophyCabinetScreen(), log);
             c.Enter(SquashSim.Career.Tour.HomeIndex);
             yield return Check(fe, "Career hub (match)", new CareerHubScreen(), log);
             yield return Check(fe, "Match preview", new MatchPreviewScreen(c.NextOpponent()), log);

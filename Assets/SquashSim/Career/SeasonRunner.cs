@@ -53,7 +53,7 @@ namespace SquashSim.Career
             return (CareerSession c, Pro opp, out string score, out int w, out int n) =>
             {
                 var rng = new CareerRng(c.S.Seed ^ 0xBEEFu, c.S.Slot, c.PlayersLeft);
-                var r = RallyModel.Play(RallyModel.YouRally(trueStrength, opp.Strength), c.S.GamesToWin, c.S.English, rng);
+                var r = RallyModel.Play(RallyModel.YouRally(trueStrength, opp.Strength), c.GamesToWinNow, c.S.English, rng);
                 score = r.Score; w = r.RalliesA; n = r.RalliesA + r.RalliesB;
                 return r.AWon;
             };

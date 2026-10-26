@@ -121,7 +121,7 @@ public static class CareerBench
             PhysicsConfig.ResetToDefaults();
             PhysicsConfig.UseGameProfile();
             var cfg = PhysicsConfig.Current.Match;
-            cfg.GamesToWin = cs.S.GamesToWin; cfg.Scoring = cs.S.English ? "english" : "par"; cfg.BetweenGamesSeconds = 1.0;
+            cfg.GamesToWin = cs.GamesToWinNow; cfg.Scoring = cs.S.English ? "english" : "par"; cfg.BetweenGamesSeconds = 1.0;
             var m = new MatchSimulation(0);
             m.Bots[0] = new HumanStyle((uint)(700 + game)) { Arcade = true };
             m.Bots[1] = new OpponentBrain(AiProfile.ByName(opp.Style).WithDifficulty(opp.Strength), (uint)(900 + game));
