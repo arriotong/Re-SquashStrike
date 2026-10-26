@@ -111,7 +111,7 @@ namespace SquashGame.Tests
             // the Finals' groups: a week of the Tour Finals with you in it, two match days played
             fe.Pop();
             while (Tour.HeadlineOf(c.S.Slot) != Tier.WorldTourFinals) c.Skip();
-            c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = (int)Tier.Diamond, Reached = 0, Points = 9000 });
+            c.S.Results.Add(new ResultRec { Player = CareerSession.You, Slot = c.S.Slot - 1, Tier = (int)Tier.Diamond, Reached = 0, Points = 40000 });   // surely on the Road's top 8
             c.S.Cash = 100000;
             var e = c.Enter(Tier.WorldTourFinals);
             c.RecordYours(true, "11-8 11-6");

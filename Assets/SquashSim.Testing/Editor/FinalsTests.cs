@@ -29,7 +29,7 @@ namespace SquashSim.Tests
         {
             var c = CareerSession.New("Finalist", "ENG", seed);
             while (Tour.HeadlineOf(c.S.Slot) != Tier.WorldTourFinals) c.Skip();
-            c.S.Results.Add(new ResultRec { Player = You, Slot = c.S.Slot - 1, Tier = (int)Tier.Diamond, Reached = 0, Points = 9000 });
+            c.S.Results.Add(new ResultRec { Player = You, Slot = c.S.Slot - 1, Tier = (int)Tier.Diamond, Reached = 0, Points = 40000 });   // surely on the Road's top 8
             c.S.Cash = 100000;
             return c;
         }

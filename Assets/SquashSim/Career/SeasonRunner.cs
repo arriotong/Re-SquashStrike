@@ -16,10 +16,28 @@ namespace SquashSim.Career
         /// <summary>Your match against a pro: return won, the score, rallies won / played.</summary>
         public delegate bool PlayMatch(CareerSession c, Pro opp, out string score, out int ralliesWon, out int ralliesTotal);
 
+        /// <summary>P7 phase 7: how the runner picks its week. Biggest: the biggest event open, anywhere. Regional: the
+        /// biggest in your home region (or your club's open). Budget: the biggest whose trip leaves a reserve, else the
+        /// club's open (a careful player).</summary>
+        public enum Policy { Biggest, Regional, Budget }
+        public const int BudgetReserve = 1500;
+
+        static bool Allowed(CareerSession c, CareerSession.Option o, Policy policy)
+        {
+            if (o.Home) return true;
+            if (policy == Policy.Regional)
+            {
+                var home = World.CountryOf(c.S.Nat); var city = World.CityOf(o.City);
+                return home != null && city != null && World.RegionOf(city) == home.Region && o.Cost <= c.S.Cash;
+            }
+            if (policy == Policy.Budget) return o.Cost <= c.S.Cash - BudgetReserve;
+            return true;
+        }
+
         /// <summary>Play this many weeks, each time entering the biggest event open to you (the cheapest trip of those),
         /// else your home club's open (P7: a slot is a week). <paramref name="spendPoints"/>: spend the stat points as they
         /// come, round the attributes (as a player would).</summary>
-        public static void Weeks(CareerSession c, int weeks, PlayMatch play, Action<CareerSession, EventState> afterEvent = null, bool spendPoints = false)
+        public static void Weeks(CareerSession c, int weeks, PlayMatch play, Action<CareerSession, EventState> afterEvent = null, bool spendPoints = false, Policy policy = Policy.Biggest)
         {
             int next = 0;
             for (int k = 0; k < weeks; k++)
@@ -30,7 +48,7 @@ namespace SquashSim.Career
                 CareerSession.Option best = null;
                 foreach (var o in c.Options())
                 {
-                    if (!o.Open) continue;
+                    if (!o.Open || !Allowed(c, o, policy)) continue;
                     if (best == null || best.Home && !o.Home) best = o;
                     else if (!o.Home && (o.Tier > best.Tier || o.Tier == best.Tier && o.Cost < best.Cost)) best = o;
                 }

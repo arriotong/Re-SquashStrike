@@ -101,7 +101,7 @@ namespace SquashSim.Career
         /// <summary>Your home club's open: there every week, in your home city - the way in for the unranked and the
         /// broke (no flight, no hotel). Challenger 3 points, a 16-draw, a small purse. Not a calendar event: only you
         /// (and the local pros you meet there) play it.</summary>
-        public static readonly TierInfo Club = T(Tier.Challenger3, "Club Open", "CLUB", false, 16, 16, 16, 0, 2000, 60, 39, 24, 15, 9);
+        public static readonly TierInfo Club = T(Tier.Challenger3, "Club Open", "CLUB", false, 16, 16, 16, 0, 2000, 25, 16, 10, 6, 4);   // P7 phase 7: half a Challenger 3 - it gets you ranked, the Challengers take you up
         /// <summary>The home club's open's index in a week (past the calendar's events).</summary>
         public const int HomeIndex = 15;
 

@@ -85,7 +85,7 @@ namespace SquashGame.Audio
             return pool[_rng.Next(pool.Count)];
         }
 
-        void Start(Song s)
+        void Begin(Song s)
         {
             // the old one to the fading source, the new one in
             var t = _b; _b = _a; _a = t;
@@ -135,7 +135,7 @@ namespace SquashGame.Audio
             if (_a.clip == null || over || (Mood != _playingMood && (Current == null || Current.Mood != Mood)))
             {
                 var next = Pick(Mood);
-                if (next != null) Start(next); else _playingMood = Mood;
+                if (next != null) Begin(next); else _playingMood = Mood;
             }
             else if (Mood != _playingMood) _playingMood = Mood;              // (the song on already suits it)
 

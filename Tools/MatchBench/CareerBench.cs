@@ -169,4 +169,32 @@ public static class CareerBench
         }, spendPoints: true);
         Console.WriteLine("  titles " + c.S.Titles + ", rank " + c.RankOf(CareerSession.You) + ", earned $" + c.S.Earnings + ", travel $" + c.S.Spent + ", cash $" + c.S.Cash + ", level " + c.Level);
     }
+
+    /// <summary>P7 phase 7: the money and the levels across nations, strengths and ways of travelling (the rally model).
+    /// Per season: level, rank, titles, earned, spent on travel, the lowest cash, weeks at the club's open, long-haul trips.</summary>
+    public static void Balance(int seasons)
+    {
+        Console.WriteLine("CAREER BALANCE  the rally model, " + seasons + " season(s): per season  lvl / rank / titles / earned / travel / lowest cash / club weeks / long-haul trips");
+        foreach (var nat in new[] { "ENG", "EGY", "USA", "AUS", "MAS", "PER" })
+            foreach (var strength in new[] { 0.0, 0.09, 0.25 })
+                foreach (var policy in new[] { SeasonRunner.Policy.Regional, SeasonRunner.Policy.Budget })
+                {
+                    var c = CareerSession.New("Bal", nat, 101);
+                    var line = "  " + nat + " " + strength.ToString("0.00") + " " + policy.ToString().PadRight(9);
+                    int season = c.S.Season, low = int.MaxValue, club = 0, longHaul = 0, titles = 0, earned = 0, spent = 0;
+                    SeasonRunner.Weeks(c, seasons * Tour.SlotsPerSeason, SeasonRunner.Model(strength), (cs, e) =>
+                    {
+                        low = Math.Min(low, cs.S.Cash);
+                        if (e != null && e.Home) club++;
+                        if (e != null && !e.Home && e.Cost >= 900) longHaul++;
+                        if (cs.S.Season != season)
+                        {
+                            line += " | " + cs.Level.ToString().PadLeft(2) + " #" + cs.RankOf(CareerSession.You).ToString().PadRight(4) + " " + (cs.S.Titles - titles).ToString().PadLeft(2) + "t $" +
+                                    ((cs.S.Earnings - earned) / 1000) + "k -$" + ((cs.S.Spent - spent) / 1000) + "k low $" + (low / 1000.0).ToString("0.0") + "k club " + club + " far " + longHaul;
+                            season = cs.S.Season; titles = cs.S.Titles; earned = cs.S.Earnings; spent = cs.S.Spent; low = int.MaxValue; club = 0; longHaul = 0;
+                        }
+                    }, spendPoints: true, policy: policy);
+                    Console.WriteLine(line);
+                }
+    }
 }
