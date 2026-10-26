@@ -145,10 +145,15 @@ namespace SquashSim.Career
                 double u = (double)(n - 1 - i) / (n - 1 - stars.Count);                     // 1 at No. 51 .. 0 at the last
                 double rating = 55 + (Stars.All()[stars.Count - 1].Rating - 1 - 55) * Math.Pow(u, RosterCurve);
                 var p = NewPro(rng, usedLast, i + 1);
+                rating = Math.Min(Stars.All()[stars.Count - 1].Rating - 1, rating + NationEdge(p.Nat));   // P7: Egypt's pros a little better...
                 p.Strength = Clamp(Stars.Difficulty((int)Math.Round(rating)) + rng.Between(-0.003, 0.003));
                 p.Age = 19 + rng.Range(17);
                 list.Add(p);
             }
+            // ...so the list below the stars is sorted again, best first
+            var rest = list.GetRange(stars.Count, list.Count - stars.Count);
+            rest.Sort((a, b) => a.Strength != b.Strength ? b.Strength.CompareTo(a.Strength) : a.Id.CompareTo(b.Id));
+            for (int i = 0; i < rest.Count; i++) { rest[i].Id = stars.Count + i + 1; list[stars.Count + i] = rest[i]; }
             return list;
         }
 
@@ -171,10 +176,23 @@ namespace SquashSim.Career
                 Id = id,
                 First = Firsts[rng.Range(Firsts.Length)],
                 Last = last,
-                Nat = Nations[rng.Range(Nations.Length)],
+                Nat = NationFor(rng),
                 Style = Styles[rng.Range(Styles.Length)],
             };
         }
+
+        /// <summary>P7: a pro's nation, by each country's share of the world's pros (World.Countries: Egypt the most).</summary>
+        static string NationFor(CareerRng rng)
+        {
+            int total = 0;
+            foreach (var c in World.Countries) total += c.Share;
+            int pick = rng.Range(total);
+            foreach (var c in World.Countries) { if (pick < c.Share) return c.Code; pick -= c.Share; }
+            return "ENG";
+        }
+
+        /// <summary>P7: rating points a nation's squash adds to its pros (World: Egypt +4 .. the small nations -2), at 0.75 each.</summary>
+        public static double NationEdge(string nat) { var c = World.CountryOf(nat); return c != null ? 0.75 * c.Strength : 0; }
 
         /// <summary>Clamped, and kept to 4 decimals so a saved career (JSON) loads back to the very same numbers.</summary>
         static double Clamp(double s) { return System.Math.Round(s < 0 ? 0 : (s > MaxStrength ? MaxStrength : s), 4); }

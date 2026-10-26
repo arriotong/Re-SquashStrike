@@ -3,7 +3,7 @@
 // P2-M4: the Career in the real scene, on the keyboard.
 //   - main menu -> Career -> create a player (name, nation, matches:
 //     one step each) -> the hub; its tabs
-//   - CONTINUE enters a Challenger 3 -> the match preview -> the match
+//   - CONTINUE enters the home club's open -> the match preview -> the match
 //     starts with the players' names, the pro's style and strength
 //   - the match is played (an AI stands in for you, sped up) -> post-
 //     match Continue -> the result is recorded and saved
@@ -127,7 +127,7 @@ namespace SquashGame.Tests
             Assert.That(c.S.Nat, Is.EqualTo("SCO"));
             Assert.That(c.S.GamesToWin, Is.EqualTo(1));
             Assert.That(File.Exists(Path.Combine(ProfileStore.Folder, CareerStore.FileName)), Is.True, "saved");
-            Assert.That(fe.Top.Focused.Name, Does.Contain("Challenger"), "a Challenger 3 is the one open to a newcomer");
+            Assert.That(fe.Top.Focused.Name, Does.Contain("Club Open"), "the home club's open is the newcomer's way in");
             Assert.That(hub.Reachable().Count, Is.LessThanOrEqualTo(6), "few choices in view");
             yield return CaptureUI(fe, "P2M4_UI_2_Hub.png");
 
@@ -149,7 +149,7 @@ namespace SquashGame.Tests
             yield return null; yield return null; yield return null;
             Assert.That(c.S.Current, Is.Not.Null);
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
-            Assert.That(fe.Top.Focused.Name, Does.StartWith("Round of 32 v "), "your next match");
+            Assert.That(fe.Top.Focused.Name, Does.StartWith("Round of 16 v "), "your next match");
             yield return CaptureUI(fe, "U3_Central_Match.png");
             int opp = c.NextOpponent();
             yield return Tap(kb.enterKey);

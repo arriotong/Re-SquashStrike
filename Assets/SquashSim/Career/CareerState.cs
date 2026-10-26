@@ -5,7 +5,8 @@
 // keep it in memory). The roster, every result that counts for the
 // ranking, your matches, the event in progress and the season records.
 //
-// Slots are counted from the start: slot index = season * 12 + month.
+// Slots are counted from the start: slot index = season * 52 + week
+// (P7 phase 3: weeks, as the real tour is; 12 months before).
 // Season 0 is the tour's year before you joined (played out at
 // creation, so the ranking means something on day one; you start it
 // unranked).
@@ -25,9 +26,12 @@ namespace SquashSim.Career
         public int Tier;
         public int Reached;         // 0 = won, 1 = final, 2 = semi, 3 = quarter, 4 = R16, 5 = R32, 6 = R64
         public int Points;
+        public int Prize;           // P7: your prize money from it (yours only: 0 for the pros)
     }
 
-    /// <summary>One of your matches.</summary>
+    /// <summary>P7: a wildcard you used (2 in any 52 weeks, 1 of them at Bronze or above).</summary>
+    [Serializable]
+    public sealed class WildcardRec { public int Slot, Tier; }
     [Serializable]
     public sealed class MatchRec
     {
@@ -36,6 +40,7 @@ namespace SquashSim.Career
         public int Opp;
         public int OppRank;
         public bool Won, Simulated, Retired;
+        public bool Qual;               // P7: a qualifying match
         public string Score;            // from your side
     }
 
@@ -51,8 +56,13 @@ namespace SquashSim.Career
     public sealed class EventState
     {
         public int Slot, Tier;
-        public int Index;               // the event's place in its month (Tour.EventsIn): a month has several Challenger 3s
+        public int Index;               // the event's place in its week (Tour.Week); Tour.HomeIndex: your home club's open
         public string Name;
+        public string City = "";        // P7: where it is
+        public bool Home;               // P7: your home club's open (Tour.Club)
+        public bool Qualifying;         // P7: the qualifying event of a Diamond or the World Championship (no points: win it to play the main draw)
+        public int Via;                 // P7: how you got in (CareerSession.Via)
+        public int Cost;                // P7: what the trip cost you
         public List<RoundRec> Rounds = new List<RoundRec>();
         public bool YouIn, YouOut, Done;
         // your finish (set when the slot is finished)
@@ -69,15 +79,19 @@ namespace SquashSim.Career
     [Serializable]
     public sealed class CareerState
     {
-        public const int CurrentVersion = 4;     // 2: the PSA system (2026-10-24); 3: player growth; 4: P7 - levels, the world tour (older careers start afresh)
+        public const int CurrentVersion = 5;     // 2: the PSA system (2026-10-24); 3: player growth; 4: P7 - levels; 5: P7 - the weekly world tour (older careers start afresh)
         public int Version = CurrentVersion;
         public uint Seed;
         public string Name = "", Nat = "ENG";
         public int GamesToWin = 2;          // best of 3
         public bool English;
-        public int Season = 1, Month;       // Month: 0..11 within the season
+        public int Season = 1, Week;        // Week: 0..51 within the season (P7 phase 3; was Month)
         public double Rating = 0.05;        // your strength, from your real rallies (RallyModel)
-        public int Earnings, Titles;
+        public int Earnings, Titles;        // Earnings: everything you have earned (prize money, goals, sponsors)
+        // P7 phase 3: money and travel - your cash (earnings less what the trips cost), where you are, your wildcards
+        public int Cash, Spent;
+        public string City = "";
+        public List<WildcardRec> Wildcards = new List<WildcardRec>();
         public int NextId = Tour.RosterSize + 1;
         public List<Pro> Roster = new List<Pro>();
         public List<ResultRec> Results = new List<ResultRec>();
@@ -100,6 +114,6 @@ namespace SquashSim.Career
         public int SponsorPaid;
         public string SponsorNews;
 
-        public int Slot { get { return Season * Tour.SlotsPerSeason + Month; } }
+        public int Slot { get { return Season * Tour.SlotsPerSeason + Week; } }
     }
 }

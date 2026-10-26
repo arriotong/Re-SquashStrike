@@ -167,7 +167,7 @@ namespace SquashGame.UI
         {
             var c = CareerStore.Current;
             if (c == null) return "";
-            string next = c.S.Current != null ? "playing " + c.S.Current.Name : SquashSim.Career.Tour.Month(c.S.Month) + ": " + SquashSim.Career.Tour.EventName(c.S.Month, 0);
+            string next = c.S.Current != null ? "playing " + c.S.Current.Name : SquashSim.Career.Tour.WeekLabel(c.S.Week) + ": " + (SquashSim.Career.Tour.Week(c.S.Week).Count > 0 ? SquashSim.Career.Tour.EventName(c.S.Week, 0) : "the off-season");
             return Career.Rank(c.RankOf(SquashSim.Career.CareerSession.You)) + "  ·  Season " + c.S.Season + "  ·  " + next;
         }
 

@@ -1,8 +1,8 @@
 // ===========================================================
 // Assets/SquashSim/Career/SeasonRunner.cs
 // P2-M4: a career played with no one at the controls - for the tests
-// and MatchBench. Each month "you" enter the highest event your ranking
-// opens and play your matches through a callback (the rally model at a
+// and MatchBench. Each week "you" enter the biggest event open to you
+// (else your home club's open) and play your matches through a callback (the rally model at a
 // fixed true strength in the tests; real sim matches with the human-
 // style model in MatchBench --season).
 // ===========================================================
@@ -16,20 +16,26 @@ namespace SquashSim.Career
         /// <summary>Your match against a pro: return won, the score, rallies won / played.</summary>
         public delegate bool PlayMatch(CareerSession c, Pro opp, out string score, out int ralliesWon, out int ralliesTotal);
 
-        /// <summary>Months until the season's end (or count months), entering the best event each time.
-        /// <paramref name="spendPoints"/>: spend training points as they come, round the attributes (as a player would).</summary>
-        public static void Months(CareerSession c, int months, PlayMatch play, Action<CareerSession, EventState> afterEvent = null, bool spendPoints = false)
+        /// <summary>Play this many weeks, each time entering the biggest event open to you (the cheapest trip of those),
+        /// else your home club's open (P7: a slot is a week). <paramref name="spendPoints"/>: spend the stat points as they
+        /// come, round the attributes (as a player would).</summary>
+        public static void Weeks(CareerSession c, int weeks, PlayMatch play, Action<CareerSession, EventState> afterEvent = null, bool spendPoints = false)
         {
             int next = 0;
-            for (int k = 0; k < months; k++)
+            for (int k = 0; k < weeks; k++)
             {
                 if (spendPoints)
                     for (int guard = 0; c.S.TrainingPoints > 0 && guard < 16; guard++)
                         c.Spend(CareerSession.AttributeNames[next++ % CareerSession.AttributeNames.Length]);
-                Tier best = (Tier)(-1);
-                foreach (var t in c.EventsNow()) if (c.CanEnter(t) && (int)t > (int)best) best = t;
-                if ((int)best < 0) { c.Skip(); afterEvent?.Invoke(c, null); continue; }
-                c.Enter(best);
+                CareerSession.Option best = null;
+                foreach (var o in c.Options())
+                {
+                    if (!o.Open) continue;
+                    if (best == null || best.Home && !o.Home) best = o;
+                    else if (!o.Home && (o.Tier > best.Tier || o.Tier == best.Tier && o.Cost < best.Cost)) best = o;
+                }
+                if (best == null) { c.Skip(); afterEvent?.Invoke(c, null); continue; }
+                c.Enter(best.Index);
                 int opp;
                 while ((opp = c.NextOpponent()) >= 0)
                 {

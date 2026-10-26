@@ -43,7 +43,7 @@ namespace SquashGame.Profile
                 if (!File.Exists(path)) return null;
                 var s = JsonUtility.FromJson<CareerState>(File.ReadAllText(path));
                 if (s == null || s.Roster == null || s.Roster.Count == 0) return null;
-                if (s.Version < 4)
+                if (s.Version < CareerState.CurrentVersion)
                 {
                     // an older tour's career can't be carried over (v1: the 80-player ladder; v2-3: before P7's levels and
                     // world tour - the user chose "start fresh"): keep it aside, start afresh

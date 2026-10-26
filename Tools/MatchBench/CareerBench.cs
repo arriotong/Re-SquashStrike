@@ -144,15 +144,29 @@ public static class CareerBench
             PhysicsConfig.ResetToDefaults();
             return m.Score.MatchWinner == 0;
         };
-        SeasonRunner.Months(c, seasons * Tour.SlotsPerSeason, real, (cs, e) =>
+        SeasonRunner.Weeks(c, seasons * Tour.SlotsPerSeason, real, (cs, e) =>
         {
-            string what = e == null || !e.YouIn ? "skipped" : e.Name + " (" + Tour.Info((Tier)e.Tier).Name + "): " + CareerSession.ReachedLong(e.YouReached) + "  +" + e.YouPoints;
-            int month = (cs.S.Month + Tour.SlotsPerSeason - 1) % Tour.SlotsPerSeason;
-            Console.WriteLine("  " + Tour.Month(month) + "  " + what.PadRight(58) + " rank " + cs.RankOf(CareerSession.You).ToString().PadLeft(3) + "   rating " + cs.S.Rating.ToString("0.000") +
-                              "   lvl " + c.Level + "  attr " + (cs.S.Attributes != null ? cs.S.Attributes.Mean.ToString("0.0") : "-"));
+            string what = e == null || !e.YouIn ? "skipped" : e.Name + " (" + Tour.InfoOf(e).Short + "): " + (e.Qualifying ? "lost in qualifying" : CareerSession.ReachedLong(e.YouReached) + "  +" + e.YouPoints + "  $" + e.YouPrize);
+            int week = cs.S.Slot - 1;
+            Console.WriteLine("  " + Tour.WeekLabel(week).PadRight(13) + what.PadRight(64) + " rank " + cs.RankOf(CareerSession.You).ToString().PadLeft(4) +
+                              "  cash " + cs.S.Cash.ToString().PadLeft(7) + "  " + cs.S.City.PadRight(14) + " lvl " + c.Level + "  attr " + (cs.S.Attributes != null ? cs.S.Attributes.Mean.ToString("0.0") : "-"));
         }, spendPoints: true);
         int w = 0, l = 0;
         foreach (var mr in c.S.Matches) if (mr.Won) w++; else l++;
-        Console.WriteLine("  matches " + w + "-" + l + ", titles " + c.S.Titles + ", final rank " + c.RankOf(CareerSession.You) + ", rating " + c.S.Rating.ToString("0.000"));
+        Console.WriteLine("  matches " + w + "-" + l + ", titles " + c.S.Titles + ", final rank " + c.RankOf(CareerSession.You) + ", rating " + c.S.Rating.ToString("0.000") +
+                          ", earned $" + c.S.Earnings + ", travel $" + c.S.Spent + ", cash $" + c.S.Cash + ", level " + c.Level);
+    }
+
+    /// <summary>P7: seasons with the rally model at a fixed strength (fast): every week's event, how you got in, the money.</summary>
+    public static void ModelSeason(double strength, int seasons, string nat, uint seed)
+    {
+        var c = CareerSession.New("Model", nat, seed);
+        Console.WriteLine("CAREER (rally model " + strength + ", " + nat + ", seed " + seed + ") - " + seasons + " season(s)");
+        SeasonRunner.Weeks(c, seasons * Tour.SlotsPerSeason, SeasonRunner.Model(strength), (cs, e) =>
+        {
+            string what = e == null || !e.YouIn ? "skipped" : e.Name + " (" + Tour.InfoOf(e).Short + ", " + (CareerSession.Via)e.Via + "): " + (e.Qualifying ? "lost in qualifying" : CareerSession.ReachedShort(e.YouReached) + " +" + e.YouPoints + " $" + e.YouPrize);
+            Console.WriteLine("  " + Tour.WeekLabel(cs.S.Slot - 1).PadRight(13) + what.PadRight(70) + " rank " + cs.RankOf(CareerSession.You).ToString().PadLeft(4) + "  cash " + cs.S.Cash.ToString().PadLeft(7) + "  lvl " + cs.Level);
+        }, spendPoints: true);
+        Console.WriteLine("  titles " + c.S.Titles + ", rank " + c.RankOf(CareerSession.You) + ", earned $" + c.S.Earnings + ", travel $" + c.S.Spent + ", cash $" + c.S.Cash + ", level " + c.Level);
     }
 }

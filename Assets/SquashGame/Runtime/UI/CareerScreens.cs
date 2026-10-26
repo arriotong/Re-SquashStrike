@@ -43,7 +43,7 @@ namespace SquashGame.UI
         /// <summary>Ranking points (an average): one decimal while small.</summary>
         public static string Pts(double v) { return v < 100 ? v.ToString("0.0") : v.ToString("N0"); }
         public static string TierName(int t) { return Tour.Info((Tier)t).Name; }
-        public static string When(CareerState s) { return "SEASON " + s.Season + "  ·  " + Tour.Month(s.Month).ToUpperInvariant(); }
+        public static string When(CareerState s) { return "SEASON " + s.Season + "  ·  " + Tour.WeekLabel(s.Week).ToUpperInvariant(); }
         public static readonly string[] LengthLabels = { "One game", "Best of 3", "Best of 5" };
 
         /// <summary>A label in a panel.</summary>
@@ -118,6 +118,7 @@ namespace SquashGame.UI
         public static Dictionary<int, int> Seeds(CareerSession c, EventState e)
         {
             var field = new List<int>(e.Rounds[0].Players);
+            field.RemoveAll(id => id == CareerSession.Bye);
             field.Sort((a, b) => c.RankOf(a).CompareTo(c.RankOf(b)));
             var seeds = new Dictionary<int, int>();
             for (int i = 0; i < field.Count / 4; i++) seeds[field[i]] = i + 1;
@@ -165,12 +166,13 @@ namespace SquashGame.UI
             return gap <= 0 ? "Level on points with #" + at + ": your next result moves you up." : Pts(gap) + " pts behind #" + at;
         }
 
-        /// <summary>A season's months for a timeline: your result under each (or what's coming).</summary>
+        /// <summary>Twelve weeks of the season around now for a timeline: your result under each (or what's coming).</summary>
         public static List<(string, string, int)> Months(CareerSession c, int season)
         {
             var s = c.S;
             var list = new List<(string, string, int)>();
-            for (int m = 0; m < Tour.SlotsPerSeason; m++)
+            int first = season == s.Season ? Mathf.Clamp(s.Week - 3, 0, Tour.SlotsPerSeason - 12) : 0;
+            for (int m = first; m < first + 12; m++)
             {
                 int slot = season * Tour.SlotsPerSeason + m;
                 int state = slot < s.Slot ? -1 : slot == s.Slot ? 0 : 1;
@@ -181,9 +183,9 @@ namespace SquashGame.UI
                 if (state == 1)
                 {
                     var top = Tour.HeadlineOf(m);
-                    note = top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS" : top == Tier.Platinum ? "PLAT" : Tour.Info(top).Name.ToUpperInvariant();
+                    note = Tour.Week(m).Count == 0 ? "OFF" : top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS" : top == Tier.Platinum ? "PLAT" : Tour.Info(top).Name.ToUpperInvariant();
                 }
-                list.Add((Tour.Month(m).ToUpperInvariant(), note, state));
+                list.Add(("WK " + (m + 1), note, state));
             }
             return list;
         }
@@ -195,10 +197,10 @@ namespace SquashGame.UI
             var list = new List<(string, string)>();
             if (s.TrainingPoints > 0) list.Add(("LEVEL " + c.Level, s.TrainingPoints + (s.TrainingPoints == 1 ? " stat point" : " stat points") + " to spend - the PLAYER tab"));
             foreach (var g in c.Goals) if (g.Done && g.DoneSlot == s.Slot - 1) list.Add(("GOAL DONE", g.Text + "  ·  +" + g.Points * CareerSession.GoalXpPerPoint + " XP, " + Money(g.Money)));
-            if (s.Month == 0 && !string.IsNullOrEmpty(s.SponsorNews)) list.Add(("SPONSOR", s.SponsorNews));
+            if (s.Week == 0 && !string.IsNullOrEmpty(s.SponsorNews)) list.Add(("SPONSOR", s.SponsorNews));
             int upset = c.UpsetWinner(out int upRank, out int upTier);
             if (upset >= 0) list.Add(("UPSET", "#" + upRank + " " + c.NameOf(upset) + " wins a " + Tour.Info((Tier)upTier).Name + " event"));
-            if (s.Month <= 1)
+            if (s.Week <= 1)
             {
                 int ret = c.LatestRetiree();
                 if (ret >= 0)
@@ -209,24 +211,24 @@ namespace SquashGame.UI
             }
             foreach (var id in c.Rivals())
                 if (c.RankOf(id) < c.RankOf(You) && c.Movement(id) > 0) { list.Add(("RIVAL", c.NameOf(id) + " climbs to #" + c.RankOf(id) + " - ahead of you")); break; }
-            if (s.LastTrainedSlot == s.Slot - 1) list.Add(("TRAINING BLOCK", "A month on the practice court: +" + CareerSession.TrainingMonthXp + " XP"));
+            if (s.LastTrainedSlot == s.Slot - 1) list.Add(("TRAINING BLOCK", "A week on the practice court: +" + CareerSession.TrainingWeekXp + " XP"));
             if (s.Last != null && s.Last.Slot == s.Slot - 1 && s.Last.YouReached >= 0)
                 list.Add(("YOUR RESULT", s.Last.YouReached == 0 ? "You win the " + s.Last.Name + "!" : CareerSession.ReachedLong(s.Last.YouReached) + " at the " + s.Last.Name));
             int mv = c.Movement(You), rank = c.RankOf(You);
             if (mv == 0 && rank != CareerSession.Unranked && c.EventsOf(You) == 1) list.Add(("RANKINGS", "You're on the world ranking: a new entry at #" + rank));
             if (mv > 0) list.Add(("RANKINGS", "You climb " + mv + (mv == 1 ? " place" : " places") + " to #" + rank));
             else if (mv < 0) list.Add(("RANKINGS", "You slip " + (-mv) + (mv == -1 ? " place" : " places") + " to #" + rank));
-            int prev = s.Slot - 1, month = ((prev % Tour.SlotsPerSeason) + Tour.SlotsPerSeason) % Tour.SlotsPerSeason;
+            int prev = s.Slot - 1;
             var champs = s.Results.FindAll(r => r.Slot == prev && r.Reached == 0 && r.Player != You);
             champs.Sort((a, b) => b.Tier.CompareTo(a.Tier));
             foreach (var r in champs)
             {
                 if (list.Count >= 3) break;
-                list.Add((Tour.Info((Tier)r.Tier).Name.ToUpperInvariant(), c.NameOf(r.Player) + " wins the " + Tour.EventName(month, Tour.IndexOf(month, (Tier)r.Tier)) + (c.IsRival(r.Player) ? " (your rival)" : "")));
+                list.Add((Tour.Info((Tier)r.Tier).Name.ToUpperInvariant(), c.NameOf(r.Player) + " wins the " + Tour.EventName(prev, Tour.IndexOf(prev, (Tier)r.Tier)) + (c.IsRival(r.Player) ? " (your rival)" : "")));
             }
             if (list.Count < 3) { var top = c.Ranking()[0]; list.Add(("WORLD NO. 1", c.NameOf(top.Id) + " leads the world on " + Pts(top.Average) + " points")); }
-            if (list.Count < 3) list.Add(("THE TOUR", "Challenger 3s are open to all. Climb the ranking: the World Tour's Copper events open at #" + Tour.Info(Tier.Copper).UnlockRank + "."));
-            if (list.Count < 3) list.Add(("WORLD TOUR FINALS", "The world's top 8 meet in December."));
+            if (list.Count < 3) list.Add(("THE TOUR", "Your home club's open is always on. Its points get you ranked - and your ranking gets you into the Challengers, then the World Tour."));
+            if (list.Count < 3) list.Add(("WORLD TOUR FINALS", "The Road to the Tour Finals' top 8 meet in Cairo in June."));
             return list;
         }
 
@@ -411,7 +413,7 @@ namespace SquashGame.UI
         protected override string Title { get { return Career.S.Name; } }
 
         public CardItem MatchCard { get; private set; }
-        readonly List<(CardItem card, Tier tier)> _events = new List<(CardItem, Tier)>();
+        readonly List<(CardItem card, int index)> _events = new List<(CardItem, int)>();
         CardItem _lastEvent;
         int _rankFilter = 1;
         VisualElement _table;
@@ -447,27 +449,30 @@ namespace SquashGame.UI
             }
             else
             {
-                Kit.L(hero, Tour.Month(s.Month).ToUpperInvariant() + "  ·  CHOOSE YOUR EVENT", "k-cr-head");
+                Kit.L(hero, Tour.WeekLabel(s.Week).ToUpperInvariant() + "  ·  " + s.City.ToUpperInvariant() + "  ·  " + Career.Money(s.Cash) + "  ·  CHOOSE YOUR EVENT", "k-cr-head");
                 var row = Kit.Box(hero, "k-row");
-                foreach (var t in c.EventsForYou())
+                foreach (var o in c.EventsForYou())
                 {
-                    var tier = t;
-                    var info = Tour.Info(t);
-                    var card = AddTo(row, new CardItem(Tour.EventName(s.Month, Tour.IndexOf(s.Month, t)), info.Name.ToUpperInvariant(), () => Enter(tier))
-                        .Drawn("trophy", Career.TierBg((int)t), Career.TierColor((int)t))
-                        .Line("Winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "\n" + info.Draw + "-player draw  ·  " + Career.CourtName((int)t))
-                        .Badge(() => Career.Stars((int)tier)));
+                    int index = o.Index;
+                    var info = o.Info;
+                    int t = (int)o.Tier;
+                    string how = o.Home ? "home - no entry needed" : o.Via == CareerSession.Via.Wildcard ? "a wildcard (" + c.WildcardsLeft + " left)"
+                               : o.Via == CareerSession.Via.Qualifying ? "through qualifying" : o.LastIn == int.MaxValue ? "open entry" : "last in #" + o.LastIn;
+                    var card = AddTo(row, new CardItem(o.Name, (o.Home ? "CLUB OPEN" : info.Name.ToUpperInvariant()) + "  ·  " + o.City.ToUpperInvariant(), () => Enter(index))
+                        .Drawn("trophy", Career.TierBg(t), Career.TierColor(t))
+                        .Line("Winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "\n" + how + "  ·  trip " + (o.Cost == 0 ? "free" : Career.Money(o.Cost)))
+                        .Badge(() => Career.Stars(t)));
                     card.Root.AddToClassList("k-card--event");
-                    card.Locked = () => !c.CanEnter(tier);
-                    card.LockLine = () => c.Entry(tier);
-                    Career.TierOn(card.Art, (int)t);
-                    _events.Add((card, t));
+                    card.Locked = () => c.Entry(index) != null;
+                    card.LockLine = () => c.Entry(index);
+                    Career.TierOn(card.Art, t);
+                    _events.Add((card, index));
                 }
-                // P3-R3: or a month on the practice court
-                var train = AddTo(row, new CardItem("Training block", "TRAIN THIS MONTH", Train)
+                // P3-R3: or a week on the practice court
+                var train = AddTo(row, new CardItem("Training block", "TRAIN THIS WEEK", Train)
                     .Drawn("stripes", new Color32(18, 30, 24, 255), new Color(0.78f, 1f, 0.24f, 0.08f))
-                    .Line("+" + CareerSession.TrainingMonthXp + " XP\nThe month's events go on without you")
-                    .Badge(() => c.S.TrainingPoints > 0 ? c.S.TrainingPoints + " TO SPEND" : "+" + CareerSession.TrainingMonthXp + " XP", true));
+                    .Line("+" + CareerSession.TrainingWeekXp + " XP\nThe week's events go on without you")
+                    .Badge(() => c.S.TrainingPoints > 0 ? c.S.TrainingPoints + " TO SPEND" : "+" + CareerSession.TrainingWeekXp + " XP", true));
                 train.Root.AddToClassList("k-card--event");
             }
 
@@ -496,33 +501,35 @@ namespace SquashGame.UI
 
             // ---- CALENDAR ----
             var cal = Kit.Box(Page("CALENDAR"), "k-cr-cal");
-            for (int m = 0; m < Tour.SlotsPerSeason; m++)
+            int calFrom = Mathf.Min(s.Week, Tour.SlotsPerSeason - 12);           // P7: this week and the eleven after it
+            for (int m = calFrom; m < calFrom + 12; m++)
             {
                 var cell = Kit.Box(cal, "k-cr-month");
-                if (m == s.Month) cell.AddToClassList("k-cr-month--now"); else if (m < s.Month) cell.AddToClassList("k-cr-month--past");
+                if (m == s.Week) cell.AddToClassList("k-cr-month--now"); else if (m < s.Week) cell.AddToClassList("k-cr-month--past");
                 var head = Kit.Box(cell, "k-cr-month-head");
-                Kit.L(head, Tour.Month(m).ToUpperInvariant(), "k-cr-month-name");
-                if (m == s.Month) Kit.L(head, "NOW", "k-cr-now");
-                var month = Tour.EventsIn(m);
+                Kit.L(head, Tour.WeekLabel(m).ToUpperInvariant(), "k-cr-month-name");
+                if (m == s.Week) Kit.L(head, "NOW", "k-cr-now");
+                var week = Tour.Week(m);
                 int challengers = 0;
-                for (int i = 0; i < month.Length; i++)
+                for (int i = 0; i < week.Count; i++)
                 {
-                    if (!Tour.Info(month[i]).WorldTour) { challengers++; continue; }
+                    if (!Tour.Info(week[i].Tier).WorldTour) { challengers++; continue; }
                     var ev = Kit.Box(cell, "k-cr-ev");
-                    ev.Add(Career.Badge((int)month[i], 14));
-                    Kit.L(ev, Tour.EventName(m, i), "k-cr-ev-name");
+                    ev.Add(Career.Badge((int)week[i].Tier, 14));
+                    Kit.L(ev, week[i].Name + " · " + week[i].City, "k-cr-ev-name");
                 }
                 if (challengers > 0)
                 {
                     var ev = Kit.Box(cell, "k-cr-ev");
                     ev.Add(Career.Badge((int)Tier.Challenger3, 14));
-                    Kit.L(ev, "+ " + challengers + " Challengers", "k-cr-ev-name");
+                    Kit.L(ev, "+ " + challengers + (challengers == 1 ? " Challenger" : " Challengers"), "k-cr-ev-name");
                 }
+                if (week.Count == 0) Kit.L(cell, "Off-season", "k-cr-ev-name");
                 int slot = s.Season * Tour.SlotsPerSeason + m;
                 string mine = null; bool title = false;
                 foreach (var r in s.Results)
                     if (r.Player == You && r.Slot == slot) { mine = CareerSession.ReachedShort(r.Reached) + "  ·  " + Career.TierName(r.Tier) + "  +" + r.Points; title = r.Reached == 0; }
-                if (m == s.Month && s.Current != null) mine = "PLAYING  ·  " + s.Current.Name;
+                if (m == s.Week && s.Current != null) mine = "PLAYING  ·  " + s.Current.Name;
                 if (mine != null) { var lab = Kit.L(cell, mine, "k-cr-mine"); if (title) lab.AddToClassList("k-cr-mine--won"); }
             }
 
@@ -536,14 +543,16 @@ namespace SquashGame.UI
             for (int t = 0; t < Tour.Tiers.Length; t++)
             {
                 var info = Tour.Tiers[t];
-                bool open = info.UnlockRank == 0 || rank <= info.UnlockRank;
+                int lastIn = Tour.TypicalLastIn(info.Tier);
+                int onRoad = c.RoadTo().IndexOf(You);
+                bool open = t == (int)Tier.WorldTourFinals ? onRoad >= 0 && onRoad < 8 : rank <= lastIn;
                 var lr = Kit.Box(ladder, "k-cr-lad");
                 if (open) lr.AddToClassList("k-cr-lad--open");
                 lr.Add(Career.Badge(t, 26));
                 var txt = Kit.Box(lr, "k-cr-lad-text");
                 Kit.L(txt, info.Name.ToUpperInvariant(), "k-cr-lad-name");
                 Kit.L(txt, info.Draw + " players  ·  winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "  ·  " + Career.CourtName(t), "k-cr-lad-line");
-                Kit.L(lr, open ? "OPEN" : (t == (int)Tier.WorldTourFinals ? "TOP 8" : "#" + info.UnlockRank), "k-cr-lad-gate");
+                Kit.L(lr, open ? "IN" : (t == (int)Tier.WorldTourFinals ? "ROAD TOP 8" : "~#" + lastIn), "k-cr-lad-gate");
             }
 
             // ---- PLAYER ----
@@ -561,6 +570,7 @@ namespace SquashGame.UI
             Career.Tile(tiles, "WIN %", won + lost == 0 ? "–" : (100 * won / (won + lost)) + "%");
             Career.Tile(tiles, "TITLES", s.Titles.ToString());
             Career.Tile(tiles, "EARNINGS", Career.Money(s.Earnings));
+            Career.Tile(tiles, "CASH", Career.Money(s.Cash));
             var byTier = Kit.Box(cs, "k-cr-bytier");
             var counts = new int[Career.BandNames.Length];
             foreach (var r in s.Results) if (r.Player == You && r.Reached == 0) counts[Tour.Band(r.Tier)]++;
@@ -707,11 +717,11 @@ namespace SquashGame.UI
         protected override void SetPrompts()
         {
             bool between = Career.C.S.Current == null;
-            if (between) Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back"), (PromptBar.Btn.Tabs, "Tabs"), (PromptBar.Btn.X, "Skip month"), (PromptBar.Btn.Y, "Match settings"));
+            if (between) Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back"), (PromptBar.Btn.Tabs, "Tabs"), (PromptBar.Btn.X, "Skip week"), (PromptBar.Btn.Y, "Match settings"));
             else Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back"), (PromptBar.Btn.Tabs, "Tabs"), (PromptBar.Btn.Y, "Match settings"));
         }
 
-        public override void OnActionX() { if (Career.C.S.Current == null) Fe.Push(new ConfirmScreen("Skip " + Tour.Month(Career.S.Month) + "? Its events go on without you.", Skip)); }
+        public override void OnActionX() { if (Career.C.S.Current == null) Fe.Push(new ConfirmScreen("Skip " + Tour.WeekLabel(Career.S.Week) + "? Its events go on without you.", Skip)); }
         public override void OnActionY() { Fe.Push(new CareerSettingsScreen()); }
 
         /// <summary>CONTINUE: always the next thing - your match preview, or into the chosen (else the best open) event.</summary>
@@ -720,14 +730,14 @@ namespace SquashGame.UI
             var c = Career.C;
             int opp = c.NextOpponent();
             if (opp >= 0) { Fe.Push(new MatchPreviewScreen(opp)); return; }
-            foreach (var (card, t) in _events) if (card == _lastEvent && c.CanEnter(t)) { Enter(t); return; }
-            foreach (var (card, t) in _events) if (c.CanEnter(t)) { Enter(t); return; }
+            foreach (var (card, t) in _events) if (card == _lastEvent && c.Entry(t) == null) { Enter(t); return; }
+            foreach (var (card, t) in _events) if (c.Entry(t) == null) { Enter(t); return; }
             Skip();
         }
 
-        void Enter(Tier t)
+        void Enter(int index)
         {
-            Career.C.Enter(t);
+            Career.C.Enter(index);
             CareerStore.Save();
             Fe.Replace(new CareerHubScreen());
         }
@@ -763,7 +773,7 @@ namespace SquashGame.UI
             Root.schedule.Execute(() =>
             {
                 if (MatchCard != null) { Focus(MatchCard); return; }
-                foreach (var (card, t) in _events) if (c.CanEnter(t)) { Focus(card); return; }
+                foreach (var (card, t) in _events) if (c.Entry(t) == null) { Focus(card); return; }
             });
         }
 
@@ -965,7 +975,7 @@ namespace SquashGame.UI
                         if (i < rr.Winners.Count) w = rr.Winners[i] == a ? 0 : 1;
                         if (i < rr.Scores.Count) score = rr.Scores[i];
                     }
-                    var m = new BracketMatchItem(r, i, Entry(c, a, seeds), Entry(c, b, seeds), w, score, a == You, b == You, null);
+                    var m = new BracketMatchItem(r, i, Entry(c, a, seeds, r == 0), Entry(c, b, seeds, r == 0), w, score, a == You, b == You, null);
                     AddTo(Bracket, m);
                     Bracket.Place(m, _n / 2);
                     _info[m] = (a, b, w, score);
@@ -985,9 +995,9 @@ namespace SquashGame.UI
             _detail.AddToClassList("k-cr-draw-detail");
         }
 
-        static string Entry(CareerSession c, int id, Dictionary<int, int> seeds)
+        static string Entry(CareerSession c, int id, Dictionary<int, int> seeds, bool first)
         {
-            if (id < 0) return null;
+            if (id < 0) return id == CareerSession.Bye && first ? "BYE" : null;
             return (seeds.TryGetValue(id, out int s) ? "[" + s + "] " : "") + Career.Short(c, id);
         }
 
@@ -1018,6 +1028,13 @@ namespace SquashGame.UI
             var (a, b, w, score) = _info[m];
             _detail.Clear();
             Kit.L(_detail, Tour.RoundName(_n >> m.Round).ToUpperInvariant(), "k-panel-title");
+            if (m.Round == 0 && (a == CareerSession.Bye) != (b == CareerSession.Bye))
+            {
+                int seed = a == CareerSession.Bye ? b : a;
+                Kit.L(_detail, Career.Short(c, seed), "k-cr-dt-name");
+                Kit.L(_detail, "A bye: a top seed goes straight into the next round.", "k-cr-dt-meta");
+                return;
+            }
             if (a < 0)
             {
                 Kit.L(_detail, "To be decided", "k-cr-dt-name");

@@ -91,7 +91,7 @@ namespace SquashGame.Tests
             CareerStore.New("Budget", "ENG", 2, false);
             var c = CareerStore.Current;
             yield return Check(fe, "Career hub (events)", new CareerHubScreen(), log);
-            c.Enter(SquashSim.Career.Tier.Challenger3);
+            c.Enter(SquashSim.Career.Tour.HomeIndex);
             yield return Check(fe, "Career hub (match)", new CareerHubScreen(), log);
             yield return Check(fe, "Match preview", new MatchPreviewScreen(c.NextOpponent()), log);
             yield return Check(fe, "Draw", new DrawScreen(c.S.Current), log);

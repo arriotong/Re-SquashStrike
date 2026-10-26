@@ -79,7 +79,7 @@ namespace SquashSim.Career
             // a quarter-final one tier above the best you can enter now
             Tier best = Tier.Challenger3;
             foreach (var info in Tour.Tiers)
-                if (info.Tier != Tier.WorldTourFinals && (info.UnlockRank == 0 || rank <= info.UnlockRank) && info.Tier > best) best = info.Tier;
+                if (info.Tier != Tier.WorldTourFinals && rank <= Tour.TypicalLastIn(info.Tier) && info.Tier > best) best = info.Tier;     // P7: where your ranking gets you in
             Tier aim = best >= Tier.WorldChampionship ? Tier.WorldChampionship : best + 1;
             S.Goals.Add(new GoalRec { Kind = "tier", Target = (int)aim, Points = 2, Money = money, Text = "Reach a " + Tour.Info(aim).Name + " quarter-final" });
 
@@ -96,7 +96,7 @@ namespace SquashSim.Career
             g.Done = true; g.Progress = Math.Max(g.Progress, g.Kind == "titles" ? g.Target : 1);
             g.DoneSlot = S.Slot;
             GainXp(g.Points * GoalXpPerPoint);                          // P7: a goal's reward is XP now
-            S.Earnings += g.Money;
+            Earn(g.Money);
             S.GoalsDone++;
         }
 
@@ -174,7 +174,7 @@ namespace SquashSim.Career
 
         public bool OffersWaiting { get { return S.Offers != null && S.Offers.Count > 0; } }
 
-        void SponsorTitle() { if (S.Sponsor != null && !string.IsNullOrEmpty(S.Sponsor.Brand)) { S.Earnings += S.Sponsor.TitleBonus; S.SponsorPaid += S.Sponsor.TitleBonus; } }
+        void SponsorTitle() { if (S.Sponsor != null && !string.IsNullOrEmpty(S.Sponsor.Brand)) { Earn(S.Sponsor.TitleBonus); S.SponsorPaid += S.Sponsor.TitleBonus; } }
 
         /// <summary>The season's end: the retainer if you kept the clause, else the deal ends.</summary>
         void SettleSponsor(int finalRank)
@@ -184,7 +184,7 @@ namespace SquashSim.Career
             if (d == null || string.IsNullOrEmpty(d.Brand)) return;
             if (finalRank <= d.Clause)
             {
-                S.Earnings += d.Retainer; S.SponsorPaid += d.Retainer;
+                Earn(d.Retainer); S.SponsorPaid += d.Retainer;
                 S.SponsorNews = d.Brand + " pays your $" + d.Retainer.ToString("N0") + " retainer";
             }
             else
