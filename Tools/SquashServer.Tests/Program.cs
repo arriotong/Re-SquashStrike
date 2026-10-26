@@ -235,6 +235,44 @@ namespace SquashServer.Tests
                 Check(got.Count == 100 && got.SequenceEqual(Enumerable.Range(d, 100).Select(x => (long)x)), "100 in order");
             });
 
+            Test("the warm-up: on online, and either player skips it", () =>
+            {
+                var w = new World();
+                var a = w.Add(new Bot("Ann", 1)); var b = w.Add(new Bot("Ben", 2));
+                w.Run(0.1);
+                a.Send(NetMessages.Queue(QueueKind.Quick)); b.Send(NetMessages.Queue(QueueKind.Quick));
+                w.Run(2.0, () => a.S != null && b.S != null);
+                Check(a.Start.Setup.WarmUp && b.Start.Setup.WarmUp, "the server turns it on");
+                w.Run(3.0);
+                Check(a.S.Sim.Phase == MatchPhase.WarmUp && b.S.Sim.Phase == MatchPhase.WarmUp, "both knock up");
+                b.S.Command(ReplayCommand.SkipWarmUp);
+                w.Run(3.0);
+                Check(a.S.Sim.Phase != MatchPhase.WarmUp && b.S.Sim.Phase != MatchPhase.WarmUp, "Ben skipped it - for both");
+                Check(a.S.Sim.StepCount == b.S.Sim.StepCount || System.Math.Abs(a.S.Sim.StepCount - b.S.Sim.StepCount) < 40, "in step");
+                w.Run(40.0);
+                Check(a.S.RallyHashes.Take(System.Math.Min(a.S.RallyHashes.Count, b.S.RallyHashes.Count)).SequenceEqual(b.S.RallyHashes.Take(System.Math.Min(a.S.RallyHashes.Count, b.S.RallyHashes.Count))), "and the rallies after it agree");
+                Check(a.S.EndReason != "desync" && b.S.EndReason != "desync", "no desync");
+            });
+
+            Test("quick chat: passed on, known phrases, not too often", () =>
+            {
+                var w = new World();
+                var a = w.Add(new Bot("Ann", 1)); var b = w.Add(new Bot("Ben", 2));
+                w.Run(0.1);
+                a.Send(NetMessages.Queue(QueueKind.Quick)); b.Send(NetMessages.Queue(QueueKind.Quick));
+                w.Run(2.0, () => a.S != null && b.S != null);
+                var heard = new List<int>();
+                b.S.OnChat = x => heard.Add(x);
+                a.S.Chat(0); w.Run(0.2);
+                Check(heard.SequenceEqual(new[] { 0 }), "Ben hears \"" + QuickChat.Of(0) + "\"");
+                a.S.Chat(1); w.Run(0.2);
+                Check(heard.Count == 1, "too soon: dropped");
+                w.Run(1.6); a.Send(NetMessages.Chat(99)); w.Run(0.2);
+                Check(heard.Count == 1, "an unknown phrase: dropped");
+                a.S.Chat(3); w.Run(0.2);
+                Check(heard.SequenceEqual(new[] { 0, 3 }), "later: passed on");
+            });
+
             Test("a ranked match: the server's result is both clients'", () =>
             {
                 var w = new World(new HubOptions { Seed = 9, RankedGamesToWin = 1 });
@@ -302,6 +340,8 @@ namespace SquashServer.Tests
                 var a = w.Add(new Bot("Ann", 11)); var b = w.Add(new Bot("Ben", 12, "grinder"));
                 w.Run(0.1);
                 a.Send(NetMessages.Queue(QueueKind.Ranked)); b.Send(NetMessages.Queue(QueueKind.Ranked));
+                w.Run(5, () => a.S != null && b.S != null);
+                a.S.Command(ReplayCommand.SkipWarmUp);                                // (batch 4: past the knock-up)
                 w.Run(60);
                 Check(a.S != null && !a.S.Finished && a.S.RallyHashes.Count > 0, "some rallies in");
                 long before = a.S.Tick;

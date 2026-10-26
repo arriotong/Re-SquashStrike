@@ -114,6 +114,9 @@ namespace SquashSim.Net
                     CheckHashes();
                     return true;
                 }
+                case Msg.Chat:
+                    OnChat?.Invoke(NetMessages.ReadChat(m));                    // batch 4: not part of the match - just shown
+                    return true;
                 case Msg.OpponentLeft:
                     End("left", Me);
                     return true;
@@ -126,6 +129,12 @@ namespace SquashSim.Net
                     return false;
             }
         }
+
+        /// <summary>Batch 4: the opponent said something (QuickChat.Phrases index).</summary>
+        public System.Action<int> OnChat;
+
+        /// <summary>Batch 4: say something to the opponent (the server passes it on, a few a minute at most).</summary>
+        public void Chat(int phrase) { if (!Finished) _t.Send(NetMessages.Chat(phrase)); }
 
         /// <summary>A command from this client ("play now"): it applies, on both machines, at the next tick it sends.</summary>
         public void Command(ReplayCommand kind)

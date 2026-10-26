@@ -979,6 +979,12 @@
     font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.8); background-color: rgba(12, 13, 16, 0.80);
     -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
 }
+/* batch 4: quick chat */
+.hud-chat {
+    position: absolute; left: 50%; top: 96px; translate: -50% 0; padding: 8px 18px; border-radius: 18px;
+    font-size: 20px; color: rgb(14, 15, 18); background-color: rgb(255, 255, 255); -unity-font-style: bold;
+}
+.hud-chat--mine { background-color: rgb(200, 255, 61); }
 .hud-net--warn { color: rgb(14, 15, 18); background-color: rgb(255, 184, 59); }
 .on-grid { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
 .on-panel { width: 520px; margin-right: 24px; margin-bottom: 16px; }

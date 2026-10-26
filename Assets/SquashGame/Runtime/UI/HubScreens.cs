@@ -293,14 +293,14 @@ namespace SquashGame.UI
             ProfileStore.Save();
             KitDirector.OpponentPreview = null;
             if (TwoPlayer)
-                Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = false,
+                Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = S.WarmUp,
                                                   Court = Courts.All[Mathf.Clamp(C.VsCourt, 0, Courts.All.Length - 1)].Id });
             else
             {
                 var s = new MatchSettings
                 {
                     TwoPlayer = false, Opponent = C.OpponentId,
-                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = false,
+                    GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
                     Court = Courts.All[Mathf.Clamp(C.Court, 0, Courts.All.Length - 1)].Id
                 }.Dressed();
                 if (C.Abilities)

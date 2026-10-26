@@ -45,7 +45,7 @@ namespace SquashGame
         [Range(0, 1)] public float Difficulty = 0.5f;
         public int GamesToWin = 3;
         public string Scoring = "par";
-        public bool WarmUp = false;              // the knock-up is gone from the game (kept in the sim for tests)
+        public bool WarmUp = false;              // batch 4: the knock-up, when Settings > Gameplay > Warm-up is on (Quick Match, Versus, career)
         /// <summary>P2-M4: a Career match (the post-match and pause screens go back to the career).</summary>
         public bool Career;
         /// <summary>Score-bug names instead of "YOU" and the AI's personality (null = the defaults).</summary>
@@ -523,6 +523,8 @@ namespace SquashGame
             if (Input2 != null) { Input2.Dispose(); Input2 = null; }
             if (Sim != null) Sim.RallyEnded -= OnRallyEnded;
             var s = new LockstepSession(info, link, Application.version, System.DateTime.Now.Ticks);
+            s.OnChat = p => Said(false, p);                                    // batch 4
+            ChatText = null; ChatAt = -99f;
             _link = link;
             OnlineMatch = s;
             OnlineService.Session = s;
@@ -542,6 +544,43 @@ namespace SquashGame
         }
 
         void OnOnlineStep(int i) { AfterSimStep(i == 0); _sinceTick = 0; }
+
+        // ---------------- batch 4: quick chat (online) ----------------
+
+        float _chatSent = -9f;
+        /// <summary>The last thing said in this match - by you or them - and when (the HUD shows it a few seconds).</summary>
+        public string ChatText { get; private set; }
+        public bool ChatMine { get; private set; }
+        public float ChatAt { get; private set; } = -99f;
+
+        void Said(bool mine, int phrase)
+        {
+            ChatText = SquashSim.Net.QuickChat.Of(phrase);
+            ChatMine = mine;
+            ChatAt = Time.unscaledTime;
+            if (!mine) UI.Sounds.Play("tick");
+        }
+
+        static int QuickChatKey()
+        {
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.digit1Key.wasPressedThisFrame) return 0;
+                if (kb.digit2Key.wasPressedThisFrame) return 1;
+                if (kb.digit3Key.wasPressedThisFrame) return 2;
+                if (kb.digit4Key.wasPressedThisFrame) return 3;
+            }
+            var pad = Gamepad.current;
+            if (pad != null)
+            {
+                if (pad.dpad.up.wasPressedThisFrame) return 0;
+                if (pad.dpad.right.wasPressedThisFrame) return 1;
+                if (pad.dpad.down.wasPressedThisFrame) return 2;
+                if (pad.dpad.left.wasPressedThisFrame) return 3;
+            }
+            return -1;
+        }
 
         /// <summary>Done with the online match: a forfeit first if it is still on (<paramref name="leave"/>); the recording is handed on.</summary>
         void EndOnline(bool leave)
@@ -582,6 +621,10 @@ namespace SquashGame
                 while (_link.TryReceive(out var msg)) s.Handle(msg);
             bool ready = Input.ConsumeReady();
             if (ready && !Clock.Paused && Sim.Phase == MatchPhase.GameOver) s.Command(ReplayCommand.NextGame);
+            if (ready && !Clock.Paused && Sim.Phase == MatchPhase.WarmUp) s.Command(ReplayCommand.SkipWarmUp);   // batch 4: either player skips
+            // batch 4: quick chat - 1..4 or the pad's d-pad
+            int say = QuickChatKey();
+            if (say >= 0 && !Clock.Paused && Time.unscaledTime - _chatSent > 1.5f) { _chatSent = Time.unscaledTime; s.Chat(say); Said(true, say); }
             float dt = rawDt * (float)(Clock.TimeScale / GameSpeed);           // tests run it faster (SetTimeScale); play: 1
             _sinceTick += dt;
             if (!s.Finished)

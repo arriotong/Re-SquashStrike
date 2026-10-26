@@ -45,6 +45,8 @@ namespace SquashGame
         // PR5
         readonly Label _ball = new Label(), _rally = new Label(), _introNames = new Label(), _introSub = new Label();
         readonly Label _net = new Label();                       // P2-M8: ping, input delay; waiting / reconnecting
+        readonly Label _chat = new Label();                      // batch 4: quick chat
+        public string ChatShown { get { return _chat.style.display == DisplayStyle.Flex ? _chat.text : null; } }
         public string NetText { get { return _net.style.display == DisplayStyle.Flex ? _net.text : null; } }
         readonly VisualElement _intro = new VisualElement();
         MatchSimulation _introFor;
@@ -115,6 +117,7 @@ namespace SquashGame
             _ball.AddToClassList("hud-ball"); Add(_ball);
             _rally.AddToClassList("hud-rally"); Add(_rally);
             _net.AddToClassList("hud-net"); _net.pickingMode = PickingMode.Ignore; Add(_net);
+            _chat.AddToClassList("hud-chat"); _chat.pickingMode = PickingMode.Ignore; Add(_chat);
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
             _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
@@ -194,6 +197,15 @@ namespace SquashGame
                 key = twoPlayer && s.Server == 1 ? IntentSource.BindingLabel("Hit", true) : IntentSource.Keys("Hit");
                 prompt = who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box   ·   tap: lob serve   ·   hold: hard serve";
             }
+            // batch 4: the knock-up - whose half, how long, how to skip it
+            if (m.Phase == MatchPhase.WarmUp && !r.ReplayActive)
+            {
+                bool mine = m.WarmUpOwner == r.HumanIndex;
+                string whose = twoPlayer ? names[m.WarmUpOwner] + "'s" : mine ? "Your" : "Their";
+                key = "Enter / Y";
+                prompt = "WARM-UP   ·   " + whose + " side   ·   " + Mathf.CeilToInt((float)m.WarmUpRemaining) + " s   ·   skip" +
+                         (r.OnlineMatch != null ? " (either of you)" : "") + (r.OnlineMatch != null ? "   ·   1-4: quick chat" : "");
+            }
             if (m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver)
             {
                 int w = s.GameWinner;
@@ -267,6 +279,10 @@ namespace SquashGame
                 _net.EnableInClassList("hud-net--warn", down || s.WaitingSeconds > 0.15);
             }
             Show(_net, t);
+            // batch 4: what was said, for a few seconds
+            bool chat = s != null && r.ChatText != null && Time.unscaledTime - r.ChatAt < 3f;
+            Show(_chat, chat ? (r.ChatMine ? "YOU:  " : r.OpponentName + ":  ") + r.ChatText : null);
+            if (chat) _chat.EnableInClassList("hud-chat--mine", r.ChatMine);
         }
 
         /// <summary>LET? over the local striker while asking would be granted; held a moment after it stops being so.</summary>

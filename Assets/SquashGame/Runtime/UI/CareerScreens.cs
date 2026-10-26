@@ -289,7 +289,7 @@ namespace SquashGame.UI
                 Difficulty = (float)pro.Strength,
                 GamesToWin = c.S.GamesToWin,
                 Scoring = c.S.English ? "english" : "par",
-                WarmUp = false,
+                WarmUp = ProfileStore.Current.Settings.WarmUp,                // batch 4
                 Career = true,
                 P1Name = c.BugOf(You),
                 P2Name = pro.Bug,

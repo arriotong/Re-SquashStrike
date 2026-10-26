@@ -24,6 +24,14 @@ namespace SquashSim.Net
     {
         Hello = 1, Welcome, CreateRoom, RoomCreated, JoinRoom, Queue, Cancel, MatchStart, Input, Command, RallyHash,
         Ping, Pong, MatchEnd, Error, Leave, Rematch, OpponentLeft, Frames,
+        Chat,                                // batch 4: a quick-chat phrase (QuickChat.Phrases), passed on to the opponent
+    }
+
+    /// <summary>Batch 4: what a player can say in a match - picked from these, never typed (nothing to moderate).</summary>
+    public static class QuickChat
+    {
+        public static readonly string[] Phrases = { "Good shot!", "Well played", "Unlucky!", "Let's go!" };
+        public static string Of(int i) { return i >= 0 && i < Phrases.Length ? Phrases[i] : ""; }
     }
 
     public enum QueueKind : byte { Quick = 0, Ranked = 1 }
@@ -61,7 +69,7 @@ namespace SquashSim.Net
 
     public static class NetMessages
     {
-        public const int Version = 1;
+        public const int Version = 2;            // 2: batch 4 - the warm-up online (either player skips), quick chat
 
         // ---------------- writing ----------------
 
@@ -97,6 +105,7 @@ namespace SquashSim.Net
                 var s = m.Setup;
                 w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Lets);
                 w.Write(m.Resuming);
+                w.Write(s.WarmUp);                                                // v2: the knock-up
             });
         }
 
@@ -107,6 +116,8 @@ namespace SquashSim.Net
             return Build(Msg.Frames, w => { w.Write(slot); w.Write(start); w.Write(last); w.Write(count); for (int i = 0; i < count; i++) WriteFrame(w, frames[from + i]); });
         }
         public static byte[] Command(long tick, ReplayCommand kind) { return Build(Msg.Command, w => { w.Write(tick); w.Write((byte)kind); }); }
+        public static byte[] Chat(int phrase) { return Build(Msg.Chat, w => w.Write((byte)phrase)); }
+        public static int ReadChat(byte[] m) { return Read(m).ReadByte(); }
         public static byte[] RallyHash(int rally, ulong hash, int winner) { return Build(Msg.RallyHash, w => { w.Write(rally); w.Write(hash); w.Write(winner); }); }
 
         public static byte[] MatchEnd(MatchEndInfo e)
@@ -146,6 +157,7 @@ namespace SquashSim.Net
             };
             i.Setup = new ReplaySetup { TwoPlayer = true, Scoring = r.ReadString(), GamesToWin = r.ReadInt32(), BotSeed = r.ReadUInt32(), FirstServer = r.ReadInt32(), Lets = r.ReadBoolean() };
             i.Resuming = r.ReadBoolean();
+            i.Setup.WarmUp = r.ReadBoolean();
             return i;
         }
 

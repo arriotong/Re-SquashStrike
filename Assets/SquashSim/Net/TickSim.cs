@@ -108,7 +108,10 @@ namespace SquashSim.Net
             if (_cmds.TryGetValue(t, out var cmds))
             {
                 foreach (var c in cmds)
+                {
                     if (c == ReplayCommand.NextGame && Sim.Phase == MatchPhase.GameOver) { File.Commands.Add(new ReplayCmd { Step = Sim.StepCount, Kind = c }); Sim.NextGame(); }
+                    else if (c == ReplayCommand.SkipWarmUp && Sim.Phase == MatchPhase.WarmUp) { File.Commands.Add(new ReplayCmd { Step = Sim.StepCount, Kind = c }); Sim.SkipWarmUp(); }   // batch 4
+                }
                 _cmds.Remove(t);
             }
             var q0 = _in[0][t]; var q1 = _in[1][t];

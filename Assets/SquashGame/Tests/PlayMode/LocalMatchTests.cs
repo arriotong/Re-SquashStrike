@@ -89,9 +89,11 @@ namespace SquashGame.Tests
             Assert.That(r.Input2, Is.Not.Null);
             Assert.That(r.Input2.Devices, Is.EquivalentTo(new InputDevice[] { pad2 }), "player 2 has pad 2 only");
             Assert.That(System.Array.IndexOf(r.Input.Devices, pad1), Is.GreaterThanOrEqualTo(0), "player 1 has pad 1");
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "no knock-up: straight to the serve");
-
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss));
+            // batch 4: the knock-up first (Settings > Gameplay > Warm-up, on by default); Y skips it
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.WarmUp), "the warm-up first");
+            yield return Tap(pad2.buttonNorth);
+            yield return null;
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "skipped: straight to the serve");
             Assert.That(m.Score.Server, Is.EqualTo(0));
 
             Vector3 a0 = r.View.A0.Pos, a1 = r.View.A1.Pos;
@@ -157,7 +159,8 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.Null);
             Assert.That(r.Demo, Is.False);
             Assert.That(m.Bots[1], Is.Not.Null, "the AI plays");
-            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "no knock-up: straight to the serve");
+            if (m.Phase == MatchPhase.WarmUp) { yield return Tap(kb.enterKey); yield return null; }      // batch 4: skip the knock-up
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "straight to the serve");
             Assert.That(m.Score.Points[0] + m.Score.Points[1], Is.EqualTo(0));
 
             // One click serves: the mouse's Hit, and the ball is in play at once (no toss to time).

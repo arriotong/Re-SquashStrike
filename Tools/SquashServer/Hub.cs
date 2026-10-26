@@ -59,6 +59,7 @@ namespace SquashServer
         public Match Match; public int Slot;
         public Room Room;
         public QueueKind? Queued; public double QueuedAt;
+        public double LastChat = -999;                    // batch 4: quick chat, one every ChatEvery seconds
         public string Id { get { return Player != null ? Player.Id : ""; } }
     }
 
@@ -189,6 +190,7 @@ namespace SquashServer
                 case Msg.Input: Input(p, m); break;
                 case Msg.Command: Command(p, m); break;
                 case Msg.RallyHash: Hash(p, m); break;
+                case Msg.Chat: Chat(p, m); break;
             }
         }
 
@@ -259,7 +261,7 @@ namespace SquashServer
         {
             room.Rematch[0] = room.Rematch[1] = false;
             room.LastFirstServer = 1 - room.LastFirstServer;
-            var setup = new ReplaySetup { TwoPlayer = true, GamesToWin = room.GamesToWin, Scoring = room.Scoring, FirstServer = room.LastFirstServer };
+            var setup = new ReplaySetup { TwoPlayer = true, GamesToWin = room.GamesToWin, Scoring = room.Scoring, FirstServer = room.LastFirstServer, WarmUp = true };   // batch 4: the knock-up
             room.Current = StartMatch(room.Host, room.Guest, setup, room.Court, false, "room", room);
         }
 
@@ -335,7 +337,7 @@ namespace SquashServer
         void Pair(Peer a, Peer b, bool ranked)
         {
             a.Queued = null; b.Queued = null;
-            var setup = new ReplaySetup { TwoPlayer = true, GamesToWin = ranked ? Opt.RankedGamesToWin : Opt.QuickGamesToWin, Scoring = "par", FirstServer = _rng.Next(2) };
+            var setup = new ReplaySetup { TwoPlayer = true, GamesToWin = ranked ? Opt.RankedGamesToWin : Opt.QuickGamesToWin, Scoring = "par", FirstServer = _rng.Next(2), WarmUp = true };
             StartMatch(a, b, setup, "show", ranked, ranked ? "ranked" : "quick", null);
         }
 
@@ -373,7 +375,7 @@ namespace SquashServer
             {
                 MatchId = m.Id, Slot = s, Delay = m.Sim.Delay, Ranked = m.Ranked, Court = m.Court, Resuming = resuming,
                 OppName = m.Names[1 - s], OppKit = m.Kits[1 - s], OppRating = m.Rec[1 - s].Rating, MyRating = m.Rec[s].Rating,
-                Setup = new ReplaySetup { TwoPlayer = true, Scoring = m.Setup.Scoring, GamesToWin = m.Setup.GamesToWin, BotSeed = m.Setup.BotSeed, FirstServer = m.Setup.FirstServer, Lets = m.Setup.Lets },
+                Setup = new ReplaySetup { TwoPlayer = true, Scoring = m.Setup.Scoring, GamesToWin = m.Setup.GamesToWin, BotSeed = m.Setup.BotSeed, FirstServer = m.Setup.FirstServer, Lets = m.Setup.Lets, WarmUp = m.Setup.WarmUp },
             };
         }
 
@@ -424,10 +426,23 @@ namespace SquashServer
             var r = NetMessages.Read(msg);
             long tick = r.ReadInt64();
             var kind = (ReplayCommand)r.ReadByte();
-            if (kind != ReplayCommand.NextGame || tick < m.NextTick(p.Slot)) return;
+            if ((kind != ReplayCommand.NextGame && kind != ReplayCommand.SkipWarmUp) || tick < m.NextTick(p.Slot)) return;   // batch 4: either player may skip the warm-up
             m.Cmds.Add((tick, kind));
             m.Sim.PutCommand(tick, kind);
             Send(m.P[1 - p.Slot], msg);
+        }
+
+        public const double ChatEvery = 1.5;
+
+        /// <summary>Batch 4: a quick-chat phrase to the opponent - a known phrase, and not too often.</summary>
+        void Chat(Peer p, byte[] msg)
+        {
+            var m = p.Match;
+            if (m == null || m.Over || msg.Length < 2) return;
+            int phrase = NetMessages.ReadChat(msg);
+            if (QuickChat.Of(phrase).Length == 0 || _now() - p.LastChat < ChatEvery) return;
+            p.LastChat = _now();
+            Send(m.P[1 - p.Slot], NetMessages.Chat(phrase));
         }
 
         void Hash(Peer p, byte[] msg)

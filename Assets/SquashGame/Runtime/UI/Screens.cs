@@ -197,13 +197,17 @@ namespace SquashGame.UI
             Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
             var ch = ProfileStore.Current.Choices;
             Row(g, new SelectorItem("Quick Match scoring", MatchChoices.ScoringLabels, () => ch.Scoring, i => { ch.Scoring = i; Changed(false); }), VersusScreen.ScoringHint);
+            Row(g, new SelectorItem("Warm-up", new[] { "Off", "On" }, () => S.WarmUp ? 1 : 0, i => { S.WarmUp = i == 1; Changed(false); }),
+                "45 seconds each on your own before the first serve, to find your length. Enter or Y skips it. Quick Match, Local Versus and the career (online always has it)."); 
             Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Classic: close behind the back wall, the ball's pace easy to read. High: looking down on the court. Low glass: close behind the glass. TV: the broadcast view from far up in the stands.");
             // P2-M8: online
             // (your online name is your player name: your profile, from the tag on the main menu - P6 made room here for the scoring)
+            // ---- ONLINE (batch 4: its own tab - Gameplay was full) ----
+            var o = Panel("ONLINE");
             var me = Online.OnlineService.Me;
             var server = new TextItem("Online server", string.IsNullOrWhiteSpace(me.Server) ? Online.OnlineService.DefaultServer : me.Server, 120);
             server.Field.RegisterValueChangedCallback(e => { me.Server = (e.newValue ?? "").Trim(); Online.OnlineService.Disconnect(); });
-            Row(g, server, "Where online play connects. The game's own server is the default; ws://localhost:5180/ws plays against a server on this PC (testing)."); 
+            Row(o, server, "Where online play connects. The game's own server is the default; ws://localhost:5180/ws plays against a server on this PC (testing)."); 
             Kit.L(g, "re:SquashStrike  v" + Application.version, "k-set-hint");
             Kit.L(g, "Court sounds from real recordings on freesound.org, including \"je_racketballcourt.wav\" by cmusounddesign (CC BY 4.0).", "k-set-hint");
         }

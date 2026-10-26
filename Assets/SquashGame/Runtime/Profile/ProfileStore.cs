@@ -42,6 +42,7 @@ namespace SquashGame.Profile
         public bool Lets = true;                 // P2-M7: appeals and the referee's calls on interference
         public int Camera = 0;                   // match camera: 0 classic, 1 high, 2 low glass, 3 TV
         public bool LandingMarker = true;        // a light square where the ball will land
+        public bool WarmUp = true;               // batch 4: a 45 s knock-up each before the first serve (Enter / Y skips it)
         // ---- controls: rebound keys (Input System overrides JSON; "" = the defaults) ----
         public string Bindings = "";
 
