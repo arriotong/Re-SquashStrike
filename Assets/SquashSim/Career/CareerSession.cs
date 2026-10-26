@@ -75,6 +75,7 @@ namespace SquashSim.Career
             if (S.Offers == null) S.Offers = new List<SponsorDeal>();
             if (S.Sponsor != null && string.IsNullOrEmpty(S.Sponsor.Brand)) S.Sponsor = null;      // JsonUtility's empty object
             if (S.Wildcards == null) S.Wildcards = new List<WildcardRec>();
+            if (S.GearOwned == null) S.GearOwned = new List<string>();
             if (string.IsNullOrEmpty(S.City)) S.City = World.HomeOf(S.Nat);
             if (S.Version < CareerState.CurrentVersion) S.Version = CareerState.CurrentVersion;     // v2 -> v3: the defaults fill in
         }
@@ -586,7 +587,7 @@ namespace SquashSim.Career
         public static int TitleXp(int tier) { return (int)System.Math.Round(TitleXpBase * BandXp[System.Math.Max(0, System.Math.Min(BandXp.Length - 1, Tour.Band(tier)))]); }
 
         /// <summary>Your stats' edge in a simulated match (a rating bonus: 0.025 per point of the mean away from 5).</summary>
-        public double AttributeEdge { get { return S.Attributes == null ? 0 : System.Math.Round(0.025 * (S.Attributes.Mean - AthleteAttributes.Neutral), 4); } }
+        public double AttributeEdge { get { return S.Attributes == null ? 0 : System.Math.Round(0.025 * (Effective.Mean - AthleteAttributes.Neutral), 4); } }   // P7: with your gear
 
         /// <summary>A week on the training court instead of an event: the events go on without you, you gain XP.</summary>
         public void Train()

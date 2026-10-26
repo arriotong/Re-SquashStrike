@@ -92,6 +92,10 @@ namespace SquashSim.Career
         public int Cash, Spent;
         public string City = "";
         public List<WildcardRec> Wildcards = new List<WildcardRec>();
+        // P7 phase 5: gear - what you own and have on (Gear.cs), what it cost you
+        public List<string> GearOwned = new List<string>();
+        public string Racket = "", Shoes = "", KitGear = "";
+        public int GearSpent;
         public int NextId = Tour.RosterSize + 1;
         public List<Pro> Roster = new List<Pro>();
         public List<ResultRec> Results = new List<ResultRec>();

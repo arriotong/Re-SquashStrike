@@ -51,7 +51,17 @@ namespace SquashGame.Progression
         }
 
         /// <summary>Athlete i's kit in this match: yours on your athlete, the opponent's on theirs.</summary>
-        public static Loadout For(MatchRunner r, int i) { return i == (r != null ? r.HumanIndex : 0) ? You() : Opponent(r); }
+        public static Loadout For(MatchRunner r, int i) { return i == (r != null ? r.HumanIndex : 0) ? Geared(You(), r) : Opponent(r); }
+
+        /// <summary>P7 phase 5: in a career match your gear shows - its racket frame, shoes and shirt over your Locker loadout.</summary>
+        static Loadout Geared(Loadout you, MatchRunner r)
+        {
+            var looks = r != null && r.Settings != null && r.Settings.Career ? r.Settings.GearLooks : null;
+            if (looks == null || looks.Length == 0 || you == null) return you;
+            var l = you.Clone();
+            foreach (var id in looks) { var it = Cosmetics.Find(id); if (it != null) l.Set(it.Slot, id); }
+            return l;
+        }
 
         /// <summary>An online opponent's kit as they sent it (their Locker Room loadout; a signature kit if it does not read).</summary>
         static Loadout Worn(string json)

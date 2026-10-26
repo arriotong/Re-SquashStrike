@@ -126,7 +126,7 @@ public static class CareerBench
             m.Bots[0] = new HumanStyle((uint)(700 + game)) { Arcade = true };
             m.Bots[1] = new OpponentBrain(AiProfile.ByName(opp.Style).WithDifficulty(opp.Strength), (uint)(900 + game));
             m.Players[0].WallAimEnabled = true; m.Players[0].ArcadeHitEnabled = true;
-            if (cs.S.Attributes != null) m.Players[0].Player.Attributes.CopyFrom(cs.S.Attributes);      // what you trained (as in the game)
+            m.Players[0].Player.Attributes.CopyFrom(cs.Effective);      // your levels and gear (as in the game)
             Program.ArcadeAi(m);
             game++;
             double dt = PhysicsConfig.Current.Sim.FixedDt;

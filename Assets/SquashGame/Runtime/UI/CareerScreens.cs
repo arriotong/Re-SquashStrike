@@ -105,7 +105,7 @@ namespace SquashGame.UI
         public static Color TierColor(int t) { return TierBadge.Fill[Mathf.Clamp(Tour.Band(t), 0, TierBadge.Fill.Length - 1)]; }
         /// <summary>A tier's badge (its band's colour).</summary>
         public static TierBadge Badge(int tier, float size) { return new TierBadge(Tour.Band(tier), size); }
-        public static readonly string[] BandNames = { "Challenger 3-6", "Challenger 9-20", "Copper-Bronze", "Silver-Gold", "Platinum-Diamond", "World" };
+        public static readonly string[] BandNames = { "Challenger 3-6", "Challenger 9-15", "Copper-Bronze", "Silver-Gold", "Platinum-Diamond", "World" };
         public static Color TierBg(int t) { var c = TierColor(t); return new Color(0.08f + c.r * 0.08f, 0.09f + c.g * 0.08f, 0.11f + c.b * 0.08f, 1f); }
 
         /// <summary>A tier diamond in a card's picture, top left.</summary>
@@ -299,8 +299,16 @@ namespace SquashGame.UI
                 KitSeed = star != null ? star.KitSeed : KitSeed(c, pro.Id),  // the pro's own kit, the same every match
                 Court = CourtFor(c.S.Current != null ? c.S.Current.Tier : 0),  // the bigger the event, the bigger the stage
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
-                Attributes = c.S.Attributes != null ? c.S.Attributes.Clone() : null,    // P3-R3: your athlete as you trained it
+                Attributes = c.Effective,                                  // your levels and your gear (P7 phase 5)
+                GearLooks = GearLooks(c),                                   // bought gear shows (the starters leave your Locker look)
             }.Dressed());
+        }
+
+        public static string[] GearLooks(CareerSession c)
+        {
+            var looks = new List<string>();
+            foreach (var g in c.Wearing()) if (g.Price > 0 && !string.IsNullOrEmpty(g.Look)) looks.Add(g.Look);
+            return looks.ToArray();
         }
 
         /// <summary>Your match is over (post-match Continue, or retiring): record it and go back to the hub.</summary>
@@ -612,7 +620,15 @@ namespace SquashGame.UI
             RefreshAttrs();
             _levelBar = Kit.Box(Kit.Box(at, "k-cr-attr-bar"), "k-cr-attr-fill");
             Kit.L(at, "Every match gives XP - more at the bigger events - and every level a point. 5 in a stat is a Quick Match player; you start at " + CareerSession.StartStat + " (-16%), 10 is +20%.", "k-cr-note");
-            var rv = Kit.Panel(mid, "RIVALS");
+            // P7 phase 5: your gear, and the Equipment screen
+            var gearNames = new List<string>();
+            foreach (var g in c.Wearing()) gearNames.Add(g.Name);
+            var eff = c.Effective;
+            Kit.L(card2, "GEAR  " + string.Join("  ·  ", gearNames) + (eff.Stability != SquashSim.AthleteAttributes.Neutral ? "  ·  stability " + eff.Stability.ToString("0") : ""), "k-cr-attr-line");
+            var shop = AddTo(card2, new ActionItem("Equipment  ·  rackets, shoes, kit", () => Fe.Push(new EquipmentScreen())));
+            shop.Root.AddToClassList("k-cr-eq-btn");
+            var rv = Kit.Box(card2, "k-cr-privals");
+            Kit.L(rv, "RIVALS", "k-cr-attr-line");
             var rivals = c.Rivals();
             if (rivals.Count == 0) Kit.L(rv, "None yet. A pro who beats you twice, or meets you in two finals, becomes one.", "k-cr-empty");
             foreach (var id in rivals)
@@ -640,7 +656,7 @@ namespace SquashGame.UI
             var gg = Kit.Box(Page("GOALS"), "k-cr-ggrid");
             var gp = Kit.Panel(gg, "SEASON " + s.Season + " GOALS  ·  " + c.GoalsDoneNow + " OF " + c.Goals.Count + " DONE"); gp.AddToClassList("k-cr-goals");
             foreach (var g in c.Goals) Career.GoalRow(gp, g);
-            Kit.L(gp, "Goals are set from your ranking at the start of each season. Each one pays training points and prize money.", "k-cr-note");
+            Kit.L(gp, "Goals are set from your ranking at the start of each season. Each one pays XP and prize money.", "k-cr-note");
             var sp = Kit.Panel(gg, "SPONSOR"); sp.AddToClassList("k-cr-sponsor");
             if (s.Sponsor != null)
             {
@@ -673,10 +689,10 @@ namespace SquashGame.UI
         {
             switch (n)
             {
-                case "Speed": return "Top speed and acceleration: up to +9% at 10";
-                case "Stamina": return "Tires slower - longer sprints, more dives: drain down to x0.7";
-                case "Power": return "Harder drives and kills: up to +9% pace";
-                default: return "Tighter shots at a stretch, fewer miss-hits: down to x0.5 spread";
+                case "Speed": return "Top speed, acceleration and reach: -20% at 0, +20% at 10";
+                case "Stamina": return "Tires slower - longer rallies, sprints, dives: drain x1.4 to x0.6";
+                case "Power": return "Harder drives and kills: -20% to +20% pace";
+                default: return "Tighter shots, fewer miss-hits: spread x1.4 to x0.6";
             }
         }
 
@@ -685,10 +701,11 @@ namespace SquashGame.UI
             var s = Career.S;
             foreach (var (n, fill, val) in _attrs)
             {
-                double v = CareerSession.Get(s.Attributes, n);
-                fill.style.width = Length.Percent((float)(100 * v / SquashSim.AthleteAttributes.Max));
-                int pct = (int)System.Math.Round((v - SquashSim.AthleteAttributes.Neutral) * 4);
-                val.text = (v >= SquashSim.AthleteAttributes.Max ? "10  ·  MAX" : v.ToString("0")) + "  ·  " + (pct >= 0 ? "+" : "") + pct + "%";
+                double v = CareerSession.Get(s.Attributes, n), e = CareerSession.Get(Career.C.Effective, n);   // your level; with your gear
+                fill.style.width = Length.Percent((float)(100 * e / SquashSim.AthleteAttributes.Max));
+                int pct = (int)System.Math.Round((e - SquashSim.AthleteAttributes.Neutral) * 4);
+                string gear = e == v ? "" : " (" + (e > v ? "+" : "−") + System.Math.Abs(e - v).ToString("0") + ")";
+                val.text = (v >= SquashSim.AthleteAttributes.Max ? "10 MAX" : v.ToString("0")) + gear + "  ·  " + (pct >= 0 ? "+" : "") + pct + "%";
             }
             if (_attrTitle != null) _attrTitle.text = AttrTitle(Career.C);
             if (_levelBar != null) _levelBar.style.width = Length.Percent(100f * Career.C.LevelProgress);

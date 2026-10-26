@@ -75,6 +75,8 @@ namespace SquashGame
         /// <summary>P5: Focus charges each game (the Gauntlet's slow motion; 0: none).</summary>
         public int FocusCharges;
         public SquashSim.AthleteAttributes OppAttributes;
+        /// <summary>P7 phase 5: your career gear's looks (cosmetic ids: a frame, shoes, a shirt) over your loadout.</summary>
+        public string[] GearLooks;
         public List<SquashSim.RunMod> Mods, OppMods;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }

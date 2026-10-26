@@ -15,6 +15,8 @@
 //   Control    x1.4        x0.6    aim spread and gross-miss chance ("Accuracy" in the game)
 //   Speed      x0.9        x1.1    reach (how far from you the ball is hittable)
 //   Control    x0.8        x1.35   the grace after an early release
+//   Stability  x1.4        x0.6    P7 phase 5, gear only: off-centre mishits, and the
+//                                  spray of a bad contact (stretched, jammed, late)
 //
 //   P7 phase 2 (2026-10-26, the user: "start is everything -20% of the
 //   quick play character and maxed out is +20%"): each level is 4%.
@@ -31,10 +33,11 @@ namespace SquashSim
     {
         public const double Neutral = 5, Max = 10;
         public double Speed = Neutral, Stamina = Neutral, Power = Neutral, Control = Neutral;
+        public double Stability = Neutral;                      // P7 phase 5: the career's gear only (5 everywhere else)
 
         public static AthleteAttributes NeutralSet() { return new AthleteAttributes(); }
 
-        public bool IsNeutral { get { return Speed == Neutral && Stamina == Neutral && Power == Neutral && Control == Neutral; } }
+        public bool IsNeutral { get { return Speed == Neutral && Stamina == Neutral && Power == Neutral && Control == Neutral && Stability == Neutral; } }
 
         /// <summary>1 at 5, at0 at 0, at10 at 10, straight lines between.</summary>
         static double Scale(double v, double at0, double at10)
@@ -52,17 +55,18 @@ namespace SquashSim
         /// foot speed alone barely touched (2026-10-25: a maxed player won no more rallies).</summary>
         public double ReachScale { get { return Scale(Speed, 0.9, 1.1); } }
         public double GraceScale { get { return Scale(Control, 0.8, 1.35); } }
+        public double StabilityScale { get { return Scale(Stability, 1.4, 0.6); } }
 
         public AthleteAttributes Clone() { return (AthleteAttributes)MemberwiseClone(); }
 
         public void CopyFrom(AthleteAttributes a)
         {
-            if (a == null) { Speed = Stamina = Power = Control = Neutral; return; }
-            Speed = a.Speed; Stamina = a.Stamina; Power = a.Power; Control = a.Control;
+            if (a == null) { Speed = Stamina = Power = Control = Stability = Neutral; return; }
+            Speed = a.Speed; Stamina = a.Stamina; Power = a.Power; Control = a.Control; Stability = a.Stability;
         }
 
         public double Mean { get { return (Speed + Stamina + Power + Control) / 4; } }
 
-        public override string ToString() { return "spd " + Speed + " sta " + Stamina + " pow " + Power + " ctl " + Control; }
+        public override string ToString() { return "spd " + Speed + " sta " + Stamina + " pow " + Power + " ctl " + Control + (Stability != Neutral ? " stb " + Stability : ""); }
     }
 }

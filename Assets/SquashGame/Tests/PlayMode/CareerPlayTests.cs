@@ -17,6 +17,7 @@ using System.Collections;
 using System.IO;
 using NUnit.Framework;
 using SquashGame.Profile;
+using SquashGame.Progression;
 using SquashGame.UI;
 using SquashSim;
 using SquashSim.Career;
@@ -142,6 +143,10 @@ namespace SquashGame.Tests
             yield return Tap(kb.eKey);
             Assert.That(hub.Tabs.Current, Is.EqualTo("CENTRAL"));
 
+            // P7 phase 5: a racket bought before the first match - it plays and it shows
+            Assert.That(c.Buy("rk_power"), Is.True);
+            CareerStore.Save();
+
             // CONTINUE: into the best event open to you
             yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Continue"));
@@ -166,6 +171,9 @@ namespace SquashGame.Tests
             Assert.That(m.Settings.Difficulty, Is.EqualTo((float)c.Pro(opp).Strength).Within(1e-6));
             Assert.That(m.Names[0], Is.EqualTo("TESTER"));
             Assert.That(m.Names[1], Is.EqualTo(c.Pro(opp).Bug));
+            Assert.That(m.Settings.Attributes.Power, Is.EqualTo(c.S.Attributes.Power + 2), "the racket plays: +2 power");
+            Assert.That(m.Settings.Attributes.Speed, Is.EqualTo(c.S.Attributes.Speed - 1));
+            Assert.That(KitDirector.For(m, m.HumanIndex).Frame, Is.EqualTo("frame_red"), "and it shows: the Power 130's red frame");
             yield return Wait(1f, () => false);
             yield return CaptureUI(fe, "P2M4_UI_4_Match.png");
 

@@ -419,6 +419,8 @@ namespace SquashSim
             if (mods != null) spread *= mods.Spread(shot, straight, charge);
             double control = player.Attributes.ControlScale;                 // P3-C1: exactly 1 when neutral
             if (control != 1.0) spread *= control;
+            double stability = player.Attributes.StabilityScale;             // P7 phase 5: gear (exactly 1 when neutral)
+            if (stability != 1.0 && bad > 0) spread *= 1 + (stability - 1) * bad;   // a bad contact sprays less (or more)
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
             if (Assisted) spread *= GameTuning.Hit.AssistSpreadScale;       // the easier mode: a little tighter
             // P7 phase 1: a tired athlete sprays it - wider, and even a clean stroke strays a little
@@ -433,7 +435,7 @@ namespace SquashSim
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;
             ty += ey;
-            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early) * control && (mods == null || !mods.NoMishit(shot, straight)))
+            if (missRatio > 0 && Rnd() < missRatio * c.GrossMissChance * (1 - c.EarlyMishitCut * early) * control * stability && (mods == null || !mods.NoMishit(shot, straight)))
             {
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - GameTuning.Hit.GrossMissTinDepth;                       // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
@@ -456,7 +458,7 @@ namespace SquashSim
             LastAssistLost = false;
             if (Assisted && !boast && wall == 0 && (shot == "drive" || shot == "kill"))
             {
-                if (bad > 0 && Rnd() < AssistLossChance(bad, c))
+                if (bad > 0 && Rnd() < AssistLossChance(bad, c) * stability)
                 {
                     LastAssistLost = true;
                     double off = c.AssistMissOffset * (1 + Rnd());

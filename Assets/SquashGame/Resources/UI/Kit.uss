@@ -898,7 +898,7 @@
 .k-cr-attr-name { width: 110px; font-size: 15px; letter-spacing: 1px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-cr-attr-bar { flex-grow: 1; height: 10px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .k-cr-attr-fill { height: 10px; background-color: rgb(200, 255, 61); border-radius: 5px; }
-.k-cr-attr-val { width: 130px; font-size: 20px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-cr-attr-val { width: 170px; font-size: 20px; -unity-text-align: middle-right; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .k-cr-attr-plus { width: 44px; height: 36px; margin-left: 10px; padding: 0; justify-content: center; }
 .k-cr-attr-line { font-size: 11px; margin: 2px 0 0 110px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 
@@ -1077,3 +1077,20 @@
 .k-wm-row-name { font-size: 20px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .k-wm-row-n { font-size: 12px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-card--map .k-card-art { background-color: rgb(11, 16, 24); }
+
+/* ---------- P7 phase 5: equipment ---------- */
+.k-eq { flex-direction: row; flex-grow: 1; align-items: flex-start; }
+.k-eq-cards { flex-direction: row; flex-wrap: wrap; width: 1180px; }
+.k-eq-card { width: 270px; height: 330px; margin: 0 20px 20px 0; }
+.k-eq-card .k-card-title { font-size: 26px; }
+.k-eq-card .k-card-line { white-space: normal; }
+.k-eq-stats { flex-grow: 1; margin: 0; }
+.k-eq-ghost { position: absolute; left: 0; top: 0; height: 10px; border-radius: 5px; background-color: rgba(200, 255, 61, 0.35); }
+.k-eq-ghost--down { background-color: rgba(255, 92, 92, 0.55); }
+.k-eq-up { color: rgb(200, 255, 61); }
+.k-eq-down { color: rgb(255, 120, 120); }
+.k-cr-eq-btn { margin-top: 12px; }
+.k-cr-pmid > .k-panel { flex-shrink: 0; }
+.k-cr-privals { margin-top: 14px; }
+.k-cr-pcard .k-cr-attr-line { margin-left: 0; margin-top: 10px; }
+.k-cr-attr > .k-cr-attr-row { margin-top: 0; }
