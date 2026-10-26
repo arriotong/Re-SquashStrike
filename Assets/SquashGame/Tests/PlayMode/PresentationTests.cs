@@ -245,14 +245,16 @@ namespace SquashGame.Tests
             const int CW = 640, CHt = 360;
             var sheet = new Texture2D(CW * 4, CHt * 2, TextureFormat.RGB24, false);
             var rt = new RenderTexture(CW, CHt, 24);
-            int lastPeople = -1;
+            int lastPeople = -1, clubPeople = -1;
             for (int k = 0; k < tiers.Length; k++)
             {
                 Courts.CurrentId = Courts.ForCareerTier(tiers[k]);
                 Courts.CrowdFill = Courts.CrowdForCareerTier(tiers[k]);
                 CrowdBuilder.ResetCount();
                 yield return null; yield return null; yield return null;
-                if (k == 1) Assert.That(CrowdBuilder.PeopleBuilt, Is.GreaterThan(lastPeople), "a Challenger 9 draws more people than a Challenger 3");
+                if (k == 0) clubPeople = CrowdBuilder.PeopleBuilt;
+                // batch 5: the Challengers move through the clubs (club, warehouse, leisure centre); the County Open's bleachers draw more
+                if (k == 2) Assert.That(CrowdBuilder.PeopleBuilt, Is.GreaterThan(clubPeople), "a Challenger 15 (the County Open) draws more people than a Challenger 3");
                 lastPeople = CrowdBuilder.PeopleBuilt;
                 bool clubView = Courts.CurrentId == "club";
                 cam.fieldOfView = clubView ? 34f : 24f;

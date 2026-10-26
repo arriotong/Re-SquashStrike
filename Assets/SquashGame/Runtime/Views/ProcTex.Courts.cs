@@ -98,6 +98,24 @@ namespace SquashGame
             });
         }
 
+        /// <summary>Batch 5: corrugated steel sheeting (the club shed's roof): light and dark ribs across u.</summary>
+        public static Texture2D Corrugated()
+        {
+            return Cached("corrugated", () =>
+            {
+                const int W = 64, H = 8;
+                var px = new Color[W * H];
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        float rib = 0.5f + 0.5f * Mathf.Sin(x / (float)W * Mathf.PI * 2f * 4f);
+                        float v = 0.62f + 0.22f * rib;
+                        px[y * W + x] = new Color(v, v * 1.01f, v * 1.03f);
+                    }
+                return Make(W, H, px, true);
+            });
+        }
+
         /// <summary>Batch 1: a searchlight's beam - soft across (u), strongest at its foot and fading out along it (v 0 -> 1).
         /// Alpha only.</summary>
         public static Texture2D Beam()

@@ -45,6 +45,13 @@ namespace SquashGame
                              Outdoor = true, FarClip = 700f },
             new CourtTheme { Id = "arena", Name = "Arena", Blurb = "A full arena: steep stands, LED ribbons, the big cube overhead", Walls = WallStyle.ShowBlue,
                              FarClip = 150f },
+            // batch 5: clubs and a mid-tier event, after the user's club photos (at the end: saved choices keep their courts)
+            new CourtTheme { Id = "warehouse", Name = "Warehouse Club", Blurb = "A row of courts in a steel shed, the green walkway, bags on the benches", Walls = WallStyle.Plaster,
+                             Lines = new Color(0.16f, 0.32f, 0.78f), FloorTint = new Color(0.92f, 0.86f, 0.78f), FarClip = 90f, Establishing = false },
+            new CourtTheme { Id = "leisure", Name = "Leisure Centre", Blurb = "Three red-lined courts, the corridor behind the glass, chairs and a TV", Walls = WallStyle.Plaster,
+                             Lines = new Color(0.82f, 0.18f, 0.16f), FloorTint = new Color(0.96f, 0.88f, 0.76f), FarClip = 90f, Establishing = false },
+            new CourtTheme { Id = "county", Name = "County Open", Blurb = "The club on event day: bleachers behind the glass, the scoreboard up", Walls = WallStyle.Plaster,
+                             Lines = new Color(0.16f, 0.32f, 0.78f), FloorTint = new Color(0.92f, 0.86f, 0.78f), FarClip = 90f, Establishing = false },
         };
 
         /// <summary>The court being drawn (CourtView rebuilds when it changes).</summary>
@@ -69,7 +76,7 @@ namespace SquashGame
         // The career's stages (SquashSim.Career.Tier order, Challenger 3 .. World Tour Finals): the club court for the small
         // Challengers, then up through the glass courts - the rooftop, the station, the pyramids, the show court - to the
         // full arena for the World Championship and the Finals; the stands fill as the events grow.
-        static readonly string[] CareerCourts = { "club", "club", "club", "rooftop", "rooftop", "station", "station", "desert", "desert", "show", "show", "arena", "arena" };
+        static readonly string[] CareerCourts = { "club", "warehouse", "leisure", "county", "rooftop", "station", "station", "desert", "desert", "show", "show", "arena", "arena" };   // batch 5: the clubs first
         static readonly float[] CareerCrowd = { 0.18f, 0.28f, 0.4f, 0.5f, 0.6f, 0.68f, 0.76f, 0.84f, 0.9f, 0.95f, 1f, 1f, 1f };
 
         public static string ForCareerTier(int tier) { return CareerCourts[Mathf.Clamp(tier, 0, CareerCourts.Length - 1)]; }

@@ -70,6 +70,9 @@ namespace SquashGame.Tests
             // through the real pulls (pity off: a fresh banner each 60 pulls), gold included
             int pulls = 0, gold = 0; var seen = new int[5];
             Give(0, 100000);
+            var pg = ProfileStore.Current.Progress;
+            if (pg.Gacha == null) pg.Gacha = new GachaState();
+            pg.Gacha.Seed = 0x5EED1u;                                                // (a fixed seed: the same draws every run)
             for (int k = 0; k < 2000; k++)
             {
                 var b = GearDrops.Banners()[k % 6].Id;

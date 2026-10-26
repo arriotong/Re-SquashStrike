@@ -28,7 +28,7 @@ using static SquashSim.CourtDimensions;
 
 namespace SquashGame
 {
-    public static class VenueView
+    public static partial class VenueView
     {
         /// <summary>Settings > Video > Venue: 0 off, 1 low, 2 high.</summary>
         public static int Detail = 2;
@@ -89,6 +89,9 @@ namespace SquashGame
             switch (Courts.Current.Id)
             {
                 case "club": Club(c); break;
+                case "warehouse": Warehouse(c); break;                          // batch 5: the clubs (VenueView.Clubs.cs)
+                case "leisure": Leisure(c); break;
+                case "county": County(c); break;
                 case "desert": Desert(c); break;
                 case "station": Station(c); break;
                 case "rooftop": Rooftop(c); break;
@@ -119,7 +122,7 @@ namespace SquashGame
             n = default;
             switch (id)
             {
-                case "club": return false;                                                     // a club stays a club (batch 5)
+                case "club": case "warehouse": case "leisure": case "county": return false;     // a club stays a club: bright and even
                 case "desert": n = new Night { Spill = new Color(0.55f, 0.62f, 0.9f), SpillI = 0.21f, Wash = new Color(0.2f, 0.45f, 1.4f, 0.22f), Beams = true, AmbientK = 0.7f }; break;
                 case "arena": n = new Night { Spill = new Color(0.62f, 0.55f, 0.95f), SpillI = 0.19f, Wash = new Color(1.1f, 0.3f, 1.4f, 0.22f), AmbientK = 0.65f }; break;
                 case "station": n = new Night { Spill = new Color(0.95f, 0.78f, 0.55f), SpillI = 0.23f, Wash = new Color(1.4f, 0.85f, 0.35f, 0.18f), AmbientK = 0.6f }; break;
