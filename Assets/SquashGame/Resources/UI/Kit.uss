@@ -1038,3 +1038,42 @@
 .gt-ab-pips { font-size: 14px; color: rgba(255, 255, 255, 0.75); }
 .gt-codex { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
 .gt-codex-panel { width: 330px; margin-right: 16px; margin-bottom: 14px; }
+
+/* ---------- P7 phase 4: the world map ---------- */
+.k-wm { flex-direction: row; flex-grow: 1; align-items: flex-start; }
+.k-wm-left { flex-direction: column; margin-right: 24px; }
+.k-wm-frame { width: 1220px; height: 640px; border-radius: 14px; overflow: hidden; border-width: 1px; border-color: rgba(255, 255, 255, 0.10); }
+.k-map { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.k-wm-legend { flex-direction: row; justify-content: space-between; margin-top: 12px; }
+.k-wm-legend-t { font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.8); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-wm-legend-n { font-size: 13px; color: rgba(255, 255, 255, 0.45); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-wm-detail { flex-grow: 1; min-height: 640px; margin: 0; }
+.k-pin { position: absolute; width: 0; height: 0; overflow: visible; }
+.k-pin-dot { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 9px; border-width: 3px; border-color: rgb(14, 15, 18); }
+.k-pin-tag {
+    position: absolute; left: 16px; top: -11px; height: 22px; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+    font-size: 13px; color: rgb(255, 255, 255); background-color: rgba(14, 15, 18, 0.82); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-pin--closed .k-pin-dot { opacity: 0.45; }
+.k-pin--closed .k-pin-tag { color: rgba(255, 255, 255, 0.5); }
+.k-pin.fe-item--focused .k-pin-dot { left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 14px; border-color: rgb(200, 255, 61); }
+.k-pin.fe-item--focused .k-pin-tag { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-wm-you { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 19px; border-width: 2px; border-color: rgb(255, 255, 255); }
+.k-wm-home { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-width: 2px; border-color: rgba(255, 255, 255, 0.8); background-color: rgb(14, 15, 18); }
+.k-wm-dt-head { flex-direction: row; align-items: center; margin: 8px 0 18px 0; }
+.k-wm-dt-headt { margin-left: 14px; flex-shrink: 1; }
+.k-wm-dt-name { font-size: 32px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-wm-dt-meta { font-size: 13px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-wm-dt-row { margin-bottom: 14px; padding-left: 12px; border-left-width: 3px; border-left-color: rgba(255, 255, 255, 0.15); }
+.k-wm-dt-row--bad { border-left-color: rgb(255, 92, 92); }
+.k-wm-dt-row--bad .k-wm-dt-v { color: rgb(255, 150, 150); }
+.k-wm-dt-k { font-size: 10px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-wm-dt-v { font-size: 18px; margin-top: 2px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-wm-dt-go { margin-top: 6px; font-size: 13px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-wm-plan { flex-direction: row; flex-wrap: wrap; }
+.k-wm-week { width: 540px; min-height: 250px; margin: 0 20px 20px 0; }
+.k-wm-row { flex-direction: row; align-items: center; margin-top: 10px; }
+.k-wm-row-text { margin-left: 12px; flex-shrink: 1; }
+.k-wm-row-name { font-size: 20px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-wm-row-n { font-size: 12px; color: rgba(255, 255, 255, 0.6); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-card--map .k-card-art { background-color: rgb(11, 16, 24); }

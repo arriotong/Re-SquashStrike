@@ -113,6 +113,13 @@ namespace SquashSim.Career
             };
         }
 
+        /// <summary>The field of this week's event at index, as entered so far (without you), best first (the map's "who's there").</summary>
+        public List<int> FieldOf(int index)
+        {
+            var f = Fields();
+            return index >= 0 && index < f.Length ? new List<int>(f[index]) : new List<int>();
+        }
+
         /// <summary>The qualifying's last entrant's ranking (int.MaxValue: not full).</summary>
         int QualifyingLastIn(int index)
         {
@@ -239,22 +246,13 @@ namespace SquashSim.Career
             return Enter(o.Index);
         }
 
-        /// <summary>The week's events worth showing you: the best two you may enter, the next one up (a goal), and your
+        /// <summary>The week's events for the hub's cards: the biggest open to you (P7: the world map shows the rest) and your
         /// home club's open.</summary>
         public List<Option> EventsForYou()
         {
-            var open = new List<Option>();
-            Option next = null;
             var all = Options();
-            foreach (var o in all)
-            {
-                if (o.Home) continue;
-                if (o.Open) { if (open.Count < 2) open.Add(o); }
-                else if (open.Count == 0) next = o;                    // the smallest closed one above the open ones
-            }
             var list = new List<Option>();
-            if (next != null) list.Add(next);
-            list.AddRange(open);
+            foreach (var o in all) if (o.Open && !o.Home) { list.Add(o); break; }
             list.Add(all[all.Count - 1]);
             return list;
         }

@@ -2,8 +2,9 @@
 // Assets/SquashGame/Tests/PlayMode/ChoiceBudgetTests.cs
 // UI redesign U5: "not too many buttons on one screen". Every screen,
 // on every one of its tabs, shows at most 6 choices at once - besides
-// its one primary action. The draw's matches and the Academy trail's
-// lessons are maps you browse, not choices, and are not counted.
+// its one primary action. The draw's matches, the Academy trail's
+// lessons and the world map's pins are maps you browse, not choices,
+// and are not counted.
 // ===========================================================
 
 using System;
@@ -28,7 +29,7 @@ namespace SquashGame.Tests
         static int Choices(MenuScreen s)
         {
             int n = 0;
-            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode)) n++;
+            foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode) && !(it is MapPinItem)) n++;
             return n;
         }
 
@@ -95,6 +96,7 @@ namespace SquashGame.Tests
             yield return Check(fe, "Career hub (match)", new CareerHubScreen(), log);
             yield return Check(fe, "Match preview", new MatchPreviewScreen(c.NextOpponent()), log);
             yield return Check(fe, "Draw", new DrawScreen(c.S.Current), log);
+            yield return Check(fe, "World map", new WorldMapScreen(), log);
             yield return Check(fe, "Career settings", new CareerSettingsScreen(), log);
             CareerStore.Delete();
 

@@ -183,7 +183,8 @@ namespace SquashGame.UI
                 if (state == 1)
                 {
                     var top = Tour.HeadlineOf(m);
-                    note = Tour.Week(m).Count == 0 ? "OFF" : top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS" : top == Tier.Platinum ? "PLAT" : Tour.Info(top).Name.ToUpperInvariant();
+                    note = Tour.Week(m).Count == 0 ? (m >= Tour.OffSeasonFrom ? "OFF" : "–") : top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS"
+                         : top == Tier.Platinum ? "PLAT" : Tour.Info(top).WorldTour ? Tour.Info(top).Name.ToUpperInvariant() : Tour.Info(top).Short;
                 }
                 list.Add(("WK " + (m + 1), note, state));
             }
@@ -413,6 +414,7 @@ namespace SquashGame.UI
         protected override string Title { get { return Career.S.Name; } }
 
         public CardItem MatchCard { get; private set; }
+        public CardItem MapCard { get; private set; }
         readonly List<(CardItem card, int index)> _events = new List<(CardItem, int)>();
         CardItem _lastEvent;
         int _rankFilter = 1;
@@ -451,6 +453,13 @@ namespace SquashGame.UI
             {
                 Kit.L(hero, Tour.WeekLabel(s.Week).ToUpperInvariant() + "  ·  " + s.City.ToUpperInvariant() + "  ·  " + Career.Money(s.Cash) + "  ·  CHOOSE YOUR EVENT", "k-cr-head");
                 var row = Kit.Box(hero, "k-row");
+                // P7 phase 4: the world map - every event this week, the trips
+                int count = Tour.Week(s.Slot).Count;
+                var map = AddTo(row, new CardItem("World map", count == 0 ? (s.Week >= Tour.OffSeasonFrom ? "THE OFF-SEASON" : "A QUIET WEEK") : count + (count == 1 ? " EVENT THIS WEEK" : " EVENTS THIS WEEK"), () => Fe.Push(new WorldMapScreen()))
+                    .Line("Every event, its entry and the trip from " + s.City));
+                map.Art.Add(new WorldMapView(true));
+                map.Root.AddToClassList("k-card--event"); map.Root.AddToClassList("k-card--map");
+                MapCard = map;
                 foreach (var o in c.EventsForYou())
                 {
                     int index = o.Index;
