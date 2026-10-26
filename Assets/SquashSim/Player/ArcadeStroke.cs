@@ -421,6 +421,14 @@ namespace SquashSim
             if (control != 1.0) spread *= control;
             spread *= 1 - c.EarlySpreadCut * early;                         // set early: a tighter shot
             if (Assisted) spread *= GameTuning.Hit.AssistSpreadScale;       // the easier mode: a little tighter
+            // P7 phase 1: a tired athlete sprays it - wider, and even a clean stroke strays a little
+            double tiredness = Fatigue.Tiredness(player);
+            if (tiredness > 0)
+            {
+                var fat = PhysicsConfig.Current.Fatigue;
+                spread = spread * (1 + fat.TiredSpread * tiredness) + c.MaxSpread * fat.TiredBaseSpread * tiredness;
+            }
+            if (!ctrl.ServeStroke) Fatigue.OnCharge(player, charge);        // P7 phase 1: a charged stroke costs breath
 
             double ex = (Rnd() - 0.5) * spread, ey = (Rnd() - 0.5) * spread * 0.9;
             if (wall == 0) tx += ex; else tz += ex;

@@ -173,6 +173,11 @@
 }
 .sb-serve { width: 8px; height: 8px; border-radius: 4px; margin-right: 6px; background-color: rgba(0, 0, 0, 0); }
 .sb-serve--on { background-color: rgb(200, 255, 61); }
+/* P7 phase 1: stamina */
+.sb-stamina { width: 64px; height: 4px; margin-top: 2px; border-radius: 2px; background-color: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.sb-stamina-fill { height: 4px; width: 64px; background-color: rgb(120, 214, 255); }
+.sb-stamina-fill--tired { background-color: rgb(255, 184, 59); }
+.sb-stamina-fill--spent { background-color: rgb(255, 82, 72); }
 .sb-score { font-size: 40px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); margin-top: -4px; }
 .sb-mid { align-items: center; margin: 0 16px; }
 .sb-label { font-size: 10px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

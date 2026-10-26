@@ -19,6 +19,9 @@ static class StarBench
 {
     public static readonly Dictionary<string, int> Ends = new Dictionary<string, int>();
     public static readonly Dictionary<string, int> Hits = new Dictionary<string, int>();
+    /// <summary>Batch 7 phase 1: every rally's stats (stamina at its end, its length) for the stamina report.</summary>
+    public static readonly List<RallyStats> Rallies = new List<RallyStats>();
+    public static readonly double[] Dist = new double[2], Fast = new double[2], RallyTime = new double[2];
     public static bool NoSig = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--no-sig") >= 0;
     public static bool Geo = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--geo") >= 0;
     public static bool NoAttr = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--no-attr") >= 0;
@@ -42,6 +45,19 @@ static class StarBench
             }
             Console.WriteLine("  " + (d.name + " (" + Roster.StyleName(d.style) + ")").PadRight(30) + d.rating.ToString().PadLeft(6) + "   " + Stars.DifficultyFor(id, 0).ToString("0.00") +
                               "   " + (100.0 * won / Math.Max(1, total)).ToString("0").PadLeft(6) + "%      " + gamesWon + " / " + games);
+            if (Rallies.Count > 0 && System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--stamina") >= 0)
+            {
+                double Avg(System.Func<RallyStats, double> f, System.Func<RallyStats, bool> where) { double sum = 0; int n = 0; foreach (var r in Rallies) if (where(r)) { sum += f(r); n++; } return n > 0 ? sum / n : double.NaN; }
+                double low = 1; int tired = 0; foreach (var r in Rallies) { low = Math.Min(low, Math.Min(r.Stamina0, r.Stamina1)); if (Math.Min(r.Stamina0, r.Stamina1) < 0.6) tired++; }
+                Console.WriteLine("      stamina at rally end: you " + Avg(r => r.Stamina0, r => true).ToString("0.00") + ", them " + Avg(r => r.Stamina1, r => true).ToString("0.00") +
+                    ", lowest " + low.ToString("0.00") + ", after 10+ s rallies " + Avg(r => Math.Min(r.Stamina0, r.Stamina1), r => r.Seconds >= 10).ToString("0.00") +
+                    ", after 20+ s " + Avg(r => Math.Min(r.Stamina0, r.Stamina1), r => r.Seconds >= 20).ToString("0.00") + ", rallies ending tired (<0.6) " + (100.0 * tired / Rallies.Count).ToString("0") + "%" +
+                    ", mean rally " + Avg(r => r.Seconds, r => true).ToString("0.0") + " s");
+                Console.WriteLine("      in rallies: you ran " + (Dist[0] / Math.Max(1, RallyTime[0])).ToString("0.00") + " m/s (flat out " + (100 * Fast[0] / Math.Max(1, RallyTime[0])).ToString("0") + "% of the time), them " +
+                    (Dist[1] / Math.Max(1, RallyTime[1])).ToString("0.00") + " m/s (" + (100 * Fast[1] / Math.Max(1, RallyTime[1])).ToString("0") + "%)");
+                for (int i = 0; i < 2; i++) { Dist[i] = 0; Fast[i] = 0; RallyTime[i] = 0; }
+                Rallies.Clear();
+            }
             if (only != null) foreach (var kv in Ends) Console.WriteLine("      the model won by: " + kv.Key + "  x" + kv.Value);
             if (only != null) foreach (var kv in Hits) Console.WriteLine("      " + kv.Key + "  x" + kv.Value);
         }
@@ -65,6 +81,7 @@ static class StarBench
         while (m.Phase != MatchPhase.MatchOver && m.Time < 1800)
         {
             m.Step(dt);
+            if (m.Phase == MatchPhase.Rally) for (int i = 0; i < 2; i++) { var pl = m.Players[i].Player; Dist[i] += pl.Speed * dt; if (pl.Speed > 0.85 * PhysicsConfig.Current.Player.MaxSpeed) Fast[i] += dt; RallyTime[i] += dt; }
             if (Geo && m.History.Count != hist)
             {
                 hist = m.History.Count;
@@ -90,6 +107,7 @@ static class StarBench
                 }
             }
         }
+        Rallies.AddRange(m.Stats);
         int w = 0, t = 0;
         foreach (var o in m.History) { if (o.Winner < 0) continue; t++; if (o.Winner == 0) { w++; string k = o.Kind + " " + o.Reason; Ends[k] = (Ends.TryGetValue(k, out int c) ? c : 0) + 1; } }
         PhysicsConfig.ResetToDefaults();

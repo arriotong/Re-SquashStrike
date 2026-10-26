@@ -53,6 +53,12 @@ namespace SquashSim
                 fatigueScale = Fatigue.MovementScale(player);
                 maxSpeed *= fatigueScale;
             }
+            // P7 phase 1: the game's movement tires too - below TiredBelow, slower to the ball (0 in the lab: unchanged)
+            if (player.ArcadeMovement && player.Stamina < 1.0)
+            {
+                double t = Fatigue.Tiredness(player);
+                if (t > 0) maxSpeed *= 1 - PhysicsConfig.Current.Fatigue.ArcadeSpeedLoss * t;
+            }
 
             double desiredX = intent.Move.X * maxSpeed;
             double desiredZ = intent.Move.Z * maxSpeed;

@@ -612,6 +612,7 @@ namespace SquashSim
             if (Phase != MatchPhase.GameOver) return;
             Score.NextGame();
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.SecondUsed = false;   // P5: a new game, a new second serve
+            if (PhysicsConfig.Current.Fatigue.FreshEachGame) { Players[0].Player.Stamina = 1.0; Players[1].Player.Stamina = 1.0; }   // P7: the break restores
             SetUpServe();
         }
 

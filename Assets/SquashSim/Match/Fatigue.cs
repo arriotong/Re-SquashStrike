@@ -30,10 +30,13 @@ namespace SquashSim
             double max = PhysicsConfig.Current.Player.MaxSpeed;
             double frac = max > 0 ? p.Speed / max : 0;
             double s = p.Stamina;
-            double drain = f.DrainRate * frac * frac * dt;
+            // P7 phase 1: the game's movement drains with speed, not its square - a keyboard runs flat out or not at all, and
+            // the square let an AI that eases into its spots stay fresh while a person tired (bench: 0.98 v 0.55)
+            double drain = (p.ArcadeMovement ? f.DrainRate * frac : f.DrainRate * frac * frac) * dt;
             double k = p.Attributes.DrainScale;                    // P3-C1: exactly 1 when neutral
             if (p.Mods != null) k *= p.Mods.DrainSelf;              // P5: an elite's Tireless
             if (p.OpponentDrain != 1.0) k *= p.OpponentDrain;      // P5: the opponent's Pressure
+            if (rallyLive && f.RallyDrain > 0) drain += f.RallyDrain * dt;   // P7 phase 1: the rally's own effort
             s -= k != 1.0 ? drain * k : drain;
             if (!rallyLive) s += f.RecoverBetweenRallies * dt;
             else if (p.Speed < f.StandingSpeed) s += f.RecoverStanding * dt;
@@ -57,6 +60,25 @@ namespace SquashSim
             if (p.Mods != null) k *= p.Mods.DrainSelf;
             if (p.OpponentDrain != 1.0) k *= p.OpponentDrain;
             if (k != 1.0) cost *= k;
+            double s = p.Stamina - cost;
+            p.Stamina = s < f.Floor ? f.Floor : s;
+        }
+
+        /// <summary>P7 phase 1: how tired, 0 (at or above TiredBelow) .. 1 (at the floor). 0 when tiredness is off (the lab).</summary>
+        public static double Tiredness(TestPlayer p)
+        {
+            var f = PhysicsConfig.Current.Fatigue;
+            if (!f.Enabled || f.TiredBelow <= f.Floor || p.Stamina >= f.TiredBelow) return 0;
+            double t = (f.TiredBelow - p.Stamina) / (f.TiredBelow - f.Floor);
+            return t > 1 ? 1 : t;
+        }
+
+        /// <summary>P7 phase 1: the effort of a charged stroke (charge 0..1 of a full charge).</summary>
+        public static void OnCharge(TestPlayer p, double charge)
+        {
+            var f = PhysicsConfig.Current.Fatigue;
+            if (!f.Enabled || f.ChargeCost <= 0 || charge <= 0) return;
+            double cost = f.ChargeCost * (charge > 1 ? 1 : charge) * p.Attributes.DrainScale;
             double s = p.Stamina - cost;
             p.Stamina = s < f.Floor ? f.Floor : s;
         }

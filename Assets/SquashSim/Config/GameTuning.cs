@@ -63,6 +63,15 @@ namespace SquashSim
         }
 
         /// <summary>The simple hitting system: reach, timing, spread, the dive and sprint.</summary>
+        /// <summary>P7 phase 1 (2026-10-26): stamina in the game. Tuned with MatchBench --stars --stamina: a normal rally
+        /// ends about 0.85, a 10 s rally about 0.65, a 20 s one about 0.45; tired below 0.6 - up to 12% slower and a wider
+        /// spray at the floor (0.2). Recovery between rallies is partial, a new game is fresh.</summary>
+        public static class Stamina
+        {
+            public const double DrainRate = 0.011, RallyDrain = 0.008, RecoverStanding = 0.0, RecoverBetweenRallies = 0.08;   // the rally's own effort, the same for both: fair - a keyboard runs flat out, the AI eases into its spots
+            public const double TiredBelow = 0.6, SpeedLoss = 0.12, SpreadGain = 0.4, BaseSpread = 0.12, ChargeCost = 0.02;
+        }
+
         public static class Hit
         {
             // Shot lines (2026-10-19, "the game should know I'm going for a drive"): for a person, the half of the

@@ -271,6 +271,14 @@ namespace SquashSim
         public double Floor;                  // never below this
         public double SpeedLoss;              // top speed and acceleration lose this much at zero stamina
         public double BalanceCostGain;        // reach balance costs gain this much at zero stamina
+        // P7 phase 1 (2026-10-26): stamina in the game's own movement and hitting (the arcade system) - 0 / off in the lab
+        public double TiredBelow;             // below this stamina the athlete is tired (0: never)
+        public double ArcadeSpeedLoss;        // top speed lost when fully tired (stamina at Floor)
+        public double TiredSpread;            // shot spread gained when fully tired, x the stroke's own spread
+        public double TiredBaseSpread;        // ... plus this much of MaxSpread on every stroke, clean ones too
+        public double ChargeCost;             // stamina a fully charged stroke costs
+        public double RallyDrain;             // per second while a rally is live, running or not (the effort of the rally itself)
+        public bool FreshEachGame;            // a new game starts at full stamina
     }
 
     /// <summary>Rules, serve and match flow.</summary>
@@ -510,6 +518,7 @@ namespace SquashSim
             UseGameAim();
             UseGameSwing();
             UseArcadeHit();
+            UseGameFatigue();
             Current.Match.AppealsEnabled = true;                      // P2-M7: lets are back (Settings > Gameplay > Lets turns them off)
             // Presentation only: the drawn ball is bigger than the real one (physics radius unchanged).
             Current.Render.BallVisualScale = GameTuning.Ball.VisualScale;
@@ -520,6 +529,23 @@ namespace SquashSim
         /// release to hit - if the ball is within reach it is hit, sent to your aim target; how close it was
         /// sets how clean. (The AI keeps the physical swing.)
         /// </summary>
+        /// <summary>P7 phase 1: stamina for the game - every mode, both players, the AI too (GameTuning.Stamina).</summary>
+        public static void UseGameFatigue()
+        {
+            var f = Current.Fatigue;
+            f.Enabled = true;
+            f.DrainRate = GameTuning.Stamina.DrainRate;
+            f.RecoverStanding = GameTuning.Stamina.RecoverStanding;
+            f.RecoverBetweenRallies = GameTuning.Stamina.RecoverBetweenRallies;
+            f.TiredBelow = GameTuning.Stamina.TiredBelow;
+            f.ArcadeSpeedLoss = GameTuning.Stamina.SpeedLoss;
+            f.TiredSpread = GameTuning.Stamina.SpreadGain;
+            f.TiredBaseSpread = GameTuning.Stamina.BaseSpread;
+            f.ChargeCost = GameTuning.Stamina.ChargeCost;
+            f.RallyDrain = GameTuning.Stamina.RallyDrain;
+            f.FreshEachGame = true;
+        }
+
         public static void UseArcadeHit()
         {
             // Every number: GameTuning (Hit, Shots, Serve, Assist, Ball).

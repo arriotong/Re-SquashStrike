@@ -46,6 +46,8 @@ namespace SquashGame.UI
         public PracticeHud PracticeHud { get; private set; }
         /// <summary>The menus' music (chill, the home page's).</summary>
         public Audio.MenuMusic Music { get; private set; }
+        readonly Dictionary<string, float> _announced = new Dictionary<string, float>();
+        const string NowPlaying = "NOW PLAYING";
         public ArcadeHud ArcadeHud { get; private set; }
         public LessonHud LessonHud { get; private set; }
         /// <summary>A screen to open over the main menu when the match scene loads (back from the arcade).</summary>
@@ -115,7 +117,14 @@ namespace SquashGame.UI
 
             _input = new MenuInput();
             Music = gameObject.AddComponent<Audio.MenuMusic>();
-            Music.OnSong = s => { if (Music.Level > 0.05f || Music.Want > 0.5f) Toast("NOW PLAYING", s.Title + "   ·   " + s.Artist); };   // batch 6
+            Music.OnSong = s =>
+            {
+                // batch 6: on the menus only (never over play), and not the same song twice in a row of quick screen changes
+                if (Top == null || Music.Want < 0.5f) return;
+                if (_announced.TryGetValue(s.File, out float at) && Time.unscaledTime - at < 60f) return;
+                _announced[s.File] = Time.unscaledTime;
+                Toast(NowPlaying, s.Title + "   ·   " + s.Artist);
+            };
             // UI redesign: live 3D pictures for cards
             var vig = gameObject.AddComponent<Vignettes>();
             vig.Runner = runner;
@@ -182,6 +191,19 @@ namespace SquashGame.UI
             ToastLog.Add(text);
             if (_toasts.Count >= MaxToasts) { _toastQueue.Enqueue((kicker, text, tier)); return; }     // three at a time; the rest wait
             ShowToast(kicker, text, tier);
+        }
+
+        /// <summary>Take down the toasts with this kicker (and drop any such waiting).</summary>
+        public void ClearToasts(string kicker)
+        {
+            for (int i = _toasts.Count - 1; i >= 0; i--)
+            {
+                var k = _toasts[i].box.Q<Label>(className: "toast-kicker");
+                if (k != null && k.text == kicker) { _toasts[i].box.RemoveFromHierarchy(); _toasts.RemoveAt(i); }
+            }
+            var keep = new List<(string, string, int)>();
+            while (_toastQueue.Count > 0) { var q = _toastQueue.Dequeue(); if (q.kicker != kicker) keep.Add(q); }
+            foreach (var q in keep) _toastQueue.Enqueue(q);
         }
 
         void ShowToast(string kicker, string text, int tier)
@@ -293,6 +315,7 @@ namespace SquashGame.UI
         public void StartMatch(MatchSettings s)
         {
             Clear();
+            ClearToasts(NowPlaying);                                              // batch 6: the menus' "now playing" doesn't follow you on court
             Stats.Reset();
             Match.BeginMatch(s);
             ClearEdges();

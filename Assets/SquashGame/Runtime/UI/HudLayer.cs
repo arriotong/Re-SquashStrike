@@ -33,6 +33,9 @@ namespace SquashGame
         readonly VisualElement _bug = new VisualElement();
         readonly VisualElement[] _serve = new VisualElement[2];
         readonly Label[] _name = new Label[2], _points = new Label[2];
+        readonly VisualElement[] _stamina = new VisualElement[2];               // P7 phase 1: each player's stamina, under the score
+        /// <summary>The stamina bars' fill, 0..1 (tests).</summary>
+        public float StaminaShown(int p) { return _stamina[p] == null ? -1f : _stamina[p].resolvedStyle.width / 64f; }
         readonly Label _system = new Label(), _games = new Label(), _meta = new Label();
         readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label(), _promptKey = new Label();
         readonly VisualElement _third = new VisualElement(), _promptBox = new VisualElement();
@@ -98,6 +101,9 @@ namespace SquashGame
                 _points[p] = new Label(); _points[p].AddToClassList("sb-score");
                 nameRow.Add(_serve[p]); nameRow.Add(_name[p]);
                 side.Add(nameRow); side.Add(_points[p]);
+                var bar = new VisualElement(); bar.AddToClassList("sb-stamina");
+                _stamina[p] = new VisualElement(); _stamina[p].AddToClassList("sb-stamina-fill");
+                bar.Add(_stamina[p]); side.Add(bar);
                 _bug.Add(side);
                 if (p == 0) _bug.Add(mid);
             }
@@ -153,6 +159,12 @@ namespace SquashGame
                     _lastPoints[p] = s.Points[p];
                 }
                 _points[p].text = s.Points[p].ToString();
+                // P7 phase 1: the stamina bar - amber when tired, red when spent
+                float st = Mathf.Clamp01((float)m.Players[p].Player.Stamina);
+                _stamina[p].style.width = 64f * st;
+                float tiredAt = (float)PhysicsConfig.Current.Fatigue.TiredBelow;
+                _stamina[p].EnableInClassList("sb-stamina-fill--tired", tiredAt > 0 && st < tiredAt);
+                _stamina[p].EnableInClassList("sb-stamina-fill--spent", tiredAt > 0 && st < 0.35f);
             }
             int games = s.Games[0] + s.Games[1];
             if (games != _lastGames)
