@@ -98,6 +98,26 @@ namespace SquashGame
             });
         }
 
+        /// <summary>Batch 1: a searchlight's beam - soft across (u), strongest at its foot and fading out along it (v 0 -> 1).
+        /// Alpha only.</summary>
+        public static Texture2D Beam()
+        {
+            return Cached("beam", () =>
+            {
+                const int W = 32, H = 256;
+                var px = new Color[W * H];
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        float u = Mathf.Abs((x + 0.5f) / W * 2f - 1f), v = (y + 0.5f) / H;
+                        float across = Mathf.Clamp01(1f - u); across *= across;
+                        float along = Mathf.Pow(1f - v, 1.6f) * Mathf.Clamp01(v * 40f);
+                        px[y * W + x] = new Color(1f, 1f, 1f, across * along);
+                    }
+                return Make(W, H, px, false);
+            });
+        }
+
         /// <summary>A soft round spot: opaque at the middle, nothing at the edge (contact patches). Alpha only.</summary>
         public static Texture2D SoftSpot()
         {

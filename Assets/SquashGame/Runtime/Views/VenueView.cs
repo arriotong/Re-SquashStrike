@@ -96,6 +96,121 @@ namespace SquashGame
                 default: ShowCourt(c); break;
             }
             if (high && Post) Grade(venue);
+            NightLook(c, root);
+        }
+
+        // =====================================================================================
+        // batch 1 (2026-10-26): the pro venues' night look - after the user's photos (the Giza pyramids, the
+        // Australian Open in Brisbane, the British Open in Birmingham): the hall near black, the glass court the
+        // brightest thing in it, lit from the rig above; the crowd in silhouette in the spill; colour from the
+        // screens, washes on the floor and searchlights. The court's key and fill light only the court (rendering
+        // layer 1); the venue (layer 2) gets a dim, coloured spill. Cheap: no extra shadowed lights - the washes and
+        // beams are see-through glowing cards.
+        // =====================================================================================
+
+        public const uint CourtLayer = 1u, VenueLayer = 2u;
+
+        /// <summary>A court's night: spill on the venue (colour, intensity), the floor washes' colour (alpha 0: none),
+        /// searchlights, and how far the ambient is turned down.</summary>
+        struct Night { public Color Spill; public float SpillI; public Color Wash; public bool Beams; public float AmbientK; }
+
+        static bool NightFor(string id, out Night n)
+        {
+            n = default;
+            switch (id)
+            {
+                case "club": return false;                                                     // a club stays a club (batch 5)
+                case "desert": n = new Night { Spill = new Color(0.55f, 0.62f, 0.9f), SpillI = 0.21f, Wash = new Color(0.2f, 0.45f, 1.4f, 0.22f), Beams = true, AmbientK = 0.7f }; break;
+                case "arena": n = new Night { Spill = new Color(0.62f, 0.55f, 0.95f), SpillI = 0.19f, Wash = new Color(1.1f, 0.3f, 1.4f, 0.22f), AmbientK = 0.65f }; break;
+                case "station": n = new Night { Spill = new Color(0.95f, 0.78f, 0.55f), SpillI = 0.23f, Wash = new Color(1.4f, 0.85f, 0.35f, 0.18f), AmbientK = 0.6f }; break;
+                case "rooftop": n = new Night { Spill = new Color(0.6f, 0.58f, 0.9f), SpillI = 0.21f, Wash = new Color(0.4f, 0.5f, 1.4f, 0.2f), AmbientK = 0.75f }; break;
+                default: n = new Night { Spill = new Color(0.6f, 0.68f, 1f), SpillI = 0.19f, Wash = new Color(0.2f, 0.5f, 1.4f, 0.2f), AmbientK = 0.6f }; break;   // the show court
+            }
+            return true;
+        }
+
+        static void NightLook(Ctx c, Transform root)
+        {
+            if (!NightFor(Courts.Current.Id, out var n)) return;
+            // The court's own lights: the court only.
+            foreach (var l in root.GetComponentsInChildren<Light>(true))
+            {
+                if (l.type == LightType.Directional || l.name == "CourtSpot" || l.name == "TowerSpot") Layers(l, CourtLayer);
+                else Layers(l, VenueLayer);                         // the hall's lamps and washes: the venue only
+            }
+            var key = root.Find("KeyLight");
+            if (key != null) key.GetComponent<Light>().intensity *= 1.25f;             // the rig over the court: brighter than before
+            // Everything away from the court is the venue.
+            Vector3 a = W(-HW - 1.3, 0, -1.2), b = W(HW + 1.3, 0, L + 5.2);
+            float x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x), z0 = Mathf.Min(a.z, b.z), z1 = Mathf.Max(a.z, b.z);
+            foreach (var r in c.Venue.GetComponentsInChildren<Renderer>(true))
+            {
+                var p = r.bounds.center;
+                bool court = p.x > x0 && p.x < x1 && p.z > z0 && p.z < z1 && p.y < 8f && r.bounds.size.x < 14f && r.bounds.size.z < 16f;   // (not a deck or a hall floor that runs under it)
+                r.renderingLayerMask = court ? CourtLayer : VenueLayer;
+            }
+            var spill = new GameObject("VenueSpill").AddComponent<Light>();
+            spill.transform.SetParent(c.Venue, false);
+            spill.type = LightType.Directional;
+            spill.color = n.Spill; spill.intensity = n.SpillI; spill.shadows = LightShadows.None;
+            Layers(spill, VenueLayer);
+            spill.transform.rotation = Quaternion.Euler(55f, 160f, 0f);
+            // The court's glow on the nearest rows: they catch the light off the glass, the back rows fall into the dark.
+            var glow = new GameObject("CourtGlow").AddComponent<Light>();
+            glow.transform.SetParent(c.Venue, false);
+            glow.type = LightType.Point; glow.shadows = LightShadows.None;
+            glow.color = Color.Lerp(Color.white, n.Spill, 0.35f); glow.range = 26f; glow.intensity = 16f;
+            Layers(glow, VenueLayer);
+            glow.transform.localPosition = W(0, 4.5, L / 2);
+            RenderSettings.ambientSkyColor *= n.AmbientK;
+            RenderSettings.ambientEquatorColor *= n.AmbientK;
+            RenderSettings.ambientGroundColor *= n.AmbientK;
+            if (n.Wash.a > 0) Washes(c, n.Wash);
+            if (n.Beams) Searchlights(c);
+        }
+
+        /// <summary>The rendering layers a light lights (URP reads its own light data, not Light.renderingLayerMask).</summary>
+        static void Layers(Light l, uint mask)
+        {
+            l.renderingLayerMask = (int)mask;
+            l.GetUniversalAdditionalLightData().renderingLayers = mask;
+        }
+
+        /// <summary>Coloured pools of light on the floor round the stage (Birmingham's purple wash).</summary>
+        static void Washes(Ctx c, Color colour)
+        {
+            var mat = c.Palette.Clear(colour); mat.mainTexture = ProcTex.SoftSpot();
+            var rng = new System.Random(17);
+            foreach (int side in new[] { -1, 1 })
+                for (int k = 0; k < 4; k++)
+                {
+                    float z = -0.5f + k * (float)(L + 3.5) / 3f, s = 2.4f + (float)rng.NextDouble() * 0.8f;
+                    var q = Greybox.Primitive(PrimitiveType.Quad, "FloorWash", c.Venue, mat, false);
+                    q.transform.localPosition = W(side * (HW + 1.35 + rng.NextDouble() * 0.3), 0.012, z);
+                    q.transform.localRotation = Quaternion.Euler(90f, 0, 0);
+                    q.transform.localScale = new Vector3(s, s * 1.4f, 1f);
+                }
+        }
+
+        /// <summary>The Giza night: searchlights from behind the stands, crossing high over the court.</summary>
+        static void Searchlights(Ctx c)
+        {
+            var mat = c.Palette.Clear(new Color(0.35f, 0.65f, 1.8f, 0.32f)); mat.mainTexture = ProcTex.Beam();
+            var rng = new System.Random(29);
+            for (int i = 0; i < 8; i++)
+            {
+                int side = i % 2 == 0 ? -1 : 1;
+                Vector3 foot = W(side * (12 + rng.NextDouble() * 6), 0.5, -14 + i * 6.5);
+                Vector3 dir = (W(-side * (20 + rng.NextDouble() * 40), 160, -120 - rng.NextDouble() * 120) - foot).normalized;
+                const float len = 190f, wide = 2.2f;
+                for (int k = 0; k < 2; k++)                                           // two crossed cards: a beam from any side
+                {
+                    var q = Greybox.Primitive(PrimitiveType.Quad, "Searchlight", c.Venue, mat, false);
+                    q.transform.localPosition = foot + dir * (len / 2);                 // (a quad's v runs up it: the foot at the foot)
+                    q.transform.localRotation = Quaternion.LookRotation(Vector3.Cross(dir, k == 0 ? Vector3.right : Vector3.forward).normalized, dir);
+                    q.transform.localScale = new Vector3(wide, len, 1f);
+                }
+            }
         }
 
         // =====================================================================================
@@ -794,13 +909,14 @@ namespace SquashGame
             vol.priority = 10;
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             profile.name = "BroadcastGrade";
+            bool night = NightFor(Courts.Current.Id, out _);                      // batch 1: punchier at night - the glow of the rig and screens
             var tone = profile.Add<Tonemapping>(true); tone.mode.Override(TonemappingMode.Neutral);
             var bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(1.0f); bloom.intensity.Override(0.55f); bloom.scatter.Override(0.62f);
+            bloom.threshold.Override(night ? 0.9f : 1.0f); bloom.intensity.Override(night ? 0.8f : 0.55f); bloom.scatter.Override(0.66f);
             var vig = profile.Add<Vignette>(true);
-            vig.intensity.Override(0.24f); vig.smoothness.Override(0.45f);
+            vig.intensity.Override(night ? 0.34f : 0.24f); vig.smoothness.Override(0.45f);
             var col = profile.Add<ColorAdjustments>(true);
-            col.contrast.Override(10f); col.saturation.Override(8f); col.postExposure.Override(0.15f);
+            col.contrast.Override(night ? 18f : 10f); col.saturation.Override(night ? 12f : 8f); col.postExposure.Override(0.15f);
             vol.sharedProfile = profile;
         }
 
