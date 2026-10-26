@@ -50,7 +50,8 @@ namespace SquashGame.Progression
     public sealed class Wallet
     {
         public int Tickets, TenTickets, Coins;
-        public int WinsTowardTicket;          // every 3rd match won pays a ticket
+        public int WinsTowardTicket;          // (before batch 3: every 3rd match won paid a ticket)
+        public int CapDay = -1, CapCoins;     // batch 3: today's coins from local and casual online matches (the soft cap)
     }
 
     [Serializable]
@@ -235,6 +236,32 @@ namespace SquashGame.Progression
             if (P.Owned.Contains(it.Id)) { d.Coins = DupeCoins[(int)r]; Wallet.Coins += d.Coins; }
             else { P.Owned.Add(it.Id); d.New = true; }
             return d;
+        }
+
+        // ---------------- batch 3: coins buy tickets and the kit store ----------------
+
+        public const int TicketPrice = 150;
+
+        public static bool BuyTicket()
+        {
+            if (Wallet.Coins < TicketPrice) return false;
+            Wallet.Coins -= TicketPrice;
+            Wallet.Tickets++;
+            ProfileStore.Save();
+            return true;
+        }
+
+        /// <summary>The kit store: the kit that levels used to give, for coins (dearer the later its old level).</summary>
+        public static bool InStore(Item it) { return it != null && it.Unlock == UnlockKind.Level; }
+        public static int StorePrice(Item it) { return InStore(it) ? 100 + (it.Level * 8 + 5) / 10 * 10 : 0; }
+
+        public static bool BuyFromStore(Item it)
+        {
+            if (!InStore(it) || Owns(it) || Wallet.Coins < StorePrice(it)) return false;
+            Wallet.Coins -= StorePrice(it);
+            P.Owned.Add(it.Id);
+            ProfileStore.Save();
+            return true;
         }
 
         // ---------------- coins: gold-plating and the Pro Shop ----------------

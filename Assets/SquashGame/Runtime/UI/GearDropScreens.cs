@@ -79,6 +79,8 @@ namespace SquashGame.UI
                 one.Enabled = () => GearDrops.CanPull(1);
                 var ten = AddTo(acts, new ActionItem("Pull ×10  ·  " + (GearDrops.Wallet.TenTickets > 0 ? "1 ×10 ticket" : "10 tickets"), () => Pull(bn.Id, GearDrops.TenPull)));
                 ten.Enabled = () => GearDrops.CanPull(GearDrops.TenPull);
+                var buy = AddTo(acts, new ActionItem("Buy a ticket  ·  " + GearDrops.TicketPrice + " coins", () => { if (GearDrops.BuyTicket()) { Sounds.Play("stamp"); Fe.Replace(new GearDropScreen(bn.Id)); } else Sounds.Play("back"); }));
+                buy.Enabled = () => GearDrops.Wallet.Coins >= GearDrops.TicketPrice;
                 Odds(page);
             }
 
@@ -123,7 +125,7 @@ namespace SquashGame.UI
                 "After " + GearDrops.Pity + " pulls on a banner without a Legendary, the next one is.",
                 "Duplicates pay coins: " + string.Join(" / ", System.Array.ConvertAll(GearDrops.DupeCoins, c => c.ToString())) + " (Common to Legendary).",
                 "Gold editions never repeat - or gold-plate what you own with coins.",
-                "Tickets come from playing only: wins, challenges, the Gauntlet, Scenarios, the career. Nothing here is bought.",
+                "Tickets come from playing: levels, challenges, the Gauntlet, Scenarios, the career - or buy one with " + GearDrops.TicketPrice + " coins, earned by playing. Never real money.",
             })
                 Kit.L(o, "·  " + rule, "gd-rule");
         }

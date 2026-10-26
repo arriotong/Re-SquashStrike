@@ -33,6 +33,7 @@ namespace SquashGame.Progression
         public bool Online, Ranked;            // P2-M8
         public bool AgainstHard;               // P6: against an opponent rated 85 or more (was: Quick Match on Hard)
         public bool AgainstNo1;                // P6: against the world No. 1 (any mode)
+        public int OppRating;                  // batch 3: the AI opponent's rating (what the match pays; 0: a person)
         public int GamesToWin;
         public List<int[]> Games = new List<int[]>();   // [you, them] per finished game
         public int RalliesWon, Rallies, LongestRally;

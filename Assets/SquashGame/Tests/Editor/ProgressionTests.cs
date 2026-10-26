@@ -41,11 +41,10 @@ namespace SquashGame.Tests
             // P3-R1: from any XP below the top there is a next unlock, at a higher level, with the XP to it
             foreach (int xp in new[] { 0, 150, 5000, Rewards.TotalFor(30) + 7 })
             {
-                int level = Rewards.NextUnlock(xp, out var items, out int toGo);
-                Assert.That(level, Is.GreaterThan(Rewards.LevelOf(xp)), "xp " + xp);
-                Assert.That(items, Is.Not.Empty);
+                int level = Rewards.NextUnlock(xp, out var gives, out int toGo);
+                Assert.That(level, Is.EqualTo(Rewards.LevelOf(xp) + 1), "xp " + xp);
+                Assert.That(gives, Does.Contain("ticket"));
                 Assert.That(toGo, Is.EqualTo(Rewards.TotalFor(level) - xp));
-                Assert.That(Rewards.Describe(items), Does.Contain(items[0].Name));
             }
             Assert.That(Rewards.NextUnlock(Rewards.TotalFor(Rewards.MaxLevel), out _, out _), Is.EqualTo(0), "nothing left at the top");
             Assert.That(Rewards.SoFar(10, 6), Is.EqualTo(10 * Rewards.RallyXp + 6 * Rewards.RallyWonXp));
@@ -74,7 +73,7 @@ namespace SquashGame.Tests
                 {
                     var it = Cosmetics.Find(a.Reward);
                     Assert.That(it, Is.Not.Null, a.Id + "'s reward " + a.Reward);
-                    Assert.That(it.Unlock, Is.EqualTo(UnlockKind.Achievement));
+                    Assert.That(it.Unlock, Is.EqualTo(UnlockKind.Achievement), a.Id + "'s reward " + it.Id);
                     Assert.That(it.Achievement, Is.EqualTo(a.Id));
                 }
             foreach (var it in Cosmetics.All())
@@ -129,13 +128,14 @@ namespace SquashGame.Tests
             Assert.That(s.Lets, Is.EqualTo(4)); Assert.That(s.StrokesAgainst, Is.EqualTo(6)); Assert.That(s.NoLets, Is.EqualTo(2));
         }
 
-        [Test] public void LevellingUpUnlocksTheLevelTable()
+        [Test] public void LevellingUpPays()
         {
             var r = Rewards.Match(new MatchFacts { Rallies = 100, RalliesWon = 60, GamesToWin = 1 });       // 200 + 180 XP: level 2
             Assert.That(r.FromLevel, Is.EqualTo(1));
             Assert.That(r.ToLevel, Is.EqualTo(2));
-            foreach (var it in Cosmetics.AtLevel(2)) Assert.That(r.Unlocked, Does.Contain(it), "level 2 gives " + it.Id);
-            foreach (var it in Cosmetics.AtLevel(3)) Assert.That(Rewards.Owns(it.Id), Is.False);
+            Assert.That(r.Unlocked, Is.Empty, "batch 3: a level pays coins and a ticket, not kit");
+            Assert.That(r.Tickets, Is.EqualTo(1));
+            Assert.That(r.Coins, Is.GreaterThanOrEqualTo(Rewards.LevelCoins(2)));
         }
 
         [Test] public void CountedAchievementsShowProgress()

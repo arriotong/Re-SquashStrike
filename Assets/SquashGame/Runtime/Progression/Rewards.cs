@@ -15,6 +15,24 @@
 //                               title, x the tier (1 .. 4)
 //   an achievement              50 / 150 / 400 (bronze / silver / gold)
 //
+// Batch 3 (2026-10-26, the user: "get money from every thing you do,
+// depending on how long you play or how hard it is ... even playing
+// friends locally or online"): COINS from everything -
+//   a match                     a coin a rally, +1 a rally won, +15 a game
+//                               to win if you win; x the opponent (0.8 at a
+//                               60-rated club player .. 2 at the No. 1),
+//                               x1 local and online, x1.25 ranked. Local and
+//                               casual online: past 300 coins a day, a
+//                               quarter (no farming with a pad on the floor)
+//   Target Arcade               10 a play, +20 a new star
+//   an Academy lesson (first)   30
+//   an achievement              25 / 75 / 200
+//   a level                     a ticket and 50 + 5 x level coins; every
+//                               5th level a x10 ticket instead (levels no
+//                               longer give kit: that is in the kit store)
+// Coins buy tickets (Gear Drops), kit-store items and the Pro Shop.
+// Never real money.
+//
 // Award(...) adds XP, unlocks what the new levels give, and returns the
 // lines for the result screens' reward strip. It saves the profile.
 // ===========================================================
@@ -35,6 +53,8 @@ namespace SquashGame.Progression
         public readonly List<string> Challenges = new List<string>();      // P3-R2: challenges finished by this result
         public int Tickets, TenTickets;                                     // P4: Gear Drops tickets earned by this result
         public readonly List<string> TicketWhy = new List<string>();
+        public int Coins;                                                   // batch 3: coins earned by this result
+        public readonly List<string> CoinWhy = new List<string>();
         public bool LevelledUp { get { return ToLevel > FromLevel; } }
         public bool Any { get { return Xp > 0 || Unlocked.Count > 0 || Achieved.Count > 0; } }
     }
@@ -78,19 +98,59 @@ namespace SquashGame.Progression
 
         public static int Prestige(int xp) { int top = TotalFor(MaxLevel); return xp < top ? 0 : (xp - top) / Need(MaxLevel); }
 
-        /// <summary>P3-R1 (visible progress): the next level above this XP that unlocks something, its items, and the XP to
-        /// go. Level 0 when nothing is left to unlock.</summary>
-        public static int NextUnlock(int xp, out List<Item> items, out int xpToGo)
+        /// <summary>P3-R1 (visible progress): the next level, what it gives (batch 3: coins and a ticket - every 5th a x10
+        /// ticket) and the XP to go. Level 0 at the top.</summary>
+        public static int NextUnlock(int xp, out string gives, out int xpToGo)
         {
-            for (int level = LevelOf(xp) + 1; level <= MaxLevel; level++)
-            {
-                var at = Cosmetics.AtLevel(level);
-                if (at.Count == 0) continue;
-                items = at; xpToGo = TotalFor(level) - xp;
-                return level;
-            }
-            items = new List<Item>(); xpToGo = 0;
-            return 0;
+            int level = LevelOf(xp) + 1;
+            if (level > MaxLevel) { gives = ""; xpToGo = 0; return 0; }
+            gives = LevelGives(level); xpToGo = TotalFor(level) - xp;
+            return level;
+        }
+
+        /// <summary>Batch 3: a level's reward - coins, and a ticket (every 5th level: a x10 ticket).</summary>
+        public static int LevelCoins(int level) { return 50 + 5 * level; }
+        public static bool LevelTen(int level) { return level % 5 == 0; }
+        public static string LevelGives(int level) { return (LevelTen(level) ? "a x10 ticket" : "a ticket") + " + " + LevelCoins(level) + " coins"; }
+
+        // ---------------- batch 3: coins ----------------
+
+        public const int RallyCoin = 1, RallyWonCoin = 1, GameWonCoins = 15, LocalDailyCap = 300, ArcadeCoins = 10, ArcadeStarCoins = 20, LessonCoins = 30;
+        public static readonly int[] AchievementCoins = { 25, 75, 200 };
+
+        /// <summary>How much a match against this opponent pays: 0.8 against a 60-rated player, up to 2 against the No. 1.</summary>
+        public static double CoinFactor(MatchFacts f)
+        {
+            if (f.TwoPlayer) return 1.0;
+            if (f.Online) return f.Ranked ? 1.25 : 1.0;
+            return Math.Max(0.8, Math.Min(2.0, 0.8 + (f.OppRating - 60) * 0.031));
+        }
+
+        /// <summary>A match's coins (before the daily cap).</summary>
+        public static int MatchCoins(MatchFacts f)
+        {
+            int raw = f.Rallies * RallyCoin + f.RalliesWon * RallyWonCoin + (f.Won ? GameWonCoins * Math.Max(1, f.GamesToWin) : 0);
+            return (int)Math.Round(raw * CoinFactor(f));
+        }
+
+        /// <summary>A local or casual online match's coins after today's soft cap (past LocalDailyCap: a quarter).</summary>
+        public static int CapLocal(int coins)
+        {
+            var w = GearDrops.Wallet;
+            int day = Challenges.DayKey(Challenges.Now());
+            if (w.CapDay != day) { w.CapDay = day; w.CapCoins = 0; }
+            int full = Math.Max(0, Math.Min(coins, LocalDailyCap - w.CapCoins));
+            w.CapCoins += full;
+            return full + (coins - full) / 4;
+        }
+
+        /// <summary>Coins earned, and why.</summary>
+        public static void Coin(RewardResult r, int coins, string why)
+        {
+            if (coins <= 0) return;
+            GearDrops.Wallet.Coins += coins;
+            r.Coins += coins;
+            r.CoinWhy.Add(why);
         }
 
         /// <summary>The XP a match has earned so far from its rallies (the post-match adds great hits and the win).</summary>
@@ -151,7 +211,11 @@ namespace SquashGame.Progression
             r.Xp += xp;
             r.Lines.Add(line + "  +" + xp);
             int after = LevelOf(P.Xp);
-            for (int l = before + 1; l <= after; l++) foreach (var it in Cosmetics.AtLevel(l)) Unlock(it, r);
+            for (int l = before + 1; l <= after; l++)                                    // batch 3: a level pays, it no longer dresses
+            {
+                if (LevelTen(l)) Ticket(r, 0, 1, "level " + l); else Ticket(r, 1, 0, "level " + l);
+                Coin(r, LevelCoins(l), "level " + l);
+            }
         }
 
         static RewardResult Begin() { var r = new RewardResult { XpBefore = P.Xp, FromLevel = LevelOf(P.Xp) }; return r; }
@@ -168,6 +232,7 @@ namespace SquashGame.Progression
                 st.Done = true; st.Progress = a.Target; st.When = DateTime.Now.ToString("yyyy-MM-dd");
                 r.Achieved.Add(a);
                 Xp(r, "Achievement: " + a.Name, a.Xp);
+                Coin(r, AchievementCoins[(int)a.Tier], a.Name);
                 if (a.Reward != null) Unlock(Cosmetics.Find(a.Reward), r);
             }
         }
@@ -203,6 +268,10 @@ namespace SquashGame.Progression
             Xp(r, f.RalliesWon + " rallies won", f.RalliesWon * RallyWonXp);
             Xp(r, f.GreatHits + " great hits", f.GreatHits * GreatHitXp);
             if (f.Won) Xp(r, "Match won", (int)Math.Round(MatchWonXp * (f.AgainstHard || careerTierFactor >= 2 ? 1.5 : 1.0)));
+            // batch 3: coins for every match - local and online too; local and casual online taper past the day's cap
+            int coins = MatchCoins(f);
+            if (f.TwoPlayer || (f.Online && !f.Ranked)) coins = CapLocal(coins);
+            Coin(r, coins, f.Won ? "a match won" : "a match");
             LifetimeStats.AddMatch(P.Stats, f);
             Achieve(r, Achievements.FromMatch(f));
             if (!f.TwoPlayer)
@@ -210,13 +279,7 @@ namespace SquashGame.Progression
                 Count(r, "rallies100", P.Stats.RalliesWon);
                 Count(r, "wins25", P.Stats.MatchesWon);
                 Challenges.Record(r, new ChallengeEvent { Match = f });
-                if (f.Won)
-                {
-                    var w = GearDrops.Wallet;
-                    w.WinsTowardTicket++;
-                    if (w.WinsTowardTicket >= WinsPerTicket) { w.WinsTowardTicket = 0; Ticket(r, 1, 0, WinsPerTicket + " wins"); }
-                    if (f.Ranked) Ticket(r, RankedWinTickets, 0, "Ranked win");             // P2-M8
-                }
+                if (f.Won && f.Ranked) Ticket(r, RankedWinTickets, 0, "Ranked win");             // P2-M8 (batch 3: the every-3rd-win ticket is coins now)
             }
             return End(r);
         }
@@ -227,6 +290,7 @@ namespace SquashGame.Progression
             var r = Begin();
             Xp(r, drill ? "Drill finished" : "Target Arcade", drill ? DrillXp : ArcadePlayXp);
             int fresh = Math.Max(0, starsNow - Math.Max(0, starsBefore));
+            Coin(r, ArcadeCoins + ArcadeStarCoins * fresh, drill ? "a drill" : "Target Arcade");
             Xp(r, fresh == 1 ? "A new star" : fresh + " new stars", fresh * ArcadeStarXp);
             P.Stats.ArcadePlays++;
             var ids = new List<string>();
@@ -261,7 +325,7 @@ namespace SquashGame.Progression
         public static RewardResult Lesson(bool firstTime, bool academyFinished)
         {
             var r = Begin();
-            if (firstTime) Xp(r, "Lesson passed", LessonXp);
+            if (firstTime) { Xp(r, "Lesson passed", LessonXp); Coin(r, LessonCoins, "a lesson"); }
             P.Stats.LessonsPassed = ProfileStore.Current.Academy.Done.Count;
             if (academyFinished) Achieve(r, new[] { "academy" });
             return End(r);

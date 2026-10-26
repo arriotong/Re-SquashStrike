@@ -186,6 +186,7 @@ namespace SquashGame.UI
                 Won = r.Sim.Score.MatchWinner == h, Career = s.Career, TwoPlayer = s.TwoPlayer, Online = s.Online, Ranked = s.Ranked,
                 AgainstHard = !s.TwoPlayer && s.Opponent != "wallbot" && s.Difficulty >= (float)SquashSim.Career.Stars.Difficulty(85) - 1e-4f,   // P6: rated 85+
                 AgainstNo1 = !s.TwoPlayer && !s.Online && SquashSim.Career.Stars.Find(s.Opponent) == SquashSim.Career.Stars.No1,
+                OppRating = s.TwoPlayer || s.Online || s.Opponent == "wallbot" ? 0 : SquashSim.Career.Stars.RatingFor(s.Difficulty),
                 GamesToWin = s.GamesToWin,
                 RalliesWon = me.Rallies, Rallies = Players[0].Rallies + Players[1].Rallies, LongestRally = LongestRally,
                 GreatHits = me.GreatHits, MostGreatHitsInAGame = me.MostGreatInAGame, Nicks = me.Nicks, WinningBoasts = me.WinningBoasts,

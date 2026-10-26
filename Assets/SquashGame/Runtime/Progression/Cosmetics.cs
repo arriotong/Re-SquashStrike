@@ -45,7 +45,7 @@ namespace SquashGame.Progression
             {
                 switch (Unlock)
                 {
-                    case UnlockKind.Level: return "Level " + Level;
+                    case UnlockKind.Level: return "Kit store: " + GearDrops.StorePrice(this) + " coins";      // batch 3
                     case UnlockKind.Achievement: { var a = Achievements.Find(Achievement); return "Achievement: " + (a != null ? a.Name : Achievement); }
                     case UnlockKind.Challenge: return Achievement;      // the challenge note ("A 7-day streak")
                     case UnlockKind.Sponsor: return "Sponsor: " + Achievement;
@@ -266,7 +266,9 @@ namespace SquashGame.Progression
 
         public static Item Find(string id)
         {
-            if (_byId == null) { _byId = new Dictionary<string, Item>(); foreach (var it in All()) _byId[it.Id] = it; }
+            // (the list first, then the index: an index made empty before the list is built hid the achievements' rewards
+            // from it, and they stayed on the level table - when Find was the very first call)
+            if (_byId == null) { var all = All(); var d = new Dictionary<string, Item>(); foreach (var it in all) d[it.Id] = it; _byId = d; }
             return id != null && _byId.TryGetValue(id, out var x) ? x : null;
         }
 

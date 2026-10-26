@@ -57,11 +57,17 @@ namespace SquashGame.UI
                                   + "   ·   " + string.Join(", ", r.TicketWhy) + "   ·   pull them in Gear Drops (Locker)");
                 t.AddToClassList("rw-tickets"); Add(t);
             }
+            // batch 3: the coins this earned
+            if (r.Coins > 0)
+            {
+                var c = new Label("COINS   +" + r.Coins.ToString("N0") + "   ·   " + GearDrops.Wallet.Coins.ToString("N0") + " in all   ·   spend them on tickets and kit in the Locker");
+                c.AddToClassList("rw-tickets"); Add(c);
+            }
             // P3-R1: what the next level brings - always something to play for
             int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);
             if (next > 0)
             {
-                var nl = new Label("NEXT UNLOCK   level " + next + "  ·  " + Rewards.Describe(coming) + "  ·  " + toGo.ToString("N0") + " XP to go");
+                var nl = new Label("NEXT LEVEL   " + next + "  ·  " + coming + "  ·  " + toGo.ToString("N0") + " XP to go");
                 nl.AddToClassList("rw-next"); Add(nl);
             }
             schedule.Execute(Tick).Every(16);

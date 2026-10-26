@@ -98,9 +98,10 @@ namespace SquashGame.UI
             OnBrowse?.Invoke(this);
         }
 
-        /// <summary>Wear what is browsed (if owned).</summary>
+        /// <summary>Wear what is browsed (if owned); batch 3: buy it from the kit store (coins).</summary>
         public override void Submit()
         {
+            if (!Owned && GearDrops.BuyFromStore(Browsing)) Sounds.Play("stamp");
             if (!Owned) { Sounds.Play("back"); return; }
             P.Loadout.Set(Slot, Browsing.Id);
             ProfileStore.Save();
@@ -202,7 +203,7 @@ namespace SquashGame.UI
                     if (it.None) Kit.L(sw, "NONE", "k-sw-name");
                 }
                 if (i == row.BrowseIndex) sw.AddToClassList("k-sw--on");
-                if (!Rewards.Owns(it.Id) && !mystery) { sw.AddToClassList("k-sw--locked"); Kit.L(sw, it.Unlock == UnlockKind.Level ? "LV " + it.Level : "★", "k-sw-lock"); }
+                if (!Rewards.Owns(it.Id) && !mystery) { sw.AddToClassList("k-sw--locked"); Kit.L(sw, GearDrops.InStore(it) ? GearDrops.StorePrice(it).ToString() : "★", "k-sw-lock"); }
                 if (it.Id == worn) Kit.L(sw, "✓", "k-sw-worn");
                 int at = i;
                 sw.RegisterCallback<ClickEvent>(e => { row.BrowseTo(at); e.StopPropagation(); });          // batch 2: click to pick
@@ -340,9 +341,11 @@ namespace SquashGame.UI
             bool mystery = it.Unlock == UnlockKind.Gacha && !r.Owned;
             Kit.L(tab.Info, mystery ? "???" : it.Name + (it.Gold ? "  ★" : ""), "k-lk-item");
             if (it.Rarity >= 0) { var rl = Kit.L(tab.Info, GearDrops.RarityNames[it.Rarity].ToUpperInvariant() + (it.Gold ? "  ·  GOLD EDITION" : "") + (it.Glow ? "  ·  GLOWS" : ""), "k-lk-rarity"); rl.style.color = it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[it.Rarity]; }
-            var state = Kit.L(tab.Info, r.Worn ? "✓  WEARING" : r.Owned ? "OWNED" : "LOCKED  ·  TRYING ON", "k-lk-state");
+            bool store = !r.Owned && GearDrops.InStore(it);
+            var state = Kit.L(tab.Info, r.Worn ? "✓  WEARING" : r.Owned ? "OWNED" : store ? "KIT STORE  ·  " + GearDrops.StorePrice(it) + " COINS" : "LOCKED  ·  TRYING ON", "k-lk-state");
             state.AddToClassList(r.Worn ? "k-lk-state--worn" : r.Owned ? "k-lk-state--owned" : "k-lk-state--locked");
-            if (!r.Owned) Kit.L(tab.Info, "Unlock: " + it.HowToUnlock, "k-lk-how");
+            if (store) Kit.L(tab.Info, GearDrops.Wallet.Coins >= GearDrops.StorePrice(it) ? "Enter to buy it  ·  you have " + GearDrops.Wallet.Coins.ToString("N0") + " coins" : "You have " + GearDrops.Wallet.Coins.ToString("N0") + " coins - play to earn more", "k-lk-how");
+            else if (!r.Owned) Kit.L(tab.Info, "Unlock: " + it.HowToUnlock, "k-lk-how");
             if (it.Pose != null) Kit.L(tab.Info, "Plays when you win a match.", "k-lk-how");
             Kit.L(tab.Info, r.OwnedCount + " / " + r.TotalCount + " owned  ·  " + (LockerRow.ShowLocked ? "showing everything" : "showing yours"), "k-lk-count");
 

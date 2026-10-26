@@ -193,7 +193,7 @@ namespace SquashGame.UI
             _title.text = (t != null ? t.Name : "Rookie").ToUpperInvariant() + (on != null && on.Games > 0 ? "  ·  " + on.Rating : "");
             _name.text = PlayerName.Shown();
             int next = Rewards.NextUnlock(p.Xp, out var items, out int toGo);
-            _next.text = next > 0 && items.Count > 0 ? "NEXT  " + items[0].Name.ToUpperInvariant() + (items.Count > 1 ? " +" + (items.Count - 1) : "") + "  ·  " + toGo.ToString("N0") + " XP" : "";
+            _next.text = next > 0 ? "NEXT  " + items.ToUpperInvariant() + "  ·  " + toGo.ToString("N0") + " XP" : "";
             _next.style.display = next > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             var banner = Cosmetics.Find(p.Loadout.Banner);
             if (banner != null) style.borderLeftColor = banner.B;

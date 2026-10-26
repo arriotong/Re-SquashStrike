@@ -162,14 +162,23 @@ namespace SquashGame.Tests
             Challenges.Enabled = false;
             Give(0);
             var won = new MatchFacts { Won = true, GamesToWin = 1, Rallies = 10, RalliesWon = 8, Games = new List<int[]> { new[] { 11, 4 } } };
+            // batch 3: every match pays coins; levels pay tickets; coins buy them
+            GearDrops.Wallet.Coins = 0;
+            var first = Rewards.Match(won);
+            Assert.That(first.Coins, Is.GreaterThan(0), "a match pays coins");
             Rewards.Match(won); Rewards.Match(won);
-            var third = Rewards.Match(won);
-            Assert.That(third.Tickets, Is.EqualTo(1), "every 3rd win");
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(1));
+            Assert.That(Rewards.LevelOf(ProfileStore.Current.Progress.Xp), Is.GreaterThanOrEqualTo(2));
+            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(Rewards.LevelOf(ProfileStore.Current.Progress.Xp) - 1), "a ticket a level");
+            int t0 = GearDrops.Wallet.Tickets;
+            GearDrops.Wallet.Coins = GearDrops.TicketPrice;
+            Assert.That(GearDrops.BuyTicket(), Is.True);
+            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(t0 + 1)); Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(0));
+            Assert.That(GearDrops.BuyTicket(), Is.False, "no coins, no ticket");
             var floor = Rewards.GauntletFloor(5);
             Assert.That(floor.Tickets, Is.EqualTo(1)); Assert.That(floor.TenTickets, Is.EqualTo(1), "a milestone floor: a x10");
             var sc = Rewards.Scenario(3, 1, 3);
-            Assert.That(sc.Tickets, Is.EqualTo(2), "a ticket a new star");
+            Assert.That(sc.TicketWhy, Does.Contain("new stars"), "a ticket a new star");
+            Assert.That(sc.Tickets, Is.GreaterThanOrEqualTo(2));
             Challenges.Enabled = true;
             var r = new RewardResult();
             var st = Challenges.Current();
@@ -178,6 +187,52 @@ namespace SquashGame.Tests
                 Kills = 10, Drops = 10, WinningBoasts = 5, Aces = 2, TopPaceKmh = 140, CameBackFrom0_5 = true, TSeconds = 60, Seconds = 100, Games = new List<int[]> { new[] { 11, 0 } } },
                 ArcadeStars = 5, Arcade = true, GauntletFloor = 9, ScenarioStars = 3 });
             Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets), "a daily pays tickets");
+        }
+
+        [Test] public void CoinsFollowHowLongAndHowHard()
+        {
+            Challenges.Enabled = false;
+            MatchFacts M(int rating, bool won, int rallies, bool two = false, bool online = false, bool ranked = false)
+            { return new MatchFacts { Won = won, GamesToWin = 1, Rallies = rallies, RalliesWon = rallies / 2, OppRating = rating, TwoPlayer = two, Online = online, Ranked = ranked, Games = new List<int[]> { new[] { 11, 5 } } }; }
+            Assert.That(Rewards.MatchCoins(M(99, true, 20)), Is.GreaterThan(Rewards.MatchCoins(M(62, true, 20))), "a harder opponent pays more");
+            Assert.That(Rewards.MatchCoins(M(70, true, 40)), Is.GreaterThan(Rewards.MatchCoins(M(70, true, 20))), "a longer match pays more");
+            Assert.That(Rewards.MatchCoins(M(70, true, 20)), Is.GreaterThan(Rewards.MatchCoins(M(70, false, 20))), "a win pays more");
+            Assert.That(Rewards.MatchCoins(M(0, true, 20, two: true)), Is.GreaterThan(0), "a local match with a friend pays");
+            Assert.That(Rewards.MatchCoins(M(0, true, 20, online: true, ranked: true)), Is.GreaterThan(Rewards.MatchCoins(M(0, true, 20, online: true))), "ranked pays more");
+            // the soft cap: local matches past 300 coins a day pay a quarter
+            Challenges.Now = () => new DateTime(2026, 10, 27, 9, 0, 0);
+            int each = Rewards.MatchCoins(M(0, true, 60, two: true));
+            int sum = 0; for (int i = 0; i < 12; i++) sum += Rewards.CapLocal(each);
+            Assert.That(sum, Is.LessThan(each * 12), "capped");
+            Assert.That(sum, Is.EqualTo(Rewards.LocalDailyCap + (each * 12 - Rewards.LocalDailyCap) / 4).Within(12), "past the cap, a quarter");
+            Challenges.Now = () => new DateTime(2026, 10, 28, 9, 0, 0);
+            Assert.That(Rewards.CapLocal(each), Is.EqualTo(each), "a new day, the full amount");
+            Assert.That(Rewards.Match(M(0, true, 60, two: true)).CoinWhy, Does.Contain("a match won"), "a local match pays");
+            Challenges.Now = () => DateTime.Now;
+            Challenges.Enabled = true;
+        }
+
+        [Test] public void LevelsPayAndTheKitStoreSells()
+        {
+            Challenges.Enabled = false;
+            Give(0); GearDrops.Wallet.Coins = 0;
+            var r = Rewards.Match(new MatchFacts { Rallies = 100, RalliesWon = 60, GamesToWin = 1 });       // to level 2
+            Assert.That(r.ToLevel, Is.EqualTo(2));
+            Assert.That(r.Tickets, Is.EqualTo(1), "a level: a ticket");
+            Assert.That(r.CoinWhy, Does.Contain("level 2"));
+            foreach (var it in Cosmetics.AtLevel(2)) Assert.That(Rewards.Owns(it.Id), Is.False, "levels no longer give kit: " + it.Id);
+            var item = Cosmetics.AtLevel(2)[0];
+            Assert.That(GearDrops.InStore(item), Is.True);
+            Assert.That(item.HowToUnlock, Does.Contain("coins"));
+            GearDrops.Wallet.Coins = GearDrops.StorePrice(item) - 1;
+            Assert.That(GearDrops.BuyFromStore(item), Is.False, "a coin short");
+            GearDrops.Wallet.Coins += 1;
+            Assert.That(GearDrops.BuyFromStore(item), Is.True);
+            Assert.That(Rewards.Owns(item.Id), Is.True);
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(0));
+            Assert.That(GearDrops.StorePrice(Cosmetics.AtLevel(50)[0]), Is.GreaterThan(GearDrops.StorePrice(item)), "later kit costs more");
+            Assert.That(Rewards.LevelGives(10), Does.Contain("x10"));
+            Challenges.Enabled = true;
         }
 
         [Test] public void AVersion3ProfileGetsAWallet()
