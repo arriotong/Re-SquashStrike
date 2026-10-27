@@ -65,6 +65,7 @@ namespace SquashGame
 
         public static CourtTheme Find(string id)
         {
+            if (id != null && id.StartsWith(VenuePrefix)) return VenueTheme(id.Substring(VenuePrefix.Length));
             foreach (var c in All) if (c.Id == id) return c;
             return null;
         }
@@ -78,6 +79,33 @@ namespace SquashGame
         // full arena for the World Championship and the Finals; the stands fill as the events grow.
         static readonly string[] CareerCourts = { "club", "warehouse", "leisure", "county", "rooftop", "station", "station", "desert", "desert", "show", "show", "arena", "arena" };   // batch 5: the clubs first
         static readonly float[] CareerCrowd = { 0.18f, 0.28f, 0.4f, 0.5f, 0.6f, 0.68f, 0.76f, 0.84f, 0.9f, 0.95f, 1f, 1f, 1f };
+
+        // ---- courts per tournament (2026-10-27): a career event at a venue of its own (ClubVenues); the rest by tier ----
+
+        public const string VenuePrefix = "venue:";
+        static readonly System.Collections.Generic.Dictionary<string, CourtTheme> _venues = new System.Collections.Generic.Dictionary<string, CourtTheme>();
+
+        /// <summary>A venue's court theme (null if there is no such venue).</summary>
+        static CourtTheme VenueTheme(string key)
+        {
+            if (_venues.TryGetValue(key, out var t)) return t;
+            var v = ClubVenues.Find(key);
+            if (v == null) return null;
+            t = new CourtTheme
+            {
+                Id = VenuePrefix + key, Name = v.Venue, Blurb = v.City, Walls = v.Kind == ClubKind.Centre ? WallStyle.Glass : WallStyle.Plaster,
+                Lines = v.Lines, FloorTint = v.Floor, FarClip = 100f, Establishing = v.Kind == ClubKind.Centre,
+            };
+            _venues[key] = t;
+            return t;
+        }
+
+        /// <summary>The court a career event is played on: its own venue when it has one, else its tier's.</summary>
+        public static string ForCareerEvent(string eventName, int tier)
+        {
+            var v = ClubVenues.ForEvent(eventName);
+            return v != null ? VenuePrefix + v.Key : ForCareerTier(tier);
+        }
 
         public static string ForCareerTier(int tier) { return CareerCourts[Mathf.Clamp(tier, 0, CareerCourts.Length - 1)]; }
         public static float CrowdForCareerTier(int tier) { return CareerCrowd[Mathf.Clamp(tier, 0, CareerCrowd.Length - 1)]; }

@@ -73,9 +73,12 @@ namespace SquashGame
 
         /// <summary>A frosted glass front wall (graphics pass 2): denser low down where the ball meets it, clearing toward the
         /// top so what is behind shows through, a dark band of names along the top. UV 0..1 = the whole wall; alpha carries the frost.</summary>
-        public static Texture2D FrostedGlass()
+        public static Texture2D FrostedGlass() { return FrostedGlass("frostedglass", "RE:SQUASHSTRIKE  WORLD TOUR  GLASS COURT"); }
+
+        /// <summary>The frosted front wall with its own row of names along the top (a venue's).</summary>
+        public static Texture2D FrostedGlass(string key, string names)
         {
-            return Cached("frostedglass", () =>
+            return Cached(key, () =>
             {
                 const int W = 512, H = 452;
                 var px = new Color[W * H];
@@ -91,7 +94,6 @@ namespace SquashGame
                 }
                 int b0 = (int)(H * 0.86f), b1 = (int)(H * 0.95f);
                 for (int y = b0; y < b1; y++) for (int x = 0; x < W; x++) px[y * W + x] = new Color(0.08f, 0.14f, 0.30f, 0.82f);
-                string names = "RE:SQUASHSTRIKE  WORLD TOUR  GLASS COURT";
                 int tw = TextWidth(names, 2);
                 DotText(px, W, H, names, (W - tw) / 2, b0 + (b1 - b0 - 14) / 2, 2, new Color(0.95f, 0.97f, 1f, 1f), 1, W);
                 return Make(W, H, px, false);

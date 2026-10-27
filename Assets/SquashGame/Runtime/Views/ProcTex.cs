@@ -94,16 +94,19 @@ namespace SquashGame
         }
 
         /// <summary>The tin's board: dark, a lime top stripe, and the game's name repeated in dot letters.</summary>
-        public static Texture2D Tin()
+        public static Texture2D Tin() { return Tin("tin", "RE:SQUASHSTRIKE CLASSIC", new Color(0.05f, 0.09f, 0.18f), new Color(0.45f, 0.72f, 1f)); }
+
+        /// <summary>A tin board with its own text and colours (a venue's: courts per tournament, 2026-10-27).</summary>
+        public static Texture2D Tin(string key, string text, Color board, Color edge)
         {
-            return Cached("tin", () =>
+            return Cached(key, () =>
             {
                 const int W = 2048, H = 160;
                 // Navy board, white lettering, a light-blue top edge (the show-court look, 2026-10-23).
-                var px = Fill(W, H, new Color(0.05f, 0.09f, 0.18f));
-                for (int y = H - 12; y < H; y++) for (int x = 0; x < W; x++) px[y * W + x] = new Color(0.45f, 0.72f, 1f);
-                DotText(px, W, H, "RE:SQUASHSTRIKE CLASSIC", 70, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, 1024);
-                DotText(px, W, H, "RE:SQUASHSTRIKE CLASSIC", 70 + 1024, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, W);
+                var px = Fill(W, H, board);
+                for (int y = H - 12; y < H; y++) for (int x = 0; x < W; x++) px[y * W + x] = edge;
+                DotText(px, W, H, text, 70, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, 1024);
+                DotText(px, W, H, text, 70 + 1024, 44, 7, new Color(0.95f, 0.96f, 0.98f), 1, W);
                 return Make(W, H, px, true);
             });
         }

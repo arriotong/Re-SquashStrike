@@ -49,14 +49,24 @@ namespace SquashGame
                 // Glass you can see through (graphics pass 2): the faintest blue, thin fittings, a light along the top.
                 sideWall = palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.09f));
                 // The court's theme (2026-10-24): an all-glass court frosts its front wall; a club court is plaster all round.
-                if (theme.Walls == WallStyle.Glass) { frontWall = palette.Clear(Color.white); frontWall.mainTexture = ProcTex.FrostedGlass(); }
+                // courts per tournament (2026-10-27): a venue's name on its tin and along its glass, its plaster's tint
+                var venue = theme.Id.StartsWith(Courts.VenuePrefix) ? ClubVenues.Find(theme.Id.Substring(Courts.VenuePrefix.Length)) : null;
+                if (theme.Walls == WallStyle.Glass)
+                {
+                    frontWall = palette.Clear(Color.white);
+                    frontWall.mainTexture = venue != null ? ProcTex.FrostedGlass("frosted_" + venue.Key, ClubVenues.Sign(venue.Events[0] + "  " + venue.City)) : ProcTex.FrostedGlass();
+                }
                 if (theme.Walls == WallStyle.Plaster)
                 {
-                    frontWall = palette.LitColor(Color.white); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
-                    sideWall = palette.LitColor(Color.white); sideWall.mainTexture = ProcTex.Wall(false); sideWall.SetFloat("_Smoothness", 0.12f);
+                    var tint = venue != null ? venue.Plaster : Color.white;
+                    frontWall = palette.LitColor(tint); frontWall.mainTexture = ProcTex.Wall(true); frontWall.SetFloat("_Smoothness", 0.12f);
+                    sideWall = palette.LitColor(tint); sideWall.mainTexture = ProcTex.Wall(false); sideWall.SetFloat("_Smoothness", 0.12f);
                 }
                 floor.color = theme.FloorTint;
-                tin = palette.LitColor(Color.white); tin.mainTexture = ProcTex.Tin(); tin.SetFloat("_Smoothness", 0.5f);
+                tin = palette.LitColor(Color.white);
+                tin.mainTexture = venue != null ? ProcTex.Tin("tin_" + venue.Key, ClubVenues.Sign(venue.Venue), Color.Lerp(venue.Accent, Color.black, 0.55f), venue.Accent2)
+                                                : ProcTex.Tin();
+                tin.SetFloat("_Smoothness", 0.5f);
             }
             var line = palette.UnlitColor(dressed ? theme.Lines : Greybox.Hex(0xd8382f));
             var glass = dressed ? palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.07f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));

@@ -96,7 +96,10 @@ namespace SquashGame
                 case "station": Station(c); break;
                 case "rooftop": Rooftop(c); break;
                 case "arena": Arena(c); break;
-                default: ShowCourt(c); break;
+                default:
+                    var v = Courts.Current.Id.StartsWith(Courts.VenuePrefix) ? ClubVenues.Find(Courts.Current.Id.Substring(Courts.VenuePrefix.Length)) : null;
+                    if (v != null) Venue(c, v); else ShowCourt(c);                // courts per tournament (VenueView.Venues.cs)
+                    break;
             }
             if (high && Post) Grade(venue);
             NightLook(c, root);
@@ -120,6 +123,7 @@ namespace SquashGame
         static bool NightFor(string id, out Night n)
         {
             n = default;
+            if (id.StartsWith(Courts.VenuePrefix)) return false;                // the Challengers' clubs and centres: bright and even
             switch (id)
             {
                 case "club": case "warehouse": case "leisure": case "county": return false;     // a club stays a club: bright and even
