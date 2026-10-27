@@ -73,7 +73,7 @@ namespace SquashGame.Tests
         [Test]
         public void TheVenuesAreTheCalendarsChallengers()
         {
-            Assert.That(ClubVenues.All.Length, Is.EqualTo(40), "the user: \"pick maybe like 40\"");
+            Assert.That(ClubVenues.All.Length, Is.EqualTo(54), "40 venues (the user: \"pick maybe like 40\") and 14 generic city clubs");
             var keys = new System.Collections.Generic.HashSet<string>();
             int events = 0;
             foreach (var v in ClubVenues.All)
@@ -95,9 +95,9 @@ namespace SquashGame.Tests
                 Assert.That(t.Walls, Is.EqualTo(v.Kind == ClubKind.Centre ? WallStyle.Glass : WallStyle.Plaster));
                 Assert.That(ClubVenues.Sign(v.Venue), Does.Match("^[A-Z0-9 .:-]+$"), "the LED font has the letters");
             }
-            Assert.That(events, Is.EqualTo(41), "Mumbai's two events share JVPG");
+            Assert.That(events, Is.EqualTo(55), "Mumbai's two events share JVPG");
             Assert.That(Courts.ForCareerEvent("British Open", (int)Tier.Diamond), Is.EqualTo(Courts.ForCareerTier((int)Tier.Diamond)), "the rest: their tier's court");
-            Assert.That(Courts.ForCareerEvent("Warsaw Challenger", (int)Tier.Challenger9), Is.EqualTo(Courts.ForCareerTier((int)Tier.Challenger9)));
+            Assert.That(Courts.ForCareerEvent("Toronto Open", (int)Tier.Challenger15), Is.EqualTo(Courts.ForCareerTier((int)Tier.Challenger15)), "a reuse: its tier's court until Toronto's is built");
             Assert.That(Courts.Find("venue:nowhere"), Is.Null);
         }
     }

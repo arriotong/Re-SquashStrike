@@ -1,7 +1,9 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Views/ClubVenues.cs
 // Courts per tournament, part 1 (2026-10-27): 40 of the Challenger Tour's
-// venues, from the user's research (squash_challenger_references.md:
+// venues, and 14 generic city clubs where no venue was found or sure (the
+// user's call); the rest reuse their city's World Tour court once built.
+// The 40 come from the user's research (squash_challenger_references.md:
 // the venue each Challenger has used, its city). Not modelled from
 // photos yet - each is the nearest of three club layouts, dressed as the
 // place: its own name on the banners, its country's flags, its colours,
@@ -103,6 +105,21 @@ namespace SquashGame
             V("penang", "Nicol David International Squash Centre", "Penang", "MAS", ClubKind.Centre, 0, Red, White, Oak, H(0xe2e6ea), H(0x6a2a9a), H(0xe8c22a), "NICOL DAVID SQUASH CENTRE", bleachers: true, windows: true, sky: Tropic, events: "Penang Challenger"),
             V("singapore", "Serangoon Gardens Country Club", "Singapore", "SGP", ClubKind.Corridor, 1, Red, White, Oak, H(0xe4e4e0), H(0xc8352e), H(0xf2f1ed), "SERANGOON GARDENS", windows: true, sky: Tropic, events: "Singapore Challenger"),
             V("bogota", "Centro de Alto Rendimiento", "Bogota", "COL", ClubKind.Centre, 0, Red, White, Oak, H(0xe0e2e4), H(0xe8c22a), H(0x1d3f9a), "ALTO RENDIMIENTO - BOGOTA", windows: true, sky: Grey2, events: "Bogota Challenger"),
+            // ---- generic city clubs (the user, 2026-10-27): no venue found, or not sure of it - a club dressed for its city ----
+            V("tashkent", "Tashkent Squash Club", "Tashkent", "UZB", ClubKind.Shed, 1, Blue, White, Oak, H(0xd8dadc), H(0x1d8ab8), H(0x1f7a3a), "TASHKENT OPEN", windows: true, sky: Warm, events: "Tashkent Challenger"),
+            V("warsaw", "Warsaw Squash Club", "Warsaw", "POL", ClubKind.Shed, 2, Red, White, Pine, H(0xd6d8dc), H(0xc8352e), H(0xf2f1ed), "WARSZAWA SQUASH", events: "Warsaw Challenger"),
+            V("buenosaires", "Buenos Aires Squash Club", "Buenos Aires", "ARG", ClubKind.Corridor, 1, Black, White, Oak, H(0xe2e2de), H(0x5aa8e0), H(0xf2f1ed), "BUENOS AIRES SQUASH", windows: true, sky: Tropic, events: "Buenos Aires Challenger"),
+            V("jaipur", "Jaipur Squash Club", "Jaipur", "IND", ClubKind.Corridor, 1, Red, Cream, Oak, H(0xe8d8c0), H(0xd86a4a), H(0x1f7a3a), "THE PINK CITY", windows: true, sky: Warm, events: "Jaipur Challenger"),
+            V("seoul", "Seoul Squash Club", "Seoul", "KOR", ClubKind.Shed, 2, Blue, White, Pine, H(0xdcdee2), H(0x1d4fb0), H(0xc8352e), "SEOUL SQUASH", events: "Seoul Challenger"),
+            V("vancouver", "Vancouver Squash Club", "Vancouver", "CAN", ClubKind.Corridor, 1, Red, White, Pine, H(0xdfe2e4), H(0xc8352e), H(0xf2f1ed), "VANCOUVER - BC", windows: true, timber: true, sky: Grey2, events: "Vancouver Challenger"),
+            V("brest", "Brest Squash Club", "Brest", "FRA", ClubKind.Shed, 1, Blue, White, Oak, H(0xd8dadc), H(0x1d3f7a), H(0xf2f1ed), "BREST - BRETAGNE", events: "Brest Challenger"),
+            V("tokyo", "Tokyo Squash Club", "Tokyo", "JPN", ClubKind.Shed, 2, Black, White, Pine, H(0x3a3d44), H(0xc8352e), H(0xf2f1ed), "TOKYO SQUASH", events: "Tokyo Challenger"),
+            V("lahore", "Lahore Squash Complex", "Lahore", "PAK", ClubKind.Centre, 0, Red, White, Oak, H(0xe0ded4), H(0x1f5a32), H(0xf2f1ed), "LAHORE - PUNJAB", windows: true, sky: Warm, events: "Lahore Open"),
+            V("quimper", "Quimper Squash Club", "Quimper", "FRA", ClubKind.Corridor, 1, Blue, White, Oak, H(0xe2e2de), H(0x1d3f7a), H(0xe8c22a), "QUIMPER - FINISTERE", timber: true, events: "Quimper Challenger"),
+            V("nantes", "Nantes Squash Club", "Nantes", "FRA", ClubKind.Shed, 2, Blue, White, Oak, H(0xd8dadc), H(0xe8c22a), H(0x202226), "NANTES SQUASH", events: "Nantes Challenger"),
+            V("melbourne", "Melbourne Squash Club", "Melbourne", "AUS", ClubKind.Shed, 2, Red, White, Pine, H(0xdcdee0), H(0x1d2f5a), H(0xf2f1ed), "MELBOURNE - VICTORIA", windows: true, sky: Tropic, events: "Melbourne Challenger"),
+            V("stockholm", "Stockholm Squash Club", "Stockholm", "SWE", ClubKind.Corridor, 1, Blue, White, Pine, H(0xe2e4e6), H(0x1d5fb0), H(0xe8c22a), "STOCKHOLM SQUASH", timber: true, events: "Stockholm Challenger"),
+            V("boston", "Boston Squash Club", "Boston", "USA", ClubKind.Corridor, 1, Red, White, Oak, H(0xe0dcd4), H(0x8a1f2b), H(0xf2f1ed), "BOSTON - MASSACHUSETTS", timber: true, events: "Boston Challenger"),
         };
 
         static Dictionary<string, ClubVenue> _byEvent, _byKey;
@@ -161,6 +178,13 @@ namespace SquashGame
                 case "JOR": return new[] { H(0x202226), H(0xf2f1ed), H(0x1f7a3a) };
                 case "SGP": return new[] { H(0xc8352e), H(0xf2f1ed), H(0xc8352e) };
                 case "COL": return new[] { H(0xe8c22a), H(0x1d3f9a), H(0xc8352e) };
+                case "UZB": return new[] { H(0x1d8ab8), H(0xf2f1ed), H(0x1f7a3a) };
+                case "POL": return new[] { H(0xf2f1ed), H(0xc8352e), H(0xf2f1ed) };
+                case "ARG": return new[] { H(0x5aa8e0), H(0xf2f1ed), H(0x5aa8e0) };
+                case "KOR": return new[] { H(0xf2f1ed), H(0xc8352e), H(0x1d3f9a) };
+                case "CAN": return new[] { H(0xc8352e), H(0xf2f1ed), H(0xc8352e) };
+                case "FRA": return new[] { H(0x1d3f9a), H(0xf2f1ed), H(0xc8352e) };
+                case "SWE": return new[] { H(0x1d5fb0), H(0xe8c22a), H(0x1d5fb0) };
                 default: return new[] { H(0x2b4a8a), H(0xf2f1ed), H(0xc8352e) };
             }
         }
