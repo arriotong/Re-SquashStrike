@@ -57,6 +57,7 @@ namespace SquashGame
             public GreyboxPalette Palette;
             public bool High;
             public Material Steel, Blue, Dark, Seat;
+            public Material Feed;                       // the live screens' material (one feed camera per venue)
             public Material[] Crowd;
             public CrowdBuilder.Palette People;
         }
@@ -98,7 +99,10 @@ namespace SquashGame
                 case "arena": Arena(c); break;
                 default:
                     var v = Courts.Current.Id.StartsWith(Courts.VenuePrefix) ? ClubVenues.Find(Courts.Current.Id.Substring(Courts.VenuePrefix.Length)) : null;
-                    if (v != null) Venue(c, v); else ShowCourt(c);                // courts per tournament (VenueView.Venues.cs)
+                    var t = Courts.Current.Id.StartsWith(Courts.TourPrefix) ? TourVenues.Find(Courts.Current.Id.Substring(Courts.TourPrefix.Length)) : null;
+                    if (v != null) Venue(c, v);                                   // courts per tournament (VenueView.Venues.cs)
+                    else if (t != null) Tour(c, t);                               // the World Tour's stages (VenueView.Tour.cs)
+                    else ShowCourt(c);
                     break;
             }
             if (high && Post) Grade(venue);
@@ -124,6 +128,13 @@ namespace SquashGame
         {
             n = default;
             if (id.StartsWith(Courts.VenuePrefix)) return false;                // the Challengers' clubs and centres: bright and even
+            if (id.StartsWith(Courts.TourPrefix))
+            {
+                var tv = TourVenues.Find(id.Substring(Courts.TourPrefix.Length));
+                if (tv == null || !tv.Night) return false;                      // a daylit hall or a broadcast-bright arena
+                n = new Night { Spill = tv.Spill, SpillI = 0.21f, Wash = tv.Wash, Beams = false, AmbientK = tv.AmbientK };
+                return true;
+            }
             switch (id)
             {
                 case "club": case "warehouse": case "leisure": case "county": return false;     // a club stays a club: bright and even

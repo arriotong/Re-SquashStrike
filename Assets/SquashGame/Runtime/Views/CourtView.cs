@@ -51,10 +51,20 @@ namespace SquashGame
                 // The court's theme (2026-10-24): an all-glass court frosts its front wall; a club court is plaster all round.
                 // courts per tournament (2026-10-27): a venue's name on its tin and along its glass, its plaster's tint
                 var venue = theme.Id.StartsWith(Courts.VenuePrefix) ? ClubVenues.Find(theme.Id.Substring(Courts.VenuePrefix.Length)) : null;
+                var tour = theme.Id.StartsWith(Courts.TourPrefix) ? TourVenues.Find(theme.Id.Substring(Courts.TourPrefix.Length)) : null;
+                if (tour != null)
+                {
+                    // a World Tour stage: its front wall, its glass's tint (courts per tournament, part 2)
+                    frontWall = palette.LitColor(Color.white); frontWall.SetFloat("_Smoothness", 0.6f);
+                    frontWall.mainTexture = ProcTex.FrontWall("front_" + tour.Key, tour.Deep, tour.Mid, ClubVenues.Sign(tour.Mark), ClubVenues.Sign(tour.Sub), System.Array.ConvertAll(tour.Names, ClubVenues.Sign));
+                    sideWall = palette.Clear(tour.Glass);
+                }
                 if (theme.Walls == WallStyle.Glass)
                 {
                     frontWall = palette.Clear(Color.white);
-                    frontWall.mainTexture = venue != null ? ProcTex.FrostedGlass("frosted_" + venue.Key, ClubVenues.Sign(venue.Events[0] + "  " + venue.City)) : ProcTex.FrostedGlass();
+                    frontWall.mainTexture = venue != null ? ProcTex.FrostedGlass("frosted_" + venue.Key, ClubVenues.Sign(venue.Events[0] + "  " + venue.City))
+                                          : tour != null ? ProcTex.FrostedGlass("frosted_" + tour.Key, ClubVenues.Sign(string.Join("  ", tour.Names)))
+                                          : ProcTex.FrostedGlass();
                 }
                 if (theme.Walls == WallStyle.Plaster)
                 {
@@ -65,11 +75,14 @@ namespace SquashGame
                 floor.color = theme.FloorTint;
                 tin = palette.LitColor(Color.white);
                 tin.mainTexture = venue != null ? ProcTex.Tin("tin_" + venue.Key, ClubVenues.Sign(venue.Venue), Color.Lerp(venue.Accent, Color.black, 0.55f), venue.Accent2)
-                                                : ProcTex.Tin();
+                                : tour != null ? ProcTex.Tin("tin_" + tour.Key, ClubVenues.Sign(tour.Mark + "  " + tour.City), tour.Tin, tour.TinEdge)
+                                : ProcTex.Tin();
                 tin.SetFloat("_Smoothness", 0.5f);
             }
             var line = palette.UnlitColor(dressed ? theme.Lines : Greybox.Hex(0xd8382f));
-            var glass = dressed ? palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.07f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
+            var tourGlass = dressed && theme.Id.StartsWith(Courts.TourPrefix) ? TourVenues.Find(theme.Id.Substring(Courts.TourPrefix.Length)) : null;
+            var glass = tourGlass != null ? palette.Clear(new Color(tourGlass.Glass.r, tourGlass.Glass.g, tourGlass.Glass.b, tourGlass.Glass.a * 0.75f))
+                      : dressed ? palette.Clear(new Color(0.62f, 0.80f, 0.95f, 0.07f)) : palette.Clear(Greybox.Hex(0x9fd4e8, 0.14f));
             var glassEdge = palette.UnlitColor(dressed ? new Color(0.55f, 0.68f, 0.82f) : Greybox.Hex(0x5fa8c4));
             var glassLight = palette.UnlitColor(new Color(0.88f, 0.94f, 1.0f));
             var glare = palette.Clear(new Color(1f, 1f, 1f, 0.045f));

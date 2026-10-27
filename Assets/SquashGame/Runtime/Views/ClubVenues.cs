@@ -66,7 +66,6 @@ namespace SquashGame
             V("lagos", "Teslim Balogun Stadium", "Lagos", "NGR", ClubKind.Centre, 0, Red, White, Oak, Concrete, H(0x1f7a3a), H(0xf2f1ed), "SURULERE - LAGOS", bleachers: true, events: "Lagos Open"),
             // ---- Challenger 12 ----
             V("nimy", "Aramis Club", "Nimy", "BEL", ClubKind.Shed, 2, Blue, White, Oak, H(0xd2d4d8), H(0xe86a1c), H(0x202226), "ARAMIS - NIMY - BELGIQUE", events: "Nimy Open"),
-            V("alexandria", "Alexandria Sporting Club", "Alexandria", "EGY", ClubKind.Corridor, 1, Red, Cream, Oak, H(0xe6dcc4), H(0x1d3f7a), H(0xc8352e), "SINCE 1890", windows: true, sky: Tropic, events: "Alexandria Open"),
             V("madrid", "Tres Cantos Squash", "Madrid", "ESP", ClubKind.Shed, 2, Black, White, Oak, H(0xd6d8dc), H(0xc8352e), H(0xe8c22a), "THE BIGGEST SQUASH CLUB IN SPAIN", events: "Madrid Open"),
             V("sydney", "Thornleigh Squash Centre", "Sydney", "AUS", ClubKind.Corridor, 1, Red, White, Pine, H(0xdfe0e2), H(0x1f6a3c), H(0xe8c22a), "THORNLEIGH - NSW", windows: true, sky: Tropic, events: "Sydney Open"),
             V("mumbai", "Juhu Vile Parle Gymkhana", "Mumbai", "IND", ClubKind.Centre, 0, Red, White, Oak, H(0xe4ddd0), H(0x7a1f2b), H(0xe8c22a), "JVPG - JUHU", windows: true, sky: Warm, events: "Mumbai Open", also: "Mumbai Challenger"),

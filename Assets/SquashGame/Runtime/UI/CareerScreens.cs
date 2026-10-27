@@ -297,7 +297,7 @@ namespace SquashGame.UI
                 P1Name = c.BugOf(You),
                 P2Name = pro.Bug,
                 KitSeed = star != null ? star.KitSeed : KitSeed(c, pro.Id),  // the pro's own kit, the same every match
-                Court = c.S.Current != null && !c.S.Current.Home ? Courts.ForCareerEvent(c.S.Current.Name, c.S.Current.Tier) : CourtFor(0),   // its own venue, else its tier's
+                Court = c.S.Current != null && !c.S.Current.Home ? Courts.ForCareerEvent(c.S.Current.Name, c.S.Current.Tier, c.S.Current.City) : CourtFor(0),   // its own venue, else its tier's
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
                 Attributes = c.Effective,                                  // your levels and your gear (P7 phase 5)
                 GearLooks = GearLooks(c),                                   // bought gear shows (the starters leave your Locker look)
@@ -880,8 +880,8 @@ namespace SquashGame.UI
             sim.Enabled = () => !Finals;
             AddTo(acts, new ActionItem("The draw", () => Fe.Push(new DrawScreen(s.Current)), PromptBar.Btn.Y));
             if (Finals) Kit.L(mid, "The World Tour Finals can't be simulated: play them.", "k-cr-note");
-            var court = Courts.Find(s.Current.Home ? Career.CourtFor(0) : Courts.ForCareerEvent(s.Current.Name, s.Current.Tier));
-            Kit.L(mid, court != null && court.Id.StartsWith(Courts.VenuePrefix) ? "At the " + court.Name + ", " + court.Blurb : "On the " + Career.CourtName(s.Current.Tier), "k-cr-note");
+            var court = Courts.Find(s.Current.Home ? Career.CourtFor(0) : Courts.ForCareerEvent(s.Current.Name, s.Current.Tier, s.Current.City));
+            Kit.L(mid, court != null && Courts.IsVenue(court.Id) ? "At " + (court.Name.StartsWith("The ") ? "" : "the ") + court.Name + ", " + court.Blurb : "On the " + Career.CourtName(s.Current.Tier), "k-cr-note");
 
             var them = Kit.Box(stage, "k-vs-side");
             them.AddToClassList("k-vs-side--right");

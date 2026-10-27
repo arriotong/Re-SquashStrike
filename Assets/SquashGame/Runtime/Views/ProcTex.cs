@@ -116,11 +116,17 @@ namespace SquashGame
         /// whole wall (6.40 x 5.64 m).</summary>
         public static Texture2D FrontWall()
         {
-            return Cached("frontwall_blue", () =>
+            return FrontWall("frontwall_blue", new Color(0.07f, 0.20f, 0.48f), new Color(0.13f, 0.34f, 0.70f), "RE:SQUASHSTRIKE", "CLASSIC  2026",
+                             new[] { "RE:SQUASHSTRIKE", "WORLD TOUR", "GLASS COURT", "PLAY ON" });
+        }
+
+        /// <summary>A venue's front wall (courts per tournament, 2026-10-27): its colours, its mark and names.</summary>
+        public static Texture2D FrontWall(string key, Color deep, Color mid, string markText, string subText, string[] topNames)
+        {
+            return Cached(key, () =>
             {
                 const int W = 1024, H = 904;                                     // ~ the wall's aspect
                 var px = new Color[W * H];
-                var deep = new Color(0.07f, 0.20f, 0.48f); var mid = new Color(0.13f, 0.34f, 0.70f);
                 for (int y = 0; y < H; y++)
                     for (int x = 0; x < W; x++)
                     {
@@ -131,19 +137,20 @@ namespace SquashGame
                 var white = new Color(0.96f, 0.97f, 1f);
                 // The names along the top (above the 4.57 m out line: from 81% of the height).
                 int topY = (int)(H * 0.855f);
-                string[] names = { "RE:SQUASHSTRIKE", "WORLD TOUR", "GLASS COURT", "PLAY ON" };
                 int x0 = 30;
-                foreach (var n in names)
+                foreach (var n in topNames)
                 {
                     DotText(px, W, H, n, x0, topY, 4, white, 1, W);
                     x0 += TextWidth(n, 4) + 48;
                 }
                 // The event's mark, between the service line (32%) and the out line.
-                string mark = "RE:SQUASHSTRIKE";
-                int mw = TextWidth(mark, 8);
-                DotText(px, W, H, mark, (W - mw) / 2, (int)(H * 0.62f), 8, white, 1, W);
-                string sub = "CLASSIC  2026";
-                DotText(px, W, H, sub, (W - TextWidth(sub, 4)) / 2, (int)(H * 0.56f), 4, new Color(0.62f, 0.82f, 1f), 1, W);
+                string mark = markText;
+                int ms = 8;
+                while (ms > 4 && TextWidth(mark, ms) > W - 60) ms--;                     // a long name: smaller letters
+                int mw = TextWidth(mark, ms);
+                DotText(px, W, H, mark, (W - mw) / 2, (int)(H * 0.62f), ms, white, 1, W);
+                string sub = subText;
+                DotText(px, W, H, sub, (W - TextWidth(sub, 4)) / 2, (int)(H * 0.56f), 4, Color.Lerp(mid, white, 0.6f), 1, W);
                 return Make(W, H, px, false);
             });
         }

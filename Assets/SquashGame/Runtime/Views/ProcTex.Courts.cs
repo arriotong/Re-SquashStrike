@@ -73,6 +73,45 @@ namespace SquashGame
 
         /// <summary>A frosted glass front wall (graphics pass 2): denser low down where the ball meets it, clearing toward the
         /// top so what is behind shows through, a dark band of names along the top. UV 0..1 = the whole wall; alpha carries the frost.</summary>
+        /// <summary>Doha at night as a printed mural (the Qatar Classic's far wall): a violet-to-navy sky, the towers' silhouettes
+        /// lit window by window, a few spires, the corniche's gold in the water. UV 0..1 = the whole wall.</summary>
+        public static Texture2D SkylineMural()
+        {
+            return Cached("mural_doha", () =>
+            {
+                const int W = 1024, H = 384;
+                var px = new Color[W * H];
+                int waterTop = (int)(H * 0.2f);
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        float t = (y - waterTop) / (float)(H - waterTop);
+                        px[y * W + x] = y < waterTop ? new Color(0.03f, 0.04f, 0.12f) : Color.Lerp(new Color(0.55f, 0.22f, 0.58f), new Color(0.04f, 0.05f, 0.2f), Mathf.Sqrt(Mathf.Clamp01(t)));
+                    }
+                var rng = new System.Random(77);
+                for (int b = 0; b < 46; b++)
+                {
+                    int bw = 10 + rng.Next(32), x0 = rng.Next(W - bw), bh = (int)((0.15f + (float)(rng.NextDouble() * rng.NextDouble()) * 0.62f) * H);
+                    bool spire = rng.NextDouble() < 0.25;
+                    var body = new Color(0.05f, 0.06f, 0.13f);
+                    for (int y = waterTop; y < waterTop + bh && y < H; y++)
+                    {
+                        int inset = spire && y > waterTop + bh * 0.75f ? (int)((y - waterTop - bh * 0.75f) / (bh * 0.25f) * bw / 2) : 0;
+                        for (int x = x0 + inset; x < x0 + bw - inset; x++)
+                        {
+                            bool win = (x % 4 == 1) && (y % 5 == 2) && Hash(x * 3 + b, y) > 0.35f;
+                            px[y * W + x] = win ? (Hash(x, y + b) > 0.7f ? new Color(1f, 0.95f, 0.8f) : new Color(1f, 0.72f, 0.32f)) : body;
+                        }
+                    }
+                    // its light in the water
+                    for (int y = 0; y < waterTop; y++)
+                        for (int x = x0 + 2; x < x0 + bw - 2; x += 3)
+                            if (Hash(x, y * 7 + b) > 0.55f) px[y * W + x] = Color.Lerp(px[y * W + x], new Color(1f, 0.7f, 0.3f), 0.6f * y / waterTop);
+                }
+                return Make(W, H, px, false);
+            });
+        }
+
         public static Texture2D FrostedGlass() { return FrostedGlass("frostedglass", "RE:SQUASHSTRIKE  WORLD TOUR  GLASS COURT"); }
 
         /// <summary>The frosted front wall with its own row of names along the top (a venue's).</summary>

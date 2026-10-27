@@ -66,6 +66,7 @@ namespace SquashGame
         public static CourtTheme Find(string id)
         {
             if (id != null && id.StartsWith(VenuePrefix)) return VenueTheme(id.Substring(VenuePrefix.Length));
+            if (id != null && id.StartsWith(TourPrefix)) return TourTheme(id.Substring(TourPrefix.Length));
             foreach (var c in All) if (c.Id == id) return c;
             return null;
         }
@@ -82,7 +83,7 @@ namespace SquashGame
 
         // ---- courts per tournament (2026-10-27): a career event at a venue of its own (ClubVenues); the rest by tier ----
 
-        public const string VenuePrefix = "venue:";
+        public const string VenuePrefix = "venue:", TourPrefix = "tour:";
         static readonly System.Collections.Generic.Dictionary<string, CourtTheme> _venues = new System.Collections.Generic.Dictionary<string, CourtTheme>();
 
         /// <summary>A venue's court theme (null if there is no such venue).</summary>
@@ -100,12 +101,30 @@ namespace SquashGame
             return t;
         }
 
-        /// <summary>The court a career event is played on: its own venue when it has one, else its tier's.</summary>
-        public static string ForCareerEvent(string eventName, int tier)
+        /// <summary>A World Tour venue's court theme (TourVenues; null if there is no such venue).</summary>
+        static CourtTheme TourTheme(string key)
         {
+            if (_venues.TryGetValue(TourPrefix + key, out var t)) return t;
+            var v = TourVenues.Find(key);
+            if (v == null) return null;
+            t = new CourtTheme { Id = TourPrefix + key, Name = v.Name, Blurb = v.City, Walls = v.Walls, Lines = v.Lines, FloorTint = v.Floor, FarClip = v.FarClip, Establishing = v.Establishing };
+            _venues[TourPrefix + key] = t;
+            return t;
+        }
+
+        /// <summary>The court a career event is played on: its World Tour stage or its Challenger venue when it has one (the
+        /// Tour Finals: the season's host city's), else its tier's.</summary>
+        public static string ForCareerEvent(string eventName, int tier, string city = null)
+        {
+            var t = TourVenues.ForEvent(eventName, city);
+            if (t != null) return TourPrefix + t.Key;
+            if (eventName == "Tour Finals" && city == "Kuala Lumpur") return VenuePrefix + "kualalumpur";     // the season 6 Finals: Bukit Jalil
             var v = ClubVenues.ForEvent(eventName);
             return v != null ? VenuePrefix + v.Key : ForCareerTier(tier);
         }
+
+        /// <summary>A built venue's court (a tournament's own, not a tier's)?</summary>
+        public static bool IsVenue(string id) { return id != null && (id.StartsWith(VenuePrefix) || id.StartsWith(TourPrefix)); }
 
         public static string ForCareerTier(int tier) { return CareerCourts[Mathf.Clamp(tier, 0, CareerCourts.Length - 1)]; }
         public static float CrowdForCareerTier(int tier) { return CareerCrowd[Mathf.Clamp(tier, 0, CareerCrowd.Length - 1)]; }

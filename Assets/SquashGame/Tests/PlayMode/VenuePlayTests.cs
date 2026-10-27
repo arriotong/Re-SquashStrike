@@ -70,10 +70,83 @@ namespace SquashGame.Tests
             Courts.CurrentId = "show";
         }
 
+        /// <summary>Courts per tournament, part 2: every World Tour stage builds and is filmed - from the TV camera and the high
+        /// establishing shot (Captures/TOUR_TV.png, TOUR_WIDE.png, and each stage's own VENUE_tour_KEY.png).</summary>
+        [UnityTest]
+        public IEnumerator EveryWorldTourStageBuildsAndIsFilmed()
+        {
+            VenueView.Detail = 2;
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            var cam = Camera.main;
+            cam.GetComponent<GameplayCameraRig>().enabled = false;
+            const int CW = 480, CHt = 270, Across = 5;
+            int n = TourVenues.All.Length, down = (n + Across - 1) / Across;
+            var tv = new Texture2D(CW * Across, CHt * down, TextureFormat.RGB24, false);
+            var wide = new Texture2D(CW * Across, CHt * down, TextureFormat.RGB24, false);
+            var rt = new RenderTexture(CW, CHt, 24);
+            var big = new RenderTexture(1600, 900, 24);
+            for (int i = 0; i < n; i++)
+            {
+                var v = TourVenues.All[i];
+                Courts.CurrentId = Courts.TourPrefix + v.Key;
+                yield return null; yield return null; yield return null;
+                Assert.That(Courts.Current.Id, Is.EqualTo(Courts.TourPrefix + v.Key));
+                Assert.That(GameObject.Find("Venue"), Is.Not.Null, v.Key + ": no venue");
+                Assert.That(Camera.main.farClipPlane, Is.GreaterThanOrEqualTo(v.FarClip - 1f), v.Key + ": the camera must see its whole venue");
+                for (int shot = 0; shot < 2; shot++)
+                {
+                    if (shot == 0) { cam.fieldOfView = 34f; cam.transform.position = SimToWorld.Pos(0, 6.0, 22.25); cam.transform.LookAt(SimToWorld.Pos(0, 2.2, 0)); }
+                    else
+                    {
+                        cam.fieldOfView = GameplayCameraRig.EstablishingFov;
+                        cam.transform.position = SimToWorld.Pos(GameplayCameraRig.EstablishingPos.x, GameplayCameraRig.EstablishingPos.y, GameplayCameraRig.EstablishingPos.z);
+                        cam.transform.LookAt(SimToWorld.Pos(GameplayCameraRig.EstablishingLook.x, GameplayCameraRig.EstablishingLook.y, GameplayCameraRig.EstablishingLook.z));
+                    }
+                    cam.targetTexture = rt; cam.Render();
+                    RenderTexture.active = rt;
+                    (shot == 0 ? tv : wide).ReadPixels(new Rect(0, 0, CW, CHt), (i % Across) * CW, (down - 1 - i / Across) * CHt);
+                }
+                cam.fieldOfView = 34f; cam.transform.position = SimToWorld.Pos(0, 6.0, 22.25); cam.transform.LookAt(SimToWorld.Pos(0, 2.2, 0));
+                cam.targetTexture = big; cam.Render();
+                RenderTexture.active = big;
+                var tex = new Texture2D(1600, 900, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, 1600, 900), 0, 0); tex.Apply();
+                File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "VENUE_tour_" + v.Key + ".png")), tex.EncodeToPNG());
+                Object.Destroy(tex);
+                cam.targetTexture = null; RenderTexture.active = null;
+            }
+            tv.Apply(); wide.Apply();
+            File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "TOUR_TV.png")), tv.EncodeToPNG());
+            File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "TOUR_WIDE.png")), wide.EncodeToPNG());
+            Object.Destroy(tv); Object.Destroy(wide); rt.Release(); big.Release();
+            Courts.CurrentId = "show";
+        }
+
+        [Test]
+        public void TheWorldTourStagesAreTheirEvents()
+        {
+            foreach (var v in TourVenues.All)
+            {
+                Assert.That(World.CityOf(v.City), Is.Not.Null, v.Key + ": " + v.City);
+                foreach (var e in v.Events)
+                {
+                    Assert.That(System.Array.Exists(Tour.Calendar, x => x.Name == e), Is.True, v.Key + ": '" + e + "' is on the calendar");
+                    Assert.That(Courts.ForCareerEvent(e, 0), Is.EqualTo(Courts.TourPrefix + v.Key), e);
+                }
+                if (v.FinalsCity != null) Assert.That(Courts.ForCareerEvent("Tour Finals", (int)Tier.WorldTourFinals, v.FinalsCity), Is.EqualTo(Courts.TourPrefix + v.Key));
+                Assert.That(Courts.Find(Courts.TourPrefix + v.Key).Name, Is.EqualTo(v.Name));
+            }
+            // every season's Finals host has a stage (Kuala Lumpur: the Bukit Jalil centre)
+            foreach (var city in Tour.FinalsCities)
+                Assert.That(Courts.IsVenue(Courts.ForCareerEvent("Tour Finals", (int)Tier.WorldTourFinals, city)), Is.True, city);
+            Assert.That(Courts.ForCareerEvent("Tour Finals", (int)Tier.WorldTourFinals, "Kuala Lumpur"), Is.EqualTo(Courts.VenuePrefix + "kualalumpur"));
+        }
+
         [Test]
         public void TheVenuesAreTheCalendarsChallengers()
         {
-            Assert.That(ClubVenues.All.Length, Is.EqualTo(54), "40 venues (the user: \"pick maybe like 40\") and 14 generic city clubs");
+            Assert.That(ClubVenues.All.Length, Is.EqualTo(53), "39 venues (Alexandria moved to the Bibliotheca stage) (the user: \"pick maybe like 40\") and 14 generic city clubs");
             var keys = new System.Collections.Generic.HashSet<string>();
             int events = 0;
             foreach (var v in ClubVenues.All)
@@ -95,8 +168,9 @@ namespace SquashGame.Tests
                 Assert.That(t.Walls, Is.EqualTo(v.Kind == ClubKind.Centre ? WallStyle.Glass : WallStyle.Plaster));
                 Assert.That(ClubVenues.Sign(v.Venue), Does.Match("^[A-Z0-9 .:-]+$"), "the LED font has the letters");
             }
-            Assert.That(events, Is.EqualTo(55), "Mumbai's two events share JVPG");
-            Assert.That(Courts.ForCareerEvent("British Open", (int)Tier.Diamond), Is.EqualTo(Courts.ForCareerTier((int)Tier.Diamond)), "the rest: their tier's court");
+            Assert.That(events, Is.EqualTo(54), "Mumbai's two events share JVPG");
+            Assert.That(Courts.ForCareerEvent("British Open", (int)Tier.Diamond), Is.EqualTo(Courts.TourPrefix + "rep"), "a World Tour stage of its own");
+            Assert.That(Courts.ForCareerEvent("Charlottesville Open", (int)Tier.Copper), Is.EqualTo(Courts.ForCareerTier((int)Tier.Copper)), "the rest: their tier's court");
             Assert.That(Courts.ForCareerEvent("Toronto Open", (int)Tier.Challenger15), Is.EqualTo(Courts.ForCareerTier((int)Tier.Challenger15)), "a reuse: its tier's court until Toronto's is built");
             Assert.That(Courts.Find("venue:nowhere"), Is.Null);
         }
