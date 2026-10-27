@@ -100,6 +100,26 @@ namespace SquashSim.Tests
             Assert.That(c.S.Last.Done, Is.True, "played out without you");
         }
 
+        [Test] public void TheFinalsGoRoundTheWorld()
+        {
+            int week = System.Array.Find(Tour.Calendar, e => e.Tier == Tier.WorldTourFinals).Week;
+            var seen = new List<string>();
+            for (int season = 1; season <= Tour.FinalsCities.Length + 1; season++)
+            {
+                var ev = Tour.Week(season * Tour.SlotsPerSeason + week).Find(e => e.Tier == Tier.WorldTourFinals);
+                Assert.That(ev.City, Is.EqualTo(Tour.FinalsCity(season)));
+                Assert.That(World.CityOf(ev.City), Is.Not.Null, ev.City + " is on the map");
+                Assert.That(Tour.Week(season * Tour.SlotsPerSeason + week), Is.SameAs(Tour.Week(season * Tour.SlotsPerSeason + week)), "the same week each time");
+                seen.Add(ev.City);
+            }
+            Assert.That(seen[0], Is.EqualTo("Cairo")); Assert.That(seen[1], Is.EqualTo("Paris"));
+            Assert.That(seen[Tour.FinalsCities.Length], Is.EqualTo("Cairo"), "round again");
+            Assert.That(new HashSet<string>(seen).Count, Is.EqualTo(Tour.FinalsCities.Length), "a different host each season");
+            // a new career's first Finals (season 1): Cairo
+            var c = AtTheFinals(74);
+            Assert.That(c.Enter(Tier.WorldTourFinals).City, Is.EqualTo("Cairo"));
+        }
+
         [Test] public void TheTableIsWinsThenHeadToHead()
         {
             // group A: 1, 4, 5, 8 (seeds); 1 beats 4 and 5, loses to 8; 8 beats 1 and 4, loses to 5; ...

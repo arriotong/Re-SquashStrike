@@ -164,8 +164,28 @@ namespace SquashSim.Career
 
         public static int WeekOf(int slot) { return ((slot % SlotsPerSeason) + SlotsPerSeason) % SlotsPerSeason; }
 
-        /// <summary>This slot's (week's) events, biggest first.</summary>
-        public static List<TourEvent> Week(int slot) { return ByWeek[WeekOf(slot)]; }
+        /// <summary>This slot's (week's) events, biggest first. The Tour Finals' city is the season's (FinalsCity).</summary>
+        public static List<TourEvent> Week(int slot)
+        {
+            var w = ByWeek[WeekOf(slot)];
+            int f = w.FindIndex(e => e.Tier == Tier.WorldTourFinals);
+            if (f < 0) return w;
+            int season = slot >= 0 ? slot / SlotsPerSeason : 0;
+            if (!_finalsWeek.TryGetValue(season, out var list))
+            {
+                list = new List<TourEvent>(w);
+                var e = w[f];
+                list[f] = new TourEvent { Week = e.Week, Name = e.Name, Tier = e.Tier, City = FinalsCity(season) };
+                _finalsWeek[season] = list;
+            }
+            return list;
+        }
+        static readonly Dictionary<int, List<TourEvent>> _finalsWeek = new Dictionary<int, List<TourEvent>>();
+
+        /// <summary>The Tour Finals go round the world, a host a season (the user, 2026-10-27: "loop around different
+        /// countries"): Cairo, Paris, Doha, Hong Kong, London, Kuala Lumpur, then Cairo again. Season 1 is Cairo.</summary>
+        public static readonly string[] FinalsCities = { "Cairo", "Paris", "Doha", "Hong Kong", "London", "Kuala Lumpur" };
+        public static string FinalsCity(int season) { int n = FinalsCities.Length; return FinalsCities[(((season - 1) % n) + n) % n]; }
 
         /// <summary>The week's tiers, biggest first (an event is (slot, index)).</summary>
         public static Tier[] EventsIn(int slot) { var w = Week(slot); var t = new Tier[w.Count]; for (int i = 0; i < t.Length; i++) t[i] = w[i].Tier; return t; }

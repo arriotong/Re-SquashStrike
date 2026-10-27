@@ -526,7 +526,7 @@ namespace SquashGame.UI
                 var head = Kit.Box(cell, "k-cr-month-head");
                 Kit.L(head, Tour.WeekLabel(m).ToUpperInvariant(), "k-cr-month-name");
                 if (m == s.Week) Kit.L(head, "NOW", "k-cr-now");
-                var week = Tour.Week(m);
+                var week = Tour.Week(s.Season * Tour.SlotsPerSeason + m);       // this season's (the Finals move)
                 int challengers = 0;
                 for (int i = 0; i < week.Count; i++)
                 {
