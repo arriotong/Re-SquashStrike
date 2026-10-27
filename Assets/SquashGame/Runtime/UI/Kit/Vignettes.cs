@@ -86,7 +86,7 @@ namespace SquashGame.UI
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             foreach (var e in _live) e.Orbit += dt * 0.25f;
             _since += dt;
-            if (_since < 1f / Fps) return;
+            if (_since < 1f / GraphicsTier.VignetteFps) return;           // (Battery saver: 4 a second)
             float step = _since; _since = 0f;
             foreach (var e in _live) if (Shown(e.Owner)) Draw(e, step);
         }

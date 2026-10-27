@@ -58,7 +58,7 @@ namespace SquashGame.Profile
         /// <summary>Batch 2: Quick Match with the arcade abilities (MatchChoices.AbilityKit; off: the plain game).</summary>
         public bool Abilities;
         public int VsLength = 2, VsScoring = 0;
-        public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.All index
+        public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.Pickable index (the game's courts, then the World Tour's stages)
     }
 
     /// <summary>P2-M2: a Target Arcade challenge's (or drill's) best.</summary>
@@ -334,7 +334,7 @@ namespace SquashGame.Profile
             if (!video || Application.isBatchMode) return;
             bool saver = GraphicsTier.Current == GraphicsLevel.Saver;
             QualitySettings.vSyncCount = s.VSync && !saver ? 1 : 0;
-            Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : saver ? 60 : -1;      // Battery saver: no more than 60
+            Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : saver ? GraphicsTier.SaverFps : -1;      // Battery saver: 30 fps (2026-10-27)
             var modes = new[] { FullScreenMode.FullScreenWindow, FullScreenMode.ExclusiveFullScreen, FullScreenMode.Windowed };
             var mode = modes[Mathf.Clamp(s.DisplayMode, 0, 2)];
             if (s.ResolutionW > 0 && s.ResolutionH > 0)

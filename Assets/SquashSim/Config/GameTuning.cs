@@ -80,11 +80,12 @@ namespace SquashSim
             // how far the shot is pulled from the aim onto its line (1 = the line exactly, 0 = the aim). 2026-10-20: was
             // 1.0 / 0.8 - Assisted played the perfect shot whatever the aim; now it helps, and the aim still matters
             public const double LineSnapAssisted = 0.6, LineSnapNonAssisted = 0.4;
+            public const double LineSnapAssistedLob = 0.9;          // 2026-10-27: an assisted lob follows its line (the aim's pull took cross lobs into the side wall, short)
             public const double AssistSpreadScale = 0.75;          // Assisted: a contact's spread, a little tighter
             public const double LineMidBall = 0.35;                // a ball this near the middle: the aim's side is the corner
             public const double DriveStraightOff = 0.40, DriveStraightDepth = 7.4, DriveCrossOff = 1.0, DriveCrossDepth = 6.6;
             public const double KillStraightOff = 0.30, KillStraightDepth = 3.0, KillCrossOff = 1.1, KillCrossDepth = 3.2;
-            public const double LobStraightOff = 0.50, LobStraightDepth = 8.6, LobCrossOff = 0.9, LobCrossDepth = 8.4;
+            public const double LobStraightOff = 1.8, LobStraightDepth = 9.1, LobCrossOff = 2.0, LobCrossDepth = 9.0;   // 2026-10-27: straighter, deeper (0.5 / 0.9 off the wall brushed it and fell short)
             public const double DropStraightOff = 0.35, DropStraightDepth = 1.0, DropCrossOff = 0.45, DropCrossDepth = 1.1;
             public const double Reach = 1.5, SweetSpot = 0.85, MinHeight = 0.04, MaxHeight = 2.6;
             public const double Grace = 0.22;                      // released this early, it still connects as the ball comes in
@@ -99,6 +100,10 @@ namespace SquashSim
             public const double FullChargeSpreadCut = 0.6;         // above FullChargeAt, a committed swing: tighter
             public const double FullChargeAt = 0.8;
             public const double MissPaceLoss = 0.15;               // a stretched contact loses up to 15% pace
+            // playtest 2026-10-27 (assisted): a touch lob flew at touch pace and landed short; a cross from the front could be
+            // aimed almost sideways and pinball off both side walls
+            public const bool TouchLobSolved = true;               // a touch lob takes the lob's own arc (true) or touch pace
+            public const double MaxSideSlope = 1.2;                // a shot's sideways run per metre toward the front wall (~50 degrees; 0: no limit)
             public const double GrossMissTinDepth = 0.15, GrossMissOff = 0.4, GrossMissOffSpan = 0.6;
             public const double SoftenStep = 0.93; public const int SoftenTries = 14;   // floor before the back wall: a touch softer each try
             // the great hit (the ring's flash)
@@ -117,7 +122,7 @@ namespace SquashSim
             public const double LowHeight = 1.15, LobHeight = 3.0; // under: a drop (a kill if charged), over: a lob
             public const double KillCharge = 0.25, KillHeightAboveTin = 0.10;
             public const double DropHeightAboveTin = 0.17, DropSpeed = 9.0, DropFlightTime = 0.45, DropSpeedMin = 10.0, DropSpeedMax = 17.0;
-            public const double LobSpeed = 14.0, LobRise = 1.1, LobMaxSpeed = 28.0, LobDepth = 8.7, LobWallMax = 3.8;
+            public const double LobSpeed = 14.0, LobRise = 1.1, LobMaxSpeed = 28.0, LobDepth = 9.05, LobWallMax = 3.8;   // (8.7: into the back 2026-10-27)
             public const double BoastPaceScale = 0.9, BoastMaxHeight = 1.8, BoastMinHeight = 0.8, BoastCross = 0.3;
         }
 

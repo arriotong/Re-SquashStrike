@@ -6,7 +6,10 @@
 //   High           the 3D crowd, soft shadows (2 cascades), the picture grade
 //   Medium         the 3D crowd; hard shadows (1 cascade), no grade
 //   Low            painted crowd, short hard shadows, 85% resolution
-//   Battery saver  Low at 70% resolution, no shadows, capped at 60 fps
+//   Battery saver  Low at 60% resolution, no shadows, no anti-aliasing or
+//                  HDR, capped at 30 fps, the menu pictures at 4 fps
+//                  (2026-10-27: "a low detailed mode so it wouldn't take out
+//                  laptop batteries too fast")
 //   Auto           picks from the graphics card (and Battery saver while
 //                  unplugged), then the governor: below the frame rate it
 //                  aims for, the resolution steps down (to 60%); with time
@@ -61,7 +64,7 @@ namespace SquashGame
             Current = Auto ? (OnBattery ? GraphicsLevel.Saver : Detect()) : (GraphicsLevel)Mathf.Clamp(setting - 1, 0, 3);
             VenueView.Detail = Current <= GraphicsLevel.Medium ? 2 : 1;
             VenueView.Post = Current == GraphicsLevel.High;
-            BaseScale = Current == GraphicsLevel.Low ? 0.85f : Current == GraphicsLevel.Saver ? 0.7f : 1f;
+            BaseScale = Current == GraphicsLevel.Low ? 0.85f : Current == GraphicsLevel.Saver ? 0.6f : 1f;
             if (Application.isBatchMode) return;
 
             if (_asset == null && QualitySettings.renderPipeline is UniversalRenderPipelineAsset a)
@@ -75,11 +78,19 @@ namespace SquashGame
                 _asset.shadowDistance = Current == GraphicsLevel.Saver ? 0f : Current == GraphicsLevel.Low ? 14f : 28f;
                 _asset.shadowCascadeCount = Current == GraphicsLevel.High ? 2 : 1;
                 _asset.upscalingFilter = UpscalingFilterSelection.Linear;
+                _asset.msaaSampleCount = Current >= GraphicsLevel.Low ? 1 : _asset.msaaSampleCount;      // no anti-aliasing on Low and Battery saver
+                _asset.supportsHDR = Current != GraphicsLevel.Saver;
                 QualitySettings.renderPipeline = _asset;
                 GraphicsSettings.defaultRenderPipeline = _asset;
             }
             Governor.Reset();
         }
+
+        /// <summary>Battery saver's frame cap (the biggest saving on a laptop: half the frames of 60).</summary>
+        public const int SaverFps = 30;
+
+        /// <summary>The menu cards' live pictures: 15 a second, 4 in Battery saver.</summary>
+        public static float VignetteFps { get { return Current == GraphicsLevel.Saver ? 4f : 15f; } }
 
         /// <summary>The key light's shadow edge for the level (soft only on High).</summary>
         public static LightShadows KeyShadows { get { return Current == GraphicsLevel.Saver ? LightShadows.None : Current == GraphicsLevel.High ? LightShadows.Soft : LightShadows.Hard; } }

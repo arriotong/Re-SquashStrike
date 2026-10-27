@@ -196,7 +196,7 @@ namespace SquashGame
             VenueView.Build(root, palette);
             Debug.Log("[venue] detail " + VenueView.Detail + " built in " + sw.ElapsedMilliseconds + " ms, " + CrowdBuilder.PeopleBuilt + " people");
             VenueView.SetUpCamera(Camera.main);
-            if (dressed) Reflections(root, W, H, L);
+            if (dressed && GraphicsTier.Current != GraphicsLevel.Saver) Reflections(root, W, H, L);       // (Battery saver: no reflection probe)
             else if (GetComponent<ReflectionProbe>() != null) GetComponent<ReflectionProbe>().enabled = false;
             Debug.Log("[venue] court and venue in " + total.ElapsedMilliseconds + " ms");
         }

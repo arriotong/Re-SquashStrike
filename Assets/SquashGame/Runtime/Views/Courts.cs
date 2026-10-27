@@ -73,7 +73,21 @@ namespace SquashGame
 
         public static int IndexOf(string id) { for (int i = 0; i < All.Length; i++) if (All[i].Id == id) return i; return 0; }
 
-        public static string[] Names { get { var n = new string[All.Length]; for (int i = 0; i < n.Length; i++) n[i] = All[i].Name; return n; } }
+        /// <summary>The courts a player can pick (Quick Match, Versus, online): the game's own, then the World Tour's stages
+        /// (2026-10-27: "make this in quick play as well"). A saved choice is an index here; the game's own keep theirs.</summary>
+        public static CourtTheme[] Pickable
+        {
+            get
+            {
+                if (_pickable != null) return _pickable;
+                var list = new System.Collections.Generic.List<CourtTheme>(All);
+                foreach (var v in TourVenues.All) { var t = Find(TourPrefix + v.Key); if (t != null) list.Add(t); }
+                return _pickable = list.ToArray();
+            }
+        }
+        static CourtTheme[] _pickable;
+
+        public static string[] Names { get { var p = Pickable; var n = new string[p.Length]; for (int i = 0; i < n.Length; i++) n[i] = p[i].Name; return n; } }
 
         // The career's stages (SquashSim.Career.Tier order, Challenger 3 .. World Tour Finals): the club court for the small
         // Challengers, then up through the glass courts - the rooftop, the station, the pyramids, the show court - to the

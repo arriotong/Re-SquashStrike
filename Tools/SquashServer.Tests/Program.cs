@@ -342,8 +342,8 @@ namespace SquashServer.Tests
                 a.Send(NetMessages.Queue(QueueKind.Ranked)); b.Send(NetMessages.Queue(QueueKind.Ranked));
                 w.Run(5, () => a.S != null && b.S != null);
                 a.S.Command(ReplayCommand.SkipWarmUp);                                // (batch 4: past the knock-up)
-                w.Run(60);
-                Check(a.S != null && !a.S.Finished && a.S.RallyHashes.Count > 0, "some rallies in");
+                w.Run(180, () => a.S.RallyHashes.Count >= 3 || a.S.Finished);         // a few rallies in (not a fixed time: a first rally can run past a minute)
+                Check(a.S != null && !a.S.Finished && a.S.RallyHashes.Count > 0, "some rallies in (" + (a.S == null ? -1 : a.S.RallyHashes.Count) + ", finished " + (a.S != null && a.S.Finished) + ")");
                 long before = a.S.Tick;
                 a.L.Close();
                 w.Run(5);

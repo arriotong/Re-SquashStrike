@@ -48,6 +48,10 @@ namespace SquashGame.Editor
             PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = false;
             PlayerSettings.visibleInBackground = true;
+            // Direct3D 11 first (2026-10-27: "the game is crashing on a laptop"): Unity 6 defaults to Direct3D 12, which many
+            // laptops' integrated-graphics drivers handle badly; 12 stays as the fallback.
+            PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneWindows64, false);
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64, new[] { UnityEngine.Rendering.GraphicsDeviceType.Direct3D11, UnityEngine.Rendering.GraphicsDeviceType.Direct3D12 });
 
             string dir = Path.GetDirectoryName(Path.GetFullPath(output));
             Directory.CreateDirectory(dir);

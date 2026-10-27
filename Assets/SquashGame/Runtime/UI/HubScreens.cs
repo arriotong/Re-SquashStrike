@@ -227,14 +227,14 @@ namespace SquashGame.UI
                 AddTo(mid, new SelectorItem("Abilities", new[] { "Off", "On" }, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
                 _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
-                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.All[v].Id; }));
+                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
             }
             else
             {
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.VsLength, v => C.VsLength = v));
                 AddTo(mid, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => C.VsScoring, v => C.VsScoring = v));
                 Kit.L(mid, ScoringHint, "k-vs-hint");
-                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.All[v].Id; }));
+                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
                 AddTo(mid, new SelectorItem("Controls", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
             // them
@@ -294,14 +294,14 @@ namespace SquashGame.UI
             KitDirector.OpponentPreview = null;
             if (TwoPlayer)
                 Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = S.WarmUp,
-                                                  Court = Courts.All[Mathf.Clamp(C.VsCourt, 0, Courts.All.Length - 1)].Id });
+                                                  Court = Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Id });
             else
             {
                 var s = new MatchSettings
                 {
                     TwoPlayer = false, Opponent = C.OpponentId,
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
-                    Court = Courts.All[Mathf.Clamp(C.Court, 0, Courts.All.Length - 1)].Id
+                    Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id
                 }.Dressed();
                 if (C.Abilities)
                 {

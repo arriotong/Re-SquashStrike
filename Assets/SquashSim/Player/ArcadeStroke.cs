@@ -398,7 +398,7 @@ namespace SquashSim
             // Shot lines: you choose the shot (its height) and straight or cross (the half of the wall); it plays that line.
             if (ShotLines && !boast && !ctrl.ServeStroke && wall == 0)
             {
-                tx = PullToLine(tx, LineFor(ball, surfaces, shot, tx, ty, speed), Assisted);
+                tx = PullToLine(tx, LineFor(ball, surfaces, shot, tx, ty, speed), Assisted, shot);
             }
             int side = 0;
             if (boast)
@@ -440,7 +440,7 @@ namespace SquashSim
                 if (Rnd() < 0.5) ty = CourtDimensions.TIN_H - GameTuning.Hit.GrossMissTinDepth;                       // into the tin
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
             }
-            speed *= 1.0 - GameTuning.Hit.MissPaceLoss * missRatio;
+            speed = MissPace(speed, shot, missRatio, Assisted);
             // The AI's difficulty (1 for a human): how hard its drives and kills are. Drops, boasts, lobs and serves
             // set their own pace (a softer drop just dies in the tin).
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
@@ -468,10 +468,11 @@ namespace SquashSim
                 else tx = StraightAssist(ball, surfaces, tx, ty, speed, shot == "kill");
             }
 
+            if (wall == 0 && !boast && !ctrl.ServeStroke) tx = KeepAngle(ball.Pos.X, ball.Pos.Z, tx);   // never a sideways pinball
             // ---- the launch that gets there (the real ball physics, a few corrections) ----
             if (boast && !SolveBoast(ball, surfaces, tx, ty, side, ref speed)) boast = false;   // no way round from here: a drive
             if (boast) shot = "boast";
-            else if (shot == "lob" && wall == 0 && !touch) speed = SolveLob(ball, surfaces, tx, c.LobHeight + (mods != null ? mods.LobLift : 0));
+            else if (shot == "lob" && wall == 0 && (!touch || GameTuning.Hit.TouchLobSolved)) speed = SolveLob(ball, surfaces, tx, c.LobHeight + (mods != null ? mods.LobLift : 0));
             else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             // Floor before the back wall, and in: a drive, kill, serve or boast that would reach the back wall on the
             // full - or a drive / kill that would fly over an out line - is struck just soft enough. Lobs keep their own rule.
@@ -484,7 +485,7 @@ namespace SquashSim
                     if (!SolveBoastAt(ball, surfaces, tx, ty, side, speed)) { _vel.CopyFrom(_good); break; }   // keep the last boast that worked
                     _good.CopyFrom(_vel);
                 }
-                else if (shot == "lob" && wall == 0 && !touch) break;   // the arc search already kept it in court
+                else if (shot == "lob" && wall == 0 && (!touch || GameTuning.Hit.TouchLobSolved)) break;   // the arc search already kept it in court
                 else Solve(ball, surfaces, tx, ty, tz, wall, speed);
             }
             }
@@ -710,9 +711,27 @@ namespace SquashSim
 
         /// <summary>Where a shot aimed at tx really goes with this line: part of the way from the aim to the line - most of
         /// it with Assisted, a little without (LineSnapAssisted / LineSnapNonAssisted). The ring's dot uses it too.</summary>
-        public static double PullToLine(double tx, double line, bool assisted)
+        /// <summary>A stretched contact's lost pace (MissPaceLoss at a full miss).</summary>
+        public static double MissPace(double speed, string shot, double missRatio, bool assisted)
         {
-            return tx + (line - tx) * (assisted ? GameTuning.Hit.LineSnapAssisted : GameTuning.Hit.LineSnapNonAssisted);
+            if (assisted && (shot == "drop" || shot == "lob")) return speed;          // assisted: a soft shot keeps its pace (2026-10-27)
+            return speed * (1.0 - GameTuning.Hit.MissPaceLoss * missRatio);
+        }
+
+        /// <summary>Keep a shot's line within MaxSideSlope of straight at the front wall: from near the front a cross can't be
+        /// aimed almost sideways (it would run the front of the court off both side walls). 0: no limit.</summary>
+        public static double KeepAngle(double bx, double bz, double tx)
+        {
+            double k = GameTuning.Hit.MaxSideSlope;
+            if (k <= 0) return tx;
+            double run = k * System.Math.Max(0.25, bz);
+            return Clamp(tx, bx - run, bx + run);
+        }
+
+        public static double PullToLine(double tx, double line, bool assisted, string shot = null)
+        {
+            double snap = !assisted ? GameTuning.Hit.LineSnapNonAssisted : shot == "lob" ? GameTuning.Hit.LineSnapAssistedLob : GameTuning.Hit.LineSnapAssisted;
+            return tx + (line - tx) * snap;
         }
 
         /// <summary>The shot line from here, checked in flight: the line is aimed (ShotLine), flown once through the real
