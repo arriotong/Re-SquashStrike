@@ -16,7 +16,10 @@ namespace SquashGame.UI
 {
     public sealed class WorldMapView : VisualElement
     {
-        public const float West = -135, East = 180, North = 70, South = -50;
+        public const float World0 = -135, World1 = 180, WorldN = 70, WorldS = -50;
+        public readonly float West, East, North, South;                 // this view's bounds (the world, or a zoom: the Europe inset)
+        /// <summary>A zoom's bounds outlined on this map (lon0, lat0, lon1, lat1), or null.</summary>
+        public Vector4? Outline;
 
         static readonly Color Ocean = new Color32(11, 16, 24, 255), Grid = new Color(1, 1, 1, 0.04f);
         static readonly Color Land = new Color32(34, 42, 54, 255), Coast = new Color(1, 1, 1, 0.10f);
@@ -27,9 +30,9 @@ namespace SquashGame.UI
         Vector2? _from, _to;
         readonly bool _small;
 
-        public WorldMapView(bool small = false)
+        public WorldMapView(bool small = false, float west = World0, float east = World1, float north = WorldN, float south = WorldS)
         {
-            _small = small;
+            _small = small; West = west; East = east; North = north; South = south;
             AddToClassList("k-map");
             pickingMode = PickingMode.Ignore;
             style.overflow = Overflow.Hidden;
@@ -65,6 +68,14 @@ namespace SquashGame.UI
             // the land, then the inland seas
             foreach (var poly in MapShapes.Land) Shape(p, poly, Land, _small ? (Color?)null : Coast);
             foreach (var poly in MapShapes.Seas) Shape(p, poly, Ocean, null);
+            // a zoom's box
+            if (Outline.HasValue)
+            {
+                var o = Outline.Value;
+                var a = Project(o.x, o.w); var b = Project(o.z, o.y);
+                p.strokeColor = new Color(Lime.r, Lime.g, Lime.b, 0.5f); p.lineWidth = 1.5f;
+                p.BeginPath(); p.MoveTo(a); p.LineTo(new Vector2(b.x, a.y)); p.LineTo(b); p.LineTo(new Vector2(a.x, b.y)); p.ClosePath(); p.Stroke();
+            }
             // the coming weeks' events
             foreach (var (lon, lat, c) in Dots)
             {

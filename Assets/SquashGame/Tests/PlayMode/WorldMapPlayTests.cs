@@ -94,9 +94,19 @@ namespace SquashGame.Tests
             Assert.That(first.Option.Home, Is.False, "the biggest open, not the club");
             // where the pins are: their cities, on the map
             var city = World.CityOf(first.Option.City);
-            var at = map.Map.Project(city.Lon, city.Lat);
+            var at = first.View.Project(city.Lon, city.Lat);
             Assert.That(first.Root.resolvedStyle.left, Is.EqualTo(at.x).Within(4f));
             Assert.That(first.Root.resolvedStyle.top, Is.EqualTo(at.y).Within(4f));
+            // a busy week in Europe: its pins on the zoomed inset (the user, 2026-10-27: "add Europe inset")
+            int european = 0;
+            foreach (var o in c.Options()) { var cc = World.CityOf(o.City); if (cc.Lon >= -11 && cc.Lon <= 30 && cc.Lat >= 36 && cc.Lat <= 61) european++; }
+            Assert.That(map.Europe != null, Is.EqualTo(european >= WorldMapScreen.EuropeAt), european + " European events this week");
+            foreach (var p in map.Pins)
+            {
+                var pc = World.CityOf(p.Option.City);
+                bool inBox = pc.Lon >= -11 && pc.Lon <= 30 && pc.Lat >= 36 && pc.Lat <= 61;
+                Assert.That(p.View, Is.SameAs(map.Europe != null && inBox ? map.Europe : map.Map), p.Option.City);
+            }
             yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P7_Map_ThisWeek.png");
 

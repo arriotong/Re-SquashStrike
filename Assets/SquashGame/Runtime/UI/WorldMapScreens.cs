@@ -31,6 +31,8 @@ namespace SquashGame.UI
     {
         public readonly CareerSession.Option Option;
         public readonly float Lon, Lat;
+        /// <summary>The map it sits on (the world, or the Europe inset).</summary>
+        public WorldMapView View;
         readonly System.Action<MapPinItem> _pick;
         public readonly Label Tag;
         public override bool WantsSlant { get { return false; } }
@@ -58,9 +60,13 @@ namespace SquashGame.UI
         protected override string Title { get { return "The world map"; } }
 
         public WorldMapView Map { get; private set; }
+        /// <summary>The Europe inset: a zoom of Europe when a week has 3+ events there (null otherwise).</summary>
+        public WorldMapView Europe { get; private set; }
+        public static readonly Vector4 EuropeBox = new Vector4(-11, 36, 30, 61);    // lon0, lat0, lon1, lat1
+        public const int EuropeAt = 3;
         public readonly List<MapPinItem> Pins = new List<MapPinItem>();
         VisualElement _detail;
-        VisualElement _you, _home;
+        VisualElement _you, _home, _youE, _homeE;
         MenuItem _shown;
         bool _placed;
 
@@ -76,11 +82,26 @@ namespace SquashGame.UI
             Map = new WorldMapView();
             frame.Add(Map);
             var options = c.Options();
+            int european = 0;
+            foreach (var o in options) { var city = World.CityOf(o.City); if (city != null && InEurope(city)) european++; }
+            if (european >= EuropeAt)
+            {
+                // a busy week in Europe: its pins on a zoomed inset, its box outlined on the world
+                var box = Kit.Box(frame, "k-wm-inset");
+                Europe = new WorldMapView(false, EuropeBox.x, EuropeBox.z, EuropeBox.w, EuropeBox.y);
+                box.Add(Europe);
+                Kit.L(box, "EUROPE", "k-wm-inset-name");
+                Map.Outline = EuropeBox;
+                _youE = Kit.Box(Europe, "k-wm-you"); _homeE = Kit.Box(Europe, "k-wm-home");
+                Europe.RegisterCallback<GeometryChangedEvent>(_ => Place());
+            }
             foreach (var o in options)
             {
                 var city = World.CityOf(o.City);
                 if (city == null) continue;
-                var pin = AddTo(Map, new MapPinItem(o, city.Lon, city.Lat, o.Home ? (Color)new Color32(200, 255, 61, 255) : Career.TierColor((int)o.Tier), Pick));
+                var view = ViewOf(city);
+                var pin = AddTo(view, new MapPinItem(o, city.Lon, city.Lat, o.Home ? (Color)new Color32(200, 255, 61, 255) : Career.TierColor((int)o.Tier), Pick));
+                pin.View = view;
                 Pins.Add(pin);
             }
             for (int w = 1; w <= 3; w++)
@@ -150,22 +171,66 @@ namespace SquashGame.UI
             }
         }
 
+        /// <summary>A city inside the Europe inset's box.</summary>
+        static bool InEurope(City c) { return c.Lon >= EuropeBox.x && c.Lon <= EuropeBox.z && c.Lat >= EuropeBox.y && c.Lat <= EuropeBox.w; }
+
+        /// <summary>The view a city shows on (the inset for Europe's, when there is one).</summary>
+        WorldMapView ViewOf(City c) { return Europe != null && c != null && InEurope(c) ? Europe : Map; }
+
         void Place()
         {
-            var r = Map.contentRect;
-            if (r.width < 8) return;
+            if (Map.contentRect.width < 8) return;
             var c = Career.C;
             var here = World.CityOf(c.S.City); var home = World.CityOf(World.HomeOf(c.S.Nat));
-            if (here != null) { var a = Map.Project(here.Lon, here.Lat); _you.style.left = a.x; _you.style.top = a.y; }
-            if (home != null) { var a = Map.Project(home.Lon, home.Lat); _home.style.left = a.x; _home.style.top = a.y; }
-            _home.style.display = here == home ? DisplayStyle.None : DisplayStyle.Flex;
-            // the names: each where it overlaps nothing placed before (right, left, then above / below), biggest event first
-            var taken = new List<Rect>();
-            foreach (var pin in Pins) { var at = Map.Project(pin.Lon, pin.Lat); taken.Add(new Rect(at.x - 12, at.y - 12, 24, 24)); }
-            if (here != null) { var a = Map.Project(here.Lon, here.Lat); taken.Add(new Rect(a.x - 20, a.y - 20, 40, 40)); }
-            foreach (var pin in Pins)
+            if (Europe != null) PlaceInset(here);
+            Marker(_you, _youE, here);
+            Marker(_home, _homeE, here == home ? null : home);
+            PlaceOn(Map, here);
+            if (Europe != null && Europe.contentRect.width >= 8) PlaceOn(Europe, here);
+        }
+
+        /// <summary>The Europe inset goes in a corner of the world with none of the week's other pins (nor you) under it.</summary>
+        void PlaceInset(City here)
+        {
+            var r = Map.contentRect;
+            float w = 460, h = 300, m = 14;
+            var under = new List<Vector2>();
+            foreach (var pin in Pins) if (pin.View == Map) under.Add(Map.Project(pin.Lon, pin.Lat));
+            if (here != null && !InEurope(here)) under.Add(Map.Project(here.Lon, here.Lat));
+            Vector2[] corners = { new Vector2(m, r.height - h - m), new Vector2((r.width - w) / 2 + 80, r.height - h - m), new Vector2(r.width - w - m, r.height - h - m), new Vector2(m, m) };
+            var pick = corners[0];
+            foreach (var k in corners)
             {
-                var at = Map.Project(pin.Lon, pin.Lat);
+                var rect = new Rect(k.x - 16, k.y - 16, w + 32, h + 32);
+                if (!under.Exists(u => rect.Contains(u))) { pick = k; break; }
+            }
+            var box = Europe.parent;
+            box.style.left = pick.x; box.style.top = pick.y; box.style.width = w; box.style.height = h;
+        }
+
+        void Marker(VisualElement onMap, VisualElement onInset, City city)
+        {
+            bool inset = city != null && onInset != null && Europe != null && InEurope(city);
+            onMap.style.display = city != null && !inset ? DisplayStyle.Flex : DisplayStyle.None;
+            if (onInset != null) onInset.style.display = inset ? DisplayStyle.Flex : DisplayStyle.None;
+            if (city == null) return;
+            var view = inset ? Europe : Map;
+            var el = inset ? onInset : onMap;
+            var a = view.Project(city.Lon, city.Lat);
+            el.style.left = a.x; el.style.top = a.y;
+        }
+
+        /// <summary>A view's pins and their names: each name where it overlaps nothing placed before (right, left, then above / below).</summary>
+        void PlaceOn(WorldMapView view, City here)
+        {
+            var r = view.contentRect;
+            var mine = Pins.FindAll(p => p.View == view);
+            var taken = new List<Rect>();
+            foreach (var pin in mine) { var at = view.Project(pin.Lon, pin.Lat); taken.Add(new Rect(at.x - 12, at.y - 12, 24, 24)); }
+            if (here != null && ViewOf(here) == view) { var a = view.Project(here.Lon, here.Lat); taken.Add(new Rect(a.x - 20, a.y - 20, 40, 40)); }
+            foreach (var pin in mine)
+            {
+                var at = view.Project(pin.Lon, pin.Lat);
                 pin.Root.style.left = at.x; pin.Root.style.top = at.y;
                 float w = pin.Tag.text.Length * 9f + 18f, h = 22f;
                 Vector2[] tries = { new Vector2(16, -h / 2), new Vector2(-16 - w, -h / 2), new Vector2(16, -h - 10), new Vector2(-16 - w, -h - 10),
@@ -226,7 +291,10 @@ namespace SquashGame.UI
             if (Focused == _shown || !(Focused is MapPinItem pin)) return;
             _shown = Focused;
             var here = World.CityOf(Career.S.City);
-            Map.Arc(here != null ? new Vector2(here.Lon, here.Lat) : (Vector2?)null, new Vector2(pin.Lon, pin.Lat));
+            var from = here != null ? new Vector2(here.Lon, here.Lat) : (Vector2?)null;
+            bool local = Europe != null && pin.View == Europe && here != null && InEurope(here);     // both in Europe: the inset draws it
+            Map.Arc(local ? null : from, local ? (Vector2?)null : new Vector2(pin.Lon, pin.Lat));
+            if (Europe != null) Europe.Arc(local ? from : null, local ? new Vector2(pin.Lon, pin.Lat) : (Vector2?)null);
             ShowDetail(pin);
         }
 
