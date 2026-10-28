@@ -72,6 +72,7 @@ namespace SquashSim.Lab
                     _accumulator -= fixedDt;
                     DoStep(fixedDt);
                     steps++;
+                    if (Paused) { _accumulator = 0; break; }          // paused by a step (a shot puzzle's freeze): no more this frame
                 }
             }
             StepsLastFrame = steps;

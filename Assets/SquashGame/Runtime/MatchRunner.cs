@@ -131,7 +131,7 @@ namespace SquashGame
         public bool InSetup { get; private set; }
         /// <summary>P2-M1: the menus' background - an AI-vs-AI rally on the live court, no local player, no HUD.</summary>
         public bool Demo { get; private set; }
-        protected override bool PauseAllowed { get { return !Demo && !InSetup; } }
+        protected override bool PauseAllowed { get { return !Demo && !InSetup && Puzzle == null; } }
 
         /// <summary>The menus' demo rally runs in slow motion (the old home screen: 0.4x).</summary>
         public const double DemoSpeed = GameTuning.Speed.MenuDemo;
@@ -153,6 +153,7 @@ namespace SquashGame
             Sim.Players[0].ArcadeHitEnabled = true;
             Names[0] = "RETRIEVER"; Names[1] = "ATTACKER";
             ClearDebugHistory();
+            Puzzle = null;
             Demo = true;
             InSetup = false;
             DeviceLost = null;
@@ -346,6 +347,7 @@ namespace SquashGame
 
         protected override IntentSource SourceFor(int i)
         {
+            if (Puzzle != null) return null;                                 // a shot puzzle: both are AIs, played as measured
             if (OnlineMatch != null) return i == OnlineMatch.Me ? Input : null;
             if (i == 0) return Input;
             return i == 1 && Settings.TwoPlayer ? Input2 : null;
@@ -362,7 +364,13 @@ namespace SquashGame
         protected override void SimStep(double dt)
         {
             var rec = Recorder;
-            if (rec == null) { Sim.Step(dt); return; }
+            if (rec == null)
+            {
+                Sim.Step(dt);
+                // a shot puzzle: the rally freezes at its moment, to the step (Clock stops within the frame)
+                if (Puzzle != null && PuzzleStage == PuzzleStep.Watching && Sim.StepCount >= Puzzle.Freeze) { PuzzleStage = PuzzleStep.Choosing; Clock.Pause(); }
+                return;
+            }
             if (_autopilot != null && _autoIntent != null) _autopilot.Fill(_autoIntent, Sim, 0, dt);
             rec.BeforeStep();
             Sim.Step(dt);
@@ -449,6 +457,7 @@ namespace SquashGame
 
             WatchDevices();
             Cutscene();
+            PuzzleTick(Time.unscaledDeltaTime);
             // A review is skipped with any key (not on the frame it started).
             if (ReplayActive) { if (_reviewFrames++ > 0 && AnyPress()) StopReplay(); }
             else { _reviewFrames = 0; ReviewingCall = false; }
@@ -495,6 +504,72 @@ namespace SquashGame
         /// <summary>The same settings again (new opponent seed).</summary>
         public void RestartMatch() { BeginMatch(Settings); }
 
+        // ---------------- playable challenges (2026-10-28): the shot puzzle ----------------
+
+        public enum PuzzleStep { Watching, Choosing, Playing, Over }
+        /// <summary>The shot puzzle being played (null: none) and where it is.</summary>
+        public SquashSim.Modes.ShotPuzzle Puzzle { get; private set; }
+        public PuzzleStep PuzzleStage { get; private set; }
+        /// <summary>The option chosen (-1: not yet) and how the rally then went for you (1 won, 0 lost, 0.5 neither).</summary>
+        public int PuzzleChoice { get; private set; } = -1;
+        public double PuzzleResult { get; private set; }
+        public const double PuzzleReplaySpeed = 0.6;
+
+        /// <summary>Play a shot puzzle: the AIs' rally (you are athlete 0, an AI standing in) to its moment, built and stepped
+        /// exactly as the puzzle was measured; then it waits for Choose.</summary>
+        public void BeginPuzzle(SquashSim.Modes.ShotPuzzle p, string court)
+        {
+            EndOnline(true);
+            EndRecording(true);
+            var setup = p.Setup();
+            Settings = new MatchSettings { Opponent = p.Them, Difficulty = p.ThemLevel, GamesToWin = 1, Scoring = "par", WarmUp = false, Court = court, CrowdFill = 1f };
+            if (!string.IsNullOrEmpty(court)) Courts.CurrentId = court;
+            Courts.CrowdFill = 1f;
+            Input.UseDevices(null);
+            if (Input2 != null) { Input2.Dispose(); Input2 = null; }
+            ReplayMatch.Configure(setup);
+            if (Sim != null) Sim.RallyEnded -= OnRallyEnded;
+            _setup = setup;
+            Sim = ReplayMatch.Build(setup);
+            Sim.Intents[0] = new InputIntent();                          // the stand-in AI plays you: no device input
+            Names[0] = "YOU"; Names[1] = AiProfile.ByName(p.Them).Name.ToUpperInvariant();
+            OpponentName = Names[1];
+            Recorder = null;
+            Puzzle = p; PuzzleStage = PuzzleStep.Watching; PuzzleChoice = -1; PuzzleResult = 0.5;
+            ClearDebugHistory();
+            Demo = false; InSetup = false; DeviceLost = null;
+            Clock.Resume();
+            Clock.TimeScale = GameSpeed;
+            Clock.Flush();
+            SnapViews();
+        }
+
+        /// <summary>Your shot: forced from the frozen moment (the puzzle's trial 0) and played out, slow.</summary>
+        public void ChoosePuzzle(int option)
+        {
+            if (Puzzle == null || PuzzleStage != PuzzleStep.Choosing || option < 0 || option >= Puzzle.Options.Count) return;
+            PuzzleChoice = option;
+            SquashSim.Modes.ShotPuzzles.Force(Sim, Puzzle, Puzzle.Options[option], 0);
+            PuzzleStage = PuzzleStep.Playing;
+            _puzzleFrom = Sim.Time;
+            Clock.Resume();
+            Clock.TimeScale = GameSpeed * PuzzleReplaySpeed;
+        }
+
+        float _puzzleOverFor;
+        double _puzzleFrom;
+        void PuzzleTick(float dt)
+        {
+            if (Puzzle == null || PuzzleStage != PuzzleStep.Playing) return;
+            // as the bank measured it: a rally still going after PlayoutSeconds is "the rally went on"
+            bool capped = Sim.Phase == MatchPhase.Rally && Sim.Time - _puzzleFrom >= SquashSim.Modes.ShotPuzzles.PlayoutSeconds;
+            if (Sim.Phase == MatchPhase.Rally && !capped) { _puzzleOverFor = 0; return; }
+            if (_puzzleOverFor == 0) PuzzleResult = capped ? 0.5 : SquashSim.Modes.ShotPuzzles.Score(Sim.LastOutcome);
+            if (capped) { PuzzleStage = PuzzleStep.Over; Clock.Pause(); return; }
+            _puzzleOverFor += dt;
+            if (_puzzleOverFor > 1.2f) { PuzzleStage = PuzzleStep.Over; Clock.Pause(); }
+        }
+
         // ---------------- camera work (2026-10-28): the cutscenes ----------------
 
         object _cutFor;
@@ -504,6 +579,7 @@ namespace SquashGame
         void Cutscene()
         {
             if (_cutFor == Sim) return;
+            if (Puzzle != null) { _cutFor = Sim; return; }
             _cutFor = Sim;
             if (!Profile.ProfileStore.Current.Settings.Cutscenes || OnlineMatch != null || Sim.History.Count > 0 || Clock.TimeScale > 1.01 || VenueView.Detail <= 0) return;
             bool orbit = !string.IsNullOrEmpty(Settings.Prestige);
@@ -527,7 +603,7 @@ namespace SquashGame
         {
             if (Sim.Phase == MatchPhase.Rally && _phaseWas != MatchPhase.Rally) RallyNick = false;
             _phaseWas = Sim.Phase;
-            if (Sim.Phase != MatchPhase.RallyOver || Sim.History.Count == _autoFor || ReplayActive || _replayRequested) return;
+            if (Sim.Phase != MatchPhase.RallyOver || Sim.History.Count == _autoFor || ReplayActive || _replayRequested || Puzzle != null) return;
             _autoFor = Sim.History.Count;
             var o = Sim.LastOutcome;
             int mode = Profile.ProfileStore.Current.Settings.Replays;

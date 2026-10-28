@@ -176,10 +176,9 @@ namespace SquashGame.Tests
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             var st = Challenges.Current();
-            st.Daily[0].Progress = System.Math.Max(0, Challenges.Find(st.Daily[0].Id).Target - 1);
-            st.Daily[1].Progress = Challenges.Find(st.Daily[1].Id).Target; st.Daily[1].Done = true;
+            st.Daily[1].Progress = 1; st.Daily[1].Done = true;                       // (playable challenges: today's puzzle done)
             st.Streak = 2; st.LastStreakDay = st.Day; st.BestStreak = 4;
-            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "TODAY");
+            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "THIS WEEK");
             Assert.That(fe.Top, Is.InstanceOf<ChallengesScreen>());
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "P3_Challenges.png");

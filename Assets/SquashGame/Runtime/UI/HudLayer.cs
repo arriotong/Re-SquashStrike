@@ -165,7 +165,7 @@ namespace SquashGame
 
         public void Refresh(MatchRunner r, bool allowed)
         {
-            bool visible = allowed && r != null && r.Sim != null && !r.Demo && !r.InSetup;
+            bool visible = allowed && r != null && r.Sim != null && !r.Demo && !r.InSetup && r.Puzzle == null;
             style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             if (!visible) return;
             MatchSimulation m = r.Sim;

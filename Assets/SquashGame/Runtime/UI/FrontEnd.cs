@@ -382,9 +382,23 @@ namespace SquashGame.UI
             SceneManager.LoadScene(PracticeScene);
         }
 
-        /// <summary>From a challenge back to the Target Arcade (or, from a drill, the Practice menu).</summary>
+        /// <summary>Playable challenges (2026-10-28): the arcade level or quiz was started from the challenges - back there after.</summary>
+        public static bool FromChallenges;
+
+        /// <summary>Back to the challenges (from the practice court scene: a skill test, a quiz).</summary>
+        public void BackToChallenges()
+        {
+            FromChallenges = false;
+            OpenOnLoad = () => new ChallengesScreen();
+            StartAtTitle = false;
+            ProfileStore.Save();
+            SceneManager.LoadScene(MatchScene);
+        }
+
+        /// <summary>From a challenge back to the Target Arcade (or, from a drill, the Practice menu; from the challenges, there).</summary>
         public void BackToArcadeMenu()
         {
+            if (FromChallenges) { BackToChallenges(); return; }
             bool drill = Arcade != null && Arcade.Challenge.Mode == SquashSim.Arcade.ArcadeMode.Drill;
             OpenOnLoad = drill ? (System.Func<MenuScreen>)(() => new PracticeScreen(true)) : () => new TargetArcadeScreen();
             StartAtTitle = false;
@@ -395,6 +409,7 @@ namespace SquashGame.UI
         /// <summary>P2-M3: play an Academy lesson (the practice court scene runs it).</summary>
         public static void LaunchLesson(string id)
         {
+            if (!SquashSim.Academy.QuizMaker.IsQuiz(id)) FromChallenges = false;
             ProfileStore.Save();
             SessionLaunch.ChallengeId = null;
             SessionLaunch.LessonId = id;
@@ -404,6 +419,7 @@ namespace SquashGame.UI
         /// <summary>From a lesson back to the Academy menu.</summary>
         public void BackToAcademyMenu()
         {
+            if (FromChallenges) { BackToChallenges(); return; }
             OpenOnLoad = () => new AcademyScreen();
             StartAtTitle = false;
             ProfileStore.Save();
@@ -544,7 +560,8 @@ namespace SquashGame.UI
             if (s.Done)
             {
                 _overFor += dt;
-                if (Top == null && _overFor > 1.0f) Push(new LessonCompleteScreen(a.Lesson));
+                if (Top == null && _overFor > 1.0f)
+                    Push(a.Lesson.IsChallengeQuiz ? (MenuScreen)new ChallengeQuizDoneScreen(a.Lesson, s.QuizRight, s.QuizAsked) : new LessonCompleteScreen(a.Lesson));
             }
             else _overFor = 0f;
         }

@@ -184,11 +184,8 @@ namespace SquashGame.Tests
             Assert.That(sc.Tickets, Is.GreaterThanOrEqualTo(2));
             Challenges.Enabled = true;
             var r = new RewardResult();
-            var st = Challenges.Current();
-            var d = Challenges.Find(st.Daily[0].Id); st.Daily[0].Progress = d.Target - 1;
-            Challenges.Record(r, new ChallengeEvent { Match = new MatchFacts { Won = true, AgainstHard = true, Rallies = 40, RalliesWon = 40, LongestRally = 20, GreatHits = 20, Nicks = 5, Winners = 20,
-                Kills = 10, Drops = 10, WinningBoasts = 5, Aces = 2, TopPaceKmh = 140, CameBackFrom0_5 = true, TSeconds = 60, Seconds = 100, Games = new List<int[]> { new[] { 11, 0 } } },
-                ArcadeStars = 5, Arcade = true, GauntletFloor = 9, ScenarioStars = 3 });
+            Challenges.Current();
+            Challenges.Record(r, new ChallengeEvent { PuzzleSolved = true });          // (playable challenges: a shot puzzle solved)
             Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets), "a daily pays tickets");
         }
 

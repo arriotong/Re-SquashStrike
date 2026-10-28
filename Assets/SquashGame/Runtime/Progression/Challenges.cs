@@ -1,11 +1,17 @@
 // ===========================================================
 // Assets/SquashGame/Runtime/Progression/Challenges.cs
 // P3-R2: daily and weekly challenges - a reason to play today, and to
-// come back tomorrow.
+// come back tomorrow. Playable challenges (2026-10-28, the user: "actual
+// challenges, not just missions to tell you do things in other modes";
+// the old counter missions dropped):
 //
-//   daily     3 a day (local date), picked from the day's seed so a
-//             restart can't re-roll them; never two from one group
-//   weekly    1 a week (Monday to Sunday), a bigger target
+//   daily     three things to play, the same for everyone on the day:
+//             RULES QUIZ   five calls (QuizMaker), four right
+//             SHOT PUZZLE  a frozen rally - pick the shot (the bank,
+//                          ShotPuzzleBank); solve one
+//             SKILL TEST   today's Target Arcade level, a star target
+//   weekly    PUZZLE RUSH (solve 5 shot puzzles) or RULES EXAM (10 calls,
+//             9 right), week about
 //   rewards   150 XP a daily (more on a streak), 600 a weekly; the
 //             challenge collection's items at streaks of 3 / 7 / 14 /
 //             30 days and for each weekly done
@@ -28,6 +34,10 @@ namespace SquashGame.Progression
         public string Id;
         public int Progress;
         public bool Done;
+        /// <summary>Playable challenges: what it is today (the skill test's level), its target, the tries so far (a failed quiz
+        /// and a missed puzzle move on to new ones).</summary>
+        public string Ref;
+        public int Need, Tries;
     }
 
     [Serializable]
@@ -50,6 +60,12 @@ namespace SquashGame.Progression
         public bool GauntletBoss;                // P5: that floor was a boss
         public int ScenarioStars;                // stars a scenario play earned (3 = a perfect one)
         public bool CareerTitle;                 // a career event won
+        // playable challenges (2026-10-28)
+        public int QuizCount;                    // a challenge quiz finished: its size, and passed
+        public bool QuizPassed;
+        public bool PuzzleSolved;                // a shot puzzle solved
+        public string ArcadeId;                  // a Target Arcade play: the level and its stars now
+        public int ArcadeStarsNow;
     }
 
     public sealed class ChallengeDef
@@ -59,9 +75,8 @@ namespace SquashGame.Progression
         public bool Weekly;
         public Func<ChallengeEvent, int> Count;   // how much this event adds (single-shot ones: Target or 0)
         public Func<bool> Available = () => true;
-        /// <summary>Done in one go (a rally of 15, 130 km/h, a win without a tin): no running count to show.</summary>
-        public bool Single { get { return Target == 1 || Array.IndexOf(OneGo, Id) >= 0; } }
-        static readonly string[] OneGo = { "rally15", "pace130", "gauntlet3", "w_gauntlet8" };
+        /// <summary>Done in one go: no running count to show.</summary>
+        public bool Single { get { return Target == 1; } }
         public string Describe() { return string.Format(Text, Target); }
     }
 
@@ -83,72 +98,91 @@ namespace SquashGame.Progression
         public static int DayKey(DateTime t) { return (int)(t.Date - Epoch).TotalDays; }
         public static int WeekKey(DateTime t) { return DayKey(t) / 7; }
 
-        static int Won(ChallengeEvent e) { return e.Match != null && !e.Match.TwoPlayer && e.Match.Won ? 1 : 0; }
-        static int M(ChallengeEvent e, Func<MatchFacts, int> f) { return e.Match != null && !e.Match.TwoPlayer ? f(e.Match) : 0; }
-
         static List<ChallengeDef> _all;
         public static List<ChallengeDef> All()
         {
             if (_all != null) return _all;
             _all = new List<ChallengeDef>();
-            void D(string id, string group, string text, int target, Func<ChallengeEvent, int> count, bool weekly = false, Func<bool> available = null)
+            void D(string id, string group, string text, int target, Func<ChallengeEvent, int> count, bool weekly = false)
             {
-                _all.Add(new ChallengeDef { Id = id, Group = group, Text = text, Target = target, Count = count, Weekly = weekly, Available = available ?? (() => true) });
+                _all.Add(new ChallengeDef { Id = id, Group = group, Text = text, Target = target, Count = count, Weekly = weekly });
             }
-            bool career() { return CareerStore.Exists; }
-            bool stars(int need) { return ArcadeStarsLeft() >= need; }
-
-            // ---- daily ----
-            D("win2", "win", "Win {0} matches", 2, Won);
-            D("winhard", "win", "Win a match against an 85+ opponent", 1, e => e.Match != null && e.Match.Won && e.Match.AgainstHard ? 1 : 0);
-            D("notins", "win", "Win a match without hitting the tin", 1, e => M(e, f => f.Won && f.Tins == 0 ? 1 : 0));
-            D("comeback", "win", "Win a game from 0-5 down", 1, e => M(e, f => f.CameBackFrom0_5 ? 1 : 0));
-            D("rallies30", "rallies", "Win {0} rallies", 30, e => M(e, f => f.RalliesWon));
-            D("rally15", "rallies", "Play a rally of {0} shots", 15, e => M(e, f => f.LongestRally >= 15 ? 15 : 0));
-            D("tshare", "rallies", "Win a match holding the T half the time", 1, e => M(e, f => f.Won && f.Seconds > 0 && f.TSeconds / f.Seconds >= 0.5 ? 1 : 0));
-            D("nicks3", "shots", "Hit {0} nicks", 3, e => M(e, f => f.Nicks));
-            D("great10", "shots", "Make {0} great hits", 10, e => M(e, f => f.GreatHits));
-            D("winners12", "shots", "Hit {0} winners", 12, e => M(e, f => f.Winners));
-            D("kills6", "shots", "Play {0} kills", 6, e => M(e, f => f.Kills));
-            D("drops8", "shots", "Play {0} drops", 8, e => M(e, f => f.Drops));
-            D("boasts3", "shots", "Win {0} rallies with a boast", 3, e => M(e, f => f.WinningBoasts));
-            D("ace", "shots", "Serve an ace", 1, e => M(e, f => f.Aces));
-            D("pace130", "shots", "Hit the ball at {0} km/h", 130, e => M(e, f => f.TopPaceKmh >= 130 ? 130 : 0));
-            D("arcade2", "arcade", "Earn {0} Target Arcade stars", 2, e => e.ArcadeStars, false, () => stars(2));
-            D("arcade3", "arcade", "Play {0} Target Arcade levels", 3, e => e.Arcade ? 1 : 0);
-            D("career1", "career", "Win a career match", 1, e => e.Match != null && e.Match.Career && e.Match.Won ? 1 : 0, false, career);
-            D("gauntlet3", "modes", "Reach floor {0} of the Gauntlet", 3, e => e.GauntletFloor >= 3 ? 3 : 0, false, () => ModeOpen("gauntlet"));
-            D("scenario3", "modes", "Get 3 stars on a Scenario", 1, e => e.ScenarioStars >= 3 ? 1 : 0, false, () => ModeOpen("scenarios"));
-
+            // ---- daily: three to play ----
+            D(Quiz, "quiz", "Rules quiz: make " + QuizSize + " calls, get " + SquashSim.Academy.QuizMaker.PassMark(QuizSize) + " right", 1, e => e.QuizPassed && e.QuizCount == QuizSize ? 1 : 0);
+            D(Puzzle, "puzzle", "Shot puzzle: find the best shot", 1, e => e.PuzzleSolved ? 1 : 0);
+            D(Skill, "skill", "Skill test: today's Target Arcade level", 1, e => SkillDone(e) ? 1 : 0);
             // ---- weekly ----
-            D("w_win10", "win", "Win {0} matches this week", 10, Won, true);
-            D("w_rallies200", "rallies", "Win {0} rallies this week", 200, e => M(e, f => f.RalliesWon), true);
-            D("w_nicks12", "shots", "Hit {0} nicks this week", 12, e => M(e, f => f.Nicks), true);
-            D("w_great60", "shots", "Make {0} great hits this week", 60, e => M(e, f => f.GreatHits), true);
-            D("w_arcade6", "arcade", "Earn {0} Target Arcade stars this week", 6, e => e.ArcadeStars, true, () => stars(6));
-            D("w_career5", "career", "Win {0} career matches this week", 5, e => e.Match != null && e.Match.Career && e.Match.Won ? 1 : 0, true, career);
-            D("w_gauntlet8", "modes", "Reach floor {0} of the Gauntlet", 8, e => e.GauntletFloor >= 8 ? 8 : 0, true, () => ModeOpen("gauntlet"));
-            D("w_gauntletboss", "modes", "Beat a Gauntlet boss", 1, e => e.GauntletBoss ? 1 : 0, true, () => ModeOpen("gauntlet"));
+            D(Rush, "puzzle", "Puzzle rush: solve {0} shot puzzles this week", 5, e => e.PuzzleSolved ? 1 : 0, true);
+            D(Exam, "quiz", "Rules exam: " + ExamSize + " calls, " + SquashSim.Academy.QuizMaker.PassMark(ExamSize) + " right", 1, e => e.QuizPassed && e.QuizCount == ExamSize ? 1 : 0, true);
             return _all;
         }
 
-        /// <summary>The new modes register themselves here as they arrive (R5 the Gauntlet, R6 Scenarios).</summary>
-        public static readonly HashSet<string> Modes = new HashSet<string> { "gauntlet", "scenarios" };
-        static bool ModeOpen(string id) { return Modes.Contains(id); }
+        public const string Quiz = "d_quiz", Puzzle = "d_puzzle", Skill = "d_skill", Rush = "w_rush", Exam = "w_exam";
+        public const int QuizSize = 5, ExamSize = 10;
+
+        /// <summary>Today's entry for a daily (null: not today's).</summary>
+        public static ChallengeProgress Today(string id) { foreach (var c in Current().Daily) if (c.Id == id) return c; return null; }
+
+        /// <summary>The quiz to play now: today's (or this week's exam), new questions after each failed try.</summary>
+        public static string QuizLessonId(bool exam)
+        {
+            var s = Current();
+            var c = exam ? s.Weekly : Today(Quiz);
+            uint seed = exam ? (uint)(s.Week * 7919 + 13) : (uint)(s.Day * 101 + 7);
+            return SquashSim.Academy.QuizMaker.Id(seed + (uint)(c != null ? c.Tries : 0) * 977u, exam ? ExamSize : QuizSize);
+        }
+
+        /// <summary>A quiz try is over (passed or not): a failed one moves on to new questions.</summary>
+        public static void QuizTried(bool exam, bool passed)
+        {
+            var s = Current();
+            var c = exam ? s.Weekly : Today(Quiz);
+            if (c != null && !passed) c.Tries++;
+        }
+
+        /// <summary>The bank index of the shot puzzle to play now: the day's, then the next ones as puzzles are played.</summary>
+        public static int PuzzleIndex()
+        {
+            var c = Today(Puzzle);
+            return Current().Day * 3 + (c != null ? c.Tries : 0);
+        }
+
+        /// <summary>A shot puzzle played: the next one is a new one.</summary>
+        public static void PuzzleTried() { var c = Today(Puzzle); if (c != null) c.Tries++; }
+
+        static bool SkillDone(ChallengeEvent e)
+        {
+            var c = Today(Skill);
+            return c != null && e.ArcadeId != null && e.ArcadeId == c.Ref && e.ArcadeStarsNow >= c.Need;
+        }
+
+        /// <summary>Today's skill test: a Target Arcade level (seeded by the day) not yet at three stars, and its target -
+        /// two stars, or one more than your best.</summary>
+        static void RollSkill(ChallengeProgress c, int day)
+        {
+            var levels = SquashSim.Arcade.Challenges.All().FindAll(x => x.Mode != SquashSim.Arcade.ArcadeMode.Drill);
+            uint h = Hash((uint)day * 40503u + 11u);
+            for (int t = 0; t < levels.Count * 2; t++)
+            {
+                h = Hash(h + 1u);
+                var l = levels[(int)(h % (uint)levels.Count)];
+                var rec = ProfileStore.Record(l.Id);
+                int have = rec != null ? rec.Stars : 0;
+                if (have >= 3 && t < levels.Count) continue;
+                c.Ref = l.Id; c.Need = Math.Min(3, Math.Max(2, have + 1));
+                return;
+            }
+        }
+
+        /// <summary>The skill test's level and target in words ("Time Attack 2  ·  2 stars").</summary>
+        public static string SkillWords()
+        {
+            var c = Today(Skill);
+            var l = c != null ? SquashSim.Arcade.Challenges.Find(c.Ref) : null;
+            return l == null ? "" : SquashSim.Arcade.Challenges.ModeNames[(int)l.Mode] + "  ·  " + l.LevelName + "  ·  " + c.Need + " stars";
+        }
 
         public static ChallengeDef Find(string id) { foreach (var d in All()) if (d.Id == id) return d; return null; }
-
-        static int ArcadeStarsLeft()
-        {
-            int have = 0, max = 0;
-            foreach (var c in SquashSim.Arcade.Challenges.All())
-            {
-                if (c.Mode == SquashSim.Arcade.ArcadeMode.Drill) continue;
-                var rec = ProfileStore.Record(c.Id);
-                have += rec != null ? rec.Stars : 0; max += 3;
-            }
-            return max - have;
-        }
 
         static ChallengeState S
         {
@@ -169,29 +203,19 @@ namespace SquashGame.Progression
             var s = S;
             var now = Now();
             int day = DayKey(now), week = WeekKey(now);
+            // (a profile from before the playable challenges: its old missions go, today's three come in)
+            if (s.Day == day && (s.Daily.Count != DailyCount || s.Daily.Exists(c => Find(c.Id) == null))) s.Day = -1;
+            if (s.Week == week && (s.Weekly == null || Find(s.Weekly.Id) == null)) s.Week = -1;
             if (s.Day != day)
             {
                 s.Day = day;
-                s.Daily = new List<ChallengeProgress>();
-                var pool = All().FindAll(d => !d.Weekly && d.Available());
-                var groups = new HashSet<string>();
-                uint h = Hash((uint)day * 2654435761u + 17u);
-                for (int guard = 0; s.Daily.Count < DailyCount && guard < 200 && pool.Count > 0; guard++)
-                {
-                    h = Hash(h + 0x9E3779B9u);
-                    var d = pool[(int)(h % (uint)pool.Count)];
-                    if (groups.Contains(d.Group) && guard < 150) continue;
-                    groups.Add(d.Group);
-                    pool.Remove(d);
-                    s.Daily.Add(new ChallengeProgress { Id = d.Id });
-                }
+                s.Daily = new List<ChallengeProgress> { new ChallengeProgress { Id = Quiz }, new ChallengeProgress { Id = Puzzle }, new ChallengeProgress { Id = Skill } };
+                RollSkill(s.Daily[2], day);
             }
             if (s.Week != week)
             {
                 s.Week = week;
-                var pool = All().FindAll(d => d.Weekly && d.Available());
-                uint h = Hash((uint)week * 2246822519u + 5u);
-                s.Weekly = pool.Count > 0 ? new ChallengeProgress { Id = pool[(int)(h % (uint)pool.Count)].Id } : new ChallengeProgress();
+                s.Weekly = new ChallengeProgress { Id = week % 2 == 0 ? Rush : Exam };
             }
             return s;
         }

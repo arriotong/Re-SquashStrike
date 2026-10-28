@@ -284,6 +284,27 @@ namespace SquashGame.Progression
             return End(r);
         }
 
+        /// <summary>Playable challenges (2026-10-28): a shot puzzle played - solved or not.</summary>
+        public static RewardResult Puzzle(bool solved)
+        {
+            var r = Begin();
+            if (solved) Xp(r, "Shot puzzle solved", PuzzleXp);
+            Challenges.Record(r, new ChallengeEvent { PuzzleSolved = solved });
+            Challenges.PuzzleTried();
+            return End(r);
+        }
+
+        /// <summary>Playable challenges: a challenge quiz finished - its size, calls right, passed or not.</summary>
+        public static RewardResult Quiz(int count, int right, bool passed)
+        {
+            var r = Begin();
+            Xp(r, right + " of " + count + " calls right", QuizCallXp * right);
+            Challenges.Record(r, new ChallengeEvent { QuizCount = count, QuizPassed = passed });
+            Challenges.QuizTried(count == Challenges.ExamSize, passed);
+            return End(r);
+        }
+        public const int PuzzleXp = 40, QuizCallXp = 8;
+
         /// <summary>A Target Arcade play or a drill: stars before and after.</summary>
         public static RewardResult Arcade(string challengeId, bool drill, int starsBefore, int starsNow, int score, bool streakMode)
         {
@@ -298,7 +319,7 @@ namespace SquashGame.Progression
             if (streakMode && score >= 25) ids.Add("streak25");
             Achieve(r, ids);
             ArcadeSweep(r);
-            Challenges.Record(r, new ChallengeEvent { Arcade = !drill, ArcadeStars = fresh });
+            Challenges.Record(r, new ChallengeEvent { Arcade = !drill, ArcadeStars = fresh, ArcadeId = challengeId, ArcadeStarsNow = starsNow });
             return End(r);
         }
 

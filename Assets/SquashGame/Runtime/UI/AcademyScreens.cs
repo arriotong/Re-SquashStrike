@@ -249,7 +249,8 @@ namespace SquashGame.UI
         protected void Count()
         {
             var s = Fe.Academy.Session;
-            Kit.L(Root, "CALL " + Mathf.Min(s.QuizAsked, 3) + " OF 3   ·   " + s.QuizRight + " RIGHT", "k-quiz-count");
+            int n = Fe.Academy.Lesson.QuizCount;
+            Kit.L(Root, "CALL " + Mathf.Min(s.QuizAsked, n) + " OF " + n + "   ·   " + s.QuizRight + " RIGHT", "k-quiz-count");
         }
 
         // 2026-10-25 playtest: the ball is a few pixels by the tin from the back of the court - a ring shows where to look
@@ -364,11 +365,28 @@ namespace SquashGame.UI
 
     public sealed class QuizFailedScreen : QuizPanel
     {
-        protected override string Kicker { get { return "ACADEMY  ·  " + Fe.Academy.Lesson.Title.ToUpperInvariant(); } }
-        protected override string Title { get { return Fe.Academy.Session.QuizRight + " of 3 right"; } }
+        protected override string Kicker { get { return (Challenge ? "CHALLENGES  ·  " : "ACADEMY  ·  ") + Fe.Academy.Lesson.Title.ToUpperInvariant(); } }
+        protected override string Title { get { return Fe.Academy.Session.QuizRight + " of " + Fe.Academy.Session.QuizAsked + " right"; } }
         protected override bool PausesGame { get { return false; } }
+        bool Challenge { get { return Fe.Academy.Lesson.IsChallengeQuiz; } }
         protected override void Build()
         {
+            if (Challenge)
+            {
+                // playable challenges: a try that failed counts; the next try is new questions
+                var s = Fe.Academy.Session;
+                bool exam = s.QuizAsked == Progression.Challenges.ExamSize;
+                Progression.Rewards.Quiz(s.QuizAsked, s.QuizRight, false);
+                var cr = Kit.Box(Content, "k-quiz-reveal");
+                var cs = new Stamp("NOT THIS TIME", 0.1f); cs.AddToClassList("k-stamp--bad");
+                cr.Add(cs);
+                Kit.L(cr, "Get " + Fe.Academy.Lesson.QuizPass + " of " + s.QuizAsked + " right to pass. Try again with new calls.", "k-quiz-explain");
+                var ca = Kit.Box(Content, "k-cr-pv-acts");
+                AddTo(ca, new ActionItem("New calls", () => { FrontEnd.FromChallenges = true; FrontEnd.LaunchLesson(Progression.Challenges.QuizLessonId(exam)); }));
+                AddTo(ca, new ActionItem("Back to challenges", () => Fe.BackToChallenges()));
+                ShowPrompts((PromptBar.Btn.A, "Select"));
+                return;
+            }
             var row = Kit.Box(Content, "k-quiz-reveal");
             var st = new Stamp("TRY AGAIN", 0.1f); st.AddToClassList("k-stamp--bad");
             row.Add(st);

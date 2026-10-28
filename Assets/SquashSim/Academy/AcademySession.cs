@@ -468,7 +468,7 @@ namespace SquashSim.Academy
             AwaitingAnswer = false;
             Events.Add(new AcademyEvent { Kind = ok ? AcademyEventKind.QuizRight : AcademyEventKind.QuizWrong, Note = right });
             bool lastQuiz = StepIndex + 1 >= Lesson.Steps.Count || Lesson.Steps[StepIndex + 1].Goal != GoalKind.Quiz;
-            if (lastQuiz && QuizRight < 2)
+            if (lastQuiz && QuizRight < Lesson.QuizPass)
             {
                 QuizFailed = true;
                 Events.Add(new AcademyEvent { Kind = AcademyEventKind.QuizFailed });

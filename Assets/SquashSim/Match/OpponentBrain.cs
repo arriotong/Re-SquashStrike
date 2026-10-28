@@ -284,6 +284,15 @@ namespace SquashSim
         double _rollFrontH, _rollSpeed;
         public readonly V3 LastPredIncoming = new V3(), LastPredLaunch = new V3(), LastPredPoint = new V3(), LastPredBody = new V3();
 
+        /// <summary>Shot puzzles (2026-10-28): the shot it plays at its next stroke ("straight", "cross", "lob", "drop", "kill",
+        /// "boast"); spent by that stroke. Null: its own choice.</summary>
+        public string ForceShot;
+        bool _forcedTurn;
+        /// <summary>It has chosen its shot for the ball coming (shot puzzles freeze before this).</summary>
+        public bool Decided { get { return _decided; } }
+        /// <summary>A new random stream from here on (a shot puzzle's trials).</summary>
+        public void Reseed(uint seed) { _seed = seed == 0 ? 1u : seed; }
+
         public OpponentBrain(AiProfile profile, uint seed)
         {
             Profile = profile;
@@ -611,7 +620,7 @@ namespace SquashSim
                 }
                 // P6: just before contact, a good player looks again: a ball that's got behind it can't be driven
                 // through its own body - it picks a line that's clear (often the boast)
-                if (_decided && !_rechecked && pred.Valid && pred.Time < LateRecheck)
+                if (_decided && !_rechecked && !_forcedTurn && pred.Valid && pred.Time < LateRecheck)
                 {
                     _rechecked = true;
                     if (Uniform() < Profile.Skill) ChooseArcadeShot(m, ctrl, me, true);
@@ -699,6 +708,11 @@ namespace SquashSim
             double r = Uniform() * sum;
             int pick = o.Length - 1;
             for (int i = 0; i < o.Length; i++) { r -= score[i]; if (r <= 0) { pick = i; break; } }
+            if (ForceShot != null && !late)
+            {
+                for (int i = 0; i < o.Length; i++) if (o[i].n == ForceShot) pick = i;      // a shot puzzle's choice
+                ForceShot = null; _forcedTurn = true;
+            }
             var s = o[pick];
             ArcadeShot = s.n;
             double noise = Profile.AimNoise * ArcadeAimNoiseScale;
@@ -723,7 +737,7 @@ namespace SquashSim
 
         void ResetTurn()
         {
-            _decided = false; _pressed = false; _appealed = false; _useDecoy = false; _swungThisTurn = false;
+            _decided = false; _pressed = false; _appealed = false; _useDecoy = false; _swungThisTurn = false; _forcedTurn = false;
             _aHolding = false; _aReleaseAt = -1; _boastTapped = false;
             _obstructedFor = 0;
             _notedLanding = false;

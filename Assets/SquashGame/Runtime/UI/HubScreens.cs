@@ -41,7 +41,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "TODAY", 3 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
+            { "SHOT PUZZLE", 3 }, { "RULES QUIZ", 5 }, { "SKILL TEST", 4 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
             { "QUICK PLAY", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
@@ -87,14 +87,20 @@ namespace SquashGame.UI
             AddTo(modes, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
                 .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
 
-            // ---- CHALLENGES (P3-R2): today's three, the week's one, the streak ----
+            // ---- CHALLENGES (P3-R2; playable since 2026-10-28): today's three to play, and the week ----
             var ch = Kit.Box(Page("CHALLENGES"), "k-row");
-            AddTo(ch, new CardItem("TODAY", "DAILY CHALLENGES", () => Fe.Push(new ChallengesScreen()), CardSize.Hero)
+            AddTo(ch, new CardItem("SHOT PUZZLE", "DAILY CHALLENGE", () => ChallengePlay.Puzzle(Fe), CardSize.Hero)
+                .Drawn("trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255))
+                .Line(() => "A rally freezes before your shot. Which one wins it?").Badge(() => ChallengeText.Status(Challenges.Puzzle), true));
+            AddTo(ch, new CardItem("RULES QUIZ", "DAILY CHALLENGE", () => ChallengePlay.Quiz(false))
+                .Drawn("rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
+                .Line("5 calls  ·  4 right to pass").Badge(() => ChallengeText.Status(Challenges.Quiz)));
+            AddTo(ch, new CardItem("SKILL TEST", "DAILY CHALLENGE", ChallengePlay.Skill)
                 .Drawn("chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255))
-                .Line(ChallengeText.Today).Badge(() => ChallengeText.DoneToday() + " / " + Challenges.DailyCount + "  ·  STREAK " + Challenges.StreakNow(), true));
-            AddTo(ch, new CardItem("THIS WEEK", "WEEKLY CHALLENGE", () => Fe.Push(new ChallengesScreen()))
-                .Drawn("clock", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
-                .Line(ChallengeText.Week).Badge(() => "+" + Challenges.WeeklyXp + " XP"));
+                .Line(Challenges.SkillWords).Badge(() => ChallengeText.Status(Challenges.Skill)));
+            AddTo(ch, new CardItem("THIS WEEK", "STREAK  ·  WEEKLY", () => Fe.Push(new ChallengesScreen()))
+                .Drawn("clock", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
+                .Line(ChallengeText.Week).Badge(() => "STREAK " + Challenges.StreakNow()));
 
             // ---- ONLINE (P2-M8): against people, through the relay server ----
             var on = Kit.Box(Page("ONLINE"), "k-row");

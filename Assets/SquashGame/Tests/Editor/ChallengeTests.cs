@@ -1,21 +1,25 @@
 // ===========================================================
 // Assets/SquashGame/Tests/Editor/ChallengeTests.cs
-// P3-R2: daily and weekly challenges.
-//   - the day's three are the same however often they are rolled, never
-//     two from one group; a new day brings new ones
-//   - a match counts toward them; a finished one pays its XP once
-//   - the streak: consecutive days extend it, a missed day resets it,
-//     3 days unlocks the first streak item
-//   - the weekly pays 600 XP and the next weekly item
-//   - a version 2 profile gets an empty challenge state
+// P3-R2 daily and weekly challenges - playable since 2026-10-28:
+//   - every day the same three to play (quiz, puzzle, skill test), the
+//     skill test's level and target from the day; an old profile's
+//     missions are replaced; the weekly alternates rush and exam
+//   - a quiz passed, a puzzle solved, the day's arcade level at its
+//     target: each pays once; a failed quiz and a played puzzle move on
+//   - the streak: consecutive days extend it, a missed day resets it
+//   - the weekly pays its XP and the next weekly item
+//   - the shipped shot-puzzle bank still matches the sim (each freeze is
+//     a freeze moment; a puzzle plays the same twice)
 // ===========================================================
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using SquashGame.Profile;
 using SquashGame.Progression;
+using SquashSim;
+using SquashSim.Modes;
+using SquashSim.Replays;
 
 namespace SquashGame.Tests
 {
@@ -37,60 +41,81 @@ namespace SquashGame.Tests
             Challenges.Now = () => _now;
         }
 
-        [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); Challenges.Now = () => DateTime.Now; }
+        [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); Challenges.Now = () => DateTime.Now; PhysicsConfig.ResetToDefaults(); }
 
-        /// <summary>A match that does everything a daily might ask (a won Hard match, 40 rallies, nicks, aces...).</summary>
-        static MatchFacts Big()
+        [Test] public void EveryDayTheThreeToPlay()
         {
-            return new MatchFacts
-            {
-                Won = true, AgainstHard = true, GamesToWin = 1, Rallies = 40, RalliesWon = 40, LongestRally = 20, GreatHits = 20, Nicks = 5,
-                Winners = 20, Kills = 10, Drops = 10, WinningBoasts = 5, Aces = 2, TopPaceKmh = 140, CameBackFrom0_5 = true, TSeconds = 60, Seconds = 100,
-                Games = new List<int[]> { new[] { 11, 5 } },
-            };
-        }
-
-        [Test] public void TheDaysThreeAreFixedAndVaried()
-        {
-            var a = Challenges.Current();
-            var ids = a.Daily.ConvertAll(c => c.Id);
-            Assert.That(ids.Count, Is.EqualTo(Challenges.DailyCount));
-            var groups = new HashSet<string>();
-            foreach (var id in ids) Assert.That(groups.Add(Challenges.Find(id).Group), Is.True, "one per group: " + string.Join(", ", ids));
-            ProfileStore.Reset();
-            Challenges.Current();
-            Assert.That(Challenges.Current().Daily.ConvertAll(c => c.Id), Is.EqualTo(ids), "the same day, the same three");
-            var seen = new HashSet<string>(ids);
-            int changed = 0;
-            for (int d = 1; d <= 5; d++)
-            {
-                _now = _now.AddDays(1);
-                foreach (var c in Challenges.Current().Daily) if (seen.Add(c.Id)) changed++;
-            }
-            Assert.That(changed, Is.GreaterThan(4), "new days bring new challenges");
-            Assert.That(Challenges.Current().Weekly.Id, Is.Not.Null.And.Not.Empty);
-        }
-
-        [Test] public void AMatchCountsAndPaysOnce()
-        {
-            var r = Rewards.Match(Big());
             var s = Challenges.Current();
-            int done = s.Daily.FindAll(c => c.Done).Count;
-            Assert.That(done, Is.GreaterThan(0), "a big win finishes something: " + string.Join(", ", s.Daily.ConvertAll(c => c.Id + " " + c.Progress)));
-            Assert.That(r.Challenges.Count, Is.GreaterThanOrEqualTo(done));
+            Assert.That(s.Daily.ConvertAll(c => c.Id), Is.EqualTo(new[] { Challenges.Quiz, Challenges.Puzzle, Challenges.Skill }));
+            var skill = Challenges.Today(Challenges.Skill);
+            Assert.That(SquashSim.Arcade.Challenges.Find(skill.Ref), Is.Not.Null, "a real arcade level");
+            Assert.That(skill.Need, Is.InRange(2, 3));
+            Assert.That(Challenges.SkillWords(), Does.Contain("stars"));
+            string quiz = Challenges.QuizLessonId(false);
+            int puzzle = Challenges.PuzzleIndex();
+            _now = _now.AddDays(1);
+            Assert.That(Challenges.QuizLessonId(false), Is.Not.EqualTo(quiz), "new calls tomorrow");
+            Assert.That(Challenges.PuzzleIndex(), Is.Not.EqualTo(puzzle), "a new puzzle tomorrow");
+            string w0 = Challenges.Current().Weekly.Id;
+            _now = _now.AddDays(7);
+            Assert.That(Challenges.Current().Weekly.Id, Is.Not.EqualTo(w0), "the weekly alternates");
+        }
+
+        [Test] public void AnOldProfilesMissionsAreReplaced()
+        {
+            var s = Challenges.Current();
+            s.Daily = new System.Collections.Generic.List<ChallengeProgress> { new ChallengeProgress { Id = "win2" }, new ChallengeProgress { Id = "nicks3" }, new ChallengeProgress { Id = "ace" } };
+            s.Weekly = new ChallengeProgress { Id = "w_win10" };
+            var again = Challenges.Current();
+            Assert.That(again.Daily.ConvertAll(c => c.Id), Is.EqualTo(new[] { Challenges.Quiz, Challenges.Puzzle, Challenges.Skill }));
+            Assert.That(Challenges.Find(again.Weekly.Id), Is.Not.Null);
+        }
+
+        [Test] public void APassedQuizPaysOnceAndAFailedOneMovesOn()
+        {
+            string first = Challenges.QuizLessonId(false);
+            var failed = Rewards.Quiz(Challenges.QuizSize, 2, false);
+            Assert.That(failed.Lines.Exists(l => l.StartsWith("Challenge done")), Is.False);
+            Assert.That(Challenges.QuizLessonId(false), Is.Not.EqualTo(first), "new calls after a failed try");
+            var r = Rewards.Quiz(Challenges.QuizSize, 5, true);
+            Assert.That(Challenges.Today(Challenges.Quiz).Done, Is.True);
             Assert.That(r.Lines.Exists(l => l.StartsWith("Challenge done")), Is.True);
-            int xp = ProfileStore.Current.Progress.Xp;
-            var again = Rewards.Match(new MatchFacts { Won = false, GamesToWin = 1, Rallies = 1, Games = new List<int[]>() });
-            Assert.That(again.Lines.FindAll(l => l.StartsWith("Challenge done")).Count, Is.EqualTo(0), "a finished challenge pays once");
-            Assert.That(ProfileStore.Load().Progress.Challenges.DailiesDone, Is.EqualTo(s.DailiesDone), "saved");
+            Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets));
+            var again = Rewards.Quiz(Challenges.QuizSize, 5, true);
+            Assert.That(again.Lines.Exists(l => l.StartsWith("Challenge done")), Is.False, "pays once");
+            Assert.That(ProfileStore.Load().Progress.Challenges.DailiesDone, Is.EqualTo(1), "saved");
+        }
+
+        [Test] public void APuzzleSolvedCountsForTheDayAndTheRush()
+        {
+            int i0 = Challenges.PuzzleIndex();
+            Rewards.Puzzle(false);
+            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.False);
+            Assert.That(Challenges.PuzzleIndex(), Is.EqualTo(i0 + 1), "a new puzzle next");
+            var r = Rewards.Puzzle(true);
+            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.True);
+            Assert.That(r.Lines.Exists(l => l.StartsWith("Shot puzzle solved")), Is.True);
+            var w = Challenges.Current().Weekly;
+            if (w.Id == Challenges.Rush) Assert.That(w.Progress, Is.EqualTo(1), "and one for the week's rush");
+        }
+
+        [Test] public void TheSkillTestIsTodaysLevelAtItsTarget()
+        {
+            var c = Challenges.Today(Challenges.Skill);
+            var other = SquashSim.Arcade.Challenges.All().Find(x => x.Id != c.Ref && x.Mode != SquashSim.Arcade.ArcadeMode.Drill);
+            Rewards.Arcade(other.Id, false, 0, 3, 10, false);
+            Assert.That(c.Done, Is.False, "another level doesn't count");
+            Rewards.Arcade(c.Ref, false, 0, c.Need - 1, 10, false);
+            Assert.That(c.Done, Is.False, "under the target");
+            Rewards.Arcade(c.Ref, false, 0, c.Need, 10, false);
+            Assert.That(c.Done, Is.True);
         }
 
         [Test] public void TheStreakGrowsDayByDayAndBreaksOnAMissedDay()
         {
-            var r = new RewardResult();
             for (int d = 0; d < 3; d++)
             {
-                r = Rewards.Match(Big());
+                Rewards.Puzzle(true);
                 Assert.That(Challenges.StreakNow(), Is.EqualTo(d + 1), "day " + (d + 1));
                 _now = _now.AddDays(1);
             }
@@ -98,7 +123,7 @@ namespace SquashGame.Tests
             Assert.That(Challenges.StreakBonus(3), Is.EqualTo(0.2).Within(1e-9));
             _now = _now.AddDays(1);                                   // a day missed
             Assert.That(Challenges.StreakNow(), Is.EqualTo(0));
-            Rewards.Match(Big());
+            Rewards.Puzzle(true);
             Assert.That(Challenges.StreakNow(), Is.EqualTo(1), "a new streak");
             Assert.That(Challenges.Current().BestStreak, Is.EqualTo(3));
         }
@@ -108,11 +133,8 @@ namespace SquashGame.Tests
             var s = Challenges.Current();
             var d = Challenges.Find(s.Weekly.Id);
             s.Weekly.Progress = d.Target - 1;
-            var e = new ChallengeEvent { Match = Big(), ArcadeStars = 10, GauntletFloor = 10 };
             var r = new RewardResult();
-            Challenges.Modes.Add("gauntlet");
-            Challenges.Record(r, e);
-            Challenges.Modes.Remove("gauntlet");
+            Challenges.Record(r, d.Id == Challenges.Rush ? new ChallengeEvent { PuzzleSolved = true } : new ChallengeEvent { QuizCount = Challenges.ExamSize, QuizPassed = true });
             Assert.That(s.Weekly.Done, Is.True, d.Id);
             Assert.That(r.Lines.Exists(l => l.StartsWith("Weekly done") && l.EndsWith("+" + Challenges.WeeklyXp)), Is.True);
             Assert.That(r.Unlocked.ConvertAll(i => i.Id), Does.Contain(Challenges.WeeklyItems[0]));
@@ -134,6 +156,34 @@ namespace SquashGame.Tests
             Assert.That(p.Progress.Xp, Is.EqualTo(500));
             Assert.That(p.Progress.Challenges, Is.Not.Null);
             Assert.That(Challenges.Current().Daily.Count, Is.EqualTo(Challenges.DailyCount));
+        }
+
+        [Test] public void TheShotPuzzleBankStillMatchesTheSim()
+        {
+            Assert.That(ShotPuzzleBank.Count, Is.GreaterThanOrEqualTo(200), "the bank shipped");
+            var answers = new System.Collections.Generic.HashSet<string>();
+            foreach (var p in ShotPuzzleBank.All()) answers.Add(p.Options[p.Best]);
+            Assert.That(answers.Count, Is.EqualTo(ShotPuzzles.Shots.Length), "every shot is somebody's answer");
+            double dt = 1.0 / 240;
+            for (int k = 0; k < 3; k++)
+            {
+                var p = ShotPuzzleBank.At(k * 37);
+                Assert.That(p.Rates[p.Best], Is.GreaterThanOrEqualTo(0.5));
+                RallyOutcome Play()
+                {
+                    ReplayMatch.Configure(p.Setup());
+                    var sim = ReplayMatch.Build(p.Setup());
+                    while (sim.StepCount < p.Freeze) sim.Step(dt);
+                    Assert.That(ShotPuzzles.IsFreezeMoment(sim), Is.True, "puzzle " + p.Seed + ": the freeze is still the moment (re-make the bank if the sim changed)");
+                    ShotPuzzles.Force(sim, p, p.Options[p.Best], 0);
+                    double t0 = sim.Time;
+                    while (sim.Phase == MatchPhase.Rally && sim.Time - t0 < ShotPuzzles.PlayoutSeconds) sim.Step(dt);
+                    return sim.LastOutcome;
+                }
+                var a = Play(); var b = Play();
+                Assert.That(b?.Winner, Is.EqualTo(a?.Winner), "the same rally twice");
+                Assert.That(b?.Kind, Is.EqualTo(a?.Kind));
+            }
         }
     }
 }

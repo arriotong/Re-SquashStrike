@@ -69,7 +69,13 @@ namespace SquashSim.Academy
         public string Id, Title, Blurb;
         public Chapter Chapter;
         public readonly List<LessonStep> Steps = new List<LessonStep>();
-        public bool HasQuiz { get { foreach (var s in Steps) if (s.Goal == GoalKind.Quiz) return true; return false; } }
+        /// <summary>Calls right to pass its quiz (the lessons: 2 of 3; a challenge quiz: QuizMaker.PassMark).</summary>
+        public int QuizPass = 2;
+        /// <summary>A challenge's rules quiz (QuizMaker), not one of the Academy's lessons.</summary>
+        public bool IsChallengeQuiz { get { return Id != null && Id.StartsWith(QuizMaker.Prefix); } }
+        public bool HasQuiz { get { return QuizCount > 0; } }
+        /// <summary>How many calls its quiz has (3 in a lesson, 5 or 10 in a challenge).</summary>
+        public int QuizCount { get { int n = 0; foreach (var s in Steps) if (s.Goal == GoalKind.Quiz) n++; return n; } }
     }
 
     public static class Lessons
@@ -202,6 +208,8 @@ namespace SquashSim.Academy
 
         public static Lesson Find(string id)
         {
+            var quiz = QuizMaker.FromId(id);                                  // a challenge's rules quiz (2026-10-28)
+            if (quiz != null) return quiz;
             foreach (var l in All()) if (l.Id == id) return l;
             return null;
         }

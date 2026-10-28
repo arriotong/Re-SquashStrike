@@ -1211,3 +1211,20 @@
     -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
 }
 .hud-cine-sub { margin-top: 8px; font-size: 13px; letter-spacing: 3px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---- playable challenges (2026-10-28): the challenges screen, the shot puzzle ---- */
+.ch-head { flex-direction: row; align-items: center; margin-bottom: 18px; padding: 10px 20px; border-radius: 12px; background-color: rgba(16, 18, 22, 0.82); align-self: flex-start; }
+.ch-head-words { margin-left: 14px; }
+.ch-head-line { font-size: 13px; margin-top: 3px; color: rgba(255, 255, 255, 0.78); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.pz-note { width: 600px; align-self: flex-start; }
+.pz-text { font-size: 18px; white-space: normal; color: rgba(255, 255, 255, 0.88); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz-row { margin-top: 12px; }
+.pz-result { width: 820px; }
+.pz-result > .k-panel { margin-top: 14px; }
+.pz-bar-row { flex-direction: row; align-items: center; padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; }
+.pz-bar-row--best { background-color: rgba(200, 255, 61, 0.12); }
+.pz-bar-row--you { border-width: 1px; border-color: rgba(255, 255, 255, 0.35); }
+.pz-bar-name { width: 270px; font-size: 20px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz-bar { flex-grow: 1; margin: 0 14px; }
+.pz-bar-pct { width: 56px; font-size: 16px; -unity-text-align: middle-right; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pz-why { font-size: 15px; margin-top: 10px; white-space: normal; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
