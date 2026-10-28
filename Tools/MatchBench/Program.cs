@@ -72,7 +72,7 @@ public static class Program
         if (Array.IndexOf(args, "--stars") >= 0) { StarBench.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--only")); return 0; }
         { int ib = Array.IndexOf(args, "--puzzle-bank"); if (ib >= 0) { PuzzleBench.Bank(int.Parse(args[ib + 1]), uint.Parse(args[ib + 2]), args[ib + 3]); return 0; } }
         if (Array.IndexOf(args, "--puzzle") >= 0) { PuzzleBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
-        if (Array.IndexOf(args, "--rogue") >= 0) { RogueBench.Run(Arg(args, "--games") != null ? games : 20, Arg(args, "--policy") ?? "greedy", int.Parse(Arg(args, "--talents") ?? "0")); return 0; }
+        if (Array.IndexOf(args, "--rogue") >= 0) { RogueBench.DeckMode = Arg(args, "--deck"); RogueBench.Run(Arg(args, "--games") != null ? games : 20, Arg(args, "--policy") ?? "greedy", int.Parse(Arg(args, "--talents") ?? "0")); return 0; }
         if (Array.IndexOf(args, "--shot-audit") >= 0) { ShotAudit.Run(); return 0; }
         if (Array.IndexOf(args, "--drive-audit") >= 0) { DriveAudit.Run(Array.IndexOf(args, "--assisted") >= 0, double.Parse(Arg(args, "--charge") ?? "0", System.Globalization.CultureInfo.InvariantCulture)); return 0; }
         if (Array.IndexOf(args, "--career-balance") >= 0) { CareerBench.Balance(int.Parse(Arg(args, "--seasons") ?? "2")); return 0; }

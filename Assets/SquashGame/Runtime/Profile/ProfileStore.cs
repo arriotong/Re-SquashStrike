@@ -137,6 +137,8 @@ namespace SquashGame.Profile
         public int Coins, BossesBeaten;
         public List<SquashSim.RunMod> Talents = new List<SquashSim.RunMod>();
         public List<SquashSim.RunMod> Codex = new List<SquashSim.RunMod>();
+        /// <summary>2026-10-28: the card decks - your cards (copies, evolved), the deck, the packs opened.</summary>
+        public SquashSim.Modes.CardCollection Cards;
     }
 
     /// <summary>P2-M8: who you are online - no account: a random id and secret made here the first time (the server
@@ -253,6 +255,7 @@ namespace SquashGame.Profile
             if (p.Version < 5) g.Gauntlet.Run = null;                     // P5: a run of the old Gauntlet ends (its best floor is kept)
             if (g.Gauntlet.Talents == null) g.Gauntlet.Talents = new List<SquashSim.RunMod>();
             if (g.Gauntlet.Codex == null) g.Gauntlet.Codex = new List<SquashSim.RunMod>();
+            // (2026-10-28: the card collection's starter set is made when first asked for - GauntletFlow.Cards)
             if (g.Gauntlet.Run != null)
             {
                 var r = g.Gauntlet.Run;

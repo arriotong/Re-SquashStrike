@@ -139,9 +139,9 @@ namespace SquashSim.Tests
                 run.Roll = i; run.Floor = 2 + i;
                 foreach (var id in Gauntlet.OfferFor(run, Talents(), 4)) Assert.That(GauntletAbilities.Find(id).Retired, Is.False, "retired: never offered (" + id + ")");
             }
-            // the opponents bend the rules too: a chaos trait at level 3 somewhere in the elites
+            // the opponents bend the rules too: a chaos trait at level 3 somewhere in the elites (higher past floor 50)
             bool chaos = false;
-            for (int fl = 5; fl <= 200; fl += 5) foreach (var t in Gauntlet.Floor(run, fl).Traits) if (!t.Id.StartsWith("e_")) { chaos = true; Assert.That(t.Level, Is.EqualTo(Gauntlet.ChaosTraitLevel)); }
+            for (int fl = 5; fl <= 200; fl += 5) foreach (var t in Gauntlet.Floor(run, fl).Traits) if (!t.Id.StartsWith("e_")) { chaos = true; Assert.That(t.Level, fl <= 50 ? (NUnit.Framework.Constraints.IResolveConstraint)Is.EqualTo(Gauntlet.ChaosTraitLevel) : Is.GreaterThan(Gauntlet.ChaosTraitLevel), "2026-10-28: stronger past floor 50"); }
             Assert.That(chaos, Is.True);
         }
 

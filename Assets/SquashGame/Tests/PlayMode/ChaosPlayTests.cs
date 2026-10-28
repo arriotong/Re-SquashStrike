@@ -52,6 +52,60 @@ namespace SquashGame.Tests
         static RunMod M(string id, int l) { return new RunMod { Id = id, Level = l }; }
 
         [UnityTest]
+        public IEnumerator PacksDecksAndARunFromYourDeck()
+        {
+            // 2026-10-28: the Gauntlet as card decks - packs for coins, the deck screen, a run that draws from it
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return Wait(5f, () => Object.FindFirstObjectByType<FrontEnd>() != null && Object.FindFirstObjectByType<FrontEnd>().Top != null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            var cards = GauntletFlow.Cards;
+            Assert.That(cards.Cards.Count, Is.GreaterThanOrEqualTo(10), "a starter set");
+            Progression.GearDrops.Wallet.Coins = 3 * SquashSim.Modes.GauntletCards.PackCost;
+            fe.Push(new GauntletScreen());
+            yield return null; yield return null;
+            var pack = fe.Top.Reachable().Find(i => i.Name.StartsWith("Open a pack"));
+            Assert.That(pack, Is.Not.Null);
+            int before = 0; foreach (var c in cards.Cards) before += c.Copies;
+            pack.Submit();
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<PackScreen>());
+            Assert.That(((PackScreen)fe.Top).Count, Is.EqualTo(SquashSim.Modes.GauntletCards.PackSize));
+            int after = 0; foreach (var c in cards.Cards) after += c.Copies;
+            Assert.That(after, Is.EqualTo(before + SquashSim.Modes.GauntletCards.PackSize), "five cards in");
+            Assert.That(Progression.GearDrops.Wallet.Coins, Is.EqualTo(2 * SquashSim.Modes.GauntletCards.PackCost), "paid in coins");
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "G6_Pack.png");
+
+            fe.Replace(new DeckScreen());
+            yield return null; yield return null;
+            fe.Top.OnActionY();                                                       // the best 20
+            yield return null; yield return null;
+            Assert.That(cards.Deck.Count, Is.EqualTo(System.Math.Min(SquashSim.Modes.GauntletCards.DeckSize, cards.Cards.Count)));
+            int n = cards.Deck.Count;
+            var first = fe.Top.Reachable()[0];
+            first.Submit();                                                           // out of the deck
+            yield return null; yield return null;
+            Assert.That(cards.Deck.Count, Is.EqualTo(n - 1));
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "G6_Deck.png");
+
+            GauntletFlow.NewRun();
+            var run = GauntletFlow.Run;
+            Assert.That(run.HasDeck, Is.True, "the run draws from your deck");
+            Assert.That(run.Deck.Count, Is.EqualTo(cards.Deck.Count));
+            Assert.That(run.Abilities, Is.Empty, "nothing active at first");
+            SquashSim.Modes.Gauntlet.Won(run, 3, 0, 0, GauntletFlow.State.Talents);
+            foreach (var id in run.Offer) Assert.That(cards.Deck, Does.Contain(id), "drawn from the deck");
+            fe.Replace(new GauntletScreen());
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "G6_Pick.png");
+            GauntletFlow.Abandon();
+        }
+
+        [UnityTest]
         public IEnumerator AChaosBuildFillsPowerAndFiresItsUltimate()
         {
             LocalMatchTests.FreshProfile();

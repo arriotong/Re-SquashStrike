@@ -8,6 +8,8 @@
 //   random   picks any card
 //   greedy   levels up what it has first (a build), else a new card
 //   talents  every talent at this level (capped at its own top)
+//   --deck starter|full|max   2026-10-28: the run draws from a card deck -
+//            the starter set; every card at level 2; the best 20 evolved
 //
 // Prints floors reached (median, quartiles, best), bosses, coins a run,
 // and per ability: how often taken and the mean floor of runs that took it.
@@ -23,6 +25,22 @@ using SquashSim.Replays;
 static class RogueBench
 {
     public const int FloorCap = 80;
+    /// <summary>The card deck the runs draw from (null: the old draw from every ability).</summary>
+    public static string DeckMode;
+
+    static List<RunMod> DeckFor(int r)
+    {
+        if (DeckMode == null) return null;
+        CardCollection c;
+        if (DeckMode == "starter") c = GauntletCards.Starter((uint)(77 + r));
+        else
+        {
+            c = new CardCollection();
+            foreach (var a in GauntletCards.All()) c.Cards.Add(new CardRec { Id = a.Id, Copies = DeckMode == "max" ? GauntletCards.CopiesFor[3] : GauntletCards.CopiesFor[2], Evolved = DeckMode == "max" });
+            GauntletCards.AutoDeck(c);
+        }
+        return GauntletCards.RunDeck(c);
+    }
 
     public static void Run(int runs, string policy, int talentLevel)
     {
@@ -30,14 +48,14 @@ static class RogueBench
         if (talentLevel > 0)
             foreach (var t in GauntletTalents.All())
                 talents.Add(new RunMod { Id = t.Id, Level = Math.Min(t.MaxLevel, talentLevel) });
-        Console.WriteLine("ROGUE  " + runs + " runs, the human-style model, policy " + policy + ", talents " + talentLevel);
+        Console.WriteLine("ROGUE  " + runs + " runs, the human-style model, policy " + policy + ", talents " + talentLevel + (DeckMode != null ? ", deck " + DeckMode : ""));
         var floors = new List<int>();
         var taken = new Dictionary<string, List<int>>();
         int bosses = 0; long coins = 0; int lostAt = 0;
         var lossFloors = new List<int>();
         for (int r = 0; r < runs; r++)
         {
-            var run = Gauntlet.NewRun((uint)(1000 + r * 7919), talents);
+            var run = Gauntlet.NewRun((uint)(1000 + r * 7919), talents, DeckFor(r));
             var rng = new Random(r);
             int guard = 0;
             while (!run.Over && run.Floor <= FloorCap && guard++ < 400)

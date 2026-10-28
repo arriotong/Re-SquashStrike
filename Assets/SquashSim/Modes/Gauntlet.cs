@@ -45,6 +45,10 @@ namespace SquashSim.Modes
         public List<RunMod> Abilities = new List<RunMod>();
         public List<string> Offer = new List<string>();
         public List<string> Banished = new List<string>();
+        /// <summary>2026-10-28: the deck this run draws from (GauntletCards: each card and its level, 1-3, or 4 evolved).
+        /// Empty: the old draw from every ability (runs from before the decks, the bench).</summary>
+        public List<RunMod> Deck = new List<RunMod>();
+        public bool HasDeck { get { return Deck != null && Deck.Count > 0; } }
         /// <summary>The floor just won was a boss (its pick takes two levels).</summary>
         public bool BossPick;
         public int FloorsWon { get { return Floor - 1; } }
@@ -107,16 +111,17 @@ namespace SquashSim.Modes
 
         // ---------------- a new run ----------------
 
-        public static GauntletRun NewRun(uint seed, List<RunMod> talents = null)
+        public static GauntletRun NewRun(uint seed, List<RunMod> talents = null, List<RunMod> deck = null)
         {
             var run = new GauntletRun { Active = true, Seed = seed == 0 ? 1u : seed };
+            if (deck != null) run.Deck = new List<RunMod>(deck);
             run.Lives = StartLives + GauntletTalents.Level(talents, "hearty");
             run.Rerolls = 1 + GauntletTalents.Level(talents, "reroll");
             run.Banishes = GauntletTalents.Level(talents, "banish");
             run.Cards = 3 + GauntletTalents.Level(talents, "wider");
             run.CanRevive = GauntletTalents.Level(talents, "revive") > 0;
             // Kit Bag: a random common ability or two to start with
-            int kit = GauntletTalents.Level(talents, "kit");
+            int kit = run.HasDeck ? 0 : GauntletTalents.Level(talents, "kit");      // a deck: nothing active at first
             var commons = GauntletAbilities.All().FindAll(a => a.Rarity == Rarity.Common && a.Kind != AbilityKind.Instant && !a.Retired && GauntletTalents.Unlocked(talents, a));
             uint h = Mix(run.Seed, 777);
             for (int i = 0; i < kit && commons.Count > 0; i++)
@@ -134,8 +139,12 @@ namespace SquashSim.Modes
         public static FloorKind KindOf(int floor) { return floor % 10 == 0 ? FloorKind.Boss : floor % 5 == 0 ? FloorKind.Elite : FloorKind.Normal; }
 
         /// <summary>The AI's difficulty on a floor: from the easiest, a slow climb - the game's Medium about floor 20, Hard about
-        /// 37, the top past 125 (MatchBench --rogue: a median player clears about 9 floors, 40% beat the first boss).</summary>
-        public static double Difficulty(int floor) { return Math.Min(1.0, Start + Climb * (Math.Max(1, floor) - 1)); }
+        /// 37, the top past 125 (MatchBench --rogue: a median player clears about 9 floors, 40% beat the first boss).
+        /// 2026-10-28 (card decks: "bots needs to be harder and harder so it doesn't get boring when you keep winning"): past
+        /// the Knee the climb steepens (Climb2 a floor more), and the opponent's athlete starts to grow from LiftFrom.</summary>
+        public static double Difficulty(int floor) { int f = Math.Max(1, floor); return Math.Min(1.0, Start + Climb * (f - 1) + Climb2 * Math.Max(0, f - Knee)); }
+        public const int Knee = 15, LiftFrom = 20, LiftEvery = 4, CannonFrom = 50;
+        public const double Climb2 = 0.012;
         public const double Start = 0.0, Climb = 0.0075;     // P6: 0.008 after the AI learned to keep out of its own shot and the line (median 8 floors); the chaos remake: 0.0055 -> 0.0075 (the cards are stronger: MatchBench --rogue median 15 -> 13, p25 9, a great build 80)
 
         public static FloorInfo Floor(GauntletRun run, int floor)
@@ -161,7 +170,7 @@ namespace SquashSim.Modes
                 f.OpponentId = f.Style;
             }
             int traits = f.Kind == FloorKind.Boss ? (floor >= 20 ? 2 : 1) : f.Kind == FloorKind.Elite ? 1 : 0;
-            if (floor > 40) traits++;                                         // late floors: every opponent has one more
+            if (floor > 40) traits += 1 + (floor - 40) / 15;                  // late floors: one more, and another every 15 (2026-10-28)
             var pool = new List<int>();
             for (int k = 0; k < Traits.Length; k++) pool.Add(k);
             for (int i = 0; i < traits && pool.Count > 0; i++)
@@ -169,22 +178,22 @@ namespace SquashSim.Modes
                 h = Hash(h + 17);
                 int k = pool[(int)(h % (uint)pool.Count)];
                 pool.Remove(k);
-                f.Traits.Add(new RunMod { Id = Traits[k].id, Level = Traits[k].id.StartsWith("e_") ? 1 : ChaosTraitLevel });
+                f.Traits.Add(new RunMod { Id = Traits[k].id, Level = Traits[k].id.StartsWith("e_") ? 1 : ChaosTraitLevel + (floor > 50 ? Math.Min(2, (floor - 50) / 15 + 1) : 0) });
             }
             if (f.Kind == FloorKind.Elite) f.Title = "Elite  ·  " + TraitNames(f);
-            // past floor 30 the opponent's athlete grows; past 60 the Cannon does
-            int lift = floor > 30 ? Math.Min(5, (floor - 30) / 6) : 0;
+            // past LiftFrom the opponent's athlete grows; past CannonFrom the Cannon does
+            int lift = floor > LiftFrom ? Math.Min(5, (floor - LiftFrom) / LiftEvery) : 0;
             bool wall = f.Traits.Exists(t => t.Id == "e_wall");
             if (lift > 0 || wall)
             {
                 double v = AthleteAttributes.Neutral + lift;
                 f.Attributes = new AthleteAttributes { Speed = Math.Min(10, v + (wall ? 3 : 0)), Stamina = v, Power = v, Control = v };
             }
-            if (floor > 60)
+            if (floor > CannonFrom)
             {
                 var c = f.Traits.Find(t => t.Id == "e_cannon");
                 if (c == null) { c = new RunMod { Id = "e_cannon", Level = 0 }; f.Traits.Add(c); }
-                c.Level += (floor - 60) / 10 + 1;
+                c.Level += (floor - CannonFrom) / 10 + 1;
             }
             f.Traits.RemoveAll(t => t.Id == "e_wall");                        // the Wall is its attributes, not a sim trait
             if (wall) f.Traits.Add(new RunMod { Id = "e_wall", Level = 0 });   // (kept for its name)
@@ -305,6 +314,7 @@ namespace SquashSim.Modes
         public static List<string> OfferFor(GauntletRun run, List<RunMod> talents, int cards = -1)
         {
             if (cards < 0) cards = run.Cards + (KindOf(run.Floor - 1) == FloorKind.Elite ? 1 : 0);
+            if (run.HasDeck) return DeckOffer(run, cards);
             bool boss = run.BossPick;
             int lucky = Level(run, "lucky");
             var offer = new List<string>();
@@ -355,11 +365,53 @@ namespace SquashSim.Modes
             return offer;
         }
 
+        /// <summary>A deck's draw: cards not yet active, any of them alike (it is your deck); an in-run evolution that is ready
+        /// always; with the deck spent (or the slots full), a bonus (a heart, the purse) instead.</summary>
+        static List<string> DeckOffer(GauntletRun run, int cards)
+        {
+            var offer = new List<string>();
+            bool activeFull = Count(run, true) >= GauntletAbilities.ActiveSlots, passiveFull = Count(run, false) >= GauntletAbilities.PassiveSlots;
+            foreach (var a in GauntletAbilities.All())
+            {
+                if (a.Kind != AbilityKind.Evolved || a.Recipe == null || Level(run, a.Id) > 0) continue;
+                var p0 = GauntletAbilities.Find(a.Recipe[0]); var p1 = GauntletAbilities.Find(a.Recipe[1]);
+                if (p0 != null && p1 != null && Level(run, p0.Id) >= p0.MaxLevel && Level(run, p1.Id) >= p1.MaxLevel) offer.Add(a.Id);
+            }
+            var pool = new List<string>();
+            foreach (var c in run.Deck)
+            {
+                var a = GauntletAbilities.Find(c.Id);
+                if (a == null || Level(run, c.Id) > 0 || run.Banished.Contains(c.Id)) continue;
+                if (a.Active ? activeFull : passiveFull) continue;
+                if (!pool.Contains(c.Id)) pool.Add(c.Id);
+            }
+            uint h = Mix(run.Seed ^ 0xC0FFEEu, (uint)run.Floor * 131u + (uint)run.Roll);
+            while (offer.Count < cards && pool.Count > 0)
+            {
+                h = Hash(h + 0x6D2B79F5u);
+                int k = (int)(h % (uint)pool.Count);
+                offer.Add(pool[k]);
+                pool.RemoveAt(k);
+            }
+            if (offer.Count == 0 && !run.BossPick) offer.Add(run.Lives < MaxLives ? "life" : "coins");
+            return offer;
+        }
+
+        /// <summary>A card's level in this run's deck (0: not in it).</summary>
+        public static int DeckLevel(GauntletRun run, string id)
+        {
+            if (!run.HasDeck) return 0;
+            foreach (var c in run.Deck) if (c.Id == id) return c.Level;
+            return 0;
+        }
+
         /// <summary>The level a card would take an ability to.</summary>
         public static int LevelAfter(GauntletRun run, string id)
         {
             var a = GauntletAbilities.Find(id);
             if (a == null) return 0;
+            int dl = DeckLevel(run, id);
+            if (dl > 0) return Math.Min(a.MaxLevel, GauntletCards.PlayLevel(a, dl) + (run.BossPick ? 1 : 0));   // a deck card: its level
             return Math.Min(a.MaxLevel, Level(run, id) + (run.BossPick ? 2 : 1));
         }
 

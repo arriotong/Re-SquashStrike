@@ -37,9 +37,48 @@ namespace SquashGame.UI
         /// <summary>What a boss gave (an ability unlocked), shown once.</summary>
         public static string LastUnlock;
 
+        /// <summary>2026-10-28: your cards, the deck a run draws from.</summary>
+        public static CardCollection Cards
+        {
+            get
+            {
+                // a new profile (or one from before the decks): the starter set
+                if (G.Cards == null || G.Cards.Cards == null || G.Cards.Cards.Count == 0)
+                {
+                    G.Cards = GauntletCards.Starter(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u);
+                    ProfileStore.Save();
+                }
+                if (G.Cards.Deck == null) G.Cards.Deck = new List<string>();
+                return G.Cards;
+            }
+        }
+
+        /// <summary>A pack for coins (the one currency): the cards it gave, in order (empty: not enough coins).</summary>
+        public static List<string> BuyPack()
+        {
+            var w = GearDrops.Wallet;
+            if (w.Coins < GauntletCards.PackCost) return new List<string>();
+            w.Coins -= GauntletCards.PackCost;
+            var got = GauntletCards.Open(Cards);
+            ProfileStore.Save();
+            return got;
+        }
+
+        /// <summary>Evolve a level-3 card for coins.</summary>
+        public static bool Evolve(string id)
+        {
+            int cost = GauntletCards.EvolveCostOf(id);
+            if (!GauntletCards.CanEvolve(Cards, id) || GearDrops.Wallet.Coins < cost) return false;
+            GearDrops.Wallet.Coins -= cost;
+            GauntletCards.Evolve(Cards, id);
+            ProfileStore.Save();
+            return true;
+        }
+
         public static void NewRun()
         {
-            G.Run = Gauntlet.NewRun(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u, Talents);
+            if (Cards.Deck.Count == 0) GauntletCards.AutoDeck(Cards);
+            G.Run = Gauntlet.NewRun(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u, Talents, GauntletCards.RunDeck(Cards));
             G.Runs++;
             Codex(G.Run);
             ProfileStore.Save();
@@ -294,13 +333,21 @@ namespace SquashGame.UI
                 }
                 else
                 {
-                    Kit.L(about, "Endless floors: one game to 7 each. Every 5th an elite, every 10th a boss.", "gt-text");
-                    Kit.L(about, "Win a floor and pick one of three cards: new shots, powers and stats, or a level up. Two at the top can evolve.", "gt-text");
+                    Kit.L(about, "Endless floors: one game to 7 each. Every 5th an elite, every 10th a boss - and they keep getting harder.", "gt-text");
+                    Kit.L(about, "Your deck of up to " + GauntletCards.DeckSize + " cards: none is active at first. Win a floor and three are drawn from it - activate one, at its level.", "gt-text");
+                    Kit.L(about, "Cards come in packs (" + GauntletCards.PackCost + " coins). Copies level a card to 3, then evolve it.", "gt-text");
                     Kit.L(about, "Lose a floor and it costs a heart. Coins from every floor buy talents that last.", "gt-text");
                 }
                 Records(grid, st);
                 AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));   // first: it has the focus
                 var more = Kit.Box(Content, "gt-more");
+                AddTo(more, new ActionItem("Your deck  ·  " + GauntletFlow.Cards.Deck.Count + " / " + GauntletCards.DeckSize, () => Fe.Push(new DeckScreen()), "▶"));
+                var pack = AddTo(more, new ActionItem("Open a pack  ·  " + GauntletCards.PackCost + " coins", () =>
+                {
+                    var got = GauntletFlow.BuyPack();
+                    if (got.Count > 0) { Sounds.Play("stamp"); Fe.Push(new PackScreen(got)); } else Sounds.Play("back");
+                }, "▶"));
+                pack.Enabled = () => GearDrops.Wallet.Coins >= GauntletCards.PackCost;
                 AddTo(more, new ActionItem("Talents  ·  " + st.Coins + " coins", () => Fe.Push(new TalentsScreen()), "▶"));
                 AddTo(more, new ActionItem("Codex", () => Fe.Push(new CodexScreen()), "▶"));
                 return;
@@ -309,7 +356,8 @@ namespace SquashGame.UI
             if (run.AwaitingPick)
             {
                 Kit.L(Content, GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins  ·  next: floor " + run.Floor +
-                               (run.BossPick ? "  ·  a boss's reward: every card takes two levels" : ""), "gt-line");
+                               (run.BossPick ? (run.HasDeck ? "  ·  a boss's reward: the card plays a level higher" : "  ·  a boss's reward: every card takes two levels") : "")
+                               + (run.HasDeck ? "  ·  from your deck" : ""), "gt-line");
                 var row = Kit.Box(Content, "k-row");
                 foreach (var id in run.Offer)
                 {
@@ -318,7 +366,10 @@ namespace SquashGame.UI
                     var pick = id;
                     int now = Gauntlet.Level(run, id), lvNext = Gauntlet.LevelAfter(run, id);
                     string fam = a.Family != Family.None ? a.FamilyName + "  ·  " : "";
-                    string kicker = a.Kind == AbilityKind.Evolved ? fam + "EVOLUTION" : a.Kind == AbilityKind.Instant ? "BONUS" : fam + (now == 0 ? "NEW " : "LV " + now + " → " + lvNext + " ") + a.KindName.ToUpperInvariant();
+                    int dl = Gauntlet.DeckLevel(run, id);
+                    string kicker = a.Kind == AbilityKind.Evolved ? fam + "EVOLUTION" : a.Kind == AbilityKind.Instant ? "BONUS"
+                                  : dl > 0 ? fam + (dl > GauntletCards.MaxLevel ? "EVOLVED " : "LV " + dl + " ") + a.KindName.ToUpperInvariant()       // a deck card: its level
+                                  : fam + (now == 0 ? "NEW " : "LV " + now + " → " + lvNext + " ") + a.KindName.ToUpperInvariant();
                     var card = AddTo(row, new CardItem(a.Name, kicker, () => { if (_banishing) { if (GauntletFlow.Banish(pick)) Fe.Replace(new GauntletScreen()); } else { GauntletFlow.Pick(pick); Fe.Replace(new GauntletScreen()); } })
                         .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : GauntletFlow.RarityColour(a.Rarity),
                                a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : (Color?)null)

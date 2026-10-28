@@ -109,13 +109,14 @@ namespace SquashSim
 
         // ---------------- TIME ----------------
 
-        /// <summary>Seconds the ultimate freezes the opponent (Time Stop 0.7 .. 1.2 s; The World twice that).</summary>
+        /// <summary>Seconds the ultimate freezes the opponent (Time Stop 0.5 .. 0.8 s; The World twice that). 2026-10-28: was
+        /// 0.7 + 0.25 a level - with a deck, runs holding it averaged floor 77 (MatchBench --rogue --deck full).</summary>
         public double FreezeSeconds
         {
             get
             {
                 int l = Level("freeze");
-                double s = l > 0 ? 0.7 + 0.25 * (l - 1) : 0;
+                double s = l > 0 ? 0.5 + 0.15 * (l - 1) : 0;
                 if (Level("world") > 0) s = System.Math.Max(s, 0.95) * 2;
                 return s;
             }

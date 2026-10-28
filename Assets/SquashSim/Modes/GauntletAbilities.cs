@@ -140,7 +140,7 @@ namespace SquashSim.Modes
             const AbilityKind U = AbilityKind.Ultimate, S = AbilityKind.Shot, P = AbilityKind.Perk;
             // ---- TIME ----
             A("freeze", "Time Stop", U, Rarity.Epic, "ULTIMATE. The world stops - all but you.",
-              l => "Your ultimate freezes the opponent solid for " + (0.7 + 0.25 * (l - 1)).ToString("0.0#") + " s: no step, no swing", max: 3, fam: Family.Time);
+              l => "Your ultimate freezes the opponent solid for " + (0.5 + 0.15 * (l - 1)).ToString("0.0#") + " s: no step, no swing", max: 3, fam: Family.Time);
             A("slowfield", "Slow Field", P, Rarity.Rare, "Every shot of yours drags time around them.",
               l => "After each of your shots they move " + (6 * l) + "% slower for 0.6 s", fam: Family.Time);
             A("haste", "Haste", P, Rarity.Common, "Every shot of yours speeds you up.",
