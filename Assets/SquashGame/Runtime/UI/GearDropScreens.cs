@@ -25,7 +25,7 @@ namespace SquashGame.UI
         public static string Wallet()
         {
             var w = GearDrops.Wallet;
-            return w.Tickets + (w.Tickets == 1 ? " TICKET" : " TICKETS") + "   ·   " + w.TenTickets + " x10   ·   " + w.Coins.ToString("N0") + " COINS";
+            return w.Coins.ToString("N0") + " COINS   ·   a pull " + GearDrops.PullCost + "   ·   ×10 " + GearDrops.TenPullCost.ToString("N0");
         }
 
         /// <summary>An item for cards: its shape (a shirt, a shoe, a racket...) in its own colour, on a backing that contrasts with it
@@ -75,12 +75,10 @@ namespace SquashGame.UI
                 Kit.L(left, "Owned " + owned + " / " + b.Items.Count + (gold > 0 ? "   ·   ★ " + gold + " gold" : ""), "gd-count");
                 Kit.L(left, "Pulls without a Legendary: " + GearDrops.PityOf(b.Id) + " / " + GearDrops.Pity, "gd-pity");
                 var acts = Kit.Box(left, "gd-acts");
-                var one = AddTo(acts, new ActionItem("Pull ×1  ·  1 ticket", () => Pull(bn.Id, 1)));
+                var one = AddTo(acts, new ActionItem("Pull ×1  ·  " + GearDrops.PullCost + " coins", () => Pull(bn.Id, 1)));
                 one.Enabled = () => GearDrops.CanPull(1);
-                var ten = AddTo(acts, new ActionItem("Pull ×10  ·  " + (GearDrops.Wallet.TenTickets > 0 ? "1 ×10 ticket" : "10 tickets"), () => Pull(bn.Id, GearDrops.TenPull)));
+                var ten = AddTo(acts, new ActionItem("Pull ×10  ·  " + GearDrops.TenPullCost.ToString("N0") + " coins", () => Pull(bn.Id, GearDrops.TenPull)));
                 ten.Enabled = () => GearDrops.CanPull(GearDrops.TenPull);
-                var buy = AddTo(acts, new ActionItem("Buy a ticket  ·  " + GearDrops.TicketPrice + " coins", () => { if (GearDrops.BuyTicket()) { Sounds.Play("stamp"); Fe.Replace(new GearDropScreen(bn.Id)); } else Sounds.Play("back"); }));
-                buy.Enabled = () => GearDrops.Wallet.Coins >= GearDrops.TicketPrice;
                 Odds(page);
             }
 
@@ -125,7 +123,7 @@ namespace SquashGame.UI
                 "After " + GearDrops.Pity + " pulls on a banner without a Legendary, the next one is.",
                 "Duplicates pay coins: " + string.Join(" / ", System.Array.ConvertAll(GearDrops.DupeCoins, c => c.ToString())) + " (Common to Legendary).",
                 "Gold editions never repeat - or gold-plate what you own with coins.",
-                "Tickets come from playing: levels, challenges, the Gauntlet, Scenarios, the career - or buy one with " + GearDrops.TicketPrice + " coins, earned by playing. Never real money.",
+                "Coins come from playing every mode: matches, levels, challenges, the Gauntlet, Scenarios, the career, online. A pull is " + GearDrops.PullCost + ", ×10 is " + GearDrops.TenPullCost.ToString("N0") + " (one free). Never real money.",
             })
                 Kit.L(o, "·  " + rule, "gd-rule");
         }

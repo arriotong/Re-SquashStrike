@@ -38,7 +38,8 @@ namespace SquashGame.Tests
 
         [TearDown] public void Restore() { ProfileStore.Folder = null; ProfileStore.Reset(); Challenges.Now = () => DateTime.Now; }
 
-        static void Give(int tickets, int tens = 0) { GearDrops.Wallet.Tickets = tickets; GearDrops.Wallet.TenTickets = tens; }
+        /// <summary>Coins for this many pulls (2026-10-28: coins are the one currency).</summary>
+        static void Give(int pulls) { GearDrops.Wallet.Coins = pulls * GearDrops.PullCost; }
 
         [Test] public void SixBannersOfTwentyFiveWithGoldEditions()
         {
@@ -58,7 +59,7 @@ namespace SquashGame.Tests
                 Assert.That(b.Of(Rarity.Legendary).Exists(i => i.Slot == Slot.Frame && i.Glow), Is.True, "a glowing legendary racket");
             }
             Assert.That(Rewards.Owns("trail_classic"), Is.True, "the classic trail is everyone's");
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(GearDrops.StartTickets), "a new player starts with tickets");
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(GearDrops.StartCoins), "a new player starts with coins for ten pulls");
         }
 
         [Test] public void TheOddsAreThePublishedOnes()
@@ -69,7 +70,7 @@ namespace SquashGame.Tests
             for (int r = 0; r < 5; r++) Assert.That(n[r] / (double)N, Is.EqualTo(GearDrops.Odds[r]).Within(0.003), ((Rarity)r).ToString());
             // through the real pulls (pity off: a fresh banner each 60 pulls), gold included
             int pulls = 0, gold = 0; var seen = new int[5];
-            Give(0, 100000);
+            GearDrops.Wallet.Coins = 100000 * GearDrops.TenPullCost;
             var pg = ProfileStore.Current.Progress;
             if (pg.Gacha == null) pg.Gacha = new GachaState();
             pg.Gacha.Seed = 0x5EED1u;                                                // (a fixed seed: the same draws every run)
@@ -88,7 +89,7 @@ namespace SquashGame.Tests
 
         [Test] public void EveryTenHasAnEpicAndPityGivesALegendary()
         {
-            Give(0, 50);
+            GearDrops.Wallet.Coins = 50 * GearDrops.TenPullCost;
             for (int k = 0; k < 50; k++)
             {
                 var ten = GearDrops.Pull("club", 10);
@@ -107,7 +108,7 @@ namespace SquashGame.Tests
 
         [Test] public void DuplicatesPayCoinsAndGoldNeverRepeats()
         {
-            Give(0, 30);
+            GearDrops.Wallet.Coins = 30 * GearDrops.TenPullCost;
             int coins = 0, news = 0;
             var all = new List<Drop>();
             for (int k = 0; k < 30; k++) all.AddRange(GearDrops.Pull("arena", 10));
@@ -128,20 +129,22 @@ namespace SquashGame.Tests
             Assert.That(GearDrops.PlateCost(owned), Is.EqualTo(0), "once");
         }
 
-        [Test] public void TicketsAreSpentAndTheSameSeedGivesTheSamePulls()
+        [Test] public void CoinsPayForPullsAndTheSameSeedGivesTheSamePulls()
         {
             Give(5);
-            Assert.That(GearDrops.Pull("show", 10), Is.Empty, "5 tickets don't make a x10");
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(5));
+            Assert.That(GearDrops.Pull("show", 10), Is.Empty, "5 pulls' worth doesn't make a x10");
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(5 * GearDrops.PullCost));
             var a = GearDrops.Pull("show", 1);
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(4));
-            Give(10); var ten = GearDrops.Pull("show", 10);
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(0), "ten tickets for a x10 with no x10 ticket");
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(4 * GearDrops.PullCost + a[0].Coins), "a pull's price (a duplicate pays some back)");
+            GearDrops.Wallet.Coins = GearDrops.TenPullCost; var ten = GearDrops.Pull("show", 10);
+            Assert.That(ten.Count, Is.EqualTo(10), "a x10 for nine pulls' worth");
+            int back = 0; foreach (var d in ten) back += d.Coins;
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(back));
             uint seed = GearDrops.State.Seed;
             var first = ten.ConvertAll(d => d.Item.Id);
             // a second profile with the same seed, the same pull count: the same items
             ProfileStore.Reset(); File.Delete(Path.Combine(_dir, ProfileStore.FileName)); ProfileStore.Reset();
-            GearDrops.State.Seed = seed; GearDrops.State.Pulls = 1; Give(10);
+            GearDrops.State.Seed = seed; GearDrops.State.Pulls = 1; GearDrops.Wallet.Coins = GearDrops.TenPullCost;
             Assert.That(GearDrops.Pull("show", 10).ConvertAll(d => d.Item.Id), Is.EqualTo(first));
         }
 
@@ -160,33 +163,37 @@ namespace SquashGame.Tests
             Assert.That(GearDrops.ShopToday(), Is.Not.EqualTo(today), "new stock tomorrow");
         }
 
-        [Test] public void PlayingEarnsTickets()
+        [Test] public void EveryModePaysCoins()
         {
+            // 2026-10-28: "a universal currency that you can get from playing any mode"
             Challenges.Enabled = false;
             Give(0);
             var won = new MatchFacts { Won = true, GamesToWin = 1, Rallies = 10, RalliesWon = 8, Games = new List<int[]> { new[] { 11, 4 } } };
-            // batch 3: every match pays coins; levels pay tickets; coins buy them
-            GearDrops.Wallet.Coins = 0;
-            var first = Rewards.Match(won);
-            Assert.That(first.Coins, Is.GreaterThan(0), "a match pays coins");
-            Rewards.Match(won); Rewards.Match(won);
-            Assert.That(Rewards.LevelOf(ProfileStore.Current.Progress.Xp), Is.GreaterThanOrEqualTo(2));
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(Rewards.LevelOf(ProfileStore.Current.Progress.Xp) - 1), "a ticket a level");
-            int t0 = GearDrops.Wallet.Tickets;
-            GearDrops.Wallet.Coins = GearDrops.TicketPrice;
-            Assert.That(GearDrops.BuyTicket(), Is.True);
-            Assert.That(GearDrops.Wallet.Tickets, Is.EqualTo(t0 + 1)); Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(0));
-            Assert.That(GearDrops.BuyTicket(), Is.False, "no coins, no ticket");
+            Assert.That(Rewards.Match(won).Coins, Is.GreaterThan(0), "a match");
             var floor = Rewards.GauntletFloor(5);
-            Assert.That(floor.Tickets, Is.EqualTo(1)); Assert.That(floor.TenTickets, Is.EqualTo(1), "a milestone floor: a x10");
+            Assert.That(floor.CoinWhy, Does.Contain("a Gauntlet floor"), "a Gauntlet floor");
+            Assert.That(floor.Coins, Is.GreaterThanOrEqualTo(GearDrops.PullCost + GearDrops.TenPullCost), "a milestone floor: a x10's worth on top");
             var sc = Rewards.Scenario(3, 1, 3);
-            Assert.That(sc.TicketWhy, Does.Contain("new stars"), "a ticket a new star");
-            Assert.That(sc.Tickets, Is.GreaterThanOrEqualTo(2));
+            Assert.That(sc.CoinWhy, Does.Contain("new stars"), "Scenarios: new stars");
+            Assert.That(sc.Coins, Is.GreaterThanOrEqualTo(2 * GearDrops.PullCost));
+            Assert.That(Rewards.Arcade(SquashSim.Arcade.Challenges.All()[0].Id, false, 0, 1, 10, false).Coins, Is.GreaterThan(0), "Target Arcade");
             Challenges.Enabled = true;
-            var r = new RewardResult();
             Challenges.Current();
-            Challenges.Record(r, new ChallengeEvent { PuzzleSolved = true });          // (playable challenges: a shot puzzle solved)
-            Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets), "a daily pays tickets");
+            var p = Rewards.Puzzle(true);
+            Assert.That(p.CoinWhy, Does.Contain("a shot puzzle"), "a puzzle solved");
+            Assert.That(p.Coins, Is.GreaterThanOrEqualTo(Rewards.DailyPulls * GearDrops.PullCost), "and the daily it finished");
+            Assert.That(Rewards.Quiz(Challenges.QuizSize, 5, true).CoinWhy, Does.Contain("a rules quiz"), "a quiz passed");
+        }
+
+        [Test] public void OldTicketsTurnIntoCoins()
+        {
+            File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":7,\"Progress\":{\"Xp\":900,\"Wallet\":{\"Tickets\":3,\"TenTickets\":1,\"Coins\":100}}}");
+            ProfileStore.Reset();
+            var w = ProfileStore.Current.Progress.Wallet;
+            Assert.That(w.Coins, Is.EqualTo(100 + 3 * GearDrops.PullCost + GearDrops.TenPullCost), "at the pull price");
+            Assert.That(w.Tickets, Is.EqualTo(0)); Assert.That(w.TenTickets, Is.EqualTo(0));
+            ProfileStore.Reset();
+            Assert.That(ProfileStore.Current.Progress.Wallet.Coins, Is.EqualTo(100 + 3 * GearDrops.PullCost + GearDrops.TenPullCost), "once");
         }
 
         [Test] public void CoinsFollowHowLongAndHowHard()
@@ -218,8 +225,8 @@ namespace SquashGame.Tests
             Give(0); GearDrops.Wallet.Coins = 0;
             var r = Rewards.Match(new MatchFacts { Rallies = 100, RalliesWon = 60, GamesToWin = 1 });       // to level 2
             Assert.That(r.ToLevel, Is.EqualTo(2));
-            Assert.That(r.Tickets, Is.EqualTo(1), "a level: a ticket");
             Assert.That(r.CoinWhy, Does.Contain("level 2"));
+            Assert.That(r.Coins, Is.GreaterThanOrEqualTo(Rewards.LevelCoins(2) + GearDrops.PullCost), "a level: its coins and a pull's worth");
             foreach (var it in Cosmetics.AtLevel(2)) Assert.That(Rewards.Owns(it.Id), Is.False, "levels no longer give kit: " + it.Id);
             var item = Cosmetics.AtLevel(2)[0];
             Assert.That(GearDrops.InStore(item), Is.True);
@@ -231,7 +238,7 @@ namespace SquashGame.Tests
             Assert.That(Rewards.Owns(item.Id), Is.True);
             Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(0));
             Assert.That(GearDrops.StorePrice(Cosmetics.AtLevel(50)[0]), Is.GreaterThan(GearDrops.StorePrice(item)), "later kit costs more");
-            Assert.That(Rewards.LevelGives(10), Does.Contain("x10"));
+            Assert.That(Rewards.LevelGives(10), Does.Contain((Rewards.LevelCoins(10) + GearDrops.TenPullCost).ToString("N0")), "every 5th level: a x10's worth");
             Challenges.Enabled = true;
         }
 
@@ -241,7 +248,7 @@ namespace SquashGame.Tests
             ProfileStore.Reset();
             var p = ProfileStore.Current;
             Assert.That(p.Version, Is.EqualTo(ProfileStore.CurrentVersion));
-            Assert.That(p.Progress.Wallet.Tickets, Is.EqualTo(GearDrops.StartTickets));
+            Assert.That(p.Progress.Wallet.Coins, Is.EqualTo(GearDrops.StartCoins));
             Assert.That(p.Progress.Loadout.Trail, Is.EqualTo("trail_classic"));
         }
     }

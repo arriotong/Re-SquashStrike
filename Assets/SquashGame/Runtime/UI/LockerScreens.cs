@@ -48,8 +48,8 @@ namespace SquashGame.UI
             Slot = slot;
             _all = Cosmetics.InSlot(slot);
             _all.RemoveAll(i => i.Gold && !Rewards.Owns(i.Id));          // P4: a gold edition shows once you have it
-            // yours first (in the catalogue's order), then the rest
-            var mine = _all.FindAll(i => Rewards.Owns(i.Id));
+            // yours first, the rarest at the top (2026-10-28: "hard to find my items"), then the rest
+            var mine = new List<Item>(System.Linq.Enumerable.OrderByDescending(_all.FindAll(i => Rewards.Owns(i.Id)), i => i.Rarity));
             mine.AddRange(_all.FindAll(i => !Rewards.Owns(i.Id)));
             _all = mine;
             Filter();
@@ -98,9 +98,30 @@ namespace SquashGame.UI
             OnBrowse?.Invoke(this);
         }
 
-        /// <summary>Wear what is browsed (if owned); batch 3: buy it from the kit store (coins).</summary>
+        /// <summary>Opens the slot's list (set by the Locker Room; none: confirm wears, as before).</summary>
+        public static System.Action<LockerRow> ListOpener;
+
+        /// <summary>The list's lines: the name, the rarity, and new / the price / locked.</summary>
+        public string[] Labels()
+        {
+            var l = new string[_items.Count];
+            for (int k = 0; k < l.Length; k++)
+            {
+                var i = _items[k];
+                bool own = Rewards.Owns(i.Id);
+                l[k] = i.Name + (i.Gold ? " ★" : "")                                      // (the list ticks the one worn)
+                     + (i.Rarity >= 0 ? "   ·   " + GearDrops.RarityNames[i.Rarity] : "")
+                     + (own ? (!P.Seen.Contains(i.Id) && i.Unlock != UnlockKind.Free ? "   ·   NEW" : "") : GearDrops.InStore(i) ? "   ·   " + GearDrops.StorePrice(i) + " coins" : "   ·   locked");
+            }
+            return l;
+        }
+
+        /// <summary>Confirm (2026-10-28: "too many clicks"): the whole list of the slot - pick one and it is worn. A kit-store item
+        /// being tried on is bought (batch 3, coins); otherwise confirm wears what is browsed.</summary>
         public override void Submit()
         {
+            bool buying = !Owned && GearDrops.InStore(Browsing);
+            if (!buying && ListOpener != null && _items.Count > 1) { ListOpener(this); return; }
             if (!Owned && GearDrops.BuyFromStore(Browsing)) Sounds.Play("stamp");
             if (!Owned) { Sounds.Play("back"); return; }
             P.Loadout.Set(Slot, Browsing.Id);
@@ -369,6 +390,7 @@ namespace SquashGame.UI
         public override void OnShow()
         {
             base.OnShow();
+            LockerRow.ListOpener = r => Fe.Push(new PickListScreen(Cosmetics.SlotNames[(int)r.Slot], r.Labels(), r.BrowseIndex, r.BrowseTo));
             MenuCinematics.Scene = MenuCinematics.LockerScene;
             _shown = null;
             if (_card != null) _card.Rebuild();

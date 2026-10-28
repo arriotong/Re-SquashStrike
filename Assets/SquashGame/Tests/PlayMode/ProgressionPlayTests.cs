@@ -121,6 +121,22 @@ namespace SquashGame.Tests
             yield return Tap(kb.rKey);                                                 // back to only mine
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"), "back on what is worn");
 
+            // 2026-10-28 ("too many clicks", "hard to find my items"): confirm opens the slot's list; a pick is worn
+            yield return Tap(kb.enterKey);
+            Assert.That(fe.Top, Is.InstanceOf<PickListScreen>(), "the shirts as a list");
+            Assert.That(((PickListScreen)fe.Top).Count, Is.EqualTo(row.Items.Count));
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "UI_Locker_List.png");
+            string pick = row.Items[0].Id;
+            ((PickListScreen)fe.Top).Pick(row.Labels()[0]);
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.SameAs(locker), "back to the locker");
+            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo(pick), "worn in one pick");
+            yield return Tap(kb.enterKey);                                           // and back to white
+            ((PickListScreen)fe.Top).Pick(row.Labels()[row.Items.FindIndex(i => i.Id == "shirt_white")]);
+            yield return null; yield return null;
+            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"));
+
             // LOOK: a celebration plays on the athlete as you browse
             yield return Tap(kb.eKey);
             yield return null; yield return null;
@@ -362,7 +378,7 @@ namespace SquashGame.Tests
             FrontEnd.StartAtTitle = false;
             var kb = InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();
-            GearDrops.Wallet.Tickets = 25; GearDrops.Wallet.TenTickets = 1; GearDrops.Wallet.Coins = 2000;
+            GearDrops.Wallet.Coins = 2000 + GearDrops.TenPullCost;
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
@@ -373,7 +389,8 @@ namespace SquashGame.Tests
 
             var drops = GearDrops.Pull("arena", GearDrops.TenPull);
             Assert.That(drops.Count, Is.EqualTo(10));
-            Assert.That(GearDrops.Wallet.TenTickets, Is.EqualTo(0), "the x10 ticket first");
+            int back = 0; foreach (var d in drops) back += d.Coins;
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(2000 + back), "paid in coins");
             fe.Push(new PullRevealScreen(drops, "arena"));
             yield return Wait(4.5f, () => ((PullRevealScreen)fe.Top).Revealed >= 10);
             Assert.That(((PullRevealScreen)fe.Top).Revealed, Is.EqualTo(10), "the cards turn over by themselves");

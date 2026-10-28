@@ -243,7 +243,7 @@ namespace SquashGame.UI
             _note = Kit.L(p, "", "k-cr-note");
             var me = Kit.Panel(grid, "YOU"); me.AddToClassList("on-panel");
             _you = Kit.L(me, "", "on-state");
-            Kit.L(me, "Ranked wins and losses move your rating (Elo, from 1000). One ticket for Gear Drops with every ranked win.", "k-cr-note");
+            Kit.L(me, "Ranked wins and losses move your rating (Elo, from 1000). A pull's worth of coins with every ranked win.", "k-cr-note");
             AddTo(Root, new PrimaryItem("Refresh", () => OnlineService.FetchBoard()));
             OnlineService.FetchBoard();
         }

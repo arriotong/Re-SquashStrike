@@ -27,11 +27,13 @@
 //   Target Arcade               10 a play, +20 a new star
 //   an Academy lesson (first)   30
 //   an achievement              25 / 75 / 200
-//   a level                     a ticket and 50 + 5 x level coins; every
-//                               5th level a x10 ticket instead (levels no
-//                               longer give kit: that is in the kit store)
-// Coins buy tickets (Gear Drops), kit-store items and the Pro Shop.
-// Never real money.
+//   a level                     a pull's worth and 50 + 5 x level coins;
+//                               every 5th level a x10's worth instead (levels
+//                               no longer give kit: that is in the kit store)
+// 2026-10-28: coins are the one currency - what paid Gear Drops tickets
+// (challenges, the Gauntlet, Scenarios, the career, ranked wins) pays a
+// pull's worth of coins for each. Coins buy pulls, kit-store items and
+// the Pro Shop. Never real money.
 //
 // Award(...) adds XP, unlocks what the new levels give, and returns the
 // lines for the result screens' reward strip. It saves the profile.
@@ -51,8 +53,7 @@ namespace SquashGame.Progression
         public readonly List<Item> Unlocked = new List<Item>();
         public readonly List<Achievement> Achieved = new List<Achievement>();
         public readonly List<string> Challenges = new List<string>();      // P3-R2: challenges finished by this result
-        public int Tickets, TenTickets;                                     // P4: Gear Drops tickets earned by this result
-        public readonly List<string> TicketWhy = new List<string>();
+
         public int Coins;                                                   // batch 3: coins earned by this result
         public readonly List<string> CoinWhy = new List<string>();
         public bool LevelledUp { get { return ToLevel > FromLevel; } }
@@ -98,8 +99,8 @@ namespace SquashGame.Progression
 
         public static int Prestige(int xp) { int top = TotalFor(MaxLevel); return xp < top ? 0 : (xp - top) / Need(MaxLevel); }
 
-        /// <summary>P3-R1 (visible progress): the next level, what it gives (batch 3: coins and a ticket - every 5th a x10
-        /// ticket) and the XP to go. Level 0 at the top.</summary>
+        /// <summary>P3-R1 (visible progress): the next level, what it gives (coins - every 5th level more) and the XP to go.
+        /// Level 0 at the top.</summary>
         public static int NextUnlock(int xp, out string gives, out int xpToGo)
         {
             int level = LevelOf(xp) + 1;
@@ -108,10 +109,10 @@ namespace SquashGame.Progression
             return level;
         }
 
-        /// <summary>Batch 3: a level's reward - coins, and a ticket (every 5th level: a x10 ticket).</summary>
+        /// <summary>Batch 3: a level's coins (and a pull's worth on top; every 5th level a x10's).</summary>
         public static int LevelCoins(int level) { return 50 + 5 * level; }
         public static bool LevelTen(int level) { return level % 5 == 0; }
-        public static string LevelGives(int level) { return (LevelTen(level) ? "a x10 ticket" : "a ticket") + " + " + LevelCoins(level) + " coins"; }
+        public static string LevelGives(int level) { return (LevelCoins(level) + (LevelTen(level) ? GearDrops.TenPullCost : GearDrops.PullCost)).ToString("N0") + " coins"; }
 
         // ---------------- batch 3: coins ----------------
 
@@ -174,17 +175,15 @@ namespace SquashGame.Progression
             return it.Unlock == UnlockKind.Free || P.Owned.Contains(id);
         }
 
-        /// <summary>P4: Gear Drops tickets (and x10 tickets) earned, and why. Earned by playing - never bought.</summary>
-        public static void Ticket(RewardResult r, int tickets, int tens, string why)
+        /// <summary>What paid Gear Drops tickets (P4) pays coins (2026-10-28): a pull's worth for each, a x10's for each x10.</summary>
+        public static void Pulls(RewardResult r, int pulls, int tens, string why)
         {
-            if (tickets <= 0 && tens <= 0) return;
-            var w = GearDrops.Wallet;
-            w.Tickets += tickets; w.TenTickets += tens;
-            r.Tickets += tickets; r.TenTickets += tens;
-            r.TicketWhy.Add(why);
+            Coin(r, Math.Max(0, pulls) * GearDrops.PullCost + Math.Max(0, tens) * GearDrops.TenPullCost, why);
         }
 
-        public const int WinsPerTicket = 3, DailyTickets = 2, GoalTickets = 2, RankedWinTickets = 1;
+        public const int DailyPulls = 2, GoalPulls = 2, RankedWinPulls = 1;
+        /// <summary>A shot puzzle solved, a challenge quiz passed: coins of their own (the daily itself pays DailyPulls).</summary>
+        public const int PuzzleCoins = 20, QuizCoins = 20;
 
         /// <summary>P3-R2: XP from outside the usual sources (a challenge), with its line.</summary>
         public static void AddXp(RewardResult r, string line, int xp) { Xp(r, line, xp); }
@@ -213,8 +212,7 @@ namespace SquashGame.Progression
             int after = LevelOf(P.Xp);
             for (int l = before + 1; l <= after; l++)                                    // batch 3: a level pays, it no longer dresses
             {
-                if (LevelTen(l)) Ticket(r, 0, 1, "level " + l); else Ticket(r, 1, 0, "level " + l);
-                Coin(r, LevelCoins(l), "level " + l);
+                Coin(r, LevelCoins(l) + (LevelTen(l) ? GearDrops.TenPullCost : GearDrops.PullCost), "level " + l);
             }
         }
 
@@ -279,7 +277,7 @@ namespace SquashGame.Progression
                 Count(r, "rallies100", P.Stats.RalliesWon);
                 Count(r, "wins25", P.Stats.MatchesWon);
                 Challenges.Record(r, new ChallengeEvent { Match = f });
-                if (f.Won && f.Ranked) Ticket(r, RankedWinTickets, 0, "Ranked win");             // P2-M8 (batch 3: the every-3rd-win ticket is coins now)
+                if (f.Won && f.Ranked) Pulls(r, RankedWinPulls, 0, "Ranked win");             // P2-M8 (batch 3: the every-3rd-win ticket is coins now)
             }
             return End(r);
         }
@@ -288,7 +286,7 @@ namespace SquashGame.Progression
         public static RewardResult Puzzle(bool solved)
         {
             var r = Begin();
-            if (solved) Xp(r, "Shot puzzle solved", PuzzleXp);
+            if (solved) { Xp(r, "Shot puzzle solved", PuzzleXp); Coin(r, PuzzleCoins, "a shot puzzle"); }
             Challenges.Record(r, new ChallengeEvent { PuzzleSolved = solved });
             Challenges.PuzzleTried();
             return End(r);
@@ -299,6 +297,7 @@ namespace SquashGame.Progression
         {
             var r = Begin();
             Xp(r, right + " of " + count + " calls right", QuizCallXp * right);
+            if (passed) Coin(r, QuizCoins, "a rules quiz");
             Challenges.Record(r, new ChallengeEvent { QuizCount = count, QuizPassed = passed });
             Challenges.QuizTried(count == Challenges.ExamSize, passed);
             return End(r);
@@ -361,13 +360,13 @@ namespace SquashGame.Progression
         {
             var r = Begin();
             Xp(r, "Gauntlet floor " + floorsWon, GauntletFloorXp + GauntletFloorStepXp * floorsWon);
-            Ticket(r, 1, 0, "a Gauntlet floor");
-            if (boss) { Xp(r, "A boss beaten", GauntletBossXp); Ticket(r, 2, 0, "a boss"); }
+            Pulls(r, 1, 0, "a Gauntlet floor");
+            if (boss) { Xp(r, "A boss beaten", GauntletBossXp); Pulls(r, 2, 0, "a boss"); }
             var ids = new List<string>();
             if (boss) ids.Add("gt_boss");
             if (floorsWon >= 30) ids.Add("gt_floor30");
             Achieve(r, ids);
-            for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) { Grant(r, GauntletItems[i]); Ticket(r, 0, 1, "floor " + floorsWon); }
+            for (int i = 0; i < GauntletMilestones.Length; i++) if (floorsWon == GauntletMilestones[i]) { Grant(r, GauntletItems[i]); Pulls(r, 0, 1, "floor " + floorsWon); }
             Challenges.Record(r, new ChallengeEvent { GauntletFloor = floorsWon, GauntletBoss = boss });
             return End(r);
         }
@@ -393,7 +392,7 @@ namespace SquashGame.Progression
             Xp(r, "Scenario", ScenarioPlayXp);
             int fresh = Math.Max(0, stars - bestBefore);
             Xp(r, fresh == 1 ? "A new star" : fresh + " new stars", fresh * ScenarioStarXp);
-            Ticket(r, fresh, 0, fresh == 1 ? "a new star" : "new stars");
+            Pulls(r, fresh, 0, fresh == 1 ? "a new star" : "new stars");
             for (int i = 0; i < ScenarioMilestones.Length; i++) if (totalNow >= ScenarioMilestones[i]) Grant(r, ScenarioItems[i]);
             Challenges.Record(r, new ChallengeEvent { ScenarioStars = stars });
             return End(r);
@@ -428,8 +427,8 @@ namespace SquashGame.Progression
             if (best >= 10) ids.Add("streak10");
             Achieve(r, ids);
             // P3-R4: season goals done in this event's month
-            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) { Xp(r, "Season goal: " + g.Text, GoalXp); Ticket(r, GoalTickets, 0, "a season goal"); }
-            if (e.YouReached == 0) { int band = SquashSim.Career.Tour.Band(e.Tier); Ticket(r, band <= 1 ? 1 : band <= 3 ? 2 : 3, 0, "a title"); }   // 1 to 3 tickets by the event
+            foreach (var g in c.Goals) if (g.Done && g.DoneSlot == e.Slot) { Xp(r, "Season goal: " + g.Text, GoalXp); Pulls(r, GoalPulls, 0, "a season goal"); }
+            if (e.YouReached == 0) { int band = SquashSim.Career.Tour.Band(e.Tier); Pulls(r, band <= 1 ? 1 : band <= 3 ? 2 : 3, 0, "a title"); }   // 1 to 3 pulls' worth by the event
             Challenges.Record(r, new ChallengeEvent { CareerTitle = e.YouReached == 0 });
             return End(r);
         }

@@ -11,9 +11,12 @@
 //             without a Legendary make the next one Legendary (the pity
 //             counter is the banner's own); a duplicate pays coins; a
 //             gold edition never repeats
-//   currency  tickets (1 pull) and x10 tickets, earned by playing only -
-//             never bought; coins from duplicates buy the Pro Shop's
-//             daily 8 and gold-plating an item you own
+//   currency  COINS, the one currency (2026-10-28: "a universal currency
+//             that you can get from playing any mode"): every mode pays
+//             them; a pull is PullCost, a x10 TenPullCost (nine pulls'
+//             worth); they also buy the Pro Shop's daily 8, the kit store
+//             and gold-plating. Earned by playing - never real money.
+//             (Tickets are gone: a saved wallet's turn into coins.)
 //
 // Every roll comes from the profile's gacha seed and its pull count, so
 // reloading can't re-roll a pull.
@@ -49,7 +52,8 @@ namespace SquashGame.Progression
     [Serializable]
     public sealed class Wallet
     {
-        public int Tickets, TenTickets, Coins;
+        public int Coins;
+        public int Tickets, TenTickets;       // before the one currency (2026-10-28): converted to coins on load
         public int WinsTowardTicket;          // (before batch 3: every 3rd match won paid a ticket)
         public int CapDay = -1, CapCoins;     // batch 3: today's coins from local and casual online matches (the soft cap)
     }
@@ -69,7 +73,9 @@ namespace SquashGame.Progression
         public static readonly string[] RarityNames = { "Common", "Uncommon", "Rare", "Epic", "Legendary" };
         public static readonly double[] Odds = { 0.45, 0.30, 0.17, 0.065, 0.015 };
         public const double GoldChance = 0.01;
-        public const int Pity = 70, TenPull = 10, ShopSize = 8, StartTickets = 10;
+        public const int Pity = 70, TenPull = 10, ShopSize = 8;
+        /// <summary>A pull's price; a x10's (one free); a new player's coins (ten pulls' worth, as the welcome tickets were).</summary>
+        public const int PullCost = 150, TenPullCost = 9 * PullCost, StartCoins = 10 * PullCost;
         public static readonly int[] DupeCoins = { 10, 25, 60, 150, 400 };
         public static readonly int[] ShopPrice = { 120, 300, 700, 1800, 5000 };
         public static readonly int[] GoldPlateCost = { 300, 700, 1600, 4000, 10000 };
@@ -196,17 +202,26 @@ namespace SquashGame.Progression
             return n;
         }
 
-        public static bool CanPull(int n) { return n == TenPull ? Wallet.TenTickets > 0 || Wallet.Tickets >= TenPull : Wallet.Tickets >= n; }
+        public static int Cost(int n) { return n == TenPull ? TenPullCost : n * PullCost; }
+        public static bool CanPull(int n) { return Wallet.Coins >= Cost(n); }
+
+        /// <summary>Tickets from before the one currency: into coins at the pull price (x10 tickets at the x10's).</summary>
+        public static void ConvertTickets(Wallet w)
+        {
+            if (w.Tickets <= 0 && w.TenTickets <= 0) return;
+            w.Coins += Math.Max(0, w.Tickets) * PullCost + Math.Max(0, w.TenTickets) * TenPullCost;
+            w.Tickets = 0; w.TenTickets = 0;
+        }
 
         // ---------------- pulling ----------------
 
-        /// <summary>Pull 1 or 10 on a banner (paid in tickets: a x10 ticket first for a x10). Empty when it can't be paid. Saves.</summary>
+        /// <summary>Pull 1 or 10 on a banner (paid in coins). Empty when it can't be paid. Saves.</summary>
         public static List<Drop> Pull(string bannerId, int n)
         {
             var b = Banner(bannerId);
             var drops = new List<Drop>();
             if (b == null || (n != 1 && n != TenPull) || !CanPull(n)) return drops;
-            if (n == TenPull && Wallet.TenTickets > 0) Wallet.TenTickets--; else Wallet.Tickets -= n;
+            Wallet.Coins -= Cost(n);
             for (int i = 0; i < n; i++)
             {
                 int pull = State.Pulls++;
@@ -238,18 +253,7 @@ namespace SquashGame.Progression
             return d;
         }
 
-        // ---------------- batch 3: coins buy tickets and the kit store ----------------
-
-        public const int TicketPrice = 150;
-
-        public static bool BuyTicket()
-        {
-            if (Wallet.Coins < TicketPrice) return false;
-            Wallet.Coins -= TicketPrice;
-            Wallet.Tickets++;
-            ProfileStore.Save();
-            return true;
-        }
+        // ---------------- batch 3: coins buy the kit store ----------------
 
         /// <summary>The kit store: the kit that levels used to give, for coins (dearer the later its old level).</summary>
         public static bool InStore(Item it) { return it != null && it.Unlock == UnlockKind.Level; }

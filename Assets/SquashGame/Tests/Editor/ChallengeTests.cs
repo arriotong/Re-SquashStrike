@@ -80,7 +80,7 @@ namespace SquashGame.Tests
             var r = Rewards.Quiz(Challenges.QuizSize, 5, true);
             Assert.That(Challenges.Today(Challenges.Quiz).Done, Is.True);
             Assert.That(r.Lines.Exists(l => l.StartsWith("Challenge done")), Is.True);
-            Assert.That(r.Tickets, Is.GreaterThanOrEqualTo(Rewards.DailyTickets));
+            Assert.That(r.Coins, Is.GreaterThanOrEqualTo(Rewards.DailyPulls * GearDrops.PullCost), "a daily: two pulls' worth");
             var again = Rewards.Quiz(Challenges.QuizSize, 5, true);
             Assert.That(again.Lines.Exists(l => l.StartsWith("Challenge done")), Is.False, "pays once");
             Assert.That(ProfileStore.Load().Progress.Challenges.DailiesDone, Is.EqualTo(1), "saved");

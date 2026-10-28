@@ -34,7 +34,7 @@ namespace SquashGame.UI
         {
             var c = Challenges.Today(id);
             if (c == null) return "";
-            return c.Done ? "✓  DONE TODAY" : "+" + DailyXp() + " XP  ·  A TICKET";
+            return c.Done ? "✓  DONE TODAY" : "+" + DailyXp() + " XP  ·  " + (Rewards.DailyPulls * GearDrops.PullCost) + " COINS";
         }
 
         public static int DailyXp()

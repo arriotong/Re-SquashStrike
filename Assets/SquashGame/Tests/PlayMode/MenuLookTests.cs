@@ -80,7 +80,7 @@ namespace SquashGame.Tests
             Assert.That(menu.Focused, Is.Not.InstanceOf<CardItem>(), "the settings / profile chips up top");
             Assert.That(menu.Tabs.Style, Is.EqualTo(TabStyle.Rail));
             Assert.That(menu.Tabs.Sub(0), Does.StartWith("v "), "PLAY's line: who you play");
-            Assert.That(menu.Tabs.Sub(3), Does.Contain("today"), "CHALLENGES' line");
+            Assert.That(menu.Tabs.Sub(System.Array.IndexOf(MainMenuScreen.Sections, "CHALLENGES")), Does.Contain("today"), "CHALLENGES' line");
 
             fe.StartMatch(MatchSettings.QuickGame());
             yield return null; yield return null;

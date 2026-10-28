@@ -50,17 +50,10 @@ namespace SquashGame.UI
                 foreach (var it in r.Unlocked) row.Add(Swatch(it));
                 Add(row);
             }
-            // P4: the Gear Drops tickets this earned
-            if (r.Tickets > 0 || r.TenTickets > 0)
-            {
-                var t = new Label("TICKETS   " + (r.Tickets > 0 ? "+" + r.Tickets : "") + (r.Tickets > 0 && r.TenTickets > 0 ? "   " : "") + (r.TenTickets > 0 ? "+" + r.TenTickets + " x10" : "")
-                                  + "   ·   " + string.Join(", ", r.TicketWhy) + "   ·   pull them in Gear Drops (Locker)");
-                t.AddToClassList("rw-tickets"); Add(t);
-            }
-            // batch 3: the coins this earned
+            // batch 3: the coins this earned (2026-10-28: the one currency - pulls are paid in them)
             if (r.Coins > 0)
             {
-                var c = new Label("COINS   +" + r.Coins.ToString("N0") + "   ·   " + GearDrops.Wallet.Coins.ToString("N0") + " in all   ·   spend them on tickets and kit in the Locker");
+                var c = new Label("COINS   +" + r.Coins.ToString("N0") + "   ·   " + GearDrops.Wallet.Coins.ToString("N0") + " in all   ·   " + (GearDrops.Wallet.Coins / GearDrops.PullCost) + " pulls in Gear Drops (You)");
                 c.AddToClassList("rw-tickets"); Add(c);
             }
             // P3-R1: what the next level brings - always something to play for

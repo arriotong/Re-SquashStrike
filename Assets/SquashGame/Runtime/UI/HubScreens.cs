@@ -107,7 +107,7 @@ namespace SquashGame.UI
             var on = Kit.Box(Page("ONLINE"), "k-row");
             AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
                 .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
-                .Line(() => "Climb the ladder  ·  best of 3  ·  a ticket for every win").Badge(OnlineText.Rating, true));
+                .Line(() => "Climb the ladder  ·  best of 3  ·  a pull's worth of coins a win").Badge(OnlineText.Rating, true));
             AddTo(on, new CardItem("QUICK PLAY", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
                 .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
                 .Line("The next player looking  ·  unrated").Badge(OnlineText.Status));
@@ -132,10 +132,10 @@ namespace SquashGame.UI
             var locker = Kit.Box(Page("YOU"), "k-row");
             AddTo(locker, new CardItem("YOUR KIT", "LOCKER ROOM", () => Fe.Push(new LockerRoomScreen()), CardSize.Hero).Vignette("you")
                 .Line("Kit, racket, celebration, card").Badge(() => "LEVEL " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp), true)).IsNew = AnyNew;
-            // P4: Gear Drops - kit and rackets by the pull, for tickets earned by playing
+            // P4: Gear Drops - kit and rackets by the pull, for coins earned by playing
             AddTo(locker, new CardItem("GEAR DROPS", "LOCKER ROOM", () => Fe.Push(new GearDropScreen())).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
                 .Line(() => "6 banners  ·  Pro Shop  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " coins")
-                .Badge(() => GearDrops.Wallet.Tickets + (GearDrops.Wallet.TenTickets > 0 ? " + " + GearDrops.Wallet.TenTickets + "×10" : "") + " TICKETS", GearDrops.CanPull(1)));
+                .Badge(() => GearDrops.Wallet.Coins / GearDrops.PullCost + (GearDrops.Wallet.Coins / GearDrops.PullCost == 1 ? " PULL" : " PULLS"), GearDrops.CanPull(1)));
             AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
                 .Badge(() => Done() + " / " + Achievements.All().Count));
             AddTo(locker, new CardItem("STATS", "LOCKER ROOM", () => Fe.Push(new StatsScreen())).Glyph("%")
@@ -198,20 +198,21 @@ namespace SquashGame.UI
             var c = CareerStore.Current;
             int today = ChallengeText.DoneToday();
             var run = GauntletFlow.Run;
-            var lines = new[]
+            // by name, so the sections can move (2026-10-28: the order changed)
+            var lines = new Dictionary<string, string>
             {
-                "v " + SquashSim.Career.Stars.Describe(C.OpponentId).name + "  ·  " + SquashSim.Career.Stars.Describe(C.OpponentId).rating,
-                c != null ? Career.Rank(c.RankOf(SquashSim.Career.CareerSession.You)) + "  ·  season " + c.S.Season : "Start your career",
-                run != null && !run.Over ? "Gauntlet: floor " + run.Floor : "Gauntlet best: floor " + GauntletFlow.State.BestFloor,
-                today + " / " + Challenges.DailyCount + " today  ·  streak " + Challenges.StreakNow(),
-                OnlineText.Rating(),
-                GearDrops.Wallet.Tickets + " tickets  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp),
-                Replays.ReplayLibrary.Entries.Count + " replays",
-                AcademyScreen.Summary(),
+                { "PLAY", "v " + SquashSim.Career.Stars.Describe(C.OpponentId).name + "  ·  " + SquashSim.Career.Stars.Describe(C.OpponentId).rating },
+                { "CAREER", c != null ? Career.Rank(c.RankOf(SquashSim.Career.CareerSession.You)) + "  ·  season " + c.S.Season : "Start your career" },
+                { "CHALLENGES", today + " / " + Challenges.DailyCount + " today  ·  streak " + Challenges.StreakNow() },
+                { "MODES", run != null && !run.Over ? "Gauntlet: floor " + run.Floor : "Gauntlet best: floor " + GauntletFlow.State.BestFloor },
+                { "ONLINE", OnlineText.Rating() },
+                { "TRAINING", AcademyScreen.Summary() },
+                { "YOU", GearDrops.Wallet.Coins.ToString("N0") + " coins  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp) },
+                { "REPLAYS", Replays.ReplayLibrary.Entries.Count + " replays" },
             };
-            for (int i = 0; i < lines.Length && i < Tabs.Count; i++) Tabs.SetSub(i, lines[i]);
-            Tabs.SetDot(3, today < Challenges.DailyCount);
-            Tabs.SetDot(5, AnyNew() || GearDrops.CanPull(1));
+            for (int i = 0; i < Sections.Length && i < Tabs.Count; i++) if (lines.TryGetValue(Sections[i], out var line)) Tabs.SetSub(i, line);
+            Tabs.SetDot(System.Array.IndexOf(Sections, "CHALLENGES"), today < Challenges.DailyCount);
+            Tabs.SetDot(System.Array.IndexOf(Sections, "YOU"), AnyNew() || GearDrops.CanPull(1));
         }
         float _railAge;
 

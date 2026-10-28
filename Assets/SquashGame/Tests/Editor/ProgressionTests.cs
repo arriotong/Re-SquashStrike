@@ -43,7 +43,7 @@ namespace SquashGame.Tests
             {
                 int level = Rewards.NextUnlock(xp, out var gives, out int toGo);
                 Assert.That(level, Is.EqualTo(Rewards.LevelOf(xp) + 1), "xp " + xp);
-                Assert.That(gives, Does.Contain("ticket"));
+                Assert.That(gives, Does.Contain("coins"));
                 Assert.That(toGo, Is.EqualTo(Rewards.TotalFor(level) - xp));
             }
             Assert.That(Rewards.NextUnlock(Rewards.TotalFor(Rewards.MaxLevel), out _, out _), Is.EqualTo(0), "nothing left at the top");
@@ -133,9 +133,8 @@ namespace SquashGame.Tests
             var r = Rewards.Match(new MatchFacts { Rallies = 100, RalliesWon = 60, GamesToWin = 1 });       // 200 + 180 XP: level 2
             Assert.That(r.FromLevel, Is.EqualTo(1));
             Assert.That(r.ToLevel, Is.EqualTo(2));
-            Assert.That(r.Unlocked, Is.Empty, "batch 3: a level pays coins and a ticket, not kit");
-            Assert.That(r.Tickets, Is.EqualTo(1));
-            Assert.That(r.Coins, Is.GreaterThanOrEqualTo(Rewards.LevelCoins(2)));
+            Assert.That(r.Unlocked, Is.Empty, "batch 3: a level pays coins, not kit");
+            Assert.That(r.Coins, Is.GreaterThanOrEqualTo(Rewards.LevelCoins(2) + GearDrops.PullCost), "and a pull's worth");
         }
 
         [Test] public void CountedAchievementsShowProgress()

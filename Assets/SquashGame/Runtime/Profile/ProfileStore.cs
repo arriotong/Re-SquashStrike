@@ -115,7 +115,7 @@ namespace SquashGame.Profile
         public Progression.ChallengeState Challenges = new Progression.ChallengeState();     // P3-R2
         public GauntletState Gauntlet = new GauntletState();                                  // P3-R5
         public List<ScenarioRecord> Scenarios = new List<ScenarioRecord>();                   // P3-R6
-        public Progression.Wallet Wallet;                                                    // P4: tickets and coins
+        public Progression.Wallet Wallet;                                                    // P4: coins (the one currency)
         public Progression.GachaState Gacha;                                                 // P4: pulls, pity, the shop
     }
 
@@ -201,7 +201,7 @@ namespace SquashGame.Profile
             catch (Exception e) { Debug.LogWarning("Profile: could not read it, starting fresh (" + e.Message + ")"); }
             var fresh = new PlayerProfile();
             ImportPlayerPrefs(fresh.Settings);
-            fresh.Progress.Wallet = new Progression.Wallet { Tickets = Progression.GearDrops.StartTickets };   // P4: something to pull straight away
+            fresh.Progress.Wallet = new Progression.Wallet { Coins = Progression.GearDrops.StartCoins };   // P4: something to pull straight away
             return fresh;
         }
 
@@ -240,7 +240,8 @@ namespace SquashGame.Profile
             if (g.Scenarios == null) g.Scenarios = new List<ScenarioRecord>();
             // P4: a wallet, with the welcome tickets (new players get them in Load; JsonUtility makes an empty wallet, so: by version)
             if (g.Wallet == null) g.Wallet = new Progression.Wallet();
-            if (p.Version < 4) g.Wallet.Tickets += Progression.GearDrops.StartTickets;
+            if (p.Version < 4) g.Wallet.Coins += Progression.GearDrops.StartCoins;
+            Progression.GearDrops.ConvertTickets(g.Wallet);                                     // 2026-10-28: coins are the one currency
             if (g.Gacha == null) g.Gacha = new Progression.GachaState();
             if (g.Gacha.Pity == null) g.Gacha.Pity = new List<Progression.BannerPity>();
             if (g.Gacha.ShopBought == null) g.Gacha.ShopBought = new List<string>();
