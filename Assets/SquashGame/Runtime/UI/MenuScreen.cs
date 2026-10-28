@@ -27,6 +27,8 @@ namespace SquashGame.UI
         protected virtual bool Sidebar { get { return !Centred; } }
         /// <summary>Dim the court behind this screen.</summary>
         public virtual bool Dims { get { return false; } }
+        /// <summary>Shown over the screen below, which stays in view (a pop-up list).</summary>
+        public virtual bool Overlay { get { return false; } }
         /// <summary>UI redesign: focus moves in 2D to the nearest choice in the pressed direction (cards, grids).</summary>
         public virtual bool Spatial { get { return false; } }
         /// <summary>LB / RB (Q / E): change tab. Screens with tabs override.</summary>

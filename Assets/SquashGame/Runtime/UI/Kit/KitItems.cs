@@ -169,7 +169,20 @@ namespace SquashGame.UI
         }
 
         public string Value { get { return _values[Mathf.Clamp(_get(), 0, _values.Length - 1)]; } }
-        public override void Submit() { Change(1); }
+        public string[] Values { get { return _values; } }
+        public int Index { get { return Mathf.Clamp(_get(), 0, _values.Length - 1); } }
+        /// <summary>UI redesign (2026-10-28): more than this many values, and confirm opens the whole list (PickListScreen)
+        /// instead of stepping one - no cycling through 50 courts.</summary>
+        public const int ListFrom = 5;
+        /// <summary>Opens the list (set by the FrontEnd; none: confirm steps, as before).</summary>
+        public static Action<CarouselItem> ListOpener;
+        public void Pick(int i) { if (!IsEnabled) return; _set(Mathf.Clamp(i, 0, _values.Length - 1)); Refresh(); }
+        public override void Submit()
+        {
+            if (!IsEnabled) return;
+            if (ListOpener != null && _values.Length > ListFrom) ListOpener(this);
+            else Change(1);
+        }
         public override void Change(int d) { if (!IsEnabled) return; _set(OptionItem.Step(_get(), d, _values.Length)); Refresh(); }
         public override void Refresh() { base.Refresh(); _value.text = Value; _count.text = (_get() + 1) + " / " + _values.Length; }
     }

@@ -115,6 +115,7 @@ namespace SquashGame.UI
             _menus.pickingMode = PickingMode.Ignore;
             _root.Add(_menus);
 
+            CarouselItem.ListOpener = c => Push(new PickListScreen(c.Name, c.Values, c.Index, c.Pick));
             _input = new MenuInput();
             Music = gameObject.AddComponent<Audio.MenuMusic>();
             Music.OnSong = s =>
@@ -245,7 +246,7 @@ namespace SquashGame.UI
 
         public void Push(MenuScreen s)
         {
-            if (Top != null) { Top.OnHide(); Top.Root.style.display = DisplayStyle.None; }
+            if (Top != null) { Top.OnHide(); if (!s.Overlay) Top.Root.style.display = DisplayStyle.None; }
             s.Create(this);
             _menus.Add(s.Root);
             _stack.Add(s);
@@ -277,7 +278,7 @@ namespace SquashGame.UI
             s.OnHide();
             _stack.RemoveAt(_stack.Count - 1);
             s.Root.RemoveFromHierarchy();
-            if (Top != null) { Top.Root.style.display = DisplayStyle.Flex; Top.OnShow(); Enter(Top, -1); }
+            if (Top != null) { Top.Root.style.display = DisplayStyle.Flex; Top.OnShow(); if (!s.Overlay) Enter(Top, -1); }
             UpdateFlags();
         }
 
@@ -493,7 +494,7 @@ namespace SquashGame.UI
             if (top is MainMenuScreen hub && hub.Tabs != null)
             {
                 string tab = hub.Tabs.Current;
-                return tab == "CAREER" ? Audio.MusicMood.Career : tab == "LOCKER" || tab == "ONLINE" ? Audio.MusicMood.Locker : Audio.MusicMood.Menu;
+                return tab == "CAREER" ? Audio.MusicMood.Career : tab == "YOU" || tab == "ONLINE" ? Audio.MusicMood.Locker : Audio.MusicMood.Menu;
             }
             if (top is CreatePlayerScreen || top is CareerHubScreen || top is MatchPreviewScreen || top is SimResultScreen || top is DrawScreen ||
                 top is EventResultScreen || top is SeasonSummaryScreen || top is SponsorScreen || top is CareerSettingsScreen) return Audio.MusicMood.Career;

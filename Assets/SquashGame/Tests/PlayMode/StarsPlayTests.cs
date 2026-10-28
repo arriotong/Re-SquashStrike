@@ -111,6 +111,34 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheCourtIsPickedFromAPopUpList()
+        {
+            // UI redesign 2026-10-28: "a pop up vertical list so players can scroll through" - not 50 presses
+            InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            FrontEnd fe = null;
+            yield return Boot(f => fe = f);
+            fe.Push(new QuickMatchScreen());
+            yield return null; yield return null;
+            var qm = fe.Top;
+            var court = (CarouselItem)qm.Reachable().Find(i => i.Name == "Court");
+            court.Submit();
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<PickListScreen>(), "confirm opens the list");
+            var list = (PickListScreen)fe.Top;
+            Assert.That(list.Count, Is.EqualTo(Courts.Names.Length), "every court in it");
+            Assert.That(list.Focused.Name, Is.EqualTo(court.Value), "the current one focused");
+            Assert.That(qm.Root.style.display.value, Is.Not.EqualTo(UnityEngine.UIElements.DisplayStyle.None), "the screen stays in view below");
+            yield return CaptureUI(fe, "UI_PickList_Court.png");
+            string want = Courts.Names[Courts.Names.Length - 1];
+            list.Pick(want);
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.SameAs(qm), "picked: back to Quick Match");
+            Assert.That(court.Value, Is.EqualTo(want), "in one go");
+            court.Change(1);
+            Assert.That(court.Index, Is.EqualTo(0), "left / right still step");
+        }
+
+        [UnityTest]
         public IEnumerator TheNameEditorRenamesTheNo1Everywhere()
         {
             InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();

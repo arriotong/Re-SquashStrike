@@ -1228,3 +1228,14 @@
 .pz-bar { flex-grow: 1; margin: 0 14px; }
 .pz-bar-pct { width: 56px; font-size: 16px; -unity-text-align: middle-right; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .pz-why { font-size: 15px; margin-top: 10px; white-space: normal; color: rgba(255, 255, 255, 0.85); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+
+/* ---------- UI redesign (2026-10-28): the pop-up list (a long carousel's values, PickListScreen) ---------- */
+.k-pick {
+    position: absolute; left: 50%; top: 50%; bottom: auto; height: auto; width: 640px; translate: -50% -50%; padding: 34px 36px 76px 36px;
+    border-radius: 18px; background-color: rgba(12, 13, 16, 0.98); border-width: 1px; border-color: rgba(255, 255, 255, 0.1); border-top-width: 4px; border-top-color: rgb(200, 255, 61);
+}
+.k-pick .fe-title { font-size: 34px; margin-bottom: 14px; }
+.k-pick-backdrop { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.55); }
+.k-pick-scroll { max-height: 640px; }
+.k-pick-scroll .k-action { height: 54px; margin-bottom: 6px; }
+.k-pick-row--now { border-left-width: 4px; border-left-color: rgb(200, 255, 61); }

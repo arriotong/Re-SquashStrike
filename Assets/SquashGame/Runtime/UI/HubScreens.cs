@@ -49,7 +49,10 @@ namespace SquashGame.UI
         protected override TabStyle TabsAs { get { return TabStyle.Rail; } }
 
         /// <summary>The sections, top to bottom (the rail).</summary>
-        public static readonly string[] Sections = { "PLAY", "CAREER", "MODES", "CHALLENGES", "ONLINE", "LOCKER", "REPLAYS", "ACADEMY" };
+        /// UI redesign (2026-10-28: "modes re organise ... it's a bit too strange now"): what you came to do, most often first -
+        /// a match, your career, today's challenges, the other modes, online; then training (the practice court with the
+        /// Academy), you (kit, drops, records) and the replays.
+        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "YOU", "REPLAYS" };
 
         protected override void Compose()
         {
@@ -60,8 +63,6 @@ namespace SquashGame.UI
                 .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
             AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
                 .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
-            AddTo(play, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen())).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
-                .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS"));
 
             // ---- CAREER ----
             var career = Kit.Box(Page("CAREER"), "k-row");
@@ -75,17 +76,6 @@ namespace SquashGame.UI
             var fresh = AddTo(career, new CardItem("NEW CAREER", "CAREER", () => Fe.Push(new ConfirmScreen("Start again? Your career will be lost.", () => Fe.Push(new CreatePlayerScreen()))))
                 .Drawn("trophy", new Color32(22, 22, 26, 255), new Color(1, 1, 1, 0.25f)).Line("Start again with a new player"));
             fresh.Visible = () => CareerStore.Exists;
-
-            // ---- MODES: the game's own modes (out from under PLAY and CHALLENGES) ----
-            var modes = Kit.Box(Page("MODES"), "k-row");
-            AddTo(modes, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()), CardSize.Hero)
-                .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
-                .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
-            AddTo(modes, new CardItem("SCENARIOS", "CLUTCH SITUATIONS", () => Fe.Push(new ScenarioScreen()))
-                .Drawn("rings", new Color32(16, 18, 30, 255), new Color32(255, 184, 59, 255))
-                .Line(() => "15 situations: save the match balls, win the decider").Badge(() => "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars, true));
-            AddTo(modes, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
-                .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
 
             // ---- CHALLENGES (P3-R2; playable since 2026-10-28): today's three to play, and the week ----
             var ch = Kit.Box(Page("CHALLENGES"), "k-row");
@@ -102,6 +92,17 @@ namespace SquashGame.UI
                 .Drawn("clock", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
                 .Line(ChallengeText.Week).Badge(() => "STREAK " + Challenges.StreakNow()));
 
+            // ---- MODES: the game's own modes (out from under PLAY and CHALLENGES) ----
+            var modes = Kit.Box(Page("MODES"), "k-row");
+            AddTo(modes, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()), CardSize.Hero)
+                .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
+                .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
+            AddTo(modes, new CardItem("SCENARIOS", "CLUTCH SITUATIONS", () => Fe.Push(new ScenarioScreen()))
+                .Drawn("rings", new Color32(16, 18, 30, 255), new Color32(255, 184, 59, 255))
+                .Line(() => "15 situations: save the match balls, win the decider").Badge(() => "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars, true));
+            AddTo(modes, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
+                .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
+
             // ---- ONLINE (P2-M8): against people, through the relay server ----
             var on = Kit.Box(Page("ONLINE"), "k-row");
             AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
@@ -117,8 +118,18 @@ namespace SquashGame.UI
                 .Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
                 .Line(() => "Playing as " + OnlineService.Me.Name));
 
-            // ---- LOCKER ----
-            var locker = Kit.Box(Page("LOCKER"), "k-row");
+            // ---- TRAINING: the practice court and the Academy, together ----
+            var academy = Kit.Box(Page("TRAINING"), "k-row");
+            AddTo(academy, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen()), CardSize.Hero).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
+                .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS", true));
+            AddTo(academy, new CardItem("ACADEMY", "LEARN", () => FrontEnd.LaunchLesson(AcademyScreen.NextUp().Id))
+                .Drawn("trail", new Color32(30, 18, 52, 255), Color.white)
+                .Line(() => "Next: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
+            AddTo(academy, new CardItem("ALL LESSONS", "ACADEMY", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))
+                .Line("Controls  ·  Rules of squash"));
+
+            // ---- YOU (was LOCKER): your kit, the drops, your records ----
+            var locker = Kit.Box(Page("YOU"), "k-row");
             AddTo(locker, new CardItem("YOUR KIT", "LOCKER ROOM", () => Fe.Push(new LockerRoomScreen()), CardSize.Hero).Vignette("you")
                 .Line("Kit, racket, celebration, card").Badge(() => "LEVEL " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp), true)).IsNew = AnyNew;
             // P4: Gear Drops - kit and rackets by the pull, for tickets earned by playing
@@ -143,14 +154,6 @@ namespace SquashGame.UI
             reel.Locked = () => Replays.ReplayLibrary.Latest == null; reel.LockLine = () => "play a match first";
             AddTo(rep, new CardItem("LIBRARY", "REPLAY THEATRE", () => Fe.Push(new ReplayLibraryScreen())).Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
                 .Line(() => { var l = Replays.ReplayLibrary.Entries; int p = l.FindAll(x => x.Pinned).Count; return l.Count + " replays  ·  " + p + " pinned"; }));
-
-            // ---- ACADEMY ----
-            var academy = Kit.Box(Page("ACADEMY"), "k-row");
-            AddTo(academy, new CardItem("ACADEMY", "LEARN", () => FrontEnd.LaunchLesson(AcademyScreen.NextUp().Id), CardSize.Hero)
-                .Drawn("trail", new Color32(30, 18, 52, 255), Color.white)
-                .Line(() => "Next: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
-            AddTo(academy, new CardItem("ALL LESSONS", "ACADEMY", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))
-                .Line("Controls  ·  Rules of squash"));
 
             // ---- settings: a small button top right, and Y ----
             var gear = new ActionItem("Settings", () => Fe.Push(new SettingsScreen()), PromptBar.Btn.Y);

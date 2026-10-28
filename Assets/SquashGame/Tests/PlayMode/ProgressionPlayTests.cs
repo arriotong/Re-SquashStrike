@@ -86,7 +86,7 @@ namespace SquashGame.Tests
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
 
-            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "YOUR KIT");
+            yield return HubNav.Open(fe, kb, Tap, "YOU", "YOUR KIT");
             Assert.That(fe.Top, Is.InstanceOf<LockerRoomScreen>());
             yield return Wait(1.5f, () => false);
             var locker = (LockerRoomScreen)fe.Top;
@@ -148,7 +148,7 @@ namespace SquashGame.Tests
             ProfileStore.Reset();
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "saved");
 
-            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "STATS");
+            yield return HubNav.Open(fe, kb, Tap, "YOU", "STATS");
             Assert.That(fe.Top, Is.InstanceOf<StatsScreen>());
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_4_Stats.png");
@@ -156,7 +156,7 @@ namespace SquashGame.Tests
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "U5_Stats_Shots.png");
             yield return Tap(kb.escapeKey);
-            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "ACHIEVEMENTS");
+            yield return HubNav.Open(fe, kb, Tap, "YOU", "ACHIEVEMENTS");
             Assert.That(fe.Top, Is.InstanceOf<AchievementsScreen>());
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_5_Achievements.png");
@@ -336,7 +336,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "YOUR KIT");
+            yield return HubNav.Open(fe, kb, Tap, "YOU", "YOUR KIT");
             yield return Tap(kb.eKey); yield return Tap(kb.eKey);                        // RACKET
             yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P4_Locker_Racket.png");
@@ -366,7 +366,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "LOCKER", "GEAR DROPS");
+            yield return HubNav.Open(fe, kb, Tap, "YOU", "GEAR DROPS");
             Assert.That(fe.Top, Is.InstanceOf<GearDropScreen>());
             yield return Wait(0.6f, () => false);
             yield return CaptureUI(fe, "P4_GearDrops_Banner.png");

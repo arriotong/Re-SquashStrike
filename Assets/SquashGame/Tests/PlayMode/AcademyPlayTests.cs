@@ -113,7 +113,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Loaded("Match");
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "ACADEMY", "ALL LESSONS");
+            yield return HubNav.Open(fe, kb, Tap, "TRAINING", "ALL LESSONS");
             Assert.That(fe.Top, Is.InstanceOf<AcademyScreen>());
             yield return null; yield return null;
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Move"), "the trail starts on the next lesson");
