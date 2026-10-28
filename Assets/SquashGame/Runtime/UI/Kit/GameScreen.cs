@@ -57,9 +57,12 @@ namespace SquashGame.UI
 
             if (_pages.Count > 1)
             {
-                Tabs = new TabBar(_pageNames.ToArray());
+                // UI remake (2026-10-28): the tabs on a row of their own under the title (or the main menu's rail), never
+                // squeezed into the top bar beside the chip
+                Tabs = new TabBar(TabsAs, _pageNames.ToArray());
                 Tabs.Changed += i => ShowPage(i);
-                TopBar.Insert(1, Tabs);
+                Root.Add(Tabs);
+                Root.AddToClassList(TabsAs == TabStyle.Rail ? "k-screen--rail" : "k-screen--tabbed");
                 ShowPage(0);
             }
             if (ShowChip)
@@ -71,6 +74,18 @@ namespace SquashGame.UI
             Prompts = new PromptBar();
             Root.Add(Prompts);
             SetPrompts();
+        }
+
+        /// <summary>How the tabs show: a strip under the title (default), or the main menu's section rail.</summary>
+        protected virtual TabStyle TabsAs { get { return TabStyle.Strip; } }
+
+        /// <summary>The main menu's rail: up / down on a card step the sections (up from the first goes to the top bar).</summary>
+        public override bool OnVertical(int dy)
+        {
+            if (Tabs == null || Tabs.Style != TabStyle.Rail || !(Focused is CardItem)) return false;
+            if (dy < 0 && Tabs.Index == 0) return false;
+            Tabs.Step(dy); Sounds.Play("tab");
+            return true;
         }
 
         /// <summary>Build the screen: cards, widgets, pages (Page), the primary action (AddTo(Root, new PrimaryItem(...))).</summary>

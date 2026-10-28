@@ -106,7 +106,7 @@ namespace SquashGame.UI
 
     public sealed class TargetArcadeScreen : GameScreen
     {
-        protected override string Kicker { get { return "PLAY"; } }
+        protected override string Kicker { get { return "MODES"; } }
         protected override string Title { get { return "Target Arcade"; } }
 
         protected override void Compose()

@@ -201,7 +201,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "GAUNTLET");
+            yield return HubNav.Open(fe, kb, Tap, "MODES", "GAUNTLET");
             Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>());
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P3_Gauntlet_Start.png");
@@ -233,6 +233,18 @@ namespace SquashGame.Tests
             Assert.That(settings.Gauntlet, Is.True); Assert.That(settings.GamesToWin, Is.EqualTo(1));
             Assert.That(settings.ParPoints, Is.EqualTo(7), "a game to 7");
             Assert.That(settings.Difficulty, Is.EqualTo((float)SquashSim.Modes.Gauntlet.Difficulty(2)));
+            // UI remake: a different court every floor, from all of them; a boss on a World Tour stage; the same for the same run
+            Assert.That(settings.Court, Is.EqualTo(GauntletFlow.CourtFor(run, 2)));
+            var seen = new System.Collections.Generic.HashSet<string>();
+            for (int f = 1; f <= 40; f++)
+            {
+                string c = GauntletFlow.CourtFor(run, f);
+                Assert.That(Courts.Find(c), Is.Not.Null, "floor " + f + ": " + c);
+                if (f > 1) Assert.That(c, Is.Not.EqualTo(GauntletFlow.CourtFor(run, f - 1)), "floor " + f + " moves on");
+                if (SquashSim.Modes.Gauntlet.KindOf(f) == SquashSim.Modes.FloorKind.Boss) Assert.That(c, Does.StartWith(Courts.TourPrefix), "a boss on a big stage");
+                seen.Add(c);
+            }
+            Assert.That(seen.Count, Is.GreaterThanOrEqualTo(25), "40 floors, nearly all on different courts");
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P5_Gauntlet_NextFloor.png");
 
@@ -286,7 +298,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "SCENARIOS");
+            yield return HubNav.Open(fe, kb, Tap, "MODES", "SCENARIOS");
             Assert.That(fe.Top, Is.InstanceOf<ScenarioScreen>());
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "P3_Scenarios.png");

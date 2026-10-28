@@ -73,7 +73,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Loaded("Match");
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "PLAY", "TARGET ARCADE");
+            yield return HubNav.Open(fe, kb, Tap, "MODES", "TARGET ARCADE");
             Assert.That(fe.Top, Is.InstanceOf<TargetArcadeScreen>());
             yield return CaptureUI(fe, "P2M2_UI_1_TargetArcade.png");
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Time Attack"));

@@ -31,6 +31,41 @@
     -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
 }
 
+/* UI remake (2026-10-28): the strip - every tab in sight, a row of its own under the title */
+.k-screen--tabbed > .k-content { top: 214px; }
+.k-tabs--strip { position: absolute; left: 96px; right: 96px; top: 144px; flex-direction: row; flex-wrap: wrap; align-items: center; }
+.k-tabs--strip .k-tab {
+    font-size: 18px; letter-spacing: 2px; margin: 0 8px 6px 0; padding: 6px 18px; border-radius: 22px;
+    color: rgba(255, 255, 255, 0.78); background-color: rgba(16, 18, 22, 0.86);
+    border-width: 1px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.16); border-bottom-color: rgba(255, 255, 255, 0.16);
+    transition-property: color, background-color, border-color; transition-duration: 0.15s;
+}
+.k-tabs--strip .k-tab:hover { border-color: rgba(200, 255, 61, 0.7); color: rgb(255, 255, 255); }
+.k-tabs--strip .k-tab--on { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); border-bottom-color: rgb(200, 255, 61); }
+.k-tabs--strip > .k-tab-glyph { margin: 0 10px 6px 0; font-size: 12px; padding: 4px 8px; background-color: rgba(16, 18, 22, 0.86); color: rgb(200, 255, 61); border-color: rgba(200, 255, 61, 0.5); }
+.k-tab-count { margin: 0 0 6px 6px; font-size: 13px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* the main menu's rail: the sections down the left, each with its live line */
+.k-screen--rail > .k-content { left: 404px; }
+.k-rail { position: absolute; left: 96px; top: 176px; width: 276px; flex-direction: column; align-items: stretch; }
+.k-rail-item {
+    padding: 9px 16px 10px 16px; margin-bottom: 6px; border-radius: 10px;
+    background-color: rgba(14, 15, 18, 0.62); border-width: 1px; border-color: rgba(255, 255, 255, 0.06); border-left-width: 4px; border-left-color: rgba(255, 255, 255, 0.08);
+    transition-property: background-color, border-color, translate; transition-duration: 0.15s;
+}
+.k-rail-item:hover { border-color: rgba(200, 255, 61, 0.4); }
+.k-rail-item--on { background-color: rgba(200, 255, 61, 0.14); border-color: rgba(200, 255, 61, 0.35); border-left-color: rgb(200, 255, 61); translate: 6px 0; }
+.k-rail .k-tab { font-size: 24px; letter-spacing: 3px; margin: 0; padding: 0; border-bottom-width: 0; color: rgba(255, 255, 255, 0.72); }
+.k-rail .k-tab--on { color: rgb(200, 255, 61); }
+.k-rail-sub { font-size: 11px; margin-top: 1px; color: rgba(255, 255, 255, 0.58); overflow: hidden; -unity-text-overflow-position: end; text-overflow: ellipsis; white-space: nowrap; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-rail-item--on .k-rail-sub { color: rgba(255, 255, 255, 0.85); }
+.k-rail-dot { position: absolute; right: 12px; top: 14px; width: 10px; height: 10px; border-radius: 5px; background-color: rgb(255, 74, 64); }
+.k-rail-hint { flex-direction: row; align-items: center; margin-top: 10px; padding-left: 4px; }
+.k-rail-hint-text { font-size: 11px; margin: 0 8px; color: rgba(255, 255, 255, 0.5); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-screen--rail .k-card--hero { width: 470px; }
+.k-screen--rail .k-card--m { width: 268px; }
+.k-screen--rail .k-card { margin-right: 22px; }
+
 /* ---------- the player chip ---------- */
 .k-chip {
     flex-direction: row; align-items: center; padding: 6px 18px 6px 8px; border-radius: 40px;
@@ -771,7 +806,7 @@
 .ah-combo-fill { height: 8px; border-radius: 4px; background-color: rgb(255, 207, 58); }
 
 /* ---------- toasts: medallions sliding in ---------- */
-.toasts { width: 440px; }
+.toasts { width: 440px; top: 156px; }          /* UI remake: under the chip, clear of the tabs and the cards */
 .toast {
     flex-direction: row; align-items: center; width: 420px; padding: 12px 16px; margin-bottom: 10px; border-radius: 12px; white-space: normal;
     background-color: rgba(12, 13, 16, 0.96); border-width: 1px; border-color: rgba(255, 255, 255, 0.1); border-left-width: 5px; border-left-color: rgb(200, 255, 61);

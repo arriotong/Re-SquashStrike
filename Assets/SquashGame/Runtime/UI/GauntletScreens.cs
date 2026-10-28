@@ -57,8 +57,41 @@ namespace SquashGame.UI
             run.Coins = 0;                                                     // banked (a finished run shown again does not pay twice)
         }
 
-        /// <summary>The court a floor is played on: the club first, the arena by floor 12, then round again.</summary>
+        /// <summary>The career court a floor would have had (by tier: the club first, the arena by floor 12, then round again).</summary>
         public static int CourtTier(int floor) { return (floor - 1) % 13; }
+
+        /// <summary>UI remake (2026-10-28): "make the courts change every time now that we have so many". Every floor on a
+        /// different court from all of them - the World Tour's stages, the game's own courts, the Challenger venues: clubs
+        /// and the game's courts early, the big stages more often as the run climbs, a boss always on a big stage; never the
+        /// same court twice running. From the run's seed, so a run's courts are always the same.</summary>
+        public static string CourtFor(GauntletRun run, int floor)
+        {
+            string prev = null;
+            for (int f = 1; f <= floor; f++)
+            {
+                string c = PickCourt(run.Seed, f, 0);
+                for (int salt = 1; c == prev && salt < 8; salt++) c = PickCourt(run.Seed, f, salt);
+                prev = c;
+            }
+            return prev;
+        }
+
+        static string PickCourt(uint seed, int floor, int salt)
+        {
+            uint h = seed ^ unchecked((uint)floor * 2654435761u) ^ unchecked((uint)(salt + 1) * 40503u);
+            h ^= h >> 15; h = unchecked(h * 2246822519u); h ^= h >> 13; h = unchecked(h * 3266489917u); h ^= h >> 16;
+            var tour = TourVenues.All;
+            if (Gauntlet.KindOf(floor) == FloorKind.Boss) return Courts.TourPrefix + tour[h % (uint)tour.Length].Key;
+            double r = (h >> 8) / 16777216.0;
+            double big = Mathf.Clamp(0.2f + floor * 0.04f, 0.2f, 0.65f);
+            uint k = h % 9973u;
+            if (r < big) return Courts.TourPrefix + tour[k % (uint)tour.Length].Key;
+            if (r < big + 0.15) return Courts.All[k % (uint)Courts.All.Length].Id;
+            return Courts.VenuePrefix + ClubVenues.All[k % (uint)ClubVenues.All.Length].Key;
+        }
+
+        /// <summary>How full the floor's stands are: filling as the run climbs, packed for a boss.</summary>
+        public static float CrowdFor(int floor) { return Gauntlet.KindOf(floor) == FloorKind.Boss ? 1f : Mathf.Clamp(0.35f + floor * 0.05f, 0.35f, 1f); }
 
         public static MatchSettings Settings(GauntletRun run)
         {
@@ -71,7 +104,7 @@ namespace SquashGame.UI
                 Gauntlet = true, ParPoints = fl.Points,
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
-                Court = Courts.ForCareerTier(CourtTier(f)), CrowdFill = Courts.CrowdForCareerTier(CourtTier(f)),
+                Court = CourtFor(run, f), CrowdFill = CrowdFor(f),
                 P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : "FLOOR " + f,
             };
         }
@@ -202,7 +235,7 @@ namespace SquashGame.UI
 
     public sealed class GauntletScreen : GameScreen
     {
-        protected override string Kicker { get { return "CHALLENGES  ·  THE GAUNTLET"; } }
+        protected override string Kicker { get { return "MODES  ·  THE GAUNTLET"; } }
         protected override string Title
         {
             get
@@ -289,7 +322,7 @@ namespace SquashGame.UI
             foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
             if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
             if (fl.Signature.Count > 0) Kit.L(next, "Signature: " + string.Join(", ", fl.Signature.ConvertAll(m => { var a = GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "gt-trait");
-            var court = Courts.Find(Courts.ForCareerTier(GauntletFlow.CourtTier(run.Floor)));
+            var court = Courts.Find(GauntletFlow.CourtFor(run, run.Floor));
             Kit.L(next, "One game to " + fl.Points + (Gauntlet.HeadStart(run) > 0 ? ", you start " + Gauntlet.HeadStart(run) + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
             var me = Kit.Panel(grid, "YOUR BUILD"); me.AddToClassList("gt-side");
             Kit.L(me, GauntletFlow.Hearts(run) + (run.Golden ? "   + golden racket" : ""), "gt-hearts");

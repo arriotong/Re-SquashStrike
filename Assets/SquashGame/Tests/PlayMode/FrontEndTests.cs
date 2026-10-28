@@ -182,13 +182,15 @@ namespace SquashGame.Tests
             Assert.That(fe.Match.Demo, Is.True);
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
-            foreach (var tab in new[] { "ONLINE", "CHALLENGES", "CAREER", "ACADEMY", "LOCKER" })
+            foreach (var tab in new[] { "CAREER", "MODES", "CHALLENGES", "ONLINE", "LOCKER", "REPLAYS", "ACADEMY" })
             {
                 yield return Tap(kb.eKey);
+                Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));
                 yield return Wait(0.4f, () => false);
                 yield return CaptureUI(fe, "U2_Hub_" + tab + ".png");
             }
-            for (int i = 0; i < 5; i++) yield return Tap(kb.qKey);                // LOCKER back to PLAY (ONLINE added a tab)
+            yield return Tap(kb.eKey);                                            // round the rail to PLAY
+            Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo("PLAY"));
             yield return Tap(kb.enterKey);
             yield return CaptureUI(fe, "P2M1_UI_3_QuickMatch.png");
             yield return Tap(kb.escapeKey);

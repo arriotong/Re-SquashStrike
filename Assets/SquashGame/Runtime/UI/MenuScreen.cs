@@ -179,6 +179,10 @@ namespace SquashGame.UI
             if (best != null) { Focus(best); Sounds.Play("focus"); }
         }
 
+        /// <summary>Up / down on a spatial screen, before the focus moves: true if the screen took it (the main menu's rail).</summary>
+        public virtual bool OnVertical(int dy) { return false; }
+
+
         public void FocusFirstShown()
         {
             foreach (var it in Reachable()) { Focus(it); return; }
@@ -191,7 +195,7 @@ namespace SquashGame.UI
             if (input.ActionY) OnActionY();
             if (Spatial && !Typing)
             {
-                if (input.Vertical != 0) Move(0, input.Vertical);
+                if (input.Vertical != 0 && !OnVertical(input.Vertical)) Move(0, input.Vertical);
                 if (input.Horizontal != 0)
                 {
                     if (Focused != null && Focused.TakesHorizontal) { Focused.Change(input.Horizontal); Sounds.Play("tick"); }

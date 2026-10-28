@@ -71,8 +71,7 @@ namespace SquashGame.Tests
             yield return Tap(pad1.buttonSouth);                     // title -> main menu
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("QUICK MATCH"));
-            yield return Tap(pad1.dpad.right);
-            yield return Tap(pad1.dpad.right);
+            yield return Tap(pad1.dpad.right);                       // (UI remake: Local Versus is next to Quick Match)
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("LOCAL VERSUS"));
             yield return Tap(pad1.buttonSouth);
             Assert.That(fe.Top, Is.InstanceOf<LocalVersusScreen>());

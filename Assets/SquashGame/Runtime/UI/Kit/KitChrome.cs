@@ -44,26 +44,62 @@ namespace SquashGame.UI
         }
     }
 
+    /// <summary>How a screen's tabs are shown (UI remake, 2026-10-28: "very unnoticeable ... make it more visible").</summary>
+    public enum TabStyle
+    {
+        Strip,      // a row of big pills of its own under the title: Q / E at the ends, "2 / 7" - every tab in sight
+        Rail,       // a column down the left (the main menu's sections): each with a live line and a dot when something waits
+    }
+
     public sealed class TabBar : VisualElement
     {
         readonly List<Label> _tabs = new List<Label>();
-        readonly Label _l = new Label("LB"), _r = new Label("RB");
+        readonly List<VisualElement> _entries = new List<VisualElement>();
+        readonly List<Label> _subs = new List<Label>();
+        readonly List<VisualElement> _dots = new List<VisualElement>();
+        readonly Label _l = new Label("LB"), _r = new Label("RB"), _count = new Label();
+        public readonly TabStyle Style;
         public int Index { get; private set; }
         public event Action<int> Changed;
         public int Count { get { return _tabs.Count; } }
 
-        public TabBar(params string[] names)
+        public TabBar(params string[] names) : this(TabStyle.Strip, names) { }
+
+        public TabBar(TabStyle style, params string[] names)
         {
+            Style = style;
             AddToClassList("k-tabs");
-            _l.AddToClassList("k-tab-glyph"); Add(_l);
+            AddToClassList(style == TabStyle.Rail ? "k-rail" : "k-tabs--strip");
+            _l.AddToClassList("k-tab-glyph"); _r.AddToClassList("k-tab-glyph");
+            if (style == TabStyle.Strip) Add(_l);
             for (int i = 0; i < names.Length; i++)
             {
                 int k = i;
                 var t = new Label(names[i]); t.AddToClassList("k-tab");
-                t.RegisterCallback<ClickEvent>(e => Select(k));
-                Add(t); _tabs.Add(t);
+                if (style == TabStyle.Rail)
+                {
+                    var entry = new VisualElement(); entry.AddToClassList("k-rail-item");
+                    entry.RegisterCallback<ClickEvent>(e => Select(k));
+                    t.pickingMode = PickingMode.Ignore;
+                    entry.Add(t);
+                    var sub = new Label(); sub.AddToClassList("k-rail-sub"); sub.pickingMode = PickingMode.Ignore; entry.Add(sub);
+                    var dot = new VisualElement(); dot.AddToClassList("k-rail-dot"); dot.pickingMode = PickingMode.Ignore; dot.style.display = DisplayStyle.None; entry.Add(dot);
+                    Add(entry); _entries.Add(entry); _subs.Add(sub); _dots.Add(dot);
+                }
+                else
+                {
+                    t.RegisterCallback<ClickEvent>(e => Select(k));
+                    Add(t); _entries.Add(t);
+                }
+                _tabs.Add(t);
             }
-            _r.AddToClassList("k-tab-glyph"); Add(_r);
+            if (style == TabStyle.Strip) { Add(_r); _count.AddToClassList("k-tab-count"); Add(_count); }
+            else
+            {
+                var hint = new VisualElement(); hint.AddToClassList("k-rail-hint");
+                hint.Add(_l); var words = new Label("↑ ↓  sections"); words.AddToClassList("k-rail-hint-text"); hint.Add(words); hint.Add(_r);
+                Add(hint);
+            }
             Select(0, false);
             schedule.Execute(() => { bool pad = MenuInput.UsingPad; _l.text = pad ? "LB" : "Q"; _r.text = pad ? "RB" : "E"; }).Every(200);
         }
@@ -73,11 +109,31 @@ namespace SquashGame.UI
         public void Select(int i, bool notify = true)
         {
             Index = Mathf.Clamp(i, 0, _tabs.Count - 1);
-            for (int k = 0; k < _tabs.Count; k++) _tabs[k].EnableInClassList("k-tab--on", k == Index);
+            for (int k = 0; k < _tabs.Count; k++)
+            {
+                _tabs[k].EnableInClassList("k-tab--on", k == Index);
+                _entries[k].EnableInClassList("k-rail-item--on", k == Index);
+            }
+            _count.text = (Index + 1) + " / " + _tabs.Count;
             if (notify) Changed?.Invoke(Index);
         }
 
         public string Current { get { return _tabs[Index].text; } }
+
+        /// <summary>The rail: a section's live line ("2 / 3 today  ·  streak 4").</summary>
+        public void SetSub(int i, string text)
+        {
+            if (i < 0 || i >= _subs.Count) return;
+            _subs[i].text = text ?? "";
+            _subs[i].style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        /// <summary>The rail: the red dot on a section (something waits there).</summary>
+        public void SetDot(int i, bool on) { if (i >= 0 && i < _dots.Count) _dots[i].style.display = on ? DisplayStyle.Flex : DisplayStyle.None; }
+
+        /// <summary>A section's live line (tests).</summary>
+        public string Sub(int i) { return i >= 0 && i < _subs.Count ? _subs[i].text : ""; }
+        public bool Dot(int i) { return i >= 0 && i < _dots.Count && _dots[i].style.display == DisplayStyle.Flex; }
     }
 
     /// <summary>The action legend: "A Select · B Back · LB/RB Tabs" with the glyphs of the device in use.</summary>

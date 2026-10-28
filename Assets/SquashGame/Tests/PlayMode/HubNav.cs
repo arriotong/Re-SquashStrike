@@ -20,7 +20,7 @@ namespace SquashGame.Tests
         {
             var hub = fe.Top as MainMenuScreen;
             Assert.That(hub, Is.Not.Null, "on the main menu hub");
-            for (int i = 0; i < 6 && hub.Tabs.Current != tab; i++) yield return tap(kb.eKey);
+            for (int i = 0; i < MainMenuScreen.Sections.Length && hub.Tabs.Current != tab; i++) yield return tap(kb.eKey);
             Assert.That(hub.Tabs.Current, Is.EqualTo(tab));
             yield return null;
             for (int i = 0; i < 8 && !(hub.Focused is CardItem c && c.Title == card); i++) yield return tap(kb.rightArrowKey);

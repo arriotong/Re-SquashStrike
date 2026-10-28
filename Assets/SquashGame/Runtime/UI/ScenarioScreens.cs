@@ -95,7 +95,7 @@ namespace SquashGame.UI
         static readonly string[] Arts = { "rings", "clock", "chevrons", "trophy", "bracket", "wall", "corner", "split", "nick", "menu", "drop", "angle", "spots", "stripes", "trophy" };
         readonly int _startGroup;
         public ScenarioScreen(int group = 0) { _startGroup = group; }
-        protected override string Kicker { get { return "CHALLENGES  ·  SCENARIOS"; } }
+        protected override string Kicker { get { return "MODES  ·  SCENARIOS"; } }
         protected override string Title { get { return "Clutch situations"; } }
         protected override bool ShowChip { get { return false; } }
 
