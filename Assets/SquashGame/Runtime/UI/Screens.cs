@@ -112,6 +112,9 @@ namespace SquashGame.UI
             SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
             return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("nickbank", 1) };
         }
+        /// <summary>Quick Match's Abilities row (batch 2). Off for now (2026-10-28: "remove special ability from quick play
+        /// until we get them all figured out"): the row is hidden and a saved "On" is not played. True brings it back.</summary>
+        public const bool QuickMatchAbilities = false;
         public const string AbilityHint = "Abilities: Focus slow-mo twice a game, arcade shots, and aces and nicks score 2 - for them too.";
 
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>

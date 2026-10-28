@@ -56,7 +56,7 @@ namespace SquashGame.UI
             // ---- PLAY: a match now ----
             var play = Kit.Box(Page("PLAY"), "k-row");
             AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
-                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length] + (C.Abilities ? "  ·  abilities on" : ""))
+                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length] + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  abilities on" : ""))
                 .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
             AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
                 .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
@@ -263,8 +263,11 @@ namespace SquashGame.UI
                 AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
                 AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
                 // batch 2: the arcade abilities, off unless asked for
-                AddTo(mid, new SelectorItem("Abilities", new[] { "Off", "On" }, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
-                _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
+                if (MatchChoices.QuickMatchAbilities)
+                {
+                    AddTo(mid, new SelectorItem("Abilities", new[] { "Off", "On" }, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
+                    _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
+                }
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
                 AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
             }
@@ -343,7 +346,7 @@ namespace SquashGame.UI
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
                     Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id
                 }.Dressed();
-                if (C.Abilities)
+                if (MatchChoices.QuickMatchAbilities && C.Abilities)
                 {
                     s.Mods = MatchChoices.AbilityKit();
                     s.FocusCharges = MatchChoices.AbilityFocus;
