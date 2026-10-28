@@ -43,7 +43,7 @@ namespace SquashSim.Modes
             T("revive", "Revive", "Once a run, losing your last heart gives one back", 320);
             T("treasure", "Treasure", "+10% coins", 50, 110, 200);
             foreach (var a in GauntletAbilities.All())
-                if (a.Locked) _all.Add(new Talent { Id = "unlock_" + a.Id, Name = a.Name, Text = "Adds " + a.Name + " to the cards: " + a.Blurb, Costs = new[] { UnlockCost(a) }, Unlocks = a.Id });
+                if (a.Locked && !a.Retired) _all.Add(new Talent { Id = "unlock_" + a.Id, Name = a.Name, Text = "Adds " + a.Name + " to the cards: " + a.Blurb, Costs = new[] { UnlockCost(a) }, Unlocks = a.Id });
             return _all;
         }
 

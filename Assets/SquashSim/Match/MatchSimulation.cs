@@ -256,7 +256,8 @@ namespace SquashSim
             Referee.BeginRally(server, Score.ServeSide);
             Interference.Reset();
             _lastStriker = -1; _nickBy = -1;                                  // P5
-            _chaosStriker = -1; _curveT = 0; _curveArmed = false;               // chaos
+            _chaosStriker = -1; _curveT = 0; _curveArmed = false;               // chaos: a new rally - no freeze or haste carried over
+            for (int i = 0; i < 2; i++) { var cm = Players[i].Player.Mods; if (cm != null) { cm.FreezeTimer = 0; cm.HasteTimer = 0; } }
             if (!_gameInit) { _gameInit = true; for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.NewGame(); }
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
             HoldBallForServe(keepTemperature: true);
@@ -628,6 +629,10 @@ namespace SquashSim
         readonly bool[] _ultShot = new bool[2], _fireShot = new bool[2], _curvedShot = new bool[2];
 
         static RunMods ModsOf(TestPlayer p) { if (p.Mods == null) p.Mods = new RunMods(); return p.Mods; }
+
+        /// <summary>Was player i's last stroke a fireball / did it curve (the game's ball effects)?</summary>
+        public bool ShotIsFire(int i) { return i >= 0 && i < 2 && _fireShot[i]; }
+        public bool ShotCurved(int i) { return i >= 0 && i < 2 && _curvedShot[i]; }
 
         /// <summary>A stroke: the ultimate (Time Stop), the fireball spent, the meter, what it does to the opponent.</summary>
         void ChaosAtContact(int i, SimEvent contact)

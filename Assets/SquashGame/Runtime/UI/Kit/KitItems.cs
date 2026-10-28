@@ -61,7 +61,7 @@ namespace SquashGame.UI
         public CardItem Line(string line) { _lineText = () => line; return this; }
         public CardItem Badge(Func<string> badge, bool lime = false) { _badgeText = badge; _badge.EnableInClassList("k-badge--lime", lime); return this; }
         /// <summary>Drawn art for the picture area (CardArt: "rings", "stripes", "split", "trophy", "trail").</summary>
-        public CardItem Drawn(string kind, Color a, Color b) { Art.Add(new CardArt(kind, a, b)); return this; }
+        public CardItem Drawn(string kind, Color a, Color b, Color? highlight = null) { Art.Add(new CardArt(kind, a, b, highlight)); return this; }
         /// <summary>A live 3D picture of the court in the picture area (Vignettes: "you", "court", "front", "racket", "versus").</summary>
         public CardItem Vignette(string shot) { Vignettes.Attach(Art, shot); Root.AddToClassList("k-card--live"); return this; }
         /// <summary>A big glyph in the picture area (when there is no art).</summary>

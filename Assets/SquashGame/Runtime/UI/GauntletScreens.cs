@@ -148,7 +148,7 @@ namespace SquashGame.UI
         /// <summary>A boss beaten: one locked ability joins the cards for good (null: none left to unlock).</summary>
         static string UnlockOne(GauntletRun run)
         {
-            var locked = GauntletAbilities.All().FindAll(a => !GauntletTalents.Unlocked(Talents, a));
+            var locked = GauntletAbilities.All().FindAll(a => !a.Retired && !GauntletTalents.Unlocked(Talents, a));
             if (locked.Count == 0) return null;
             var a = locked[(int)((run.Seed + (uint)run.Floor * 7919u) % (uint)locked.Count)];
             Talents.Add(new RunMod { Id = "unlock_" + a.Id, Level = 1 });
@@ -219,8 +219,31 @@ namespace SquashGame.UI
             }
         }
 
+        /// <summary>The chaos remake's builds, each its own colour (the cards, the build panel, the codex, the HUD).</summary>
+        public static Color FamilyColour(Family f)
+        {
+            switch (f)
+            {
+                case Family.Time: return new Color32(96, 176, 255, 255);
+                case Family.Power: return new Color32(255, 100, 64, 255);
+                case Family.Trick: return new Color32(196, 112, 255, 255);
+                case Family.Jackpot: return new Color32(255, 204, 64, 255);
+                case Family.Guard: return new Color32(96, 224, 144, 255);
+                default: return new Color32(200, 200, 210, 255);
+            }
+        }
+
         public static string Art(Ability a)
         {
+            if (a.Kind == AbilityKind.Evolved) return "trophy";
+            switch (a.Family)
+            {
+                case Family.Time: return "clock";
+                case Family.Power: return "chevrons";
+                case Family.Trick: return "trail";
+                case Family.Jackpot: return "rings";
+                case Family.Guard: return "bracket";
+            }
             switch (a.Kind)
             {
                 case AbilityKind.Shot: return "rings";
@@ -293,9 +316,11 @@ namespace SquashGame.UI
                     if (a == null) continue;
                     var pick = id;
                     int now = Gauntlet.Level(run, id), lvNext = Gauntlet.LevelAfter(run, id);
-                    string kicker = a.Kind == AbilityKind.Evolved ? "EVOLUTION" : a.Kind == AbilityKind.Instant ? "BONUS" : (now == 0 ? "NEW  ·  " : "LV " + now + " → " + lvNext + "  ·  ") + a.KindName.ToUpperInvariant();
+                    string fam = a.Family != Family.None ? a.FamilyName + "  ·  " : "";
+                    string kicker = a.Kind == AbilityKind.Evolved ? fam + "EVOLUTION" : a.Kind == AbilityKind.Instant ? "BONUS" : fam + (now == 0 ? "NEW " : "LV " + now + " → " + lvNext + " ") + a.KindName.ToUpperInvariant();
                     var card = AddTo(row, new CardItem(a.Name, kicker, () => { if (_banishing) { if (GauntletFlow.Banish(pick)) Fe.Replace(new GauntletScreen()); } else { GauntletFlow.Pick(pick); Fe.Replace(new GauntletScreen()); } })
-                        .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), GauntletFlow.RarityColour(a.Rarity))
+                        .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : GauntletFlow.RarityColour(a.Rarity),
+                               a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : (Color?)null)
                         .Line(a.Level(Mathf.Max(1, lvNext)) + (a.Kind != AbilityKind.Instant && a.MaxLevel > 1 ? "\n" + GauntletFlow.Pips(lvNext, a.MaxLevel) : ""))
                         .Badge(() => GauntletAbilities.RarityNames[(int)a.Rarity].ToUpperInvariant(), a.Rarity >= Rarity.Epic));
                     card.Root.AddToClassList("gt-card");
@@ -347,13 +372,22 @@ namespace SquashGame.UI
         /// <summary>The run's abilities, each with its level as pips.</summary>
         static void Build(VisualElement panel, GauntletRun run)
         {
-            if (run.Abilities.Count == 0) { Kit.L(panel, "No abilities yet - win a floor to pick one.", "k-cr-note"); return; }
+            if (run.Abilities.Count == 0) { Kit.L(panel, "No abilities yet - win a floor to pick one. Five builds: TIME, POWER, TRICK, JACKPOT, GUARD - an ultimate fires on a charged shot when POWER is full.", "k-cr-note"); return; }
+            // the builds you are on, strongest first (the chaos remake)
+            var count = new Dictionary<Family, int>();
+            foreach (var m in run.Abilities) { var a = GauntletAbilities.Find(m.Id); if (a != null && a.Family != Family.None) count[a.Family] = (count.TryGetValue(a.Family, out int c) ? c : 0) + m.Level; }
+            var fams = new List<Family>(count.Keys); fams.Sort((x, y) => count[y].CompareTo(count[x]));
+            if (fams.Count > 0)
+            {
+                var strip = Kit.Box(panel, "gt-fams");
+                foreach (var f in fams) { var l = Kit.L(strip, f.ToString().ToUpperInvariant() + " " + count[f], "gt-fam"); l.style.color = GauntletFlow.FamilyColour(f); }
+            }
             foreach (var m in run.Abilities)
             {
                 var a = GauntletAbilities.Find(m.Id);
                 if (a == null) continue;
                 var r = Kit.Box(panel, "gt-ab");
-                var n = Kit.L(r, a.Name, "gt-ab-name"); n.style.color = GauntletFlow.RarityColour(a.Rarity);
+                var n = Kit.L(r, a.Name, "gt-ab-name"); n.style.color = a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : GauntletFlow.RarityColour(a.Rarity);
                 Kit.L(r, a.MaxLevel > 1 ? GauntletFlow.Pips(m.Level, a.MaxLevel) : "", "gt-ab-pips");
             }
             Kit.L(panel, "Active " + Gauntlet.Count(run, true) + " / " + GauntletAbilities.ActiveSlots + "  ·  passive " + Gauntlet.Count(run, false) + " / " + GauntletAbilities.PassiveSlots, "k-cr-note");
@@ -421,10 +455,12 @@ namespace SquashGame.UI
         {
             var st = GauntletFlow.State;
             var grid = Kit.Box(Content, "gt-codex");
-            foreach (var kind in new[] { AbilityKind.Shot, AbilityKind.Power, AbilityKind.Evolved, AbilityKind.Stat, AbilityKind.Perk })
+            // the chaos remake: by build (the retired cards are out)
+            foreach (var fam in new[] { Family.Time, Family.Power, Family.Trick, Family.Jackpot, Family.Guard, Family.None })
             {
-                var p = Kit.Panel(grid, kind == AbilityKind.Evolved ? "EVOLUTIONS" : kind.ToString().ToUpperInvariant() + "S"); p.AddToClassList("gt-codex-panel");
-                foreach (var a in GauntletAbilities.All().FindAll(x => x.Kind == kind))
+                var p = Kit.Panel(grid, fam == Family.None ? "ANY BUILD" : fam.ToString().ToUpperInvariant()); p.AddToClassList("gt-codex-panel");
+                if (fam != Family.None) p.Q<Label>(className: "k-panel-title").style.color = GauntletFlow.FamilyColour(fam);
+                foreach (var a in GauntletAbilities.All().FindAll(x => x.Family == fam && !x.Retired && x.Kind != AbilityKind.Instant))
                 {
                     var best = st.Codex != null ? st.Codex.Find(c => c.Id == a.Id) : null;
                     bool open = GauntletTalents.Unlocked(st.Talents, a);

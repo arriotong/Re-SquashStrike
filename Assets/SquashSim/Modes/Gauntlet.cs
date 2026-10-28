@@ -93,7 +93,14 @@ namespace SquashSim.Modes
             ("e_tireless", "Tireless", "tires at half the rate"),
             ("e_sniper", "Sniper", "deadly accurate"),
             ("e_wall", "The Wall", "gets everywhere (Speed +3)"),
+            // the chaos remake: the opponents bend the rules too (the player's cards at level 3)
+            ("curve", "Curveball", "drives that bend"),
+            ("deaddrop", "Dead Drop", "drops that die"),
+            ("ricochet", "Ricochet", "faster off every wall"),
+            ("knuckle", "Knuckleball", "hard to time"),
         };
+        /// <summary>A chaos trait's level on an opponent.</summary>
+        public const int ChaosTraitLevel = 3;
 
         static uint Hash(uint x) { x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16; return x; }
         static uint Mix(uint a, uint b) { return Hash(a * 0x9E3779B9u ^ Hash(b + 0x6D2B79F5u)); }
@@ -110,7 +117,7 @@ namespace SquashSim.Modes
             run.CanRevive = GauntletTalents.Level(talents, "revive") > 0;
             // Kit Bag: a random common ability or two to start with
             int kit = GauntletTalents.Level(talents, "kit");
-            var commons = GauntletAbilities.All().FindAll(a => a.Rarity == Rarity.Common && a.Kind != AbilityKind.Instant && GauntletTalents.Unlocked(talents, a));
+            var commons = GauntletAbilities.All().FindAll(a => a.Rarity == Rarity.Common && a.Kind != AbilityKind.Instant && !a.Retired && GauntletTalents.Unlocked(talents, a));
             uint h = Mix(run.Seed, 777);
             for (int i = 0; i < kit && commons.Count > 0; i++)
             {
@@ -129,7 +136,7 @@ namespace SquashSim.Modes
         /// <summary>The AI's difficulty on a floor: from the easiest, a slow climb - the game's Medium about floor 20, Hard about
         /// 37, the top past 125 (MatchBench --rogue: a median player clears about 9 floors, 40% beat the first boss).</summary>
         public static double Difficulty(int floor) { return Math.Min(1.0, Start + Climb * (Math.Max(1, floor) - 1)); }
-        public const double Start = 0.0, Climb = 0.0055;     // P6: 0.008 after the AI learned to keep out of its own shot and the line (median 8 floors)
+        public const double Start = 0.0, Climb = 0.0075;     // P6: 0.008 after the AI learned to keep out of its own shot and the line (median 8 floors); the chaos remake: 0.0055 -> 0.0075 (the cards are stronger: MatchBench --rogue median 15 -> 13, p25 9, a great build 80)
 
         public static FloorInfo Floor(GauntletRun run, int floor)
         {
@@ -155,13 +162,14 @@ namespace SquashSim.Modes
             }
             int traits = f.Kind == FloorKind.Boss ? (floor >= 20 ? 2 : 1) : f.Kind == FloorKind.Elite ? 1 : 0;
             if (floor > 40) traits++;                                         // late floors: every opponent has one more
-            var pool = new List<int> { 0, 1, 2, 3 };
+            var pool = new List<int>();
+            for (int k = 0; k < Traits.Length; k++) pool.Add(k);
             for (int i = 0; i < traits && pool.Count > 0; i++)
             {
                 h = Hash(h + 17);
                 int k = pool[(int)(h % (uint)pool.Count)];
                 pool.Remove(k);
-                f.Traits.Add(new RunMod { Id = Traits[k].id, Level = 1 });
+                f.Traits.Add(new RunMod { Id = Traits[k].id, Level = Traits[k].id.StartsWith("e_") ? 1 : ChaosTraitLevel });
             }
             if (f.Kind == FloorKind.Elite) f.Title = "Elite  ·  " + TraitNames(f);
             // past floor 30 the opponent's athlete grows; past 60 the Cannon does
@@ -304,7 +312,7 @@ namespace SquashSim.Modes
             bool activeFull = Count(run, true) >= GauntletAbilities.ActiveSlots, passiveFull = Count(run, false) >= GauntletAbilities.PassiveSlots;
             foreach (var a in GauntletAbilities.All())
             {
-                if (run.Banished.Contains(a.Id) || !GauntletTalents.Unlocked(talents, a)) continue;
+                if (a.Retired || run.Banished.Contains(a.Id) || !GauntletTalents.Unlocked(talents, a)) continue;
                 int lv = Level(run, a.Id);
                 double w;
                 if (a.Kind == AbilityKind.Evolved)

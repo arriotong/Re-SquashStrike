@@ -15,6 +15,9 @@
 //                 give a let or a stroke for asking (P2-M7), with the key
 //   PR5           GAME BALL / MATCH BALL under the bug; a rally counter
 //                 once a rally gets long; a walk-on card as a match starts
+//   chaos         the Gauntlet's POWER meter, ULTIMATE READY, the pop-ups
+//                 (TIME STOP!, INFERNO!, 6 POINTS!), the time-stop tint
+//                 (the chaos remake, 2026-10-28: the sim's ChaosLog)
 //
 // Reads state only. Hidden behind menus (the pause screen keeps it).
 // ===========================================================
@@ -52,6 +55,14 @@ namespace SquashGame
         public string ChatShown { get { return _chat.style.display == DisplayStyle.Flex ? _chat.text : null; } }
         public string NetText { get { return _net.style.display == DisplayStyle.Flex ? _net.text : null; } }
         readonly VisualElement _intro = new VisualElement();
+        // the chaos remake
+        readonly VisualElement _power = new VisualElement(), _powerFill = new VisualElement(), _freeze = new VisualElement();
+        readonly Label _powerLabel = new Label(), _pop = new Label(), _popSmall = new Label(), _freezeWord = new Label("TIME STOP");
+        MatchSimulation _chaosFor;
+        int _chaosRead;
+        float _popLeft, _popSmallLeft;
+        public string PopText { get { return _pop.style.display == DisplayStyle.Flex ? _pop.text : null; } }
+        public string PowerText { get { return _power.style.display == DisplayStyle.Flex ? _powerLabel.text : null; } }
         MatchSimulation _introFor;
         float _introLeft;
         /// <summary>PR5: a rally shows its shot count from this many shots.</summary>
@@ -127,7 +138,15 @@ namespace SquashGame
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
             _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
-            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub }) l.pickingMode = PickingMode.Ignore;
+            // the chaos remake: the time-stop tint under everything, the meter under the bug, the pop-ups centre
+            _freeze.AddToClassList("hud-freeze"); _freezeWord.AddToClassList("hud-freeze-word"); _freeze.Add(_freezeWord); _freeze.style.display = DisplayStyle.None; Insert(0, _freeze);
+            _power.AddToClassList("hud-power"); _powerLabel.AddToClassList("hud-power-label");
+            var track = new VisualElement(); track.AddToClassList("hud-power-track"); _powerFill.AddToClassList("hud-power-fill"); track.Add(_powerFill);
+            _power.Add(_powerLabel); _power.Add(track); _power.style.display = DisplayStyle.None; Add(_power);
+            _pop.AddToClassList("hud-pop"); _pop.style.display = DisplayStyle.None; Add(_pop);
+            _popSmall.AddToClassList("hud-pop-small"); _popSmall.style.display = DisplayStyle.None; Add(_popSmall);
+            foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub, _powerLabel, _pop, _popSmall, _freezeWord }) l.pickingMode = PickingMode.Ignore;
+            foreach (var v in new[] { _power, _powerFill, track, _freeze }) v.pickingMode = PickingMode.Ignore;
         }
 
         static void Show(Label l, string text)
@@ -247,6 +266,64 @@ namespace SquashGame
             LetChip(r, m, twoPlayer);
             NetChip(r);
             Broadcast(r, m, s, names);
+            Chaos(r, m, twoPlayer);
+        }
+
+        /// <summary>The Gauntlet chaos remake: your POWER meter (with an ultimate card), the pop-ups for what the cards just
+        /// did (from the sim's ChaosLog), the blue of a time stop.</summary>
+        void Chaos(MatchRunner r, MatchSimulation m, bool twoPlayer)
+        {
+            if (_chaosFor != m) { _chaosFor = m; _chaosRead = m.Chaos.Count; _popLeft = 0; _popSmallLeft = 0; }
+            int me = twoPlayer ? 0 : r.HumanIndex;
+            var mine = me >= 0 && me < 2 ? m.Players[me].Player.Mods : null;
+            bool meter = mine != null && mine.HasUltimate && !r.ReplayActive;
+            _power.style.display = meter ? DisplayStyle.Flex : DisplayStyle.None;
+            if (meter)
+            {
+                float v = Mathf.Clamp01((float)mine.Power);
+                _powerFill.style.width = Length.Percent(100f * v);
+                bool ready = v >= 1f;
+                _power.EnableInClassList("hud-power--ready", ready);
+                _powerLabel.text = ready ? "ULTIMATE READY  ·  hold " + IntentSource.Keys("Hit") + " for a charged shot" : "POWER  " + Mathf.RoundToInt(100 * v) + "%" + (mine.FireShots > 0 ? "   ·   FIREBALLS " + mine.FireShots : "");
+            }
+            // what just happened: the newest notes since the last frame
+            for (; _chaosRead < m.Chaos.Count; _chaosRead++)
+            {
+                var n = m.Chaos[_chaosRead];
+                bool mineNote = n.Player == me;
+                var pm = n.Player >= 0 && n.Player < 2 ? m.Players[n.Player].Player.Mods : null;
+                switch (n.Kind)
+                {
+                    case "ult":
+                        Pop(pm != null && pm.Level("freeze") + pm.Level("world") > 0 ? "TIME STOP!" : pm != null && pm.Level("inferno") > 0 ? "INFERNO!" : "JACKPOT!", true);
+                        VenueView.Excite(0.9f);
+                        break;
+                    case "bonus":
+                        Pop((mineNote ? "" : "THEY SCORE ") + (1 + n.Value) + " POINTS!", true);
+                        if (n.Value >= 2) VenueView.Excite(1f);
+                        break;
+                    case "shield": Pop("SHIELD  ·  play it again", false); break;
+                    case "rewind": Pop("REWIND!", true); break;
+                    case "curve": Pop(mineNote ? "CURVEBALL" : "THEIR CURVEBALL", false); break;
+                    case "ricochet": Pop("RICOCHET x" + n.Value, false); break;
+                    case "deaddrop": Pop("DEAD DROP", false); break;
+                    case "quake": Pop("QUAKE!", false); break;
+                }
+            }
+            float dt = Time.unscaledDeltaTime;
+            if (_popLeft > 0) { _popLeft -= dt; if (_popLeft <= 0) _pop.style.display = DisplayStyle.None; }
+            if (_popSmallLeft > 0) { _popSmallLeft -= dt; if (_popSmallLeft <= 0) _popSmall.style.display = DisplayStyle.None; }
+            _pop.EnableInClassList("hud-pop--in", _popLeft > 0.25f);
+            bool frozen = false;
+            for (int i = 0; i < 2; i++) { var pm = m.Players[i].Player.Mods; if (pm != null && pm.Frozen) frozen = true; }
+            _freeze.style.display = frozen && !r.ReplayActive && m.Phase == MatchPhase.Rally ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        void Pop(string text, bool big)
+        {
+            var l = big ? _pop : _popSmall;
+            l.text = text; l.style.display = DisplayStyle.Flex;
+            if (big) { _popLeft = 1.5f; _pop.RemoveFromClassList("hud-pop--in"); } else _popSmallLeft = 1.0f;
         }
 
         /// <summary>PR5: the game/match-ball chip, the rally counter, the walk-on card.</summary>

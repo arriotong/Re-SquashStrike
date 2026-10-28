@@ -898,6 +898,31 @@
     transition-property: background-color, color, scale; transition-duration: 0.25s;
 }
 .hud-rally--hot { background-color: rgb(200, 255, 61); color: rgb(14, 15, 18); scale: 1.08 1.08; }
+
+/* ---- the Gauntlet chaos remake: POWER, the pop-ups, a time stop ---- */
+.hud-power { position: absolute; left: 20px; top: 214px; width: 420px; padding: 8px 12px 10px 12px; border-radius: 10px; background-color: rgba(12, 13, 16, 0.86); border-width: 1px; border-color: rgba(255, 204, 64, 0.35); }
+.hud-power-label { font-size: 12px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.85); margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.hud-power-track { height: 10px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.10); overflow: hidden; }
+.hud-power-fill { height: 10px; width: 0; border-radius: 5px; background-color: rgb(255, 204, 64); }
+.hud-power--ready { border-color: rgb(255, 204, 64); background-color: rgba(60, 44, 8, 0.92); }
+.hud-power--ready .hud-power-label { color: rgb(255, 214, 90); }
+.hud-power--ready .hud-power-fill { background-color: rgb(255, 120, 40); }
+.hud-pop {
+    position: absolute; left: 50%; top: 30%; translate: -50% -50%; padding: 10px 40px; border-radius: 14px;
+    font-size: 64px; letter-spacing: 4px; color: rgb(255, 214, 90); -unity-text-align: middle-center; white-space: nowrap;
+    background-color: rgba(12, 13, 16, 0.78); border-width: 2px; border-color: rgb(255, 204, 64);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    scale: 0.6 0.6; opacity: 0; transition-property: scale, opacity; transition-duration: 0.18s; transition-timing-function: ease-out-back;
+}
+.hud-pop--in { scale: 1 1; opacity: 1; }
+.hud-pop-small {
+    position: absolute; left: 50%; top: 40%; translate: -50% -50%; padding: 5px 18px; border-radius: 10px;
+    font-size: 22px; letter-spacing: 3px; color: rgb(214, 160, 255); -unity-text-align: middle-center; white-space: nowrap;
+    background-color: rgba(12, 13, 16, 0.7);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+}
+.hud-freeze { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgba(70, 130, 255, 0.09); border-width: 14px; border-color: rgba(120, 180, 255, 0.4); justify-content: flex-end; align-items: center; }
+.hud-freeze-word { margin-bottom: 120px; font-size: 26px; letter-spacing: 12px; color: rgba(190, 220, 255, 0.9); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .hud-intro {
     position: absolute; left: 50%; bottom: 120px; translate: -50% 30px; opacity: 0; align-items: center;
     padding: 16px 40px 18px 40px; background-color: rgba(12, 13, 16, 0.92);
@@ -1072,7 +1097,9 @@
 .gt-ab-name { font-size: 17px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .gt-ab-pips { font-size: 14px; color: rgba(255, 255, 255, 0.75); }
 .gt-codex { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
-.gt-codex-panel { width: 330px; margin-right: 16px; margin-bottom: 14px; }
+.gt-codex-panel { width: 272px; margin-right: 14px; margin-bottom: 14px; }
+.gt-fams { flex-direction: row; flex-wrap: wrap; margin: 2px 0 8px 0; }
+.gt-fam { font-size: 12px; letter-spacing: 2px; margin-right: 14px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 /* ---------- P7 phase 4: the world map ---------- */
 .k-wm { flex-direction: row; flex-grow: 1; align-items: flex-start; }

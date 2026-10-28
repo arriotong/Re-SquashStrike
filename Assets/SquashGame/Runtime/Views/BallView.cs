@@ -41,6 +41,7 @@ namespace SquashGame
         SimRunnerBase _runner;
         int _trailFor = -2;
         static readonly Color ClassicTrail = new Color(1f, 0.95f, 0.8f);
+        static readonly Color FireTrail = new Color(1f, 0.42f, 0.08f), CurveTrail = new Color(0.78f, 0.45f, 1f), FireBall = new Color(1f, 0.55f, 0.15f);
         /// <summary>P4: the trail's colour now (tests).</summary>
         public Color TrailColour { get; private set; }
         Transform _ball, _shadow, _rim;
@@ -97,13 +98,18 @@ namespace SquashGame
             // P4: your shots trail in your Shot trail colour (Gear Drops); everyone else's in the classic one
             var hit = _runner.LastRacketContact;
             int striker = hit != null ? hit.PlayerIndex : -1;
-            if (striker != _trailFor)
+            // the Gauntlet chaos remake: a fireball burns orange, a curveball trails purple
+            var sim = (_runner as MatchRunner)?.Sim;
+            bool fire = sim != null && sim.ShotIsFire(striker), curve = !fire && sim != null && sim.ShotCurved(striker);
+            int key = striker * 4 + (fire ? 1 : 0) + (curve ? 2 : 0);
+            if (fire) _trail.time = Mathf.Max(_trail.time, 0.3f);
+            if (key != _trailFor)
             {
-                _trailFor = striker;
+                _trailFor = key;
                 int me = _runner.HumanIndex;
-                Color c = striker == me ? Progression.Cosmetics.KitOf(Progression.KitDirector.You()).Trail : ClassicTrail;
+                Color c = fire ? FireTrail : curve ? CurveTrail : striker == me ? Progression.Cosmetics.KitOf(Progression.KitDirector.You()).Trail : ClassicTrail;
                 var tg = new Gradient();
-                tg.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) }, new[] { new GradientAlphaKey(striker == me && c != ClassicTrail ? 0.55f : 0.32f, 0f), new GradientAlphaKey(0f, 1f) });
+                tg.SetKeys(new[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) }, new[] { new GradientAlphaKey(fire || curve ? 0.9f : striker == me && c != ClassicTrail ? 0.55f : 0.32f, 0f), new GradientAlphaKey(0f, 1f) });
                 _trail.colorGradient = tg;
                 TrailColour = c;
             }
@@ -117,7 +123,7 @@ namespace SquashGame
                 _ball.rotation = SimToWorld.Rotation(ball.Omega, w * simDt) * _ball.rotation;
 
             float t = (float)BallTemperature.Normalised(ball.Temperature);
-            _ballMat.color = Color.Lerp(Cold, Hot, t);
+            _ballMat.color = fire ? FireBall : Color.Lerp(Cold, Hot, t);
 
             // Shadow fades and spreads with height: a depth cue for judging the ball.
             float h = Mathf.Max(0f, p.y);

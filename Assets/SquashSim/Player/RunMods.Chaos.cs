@@ -102,7 +102,7 @@ namespace SquashSim
             {
                 Power = 0;
                 UltNow = true;
-                if (Level("inferno") > 0) FireShots = FireShotsPerUlt;
+                if (Level("inferno") > 0) FireShots = FireShotsPerUlt - 1 + Level("inferno");   // 3, 4, 5
             }
             ShotFire = !touch && (FireShots > 0 || (Level("supernova") > 0 && charge >= UltCharge));
         }

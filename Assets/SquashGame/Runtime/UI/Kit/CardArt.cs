@@ -22,11 +22,13 @@ namespace SquashGame.UI
     {
         readonly string _kind;
         readonly Color _a, _b;
-        static readonly Color Lime = new Color32(200, 255, 61, 255);
+        /// <summary>The highlight (lime; a Gauntlet build's own colour).</summary>
+        readonly Color Lime;
+        static readonly Color DefaultLime = new Color32(200, 255, 61, 255);
 
-        public CardArt(string kind, Color a, Color b)
+        public CardArt(string kind, Color a, Color b, Color? hi = null)
         {
-            _kind = kind; _a = a; _b = b;
+            _kind = kind; _a = a; _b = b; Lime = hi ?? DefaultLime;
             AddToClassList("k-card-drawn");
             pickingMode = PickingMode.Ignore;
             style.position = Position.Absolute; style.left = 0; style.top = 0; style.right = 0; style.bottom = 0;

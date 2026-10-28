@@ -6,10 +6,15 @@
 // What the abilities do in a match lives in RunMods (the sim) and the
 // run's own rules (Gauntlet.cs): this is the catalog.
 //
-//   active    shots, powers, evolved - up to 6 in a run
+//   active    ultimates, shots, powers, evolved - up to 6 in a run
 //   passive   stats, perks - up to 6
 //   instant   taken at once, nothing kept (a life, coins, the golden
 //             racket) - always possible, and the pool's filler
+//
+// The chaos remake (2026-10-28): five build families - TIME, POWER,
+// TRICK, JACKPOT, GUARD - each with an ultimate or a payoff, and
+// legendary evolutions; the old small-number cards are retired (out of
+// the pool; their effects stay in the sim for old runs and replays).
 // ===========================================================
 
 using System;
@@ -17,7 +22,9 @@ using System.Collections.Generic;
 
 namespace SquashSim.Modes
 {
-    public enum AbilityKind { Shot, Power, Evolved, Stat, Perk, Instant }
+    public enum AbilityKind { Shot, Power, Evolved, Stat, Perk, Instant, Ultimate }
+    /// <summary>The chaos remake's builds (None: a perk or a bonus for any build).</summary>
+    public enum Family { None, Time, Power, Trick, Jackpot, Guard }
     public enum Rarity { Common, Rare, Epic, Legendary }
 
     public sealed class Ability
@@ -34,10 +41,15 @@ namespace SquashSim.Modes
         public bool Locked;
         /// <summary>Applies in the sim (RunMods) - else the run or the game handles it.</summary>
         public bool InSim = true;
+        /// <summary>The build it belongs to (the chaos remake).</summary>
+        public Family Family;
+        /// <summary>Out of the pool (the chaos remake): kept so an old run still shows it.</summary>
+        public bool Retired;
 
-        public bool Active { get { return Kind == AbilityKind.Shot || Kind == AbilityKind.Power || Kind == AbilityKind.Evolved; } }
+        public bool Active { get { return Kind == AbilityKind.Shot || Kind == AbilityKind.Power || Kind == AbilityKind.Evolved || Kind == AbilityKind.Ultimate; } }
         public bool Passive { get { return Kind == AbilityKind.Stat || Kind == AbilityKind.Perk; } }
         public string KindName { get { return Kind == AbilityKind.Instant ? "Bonus" : Kind.ToString(); } }
+        public string FamilyName { get { return Family == Family.None ? "" : Family.ToString().ToUpperInvariant(); } }
     }
 
     public static class GauntletAbilities
@@ -54,8 +66,10 @@ namespace SquashSim.Modes
         {
             if (_all != null) return _all;
             _all = new List<Ability>();
-            void A(string id, string name, AbilityKind kind, Rarity r, string blurb, Func<int, string> level, int max = 5, bool locked = false, bool inSim = true, string[] recipe = null)
-            { _all.Add(new Ability { Id = id, Name = name, Kind = kind, Rarity = r, Blurb = blurb, Level = level, MaxLevel = max, Locked = locked, InSim = inSim, Recipe = recipe }); }
+            void A(string id, string name, AbilityKind kind, Rarity r, string blurb, Func<int, string> level, int max = 5, bool locked = false, bool inSim = true, string[] recipe = null, Family fam = Family.None, bool retired = false)
+            { _all.Add(new Ability { Id = id, Name = name, Kind = kind, Rarity = r, Blurb = blurb, Level = level, MaxLevel = max, Locked = locked, InSim = inSim, Recipe = recipe, Family = fam, Retired = retired }); }
+            void R(string id) { var a = _all.Find(x => x.Id == id); a.Retired = true; }
+            void F(string id, Family f) { _all.Find(x => x.Id == id).Family = f; }
 
             // ---- shot techniques ----
             A("nick", "Nick Hunter", AbilityKind.Shot, Rarity.Rare, "Your kills hunt the nick: lower, wider, faster.",
@@ -121,6 +135,73 @@ namespace SquashSim.Modes
             A("life", "Extra Life", AbilityKind.Instant, Rarity.Rare, "One more go.", l => "+1 heart (up to " + Gauntlet.MaxLives + ")", max: 1, inSim: false);
             A("golden", "Golden Racket", AbilityKind.Instant, Rarity.Epic, "The next floor you lose costs nothing.", l => "Your next lost floor costs no heart", max: 1, inSim: false);
             A("coins", "Purse", AbilityKind.Instant, Rarity.Common, "Coins now.", l => "+" + Gauntlet.PurseCoins + " coins", max: 1, inSim: false);
+
+            // =========== the chaos remake (2026-10-28): the builds ===========
+            const AbilityKind U = AbilityKind.Ultimate, S = AbilityKind.Shot, P = AbilityKind.Perk;
+            // ---- TIME ----
+            A("freeze", "Time Stop", U, Rarity.Epic, "ULTIMATE. The world stops - all but you.",
+              l => "Your ultimate freezes the opponent solid for " + (0.7 + 0.25 * (l - 1)).ToString("0.0#") + " s: no step, no swing", max: 3, fam: Family.Time);
+            A("slowfield", "Slow Field", P, Rarity.Rare, "Every shot of yours drags time around them.",
+              l => "After each of your shots they move " + (6 * l) + "% slower for 0.6 s", fam: Family.Time);
+            A("haste", "Haste", P, Rarity.Common, "Every shot of yours speeds you up.",
+              l => "After each of your shots you move " + (5 * l) + "% faster for 1 s", fam: Family.Time);
+            A("rewind", "Rewind", P, Rarity.Epic, "That never happened.",
+              l => "The first " + (l == 1 ? "rally" : l + " rallies") + " you lose each game " + (l == 1 ? "is" : "are") + " played again", max: 2, locked: true, fam: Family.Time);
+            A("overclock", "Overclock", P, Rarity.Rare, "Your POWER meter fills faster.",
+              l => "POWER fills " + (20 * l) + "% faster", fam: Family.Time);
+            // ---- POWER ----
+            A("inferno", "Inferno", U, Rarity.Epic, "ULTIMATE. Set the ball on fire.",
+              l => "Your ultimate makes your next " + (RunMods.FireShotsPerUlt - 1 + l) + " shots fireballs: 35% faster, and a fireball winner scores +2", max: 3, fam: Family.Power);
+            A("meteor", "Meteor", S, Rarity.Rare, "Charged shots come down like meteors.",
+              l => "Charged drives and kills " + (8 * l) + "% faster", fam: Family.Power);
+            A("quake", "Quake", S, Rarity.Rare, "Your kills shake the court.",
+              l => "Your kill's bounce makes them stumble: frozen " + (0.12 * l).ToString("0.0#") + " s", locked: true, fam: Family.Power);
+            A("heavyball", "Heavy Ball", S, Rarity.Common, "Hard to dig out.",
+              l => "After your drive or kill their reach is " + (4 * l) + "% shorter", fam: Family.Power);
+            // ---- TRICK ----
+            A("curve", "Curveball", S, Rarity.Rare, "Your drives bend after the front wall.",
+              l => "Drives and kills curve away: " + (1.2 + 0.6 * l).ToString("0.0") + " m/s² sideways for 0.6 s", fam: Family.Trick);
+            A("deaddrop", "Dead Drop", S, Rarity.Rare, "Drops and boasts that just die.",
+              l => "Your drops' and boasts' first bounce keeps only " + (100 - 15 * l) + "% of its height", fam: Family.Trick);
+            A("ricochet", "Ricochet", S, Rarity.Epic, "The walls make it faster.",
+              l => "Every side wall your shot hits adds " + (5 * l) + "% pace", fam: Family.Trick);
+            A("knuckle", "Knuckleball", S, Rarity.Common, "Impossible to time.",
+              l => "Their timing window on your shots " + (8 * l) + "% shorter", fam: Family.Trick);
+            // ---- JACKPOT ----
+            A("jackpot", "Jackpot", U, Rarity.Epic, "ULTIMATE. Hit the jackpot.",
+              l => "A winner off your ultimate scores +" + (1 + l) + " more", max: 3, fam: Family.Jackpot);
+            A("combo", "Combo", P, Rarity.Rare, "Keep winning, win more.",
+              l => "Each rally won in a row scores 1 more (up to +" + l + ")", fam: Family.Jackpot);
+            A("wallride", "Wall Ride", P, Rarity.Epic, "Trick shots pay.",
+              l => "+1 point for each wall your winner hit after the front wall (up to +" + l + ")", max: 3, locked: true, fam: Family.Jackpot);
+            A("bounty", "Bounty", P, Rarity.Common, "Long rallies are worth more.",
+              l => "Win a rally of " + (l >= 3 ? 6 : 8) + "+ shots: +" + (l >= 5 ? 2 : 1), fam: Family.Jackpot);
+            A("firstblood", "First Blood", P, Rarity.Rare, "Strike first.",
+              l => "The first point of each game scores +" + l, max: 3, locked: true, fam: Family.Jackpot);
+            // ---- GUARD ----
+            A("magnet", "Magnet Racket", P, Rarity.Rare, "The ball comes to you.",
+              l => "Reach +" + (6 * l) + "%", fam: Family.Guard);
+            A("shield", "Shield", P, Rarity.Rare, "Your mistakes don't count.",
+              l => "Your first " + (l == 1 ? "tin or out" : l + " tins or outs") + " each game " + (l == 1 ? "is a let" : "are lets"), max: 3, fam: Family.Guard);
+            // ---- the legendary evolutions ----
+            A("world", "The World", AbilityKind.Evolved, Rarity.Legendary, "Time Stop + Slow Field: time is yours.",
+              l => "Time Stop lasts twice as long, and every game starts with a full POWER meter", max: 1, recipe: new[] { "freeze", "slowfield" }, fam: Family.Time);
+            A("supernova", "Supernova", AbilityKind.Evolved, Rarity.Legendary, "Inferno + Meteor: everything burns.",
+              l => "Every charged shot is a fireball", max: 1, recipe: new[] { "inferno", "meteor" }, fam: Family.Power);
+            A("wizard", "Wizard", AbilityKind.Evolved, Rarity.Legendary, "Curveball + Dead Drop: magic.",
+              l => "A winner that curved scores +1", max: 1, recipe: new[] { "curve", "deaddrop" }, fam: Family.Trick);
+            A("allin", "All In", AbilityKind.Evolved, Rarity.Legendary, "Jackpot + Combo: let it ride.",
+              l => "The jackpot is +4, times your combo (up to x4)", max: 1, recipe: new[] { "jackpot", "combo" }, fam: Family.Jackpot);
+            A("fortress", "Fortress", AbilityKind.Evolved, Rarity.Legendary, "Magnet Racket + Shield: nothing gets through.",
+              l => "Your tins and outs are always lets", max: 1, recipe: new[] { "magnet", "shield" }, fam: Family.Guard);
+
+            // the kept cards in their builds; the old small-number cards out of the pool
+            F("focus", Family.Time); F("quick", Family.Time);
+            F("heavy", Family.Power);
+            F("steady", Family.Trick); F("grace", Family.Trick);
+            F("ace", Family.Jackpot); F("nickbank", Family.Jackpot);
+            F("vampire", Family.Guard); F("engine", Family.Guard); F("reach", Family.Guard); F("ghost", Family.Guard);
+            foreach (var id in new[] { "nick", "vdrop", "trickle", "hlob", "rail", "wide", "thunder", "sniper", "momentum", "pressure", "second", "exec", "clock", "showtime", "matador" }) R(id);
 
             _byId = new Dictionary<string, Ability>();
             foreach (var a in _all) _byId[a.Id] = a;

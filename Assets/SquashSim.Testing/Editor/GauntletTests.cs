@@ -114,13 +114,35 @@ namespace SquashSim.Tests
         [Test] public void EvolutionsNeedBothPartsAtTheTop()
         {
             var run = Gauntlet.NewRun(11);
-            run.Abilities.Add(new RunMod { Id = "rail", Level = 5 });
-            run.Abilities.Add(new RunMod { Id = "steady", Level = 4 });
-            for (int i = 0; i < 20; i++) { run.Roll = i; Assert.That(Gauntlet.OfferFor(run, null), Does.Not.Contain("clock")); }
-            run.Abilities.Find(m => m.Id == "steady").Level = 5;
+            run.Abilities.Add(new RunMod { Id = "freeze", Level = 3 });
+            run.Abilities.Add(new RunMod { Id = "slowfield", Level = 4 });
+            for (int i = 0; i < 20; i++) { run.Roll = i; Assert.That(Gauntlet.OfferFor(run, null), Does.Not.Contain("world")); }
+            run.Abilities.Find(m => m.Id == "slowfield").Level = 5;
             run.Roll = 0;
-            Assert.That(Gauntlet.OfferFor(run, null), Does.Contain("clock"), "ready: on the table");
-            Assert.That(GauntletAbilities.Find("clock").Rarity, Is.EqualTo(Rarity.Legendary));
+            Assert.That(Gauntlet.OfferFor(run, null), Does.Contain("world"), "ready: on the table");
+            Assert.That(GauntletAbilities.Find("world").Rarity, Is.EqualTo(Rarity.Legendary));
+        }
+
+        [Test] public void FiveBuildsAndTheOldCardsRetired()
+        {
+            // the chaos remake: every build has its cards, an ultimate or a payoff, and a legendary evolution
+            foreach (var f in new[] { Family.Time, Family.Power, Family.Trick, Family.Jackpot, Family.Guard })
+            {
+                var cards = GauntletAbilities.All().FindAll(a => a.Family == f && !a.Retired);
+                Assert.That(cards.Count, Is.GreaterThanOrEqualTo(5), f + ": a build to make");
+                Assert.That(cards.Exists(a => a.Kind == AbilityKind.Evolved), Is.True, f + ": its legendary");
+            }
+            Assert.That(GauntletAbilities.All().FindAll(a => a.Kind == AbilityKind.Ultimate).Count, Is.EqualTo(3));
+            var run = Gauntlet.NewRun(5);
+            for (int i = 0; i < 60; i++)
+            {
+                run.Roll = i; run.Floor = 2 + i;
+                foreach (var id in Gauntlet.OfferFor(run, Talents(), 4)) Assert.That(GauntletAbilities.Find(id).Retired, Is.False, "retired: never offered (" + id + ")");
+            }
+            // the opponents bend the rules too: a chaos trait at level 3 somewhere in the elites
+            bool chaos = false;
+            for (int fl = 5; fl <= 200; fl += 5) foreach (var t in Gauntlet.Floor(run, fl).Traits) if (!t.Id.StartsWith("e_")) { chaos = true; Assert.That(t.Level, Is.EqualTo(Gauntlet.ChaosTraitLevel)); }
+            Assert.That(chaos, Is.True);
         }
 
         [Test] public void RerollsAndBanishes()
