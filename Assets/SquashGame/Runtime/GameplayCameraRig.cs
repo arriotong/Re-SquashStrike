@@ -51,6 +51,11 @@ namespace SquashGame
         object _flyFor;
         float _flyT = 99f;
         public bool FlyingIn { get; private set; }
+        readonly Replays.ShotCamera _shots = new Replays.ShotCamera();
+        Vector3 _cutPos, _cutLook;
+        int _replayFor = -1;
+        /// <summary>The shot an in-match replay is on now (tests).</summary>
+        public Replays.Shot ReplayShot { get { return _shots.Current; } }
         bool _wasCut;
 
         void Awake()
@@ -68,6 +73,21 @@ namespace SquashGame
             if (Replays.TheatreSession.Active != null && Runner != null && Runner.FramesActive)
             {
                 Replays.TheatreSession.Active.Film(_cam, Runner, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+                return;
+            }
+
+            // A cutscene: the walk-on, the prestige fly-around (camera work, 2026-10-28).
+            if (Runner != null && Runner.ReplayActive && Runner.CinematicKind != null)
+            {
+                Replays.Cutscenes.Film(_cam, Runner.View, Runner.ReplayProgress, Runner.CinematicOrbit, Courts.Current.Establishing, ref _cutPos, ref _cutLook, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+                return;
+            }
+
+            // A replay between rallies: the director's cuts (camera work, 2026-10-28) - the referee's review keeps its view.
+            if (Runner != null && Runner.ReplayActive && !(Runner is MatchRunner rv && rv.ReviewingCall))
+            {
+                if (_replayFor != Runner.ReplayNumber) { _replayFor = Runner.ReplayNumber; _shots.Reset(); }
+                _shots.Film(_cam, Replays.BroadcastDirector.Cut(Runner.ReplayProgress, Runner.ReplayBig, Runner.ReplayNumber), Runner.View, Mathf.Min(Time.unscaledDeltaTime, 0.1f));
                 return;
             }
 

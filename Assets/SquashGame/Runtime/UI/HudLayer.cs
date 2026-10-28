@@ -55,6 +55,10 @@ namespace SquashGame
         public string ChatShown { get { return _chat.style.display == DisplayStyle.Flex ? _chat.text : null; } }
         public string NetText { get { return _net.style.display == DisplayStyle.Flex ? _net.text : null; } }
         readonly VisualElement _intro = new VisualElement();
+        // camera work: a cutscene's title card
+        readonly VisualElement _cine = new VisualElement();
+        readonly Label _cineTitle = new Label(), _cineSub = new Label();
+        public string CineText { get { return _cine.style.display == DisplayStyle.Flex ? _cineTitle.text : null; } }
         // the chaos remake
         readonly VisualElement _power = new VisualElement(), _powerFill = new VisualElement(), _freeze = new VisualElement();
         readonly Label _powerLabel = new Label(), _pop = new Label(), _popSmall = new Label(), _freezeWord = new Label("TIME STOP");
@@ -138,6 +142,9 @@ namespace SquashGame
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
             _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
+            _cine.AddToClassList("hud-cine"); _cineTitle.AddToClassList("hud-cine-title"); _cineSub.AddToClassList("hud-cine-sub");
+            _cine.Add(_cineTitle); _cine.Add(_cineSub); _cine.style.display = DisplayStyle.None; _cine.pickingMode = PickingMode.Ignore; Add(_cine);
+            _cineTitle.pickingMode = PickingMode.Ignore; _cineSub.pickingMode = PickingMode.Ignore;
             // the chaos remake: the time-stop tint under everything, the meter under the bug, the pop-ups centre
             _freeze.AddToClassList("hud-freeze"); _freezeWord.AddToClassList("hud-freeze-word"); _freeze.Add(_freezeWord); _freeze.style.display = DisplayStyle.None; Insert(0, _freeze);
             _power.AddToClassList("hud-power"); _powerLabel.AddToClassList("hud-power-label");
@@ -201,10 +208,13 @@ namespace SquashGame
             // ---- banners ----
             string banner = null, sub = null, centre = null, prompt = null, key = null;
             if (r.DeviceLost != null) centre = r.DeviceLost;
-            if (r.ReplayActive)
+            if (r.ReplayActive && r.CinematicKind != null) { }                                    // a cutscene: its own captions (Cinematic)
+            else if (r.ReplayActive)
             {
-                banner = "REFEREE REVIEW";
-                sub = r.ReplayCaption + "   ·   " + r.ReplaySpeed.ToString("0.0") + "x   ·   any key skips";
+                bool review = r.ReviewingCall || r.MomentCaption == null;
+                banner = review ? "REFEREE REVIEW" : "REPLAY";
+                string what = review ? r.ReplayCaption : r.MomentCaption == "REPLAY" ? null : r.MomentCaption;
+                sub = (what != null ? what + "   ·   " : "") + r.ReplaySpeed.ToString("0.0") + "x   ·   any key skips";
             }
             else if (m.Phase == MatchPhase.RallyOver && m.LastOutcome != null)
             {
@@ -222,7 +232,7 @@ namespace SquashGame
                     sub = point + (r.OnlineMatch != null ? "" : "V  replay");
                 }
             }
-            if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused)
+            if (m.Phase == MatchPhase.AwaitToss && (s.Server == r.HumanIndex || twoPlayer) && !r.Clock.Paused && !r.ReplayActive)
             {
                 string who = twoPlayer ? names[s.Server] + " to serve" : "Your serve";
                 key = twoPlayer && s.Server == 1 ? IntentSource.BindingLabel("Hit", true) : IntentSource.Keys("Hit");
@@ -342,8 +352,18 @@ namespace SquashGame
 
             // The walk-on: once per match, as it starts.
             if (_introFor != m) { _introFor = m; _introLeft = s.Rallies == 0 && m.History.Count == 0 ? 3.6f : 0f; }
-            if (_introLeft > 0 && m.Phase == MatchPhase.AwaitToss) _introLeft -= Time.unscaledDeltaTime; else if (m.Phase != MatchPhase.AwaitToss && m.Phase != MatchPhase.WarmUp) _introLeft = 0;
-            bool intro = _introLeft > 0;
+            if (_introLeft > 0 && m.Phase == MatchPhase.AwaitToss && !r.ReplayActive) _introLeft -= Time.unscaledDeltaTime; else if (m.Phase != MatchPhase.AwaitToss && m.Phase != MatchPhase.WarmUp) _introLeft = 0;
+            bool intro = _introLeft > 0 && !r.ReplayActive;
+            // camera work: a cutscene's card - the prestige title over the fly-around, the names as they walk on
+            bool cine = r.ReplayActive && r.CinematicKind != null;
+            if (cine)
+            {
+                bool orbiting = r.ReplayProgress < r.CinematicOrbit && r.CinematicTitle != null;
+                _cineTitle.text = orbiting ? r.CinematicTitle : names[0] + "   v   " + names[1];
+                _cineSub.text = (r.CinematicSub ?? "") + "   ·   any key skips";
+            }
+            _cine.style.display = cine ? DisplayStyle.Flex : DisplayStyle.None;
+            _cine.EnableInClassList("hud-cine--in", cine && r.ReplayProgress > 0.02f && r.ReplayProgress < 0.97f);
             if (intro)
             {
                 _introNames.text = names[0] + "   v   " + names[1];

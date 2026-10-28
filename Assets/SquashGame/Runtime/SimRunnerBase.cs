@@ -182,6 +182,8 @@ namespace SquashGame
         /// <summary>P2-M8: stepping through a lot of play at once (back after a dropped connection): no sounds for it.</summary>
         public bool CatchingUp { get; protected set; }
         public SimEvent LastRacketContact { get; private set; }
+        /// <summary>Camera work: the rally had a nick (reset as a rally starts); the last stroke was struck in a dive.</summary>
+        public bool RallyNick, LastShotDived;
         public string LastFirstWall { get; private set; }
         bool _awaitingFirstWall;
 
@@ -209,6 +211,7 @@ namespace SquashGame
         {
             int steps = Mathf.Min(_historyCount, (int)(seconds / PhysicsConfig.Current.Sim.FixedDt));
             if (steps < 2) return;
+            ReplayNumber++; ReplayBig = false;
             _replay.Clear();
             for (int i = steps; i >= 1; i--)
                 _replay.Add(_history[((_historyHead - i) % HistorySteps + HistorySteps) % HistorySteps]);
@@ -220,7 +223,28 @@ namespace SquashGame
             ReplayActive = true;
         }
 
-        public void StopReplay() { ReplayActive = false; View = _curr; }
+        public void StopReplay() { ReplayActive = false; CinematicKind = null; View = _curr; }
+
+        /// <summary>Camera work: a cutscene (Replays.Cutscenes) plays its frames through the replay path - the sim waits.</summary>
+        public void PlayCinematic(List<RenderSnapshot> frames, string kind, float orbitShare, string title, string sub)
+        {
+            if (frames == null || frames.Count < 2) return;
+            _replay.Clear(); _replay.AddRange(frames);
+            _replayCursor = 0;
+            _replaySpeed = PhysicsConfig.Current.Sim.FixedDt * Replays.Cutscenes.Rate;
+            ReplayCaption = "";
+            ReplayNumber++; ReplayBig = false;
+            CinematicKind = kind; CinematicOrbit = orbitShare; CinematicTitle = title; CinematicSub = sub;
+            ReplayActive = true;
+        }
+        /// <summary>The cutscene showing (null: none), the orbit's share of it, its title card.</summary>
+        public string CinematicKind { get; private set; }
+        public float CinematicOrbit { get; private set; }
+        public string CinematicTitle { get; private set; }
+        public string CinematicSub { get; private set; }
+        /// <summary>Camera work: replays so far (the director varies its cuts), and whether this one ends on a big moment.</summary>
+        public int ReplayNumber { get; private set; }
+        public bool ReplayBig;
 
         // ---- P2-M6: the replay theatre - recorded frames (60 a second) shown instead of the sim ----
         public const float FrameRate = 60f;
@@ -437,12 +461,14 @@ namespace SquashGame
                 if (ev.Type == SimEventType.RacketContact)
                 {
                     LastRacketContact = ev;
+                    LastShotDived = ev.PlayerIndex >= 0 && ev.PlayerIndex < _curr.Count && _curr.Athlete(ev.PlayerIndex).Diving;   // camera work
                     _awaitingFirstWall = true;
                     if (FreezeOnCollision && FreezeOnRacket) Clock.Pause();
                 }
                 else if (ev.Type == SimEventType.Impact)
                 {
                     LastImpact = ev;
+                    if (ev.Nick) RallyNick = true;                                 // camera work: a big moment
                     if (_awaitingFirstWall && ev.SurfaceClass != "floor" && ev.SurfaceClass != "ceiling" &&
                         ev.SurfaceClass != "outBackstop")
                     {

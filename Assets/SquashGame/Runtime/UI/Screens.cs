@@ -200,7 +200,13 @@ namespace SquashGame.UI
             Row(g, new SelectorItem("Quick Match scoring", MatchChoices.ScoringLabels, () => ch.Scoring, i => { ch.Scoring = i; Changed(false); }), VersusScreen.ScoringHint);
             Row(g, new SelectorItem("Warm-up", new[] { "Off", "On" }, () => S.WarmUp ? 1 : 0, i => { S.WarmUp = i == 1; Changed(false); }),
                 "45 seconds each on your own before the first serve, to find your length. Enter or Y skips it. Quick Match, Local Versus and the career (online always has it)."); 
-            Row(g, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Classic: close behind the back wall, the ball's pace easy to read. High: looking down on the court. Low glass: close behind the glass. TV: the broadcast view from far up in the stands.");
+            // ---- CAMERA (camera work, 2026-10-28: its own tab - Gameplay was full) ----
+            var cm = Panel("CAMERA");
+            Row(cm, new SelectorItem("Camera", GameplayCameraRig.PresetNames, () => S.Camera, i => { S.Camera = i; Changed(false); }), "Classic: close behind the back wall, the ball's pace easy to read. High: looking down on the court. Low glass: close behind the glass. TV: the broadcast view from far up in the stands.");
+            Row(cm, new SelectorItem("Replays", new[] { "Off", "Big moments", "Every point" }, () => S.Replays, i => { S.Replays = i; Changed(false); }),
+                "Between rallies, a replay cut like a broadcast - the front-wall cam, the glass, over the shoulder. Big moments: long rallies, nicks, dives, games won. Any key skips one. Never online.");
+            Row(cm, new SelectorItem("Cutscenes", new[] { "Off", "On" }, () => S.Cutscenes ? 1 : 0, i => { S.Cutscenes = i == 1; Changed(false); }),
+                "The players walking out to the court, and the fly-around before a final. Any key skips. Never online.");
             // P2-M8: online
             // (your online name is your player name: your profile, from the tag on the main menu - P6 made room here for the scoring)
             // ---- ONLINE (batch 4: its own tab - Gameplay was full) ----

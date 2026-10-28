@@ -1198,3 +1198,16 @@
 /* the Europe inset (a busy week in Europe) */
 .k-wm-inset { position: absolute; border-radius: 10px; overflow: hidden; border-width: 2px; border-color: rgba(200, 255, 61, 0.6); background-color: rgb(11, 16, 24); }
 .k-wm-inset-name { position: absolute; left: 10px; top: 6px; font-size: 11px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---- camera work: a cutscene's title card (the prestige fly-around, the walk-on) ---- */
+.hud-cine {
+    position: absolute; left: 0; right: 0; bottom: 96px; align-items: center;
+    opacity: 0; translate: 0 24px; transition-property: opacity, translate; transition-duration: 0.45s;
+}
+.hud-cine--in { opacity: 1; translate: 0 0; }
+.hud-cine-title {
+    padding: 10px 44px; border-radius: 6px; background-color: rgba(12, 13, 16, 0.86); border-bottom-width: 3px; border-bottom-color: rgb(200, 255, 61);
+    font-size: 46px; letter-spacing: 6px; color: rgb(255, 255, 255); -unity-text-align: middle-center; white-space: nowrap;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+}
+.hud-cine-sub { margin-top: 8px; font-size: 13px; letter-spacing: 3px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }

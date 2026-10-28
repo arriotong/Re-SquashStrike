@@ -19,6 +19,9 @@ namespace SquashGame.Profile
     [Serializable]
     public sealed class GameSettings
     {
+        // ---- camera work (2026-10-28): replays between rallies (0 off, 1 big moments, 2 every point), cutscenes ----
+        public int Replays = 1;
+        public bool Cutscenes = true;
         // ---- controls ----
         public bool Assisted;
         public float AimSpeed = 1f;              // IntentSource.MouseSensitivityScale

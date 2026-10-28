@@ -49,7 +49,7 @@ namespace SquashGame.Tests
             string replays = Path.Combine(ProfileStore.Folder, "Replays");                 // P2-M6: no replays from earlier tests
             if (Directory.Exists(replays)) Directory.Delete(replays, true);
             Replays.ReplayLibrary.Reset();
-            ProfileStore.Current.Settings = new GameSettings();
+            ProfileStore.Current.Settings = new GameSettings { Cutscenes = false, Replays = 0 };   // (camera work: the tests that want them turn them on)
             ProfileStore.Current.Academy.Suggested = !newPlayer;
             FrontEnd.StartAtTitle = true;
         }

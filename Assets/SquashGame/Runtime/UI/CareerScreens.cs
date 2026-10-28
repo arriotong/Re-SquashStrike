@@ -301,7 +301,19 @@ namespace SquashGame.UI
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
                 Attributes = c.Effective,                                  // your levels and your gear (P7 phase 5)
                 GearLooks = GearLooks(c),                                   // bought gear shows (the starters leave your Locker look)
+                Prestige = PrestigeOf(c),                                   // camera work: a final opens with the fly-around
             }.Dressed());
+        }
+
+        /// <summary>Camera work: the title a prestige match opens with (a final; any round of the World Championship and the
+        /// Finals) - null for the rest.</summary>
+        public static string PrestigeOf(CareerSession c)
+        {
+            var e = c.S.Current;
+            if (e == null || e.Home) return null;
+            bool big = e.Tier == (int)Tier.WorldChampionship || e.Tier == (int)Tier.WorldTourFinals;
+            if (c.PlayersLeft == 2) return ("THE FINAL  ·  " + e.Name).ToUpperInvariant();
+            return big ? (e.Name + "  ·  " + Tour.RoundName(c.PlayersLeft)).ToUpperInvariant() : null;
         }
 
         public static string[] GearLooks(CareerSession c)

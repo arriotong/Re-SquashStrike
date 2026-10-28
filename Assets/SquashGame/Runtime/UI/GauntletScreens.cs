@@ -106,6 +106,7 @@ namespace SquashGame.UI
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = CourtFor(run, f), CrowdFill = CrowdFor(f),
                 P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : "FLOOR " + f,
+                Prestige = fl.Kind == FloorKind.Boss ? ("THE BOSS  ·  FLOOR " + f + "  ·  " + fl.Name).ToUpperInvariant() : null,     // camera work
             };
         }
 

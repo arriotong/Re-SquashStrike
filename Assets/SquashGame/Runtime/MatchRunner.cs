@@ -54,6 +54,8 @@ namespace SquashGame
         public uint KitSeed;
         /// <summary>The court to play on (Courts.All id); null = the one being drawn.</summary>
         public string Court;
+        /// <summary>Camera work: a prestige match's title ("THE FINAL  ·  BRITISH OPEN") - it opens with the fly-around; null: none.</summary>
+        public string Prestige;
         /// <summary>How full the stands are, 0..1 (0 = full: the default).</summary>
         public float CrowdFill;
         /// <summary>P3-R5: a Gauntlet floor (the post-match and pause screens go back to the run).</summary>
@@ -446,6 +448,7 @@ namespace SquashGame
             }
 
             WatchDevices();
+            Cutscene();
             // A review is skipped with any key (not on the frame it started).
             if (ReplayActive) { if (_reviewFrames++ > 0 && AnyPress()) StopReplay(); }
             else { _reviewFrames = 0; ReviewingCall = false; }
@@ -455,6 +458,7 @@ namespace SquashGame
                 StartReplay(ReviewSeconds, ReplaySpeed, _replayCaption);
                 ReviewingCall = ReplayActive; _reviewFrames = 0;
             }
+            AutoReplay();
             var kb = Keyboard.current;
             var pad = Gamepad.current;
             bool view = (kb != null && kb.vKey.wasPressedThisFrame) || (pad != null && pad.selectButton.wasPressedThisFrame);
@@ -490,6 +494,66 @@ namespace SquashGame
 
         /// <summary>The same settings again (new opponent seed).</summary>
         public void RestartMatch() { BeginMatch(Settings); }
+
+        // ---------------- camera work (2026-10-28): the cutscenes ----------------
+
+        object _cutFor;
+
+        /// <summary>A new match: the walk-on (the prestige fly-around first, for a final) - Settings > Camera > Cutscenes.
+        /// Never online (the match there can't wait), nor when the match runs sped up.</summary>
+        void Cutscene()
+        {
+            if (_cutFor == Sim) return;
+            _cutFor = Sim;
+            if (!Profile.ProfileStore.Current.Settings.Cutscenes || OnlineMatch != null || Sim.History.Count > 0 || Clock.TimeScale > 1.01 || VenueView.Detail <= 0) return;
+            bool orbit = !string.IsNullOrEmpty(Settings.Prestige);
+            var frames = Replays.Cutscenes.Build(View, orbit, out float share);
+            var court = Courts.Find(Settings.Court ?? Courts.CurrentId);
+            string where = court != null ? court.Name + (string.IsNullOrEmpty(court.Blurb) || court.Blurb.Length > 24 ? "" : "  ·  " + court.Blurb.ToUpperInvariant()) : "";
+            PlayCinematic(frames, Replays.Cutscenes.Intro, share, orbit ? Settings.Prestige : null, where);
+            _reviewFrames = 0;
+        }
+
+        // ---------------- camera work (2026-10-28): replays between rallies ----------------
+
+        int _autoFor = -1;
+        MatchPhase _phaseWas;
+        /// <summary>The caption of the big moment being replayed ("WHAT A RALLY - 18 SHOTS"); null when none.</summary>
+        public string MomentCaption { get; private set; }
+
+        /// <summary>A rally just ended on a big moment (or every point, by the setting): replay it, cut like television.
+        /// Never online (the match there can't wait), nor when the match runs sped up (tests, fast-forward).</summary>
+        void AutoReplay()
+        {
+            if (Sim.Phase == MatchPhase.Rally && _phaseWas != MatchPhase.Rally) RallyNick = false;
+            _phaseWas = Sim.Phase;
+            if (Sim.Phase != MatchPhase.RallyOver || Sim.History.Count == _autoFor || ReplayActive || _replayRequested) return;
+            _autoFor = Sim.History.Count;
+            var o = Sim.LastOutcome;
+            int mode = Profile.ProfileStore.Current.Settings.Replays;
+            if (o == null || o.Kind == RallyEnd.Let || o.Winner < 0 || mode <= 0 || OnlineMatch != null || Clock.TimeScale > 1.01) return;
+            string moment = Moment(o);
+            if (moment == null && mode < 2) return;
+            StartReplay(ReplaySeconds + 1.5f, ReplaySpeed, moment ?? "");
+            ReplayBig = moment != null;
+            MomentCaption = moment ?? "REPLAY";
+            ReviewingCall = false; _reviewFrames = 0;
+        }
+
+        /// <summary>What made the rally just ended a big moment (null: an ordinary point).</summary>
+        string Moment(RallyOutcome o)
+        {
+            int shots = Sim.ShotsPerRally.Count > 0 ? Sim.ShotsPerRally[Sim.ShotsPerRally.Count - 1] : 0;
+            bool winner = o.Kind == RallyEnd.NotUp;
+            for (int i = Sim.Chaos.Count - 1; i >= 0 && Sim.Chaos[i].Time >= Sim.Time - 8; i--)
+                if (Sim.Chaos[i].Kind == "bonus" && Sim.Chaos[i].Value >= 2) return (1 + Sim.Chaos[i].Value) + "-POINT WINNER";
+            if (Sim.Score.MatchOver) return "MATCH";
+            if (Sim.Score.GameOver) return "GAME";
+            if (winner && RallyNick) return "IN THE NICK";
+            if (winner && LastShotDived) return "FROM A DIVE";
+            if (winner && shots >= 12) return "WHAT A RALLY  ·  " + shots + " SHOTS";
+            return null;
+        }
 
         /// <summary>P5 Focus: charges left this game; how long and how slow a charge is.</summary>
         public int FocusLeft { get; private set; }

@@ -20,7 +20,7 @@ using UnityEngine;
 
 namespace SquashGame.Replays
 {
-    public enum TheatreCam { Broadcast, BackWall, Side, Overhead, Free }
+    public enum TheatreCam { Broadcast, BackWall, Side, Overhead, Free, Director, FrontWall, Shoulder, Corner, BallCam }
 
     public sealed class TheatreSession
     {
@@ -34,14 +34,18 @@ namespace SquashGame.Replays
         /// <summary>The rally showing (-1: none yet).</summary>
         public int Rally { get; private set; } = -1;
         public RallyClip Clip { get { return Rally >= 0 ? Builder.Clips[Rally] : null; } }
-        public TheatreCam Camera = TheatreCam.Broadcast;
+        public TheatreCam Camera = TheatreCam.Director;          // camera work (2026-10-28): the director's cuts by default
         public static readonly double[] Speeds = { 1, 0.5, 0.25 };
         public int SpeedIndex { get; private set; }
         /// <summary>Playing the highlight reel (its rally list), or one rally.</summary>
         public List<int> Reel { get; private set; }
         int _reelAt;
-        /// <summary>The reel plays the last moments of the winning shot again, slow, from the side.</summary>
+        /// <summary>The reel plays the last moments of the winning shot again, slow - the director from two angles (the
+        /// front-wall cam, then over the shoulder or the corner), a camera you chose from the side.</summary>
         bool _slowEnding;
+        int _endingPass;
+        TheatreCam _userCam = TheatreCam.Director;
+        readonly ShotCamera _shots = new ShotCamera();
 
         /// <summary>The free camera, steered (yaw, pitch in degrees; distance in metres).</summary>
         public float FreeYaw = 25f, FreePitch = 22f, FreeDistance = 7.5f;
@@ -82,18 +86,19 @@ namespace SquashGame.Replays
             bool atEnd = _runner.FrameCursor >= _runner.FrameCount - 1.001;
             if (Reel != null && atEnd && !Paused)
             {
-                if (!_slowEnding && c.Tags != RallyTag.None)
+                if (c.Tags != RallyTag.None && _endingPass < (_userCam == TheatreCam.Director ? 2 : 1))
                 {
-                    // the winning shot again: the last 2 seconds before the call, at half speed, from the side
-                    _slowEnding = true;
+                    // the winning shot again: the last 2 seconds before the call, at half speed
+                    _slowEnding = true; _endingPass++;
                     SetSpeed(1);
-                    Camera = TheatreCam.Side;
+                    if (_userCam != TheatreCam.Director) Camera = TheatreCam.Side;
+                    _shots.Reset();
                     _runner.FrameCursor = System.Math.Max(0, c.EndFrame - 2 * SimRunnerBase.FrameRate);
                     return;
                 }
-                _slowEnding = false;
+                _slowEnding = false; _endingPass = 0;
                 _reelAt++;
-                if (_reelAt < Reel.Count && Builder.Clips[Reel[_reelAt]].Ready) { SetSpeed(0); Camera = TheatreCam.Broadcast; Show(Reel[_reelAt]); }
+                if (_reelAt < Reel.Count && Builder.Clips[Reel[_reelAt]].Ready) { SetSpeed(0); Camera = _userCam; Show(Reel[_reelAt]); }
                 else if (_reelAt >= Reel.Count) Paused = true;
                 else _reelAt--;                                         // not built yet: wait for it
             }
@@ -120,14 +125,16 @@ namespace SquashGame.Replays
         public void PlayReel(List<int> reel = null)
         {
             Reel = reel ?? Highlights.Reel(File);
-            _reelAt = 0; _slowEnding = false;
-            SetSpeed(0); Camera = TheatreCam.Broadcast;
+            _reelAt = 0; _slowEnding = false; _endingPass = 0;
+            if (Camera == TheatreCam.Side && _userCam != TheatreCam.Side) Camera = _userCam;
+            _userCam = Camera;
+            SetSpeed(0);
             if (Reel.Count > 0) Show(Reel[0]);
         }
 
         public void SetSpeed(int index) { SpeedIndex = Mathf.Clamp(index, 0, Speeds.Length - 1); _runner.FrameSpeed = Speed; }
         public void NextSpeed() { SetSpeed((SpeedIndex + 1) % Speeds.Length); }
-        public void NextCamera() { Camera = (TheatreCam)(((int)Camera + 1) % 5); }
+        public void NextCamera() { Camera = (TheatreCam)(((int)Camera + 1) % System.Enum.GetValues(typeof(TheatreCam)).Length); _userCam = Camera; }
 
         /// <summary>The previous / next rally that is ready.</summary>
         public bool Step(int d)
@@ -162,7 +169,26 @@ namespace SquashGame.Replays
             Vector3 mid = v.Count > 1 ? (v.A0.Pos + v.A1.Pos) * 0.5f : v.A0.Pos;
             Vector3 action = Vector3.Lerp(mid, ball, 0.45f); action.y = Mathf.Clamp(ball.y, 0.6f, 2.2f) * 0.5f + 0.5f;
             Vector3 pos, look; float fov;
-            if (Camera != _lastCam || Rally != _lastRally) { _haveCam = false; _lastCam = Camera; _lastRally = Rally; }
+            if (Camera != _lastCam || Rally != _lastRally) { _haveCam = false; _lastCam = Camera; _lastRally = Rally; _shots.Reset(); }
+            // camera work (2026-10-28): the director's cuts and the broadcast angles
+            if (Camera >= TheatreCam.Director)
+            {
+                var c = Clip;
+                Shot s;
+                switch (Camera)
+                {
+                    case TheatreCam.FrontWall: s = Shot.FrontWall; break;
+                    case TheatreCam.Shoulder: s = Shot.Shoulder; break;
+                    case TheatreCam.Corner: s = Shot.Corner; break;
+                    case TheatreCam.BallCam: s = Shot.BallCam; break;
+                    default:
+                        s = _slowEnding ? BroadcastDirector.EndingAngle(_endingPass - 1, Rally)
+                                        : BroadcastDirector.Cut(Position, c != null && c.Tags != RallyTag.None, Rally);
+                        break;
+                }
+                _shots.Film(cam, s, v, dt);
+                return;
+            }
             switch (Camera)
             {
                 case TheatreCam.BackWall:                            // low at the back wall, looking down the court

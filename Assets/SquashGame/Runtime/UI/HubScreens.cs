@@ -333,6 +333,7 @@ namespace SquashGame.UI
                 var s = new MatchSettings
                 {
                     TwoPlayer = false, Opponent = C.OpponentId,
+                    Prestige = C.OpponentId == "star:" + SquashSim.Career.Stars.No1.Id ? "THE WORLD No. 1" : null,       // camera work
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
                     Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id
                 }.Dressed();

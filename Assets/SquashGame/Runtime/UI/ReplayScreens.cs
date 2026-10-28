@@ -363,7 +363,7 @@ namespace SquashGame.UI
             _fill.style.width = Length.Percent(100f * _t.Position);
             _time.text = ReplayText.Seconds((float)(_t.Cursor / SimRunnerBase.FrameRate)) + " / " + ReplayText.Seconds(c.Seconds);
             _speed.text = _t.Speed == 1 ? "1x" : _t.Speed == 0.5 ? "0.5x" : "0.25x";
-            _cam.text = _t.Camera.ToString().ToUpperInvariant().Replace("BACKWALL", "BACK WALL");
+            _cam.text = _t.Camera.ToString().ToUpperInvariant().Replace("BACKWALL", "BACK WALL").Replace("FRONTWALL", "FRONT WALL").Replace("BALLCAM", "BALL CAM");
             _play.text = _t.Paused ? "▶" : "❚❚";
         }
 

@@ -162,7 +162,8 @@ namespace SquashGame.Tests
             }
             for (int i = 0; i < spots.Count; i++)
                 for (int j = i + 1; j < spots.Count; j++)
-                    Assert.That(Vector3.Distance(spots[i], spots[j]), Is.GreaterThan(0.5f), (TheatreCam)i + " and " + (TheatreCam)j + " film from their own places");
+                    if ((TheatreCam)i != TheatreCam.Director && (TheatreCam)j != TheatreCam.Director)      // (the director borrows the others' shots)
+                        Assert.That(Vector3.Distance(spots[i], spots[j]), Is.GreaterThan(0.5f), (TheatreCam)i + " and " + (TheatreCam)j + " film from their own places");
 
             // ---- the whole pass, the reel ----
             while (!t.Builder.Done) { t.Tick(0.016f); yield return null; }
