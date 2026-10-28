@@ -84,6 +84,16 @@ namespace SquashGame
         public bool ServeLegal { get; private set; } = true;
         public bool Serving { get; private set; }
         readonly ArcadeStroke _servePreview = new ArcadeStroke(1);
+        // The drive / kill line is a search through the real flight (ArcadeStroke.CornerLine, ~1 ms): re-run at most every
+        // LineRefresh seconds, or at once on a new corner or shot.
+        readonly ArcadeStroke _linePreview = new ArcadeStroke(2);
+        readonly BallState _lineBall = new BallState();
+        static System.Collections.Generic.List<Surface> _lineCourt;
+        const float LineRefresh = 0.1f;
+        float _lineAge;
+        double _lineAt;
+        int _lineCorner;
+        string _lineShot;
         float _lastPreviewX = float.NaN, _lastPreviewY, _previewAt;
         bool _lastHard, _lastAssisted;
 
@@ -263,9 +273,24 @@ namespace SquashGame
             if (LineShown)
             {
                 var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
-                LineX = ArcadeStroke.PullToLine(aim.X, ArcadeStroke.ShotLine(from.X, from.Z, ShotType, aim.X), ctrl.Arcade.Assisted, ShotType);
                 double ly = ShotType == "kill" ? CourtDimensions.TIN_H + GameTuning.Shots.KillHeightAboveTin + 0.1
                           : ShotType == "drop" ? CourtDimensions.TIN_H + GameTuning.Shots.DropHeightAboveTin + 0.1 : aim.Y;
+                double line;
+                if (ShotType == "drive" || ShotType == "kill")
+                {
+                    _lineAge -= dt;
+                    int corner = ArcadeStroke.Corner(aim.X);
+                    if (_lineAge <= 0f || corner != _lineCorner || ShotType != _lineShot)
+                    {
+                        _lineAge = LineRefresh; _lineCorner = corner; _lineShot = ShotType;
+                        if (_lineCourt == null) _lineCourt = CourtSurfaces.Create();
+                        _lineBall.Reset(new V3(from.X, System.Math.Max(0.4, from.Y), from.Z), new V3(0, 0, 0), null, 40);
+                        _lineAt = _linePreview.LineFor(_lineBall, _lineCourt, ShotType, aim.X, ly, PhysicsConfig.Current.ArcadeHit.DriveSpeed);
+                    }
+                    line = _lineAt;
+                }
+                else line = ArcadeStroke.ShotLine(from.X, from.Z, ShotType, aim.X);
+                LineX = ArcadeStroke.PullToLine(aim.X, line, ctrl.Arcade.Assisted, ShotType);
                 _line.position = SimToWorld.Pos(LineX, ly, 0.03);
                 _line.rotation = Quaternion.identity;
                 float d = radius * 0.75f;

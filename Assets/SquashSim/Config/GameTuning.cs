@@ -79,7 +79,12 @@ namespace SquashSim
             // the side wall it lands and how deep (m) - straight, then cross.
             // how far the shot is pulled from the aim onto its line (1 = the line exactly, 0 = the aim). 2026-10-20: was
             // 1.0 / 0.8 - Assisted played the perfect shot whatever the aim; now it helps, and the aim still matters
-            public const double LineSnapAssisted = 0.6, LineSnapNonAssisted = 0.4;
+            public const double LineSnapAssisted = 0.92, LineSnapNonAssisted = 0.8;   // 2026-10-28: "guide it to the corner" (was 0.6 / 0.4)
+            public const double LineFreedom = 0.25;                // the most the aim moves a shot off its line (m on the front wall)
+            // Drives and kills search for the line into the corner (ArcadeStroke.CornerLine): this far either side of the
+            // textbook line, in these steps; where they should die (off the side wall); a side wall before the bounce costs this.
+            public const int CornerTries = 5;
+            public const double CornerStep = 0.18, CornerStraightOff = 0.35, CornerCrossOff = 0.7, CornerSidePenalty = 1.2;
             public const double LineSnapAssistedLob = 0.9;          // 2026-10-27: an assisted lob follows its line (the aim's pull took cross lobs into the side wall, short)
             public const double AssistSpreadScale = 0.75;          // Assisted: a contact's spread, a little tighter
             public const double LineMidBall = 0.35;                // a ball this near the middle: the aim's side is the corner
