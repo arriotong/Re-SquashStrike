@@ -170,8 +170,9 @@ namespace SquashGame.Tests
             }
             Assert.That(events, Is.EqualTo(54), "Mumbai's two events share JVPG");
             Assert.That(Courts.ForCareerEvent("British Open", (int)Tier.Diamond), Is.EqualTo(Courts.TourPrefix + "rep"), "a World Tour stage of its own");
-            Assert.That(Courts.ForCareerEvent("Charlottesville Open", (int)Tier.Copper), Is.EqualTo(Courts.ForCareerTier((int)Tier.Copper)), "the rest: their tier's court");
-            Assert.That(Courts.ForCareerEvent("Toronto Open", (int)Tier.Challenger15), Is.EqualTo(Courts.ForCareerTier((int)Tier.Challenger15)), "a reuse: its tier's court until Toronto's is built");
+            Assert.That(Courts.ForCareerEvent("Charlottesville Open", (int)Tier.Copper), Is.EqualTo(Courts.TourPrefix + "mcarthur"), "part 3: the Silver, Bronze and Copper events have stages too");
+            Assert.That(Courts.ForCareerEvent("No Such Open", (int)Tier.Copper), Is.EqualTo(Courts.ForCareerTier((int)Tier.Copper)), "anything else: its tier's court");
+            Assert.That(Courts.ForCareerEvent("Toronto Open", (int)Tier.Challenger15), Is.EqualTo(Courts.TourPrefix + "galleria"), "a reuse: Toronto's Challenger plays in the Galleria (part 3)");
             Assert.That(Courts.Find("venue:nowhere"), Is.Null);
         }
     }

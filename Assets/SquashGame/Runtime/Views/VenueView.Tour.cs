@@ -40,6 +40,27 @@ namespace SquashGame
                 case "allypally": AllyPally(c, v); break;
                 case "zurich": Zurich(c, v); break;
                 case "pool": Pool(c, v); break;
+                // part 3: the Silver, Bronze and Copper events (VenueView.Tour3.cs)
+                case "cleveland": Cleveland(c, v); break;
+                case "bac": Bac(c, v); break;
+                case "steelcity": SteelCity(c, v); break;
+                case "theatreroyal": TheatreRoyal(c, v); break;
+                case "opensquash": OpenSquash(c, v); break;
+                case "thecurve": TheCurve(c, v); break;
+                case "bowvalley": BowValley(c, v); break;
+                case "sportwerk": Sportwerk(c, v); break;
+                case "sportcity": Sportcity(c, v); break;
+                case "squashonfire": SquashOnFire(c, v); break;
+                case "nash": Nash(c, v); break;
+                case "citysquash": CitySquash(c, v); break;
+                case "mcarthur": McArthur(c, v); break;
+                case "waterfront": Waterfront(c, v); break;
+                case "galleria": Galleria(c, v); break;
+                case "viktoria": Viktoria(c, v); break;
+                case "wintergarden": Wintergarden(c, v); break;
+                case "wpcc": Wpcc(c, v); break;
+                case "gymkhana": Gymkhana(c, v); break;
+                case "bermuda": Bermuda(c, v); break;
                 default: ShowCourt(c); break;
             }
         }
