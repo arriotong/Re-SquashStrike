@@ -79,10 +79,13 @@ namespace SquashSim
         public readonly SplitStepTracker SplitStep = new SplitStepTracker();
 
         // ---- warm-up ----
+        /// <summary>The knock-up: whose ball it is (who strikes next - it changes with every shot), the shots so far, the
+        /// balls brought back into play, and whether it is in that player's hand (drop it and hit, the practice court's way).</summary>
         public int WarmUpOwner { get; private set; }
         public int WarmUpShots { get; private set; }
-        public int WarmUpHalf { get; private set; }
         public int WarmUpFeeds { get; private set; }
+        public bool WarmUpInHand { get; private set; }
+        int _warmUpLast;
         double _deadFor;
 
         // ---- turn queries shared by every brain (rally or warm-up) ----
@@ -91,7 +94,7 @@ namespace SquashSim
         /// <summary>May player i touch the ball right now?</summary>
         public bool CanStrike(int i)
         {
-            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !Ball.Asleep;
+            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !WarmUpInHand && !Ball.Asleep;
             return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i;
         }
         /// <summary>Is player i the one going for this ball?</summary>
@@ -102,9 +105,9 @@ namespace SquashSim
         }
         /// <summary>Shot counter for this rally (in the knock-up it never reads as a serve).</summary>
         public int TurnShots { get { return Phase == MatchPhase.WarmUp ? WarmUpShots + WarmUpFeeds + 1 : Referee.Shots; } }   // every feed is a new turn
-        public int TurnLastHitter { get { return Phase == MatchPhase.WarmUp ? WarmUpOwner : Referee.LastHitter; } }
+        public int TurnLastHitter { get { return Phase == MatchPhase.WarmUp ? _warmUpLast : Referee.LastHitter; } }
         /// <summary>Seconds left in the current knock-up half.</summary>
-        public double WarmUpRemaining { get { return Phase == MatchPhase.WarmUp ? System.Math.Max(0, PhysicsConfig.Current.Match.WarmUpSecondsEach - PhaseTime) : 0; } }
+        public double WarmUpRemaining { get { return Phase == MatchPhase.WarmUp ? System.Math.Max(0, 2 * PhysicsConfig.Current.Match.WarmUpSecondsEach - PhaseTime) : 0; } }
         public double BreakRemaining { get { return Phase == MatchPhase.GameOver ? System.Math.Max(0, PhysicsConfig.Current.Match.BetweenGamesSeconds - PhaseTime) : 0; } }
 
         public MatchSimulation(int firstServer = 0)
@@ -122,23 +125,86 @@ namespace SquashSim
 
         // ---------------- warm-up ----------------
 
+        // The knock-up (playtest 2026-10-28: "like the free play practice court, ball in hand then hit ... I want the
+        // opponent hitting the ball as well"): both players on court, one either side of the T, hitting to each other -
+        // every shot makes it the other one's ball. It starts in your hand: drop it and hit (the serve's tap / hold). A
+        // dead ball comes back to a person's hand (the AI, with nobody to give it to, is fed off the front wall).
+
+        /// <summary>Where the players stand to knock up (and where the walk-on brings them).</summary>
+        public static readonly V3[] WarmUpSpots = { new V3(1.4, 0, 6.0), new V3(-1.4, 0, 6.3) };
+
         void StartWarmUp()
         {
             // A new ball is cold: the knock-up is what warms it (BallTemperature does the physics).
             Ball.Reset(null, null, null, PhysicsConfig.Current.Temperature.Initial);
-            WarmUpHalf = 0;
-            BeginWarmUpHalf(0);
-        }
-
-        void BeginWarmUpHalf(int owner)
-        {
-            WarmUpOwner = owner;
             WarmUpShots = 0;
             Phase = MatchPhase.WarmUp;
             PhaseTime = 0;
-            PlaceAt(Players[owner], new V3(0.4, 0, 5.4));
-            PlaceAt(Players[1 - owner], new V3(-2.3, 0, 8.6));     // waiting in the back corner
-            Feed();
+            PlaceAt(Players[0], WarmUpSpots[0]);
+            PlaceAt(Players[1], WarmUpSpots[1]);
+            BallBack(0);
+        }
+
+        /// <summary>A new ball for the knock-up: into a person's hand (<paramref name="prefer"/> if they are one), else fed.</summary>
+        void BallBack(int prefer)
+        {
+            int h = Bots[prefer] != null && Bots[1 - prefer] == null ? 1 - prefer : prefer;
+            WarmUpOwner = h;
+            _warmUpLast = h;                                       // a feed reads to the AI as its own last shot (as before)
+            _deadFor = 0;
+            Players[h].Arcade.CancelServe();
+            if (Bots[h] != null) { WarmUpInHand = false; Feed(); return; }
+            _warmUpLast = 1 - h;
+            WarmUpInHand = true;
+            WarmUpFeeds++;
+            Ball.Reset(HandOf(h), new V3(0, 0, 0), null, Ball.Temperature);
+            Ball.Asleep = true;
+        }
+
+        /// <summary>The ball in the knock-up player's hand: press to drop it and hit (the simple system strikes it from the
+        /// hand like the serve - tap soft, hold harder; the physical game drops it and you swing).</summary>
+        void WarmUpHand(double dt)
+        {
+            int i = WarmUpOwner;
+            var c = Players[i];
+            var it = Intents[i];
+            Ball.Pos.CopyFrom(HandOf(i));
+            bool pressed = it.Hit.Pressed || it.Touch.Pressed;
+            if (pressed) { it.Hit.Pressed = false; it.Touch.Pressed = false; }   // consumed: not also a swing
+            if (!(c.ArcadeHitEnabled && PhysicsConfig.Current.ArcadeHit != null))
+            {
+                if (pressed) WarmUpDrop(i);
+                return;
+            }
+            if (pressed) c.Arcade.BeginServeCharge();
+            if (!c.Arcade.ServeCharging) return;
+            if (it.Hit.Held || it.Touch.Held) { c.Arcade.ChargeServe(dt); return; }
+            WarmUpDrop(i);
+            c.ServeStroke = true;
+            c.ServeDefaultX = 0;
+            SimEvent hit = c.Arcade.ServeNow(c, Ball, Surfaces);
+            c.ServeStroke = false;
+            hit.PlayerIndex = i;
+            hit.Time = Time;
+            StepEvents.Add(hit);
+            WarmUpShots++;
+            WarmUpHit(i);
+            OnRacketContact(i, hit);
+        }
+
+        void WarmUpDrop(int i)
+        {
+            WarmUpInHand = false;
+            Ball.Reset(HandOf(i), new V3(0, PhysicsConfig.Current.Match.ServeTossSpeed, 0), null, Ball.Temperature);
+            BallPhysics.Wake(Ball);
+        }
+
+        /// <summary>A knock-up shot by <paramref name="i"/>: the next one is the other player's.</summary>
+        void WarmUpHit(int i)
+        {
+            _warmUpLast = i;
+            WarmUpOwner = 1 - i;
+            _deadFor = 0;
         }
 
         /// <summary>A feed off the front wall to the player knocking up.</summary>
@@ -222,16 +288,13 @@ namespace SquashSim
         void StepWarmUp(double dt)
         {
             var m = PhysicsConfig.Current.Match;
-            if (PhaseTime >= m.WarmUpSecondsEach)
-            {
-                if (WarmUpHalf == 0) { WarmUpHalf = 1; BeginWarmUpHalf(1 - WarmUpOwner); }
-                else SetUpServe();
-                return;
-            }
-            // Dead ball (parked, second bounce, or out of court): feed again shortly.
+            if (PhaseTime >= 2 * m.WarmUpSecondsEach) { SetUpServe(); return; }
+            if (WarmUpInHand && Bots[WarmUpOwner] != null) BallBack(WarmUpOwner);   // the bots arrive after the knock-up starts
+            if (WarmUpInHand) { WarmUpHand(dt); return; }
+            // Dead ball (parked, second bounce, or out of court): back in a hand shortly.
             bool dead = Ball.Asleep || Ball.FloorSinceFrontWall >= 2 || Ball.Pos.Z > CourtDimensions.LENGTH;
             _deadFor = dead ? _deadFor + dt : 0;
-            if (_deadFor >= m.WarmUpRefeedSeconds) Feed();
+            if (_deadFor >= m.WarmUpRefeedSeconds) BallBack(WarmUpOwner);
         }
 
         public int Receiver { get { return 1 - Score.Server; } }
@@ -272,10 +335,12 @@ namespace SquashSim
             c.Reset();
         }
 
-        V3 HandPosition()
+        V3 HandPosition() { return HandOf(Score.Server); }
+
+        V3 HandOf(int i)
         {
             var m = PhysicsConfig.Current.Match;
-            var p = Players[Score.Server].Player.Pos;
+            var p = Players[i].Player.Pos;
             // In front of the server, a little to the forehand (right-handed: sim +x) side.
             return new V3(p.X + m.ServeTossSide, m.ServeTossHeight, p.Z - m.ServeTossForward);
         }
@@ -410,7 +475,7 @@ namespace SquashSim
                 {
                     contact.Time = Time;
                     StepEvents.Add(contact);
-                    if (Phase == MatchPhase.WarmUp) WarmUpShots++;
+                    if (Phase == MatchPhase.WarmUp) { WarmUpShots++; WarmUpHit(i); }
                     else if (Referee.Shots > 0) RallyContacts[i]++;
                     if (RefereeStopsSwing(i)) { stopped = i; continue; }
                     OnRacketContact(i, contact);
@@ -433,6 +498,8 @@ namespace SquashSim
                 if (cz != sp.Pos.Z) { sp.Pos.Z = cz; sp.Vel.Z = 0; }
                 Ball.Pos.CopyFrom(HandPosition());
             }
+
+            if (Phase == MatchPhase.WarmUp && WarmUpInHand) Ball.Pos.CopyFrom(HandOf(WarmUpOwner));   // after this step's move
 
             // ---- bodies cannot overlap ----
             int giveWayTo = Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.Shots > 0 ? Interference.Striker : -1;

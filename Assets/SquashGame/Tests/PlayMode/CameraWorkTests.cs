@@ -94,6 +94,62 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheWalkOnWalksInWithTheWarmUpOn()
+        {
+            // playtest 2026-10-28: "the characters are just stepping on the same spot for like 10 seconds and then it just
+            // jumps to the warm up" - with the warm-up on
+            yield return Scene();
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            ProfileStore.Current.Settings.Cutscenes = true;
+            fe.StartMatch(new MatchSettings { Opponent = "retriever", Difficulty = 0.6f, GamesToWin = 1, Scoring = "par", WarmUp = true,
+                                              Court = "tour:rep", CrowdFill = 1f }.Dressed());
+            yield return Wait(3f, () => fe.Match != null && !fe.Match.Demo && fe.Match.CinematicKind != null);
+            var r = fe.Match;
+            Assert.That(r.CinematicKind, Is.EqualTo(Replays.Cutscenes.Intro));
+            Athlete.AthleteFigure fig = null;
+            foreach (var f in Object.FindObjectsByType<Athlete.AthleteFigure>(FindObjectsSortMode.None)) if (f.Index == 0) fig = f;
+            Assert.That(fig, Is.Not.Null);
+            var seen = new System.Collections.Generic.List<Vector3>();
+            float t0 = Time.realtimeSinceStartup;
+            while (r.ReplayActive && Time.realtimeSinceStartup - t0 < 30f)
+            {
+                seen.Add(fig.transform.position);
+                Debug.Log("[WalkOn] t " + (Time.realtimeSinceStartup - t0).ToString("0.0") + "  frame " + r.View.A0.Pos.ToString("F2") + "  figure " + fig.transform.position.ToString("F2") + "  phase " + r.Sim.Phase);
+                yield return Wait(0.5f, () => false);
+            }
+            Vector3 end = fig.transform.position;
+            yield return null; yield return null;
+            Debug.Log("[WalkOn] after: figure " + fig.transform.position.ToString("F2") + "  phase " + r.Sim.Phase);
+            float travelled = 0;
+            for (int i = 1; i < seen.Count; i++) travelled += Vector3.Distance(seen[i - 1], seen[i]);
+            Assert.That(travelled, Is.GreaterThan(5f), "they walk in from outside the court");
+            Assert.That(seen.Count, Is.GreaterThan(4));
+            Assert.That(seen[1].z, Is.GreaterThan((float)CourtDimensions.LENGTH + 1f), "drawn outside the court at first, behind the glass (not pinned to it)");
+            Assert.That(Vector3.Distance(seen[1], end), Is.GreaterThan(4f));
+            Assert.That(Vector3.Distance(end, fig.transform.position), Is.LessThan(0.3f), "no jump into the warm-up");
+            Assert.That(r.Sim.Phase, Is.EqualTo(MatchPhase.WarmUp));
+
+            // ...and the knock-up: the ball in your hand, drop it and hit; they hit it back
+            Assert.That(r.Sim.WarmUpInHand, Is.True, "the ball in your hand");
+            Assert.That(r.Sim.WarmUpOwner, Is.EqualTo(r.HumanIndex));
+            Assert.That(fe.Hud.PromptText, Does.Contain("Ball in hand"));
+            yield return CaptureUI(fe, "CK_KnockUp_Hand.png");
+            var mouse = InputSystem.AddDevice<Mouse>();
+            int theirs = 0;
+            t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 25f && theirs < 2)
+            {
+                if (r.Sim.WarmUpInHand && r.Sim.WarmUpOwner == r.HumanIndex) { Press(mouse.leftButton); yield return null; yield return null; Release(mouse.leftButton); }
+                int before = r.Sim.WarmUpShots, owner = r.Sim.WarmUpOwner;
+                yield return null;
+                if (r.Sim.WarmUpShots > before && owner != r.HumanIndex) theirs++;
+            }
+            Assert.That(r.Sim.WarmUpShots, Is.GreaterThanOrEqualTo(2), "you hit from your hand");
+            Assert.That(theirs, Is.GreaterThanOrEqualTo(1), "and they hit it back");
+            yield return CaptureUI(fe, "CK_KnockUp_Rally.png");
+        }
+
+        [UnityTest]
         public IEnumerator AReplayBetweenRalliesCutsLikeABroadcast()
         {
             yield return Scene();

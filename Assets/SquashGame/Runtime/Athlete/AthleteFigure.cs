@@ -577,6 +577,14 @@ namespace SquashGame.Athlete
         /// moves the whole drawn figure back in by that much. Drawing only - the sim's athlete is where it was.</summary>
         void KeepInsideTheCourt()
         {
+            // An athlete who is really outside (the walk-on, coming down the path behind the glass): left where it is
+            // (playtest 2026-10-28: pinned to the back glass, it stepped on the spot until the path came in).
+            var at = Posed.Pos;
+            if (Mathf.Abs(at.x) > (float)SquashSim.CourtDimensions.HALF_W || at.z < 0f || at.z > (float)SquashSim.CourtDimensions.LENGTH)
+            {
+                WallPush = Vector3.zero;
+                return;
+            }
             float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
             foreach (var b in Rig.Bones.Values)
             {

@@ -297,7 +297,7 @@ namespace SquashSim
         public double StartTemperature;     // ball temperature at the first serve when the warm-up is skipped
         public bool AppealsEnabled = true;  // "let, please" (players and AI) and the referee's own swing call; the Lets setting
         public bool WarmUpEnabled;          // knock-up before the first serve (the ball starts cold)
-        public double WarmUpSecondsEach;    // each player's half of the knock-up (real squash: 150 s)
+        public double WarmUpSecondsEach;    // the knock-up runs twice this, together (real squash: 150 s each side)
         public double WarmUpRefeedSeconds;  // a dead ball is fed again after this long
         public double BetweenGamesSeconds;  // break between games (real squash: 90 s); the ball cools
         public bool AutoNextGame;           // after the break, the next game starts by itself

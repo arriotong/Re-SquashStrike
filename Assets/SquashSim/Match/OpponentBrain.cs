@@ -851,9 +851,9 @@ namespace SquashSim
 
         void Decide(MatchSimulation m, TestPlayerController ctrl, int me)
         {
-            // Knock-up: the "opponent" to play for is yourself - a ball that comes back to you.
+            // Knock-up: a ball the other player can play back (2026-10-28: you knock up together).
             _knockUp = m.Phase == MatchPhase.WarmUp;
-            var o = m.Players[_knockUp ? me : 1 - me].Player;
+            var o = m.Players[1 - me].Player;
             double best = double.NegativeInfinity;
             double bx = 0, by = 0.3;
             bool bt = false;
@@ -1017,7 +1017,7 @@ namespace SquashSim
             // Knock-up: easy to reach again (low "pressure" on yourself), a good length, safe.
             if (_knockUp)
             {
-                double offLine = Clamp(System.Math.Abs(x2 - opp.Pos.X) / HALF_W, 0, 1);   // straight back down your own wall
+                double offLine = Clamp(System.Math.Abs(x2 - opp.Pos.X) / HALF_W, 0, 1);   // to where they stand
                 return -2.0 * pressure - 1.5 * offLine + 0.5 * length - risk;
             }
 

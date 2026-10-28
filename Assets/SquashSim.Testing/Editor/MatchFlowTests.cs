@@ -1,6 +1,7 @@
 // ===========================================================
 // Assets/SquashSim.Testing/Editor/MatchFlowTests.cs
-// M5: the knock-up (a cold ball warmed by play, halves swap, skip),
+// M5: the knock-up (a cold ball warmed by play; since 2026-10-28 you
+// knock up together - ball in hand, every shot the other one's; skip),
 // the break between games (the ball cools, the next game starts by
 // itself), and a full best-of-5 between AI players.
 // ===========================================================
@@ -42,22 +43,59 @@ namespace SquashSim.Tests
             Assert.That(m.WarmUpOwner, Is.EqualTo(0));
             Assert.That(m.Ball.Temperature, Is.EqualTo(PhysicsConfig.Current.Temperature.Initial), "a new ball is cold");
 
-            bool sawSecondHalf = false;
-            int shots0 = 0;
+            var shots = new int[2];
             while (m.Phase == MatchPhase.WarmUp && m.Time < 200)
             {
-                int before = m.WarmUpShots;
+                int before = m.WarmUpShots, owner = m.WarmUpOwner;
                 m.Step(Dt);
-                if (m.WarmUpHalf == 0 && m.WarmUpShots > before) shots0++;
-                if (m.WarmUpHalf == 1) { sawSecondHalf = true; Assert.That(m.WarmUpOwner, Is.EqualTo(1)); }
-                Assert.That(m.Players[1 - m.WarmUpOwner].ContactEnabled, Is.False, "only the player knocking up may strike");
+                if (m.WarmUpShots > before) { shots[owner]++; Assert.That(m.WarmUpOwner, Is.EqualTo(1 - owner), "every shot makes it the other one's ball"); }
+                Assert.That(m.CanStrike(1 - m.WarmUpOwner), Is.False, "only the player whose ball it is may strike");
             }
-            Assert.That(sawSecondHalf, Is.True, "the halves swap");
-            Assert.That(shots0, Is.GreaterThan(8), "the AI knocks up");
+            Assert.That(shots[0], Is.GreaterThan(8), "both knock up");
+            Assert.That(shots[1], Is.GreaterThan(8));
             Assert.That(m.Phase, Is.EqualTo(MatchPhase.AwaitToss), "the knock-up ends at the first serve");
             Assert.That(m.Ball.Temperature, Is.GreaterThan(PhysicsConfig.Current.Temperature.Initial + 6), "play has warmed the ball");
             Assert.That(m.History.Count, Is.EqualTo(0), "the knock-up scores nothing");
             Assert.That(m.Score.Points[0] + m.Score.Points[1], Is.EqualTo(0));
+        }
+
+        [Test] public void YouKnockUpFromYourHandAndTheyHitItBack()
+        {
+            PhysicsConfig.UseGameProfile();
+            var c = PhysicsConfig.Current.Match;
+            c.WarmUpEnabled = true;
+            c.GamesToWin = 1;
+            var m = new MatchSimulation(0);                                       // athlete 0: a person (no bot)
+            m.Bots[1] = new OpponentBrain(AiProfile.ByName("retriever").WithDifficulty(0.8), 12);
+            for (int i = 0; i < 2; i++) { m.Players[i].ArcadeHitEnabled = true; m.Players[i].WallAimEnabled = true; }
+            Assert.That(m.Phase, Is.EqualTo(MatchPhase.WarmUp));
+            Assert.That(m.WarmUpInHand, Is.True, "it starts in your hand");
+            Assert.That(m.WarmUpOwner, Is.EqualTo(0));
+            for (int i = 0; i < 60; i++) m.Step(Dt);
+            Assert.That(m.WarmUpInHand, Is.True, "it waits for you");
+            Assert.That(m.WarmUpShots, Is.EqualTo(0));
+
+            int yours = 0, theirs = 0, backInHand = 0;
+            bool wasInHand = true;
+            while (m.Time < 40)
+            {
+                if (m.WarmUpInHand && m.WarmUpOwner == 0)
+                {
+                    // press and let go: dropped and struck from the hand
+                    m.Intents[0].Hit.Pressed = true; m.Intents[0].Hit.Held = true;
+                    m.Step(Dt);
+                    m.Intents[0].Hit.Held = false;
+                }
+                int before = m.WarmUpShots, owner = m.WarmUpOwner;
+                m.Step(Dt);
+                if (m.WarmUpShots > before) { if (owner == 0) yours++; else theirs++; }
+                if (m.WarmUpInHand && !wasInHand) { backInHand++; Assert.That(m.WarmUpOwner, Is.EqualTo(0), "a dead ball comes back to your hand, not a feed"); }
+                wasInHand = m.WarmUpInHand;
+            }
+            UnityEngine.Debug.Log("[KnockUp] yours " + yours + ", theirs " + theirs + ", back in hand " + backInHand);
+            Assert.That(yours, Is.GreaterThan(3), "you hit from your hand");
+            Assert.That(theirs, Is.GreaterThan(3), "and they hit it back");
+            Assert.That(m.WarmUpFeeds, Is.EqualTo(backInHand + 1), "never fed by the machine");
         }
 
         [Test] public void KnockUpCanBeSkipped()

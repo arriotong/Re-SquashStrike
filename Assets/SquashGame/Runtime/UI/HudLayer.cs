@@ -202,7 +202,7 @@ namespace SquashGame
             _games.text = "GAMES " + s.Games[0] + "-" + s.Games[1];
             _games.style.display = s.GamesToWin > 1 ? DisplayStyle.Flex : DisplayStyle.None;
             string server = !twoPlayer && s.Server == r.HumanIndex ? "You serve" : names[s.Server] + " serves";
-            _meta.text = server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box" +
+            _meta.text = (m.Phase == MatchPhase.WarmUp ? "Knock-up" : server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box") +
                          (r.Settings.FocusCharges > 0 ? "   ·   FOCUS " + r.FocusLeft + "  (" + IntentSource.FocusKey + ")" : "");     // P5
 
             // ---- banners ----
@@ -238,13 +238,12 @@ namespace SquashGame
                 key = twoPlayer && s.Server == 1 ? IntentSource.BindingLabel("Hit", true) : IntentSource.Keys("Hit");
                 prompt = who + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box   ·   tap: lob serve   ·   hold: hard serve";
             }
-            // batch 4: the knock-up - whose half, how long, how to skip it
+            // batch 4: the knock-up - how long, how to skip it; 2026-10-28: the ball in your hand, drop and hit
             if (m.Phase == MatchPhase.WarmUp && !r.ReplayActive)
             {
-                bool mine = m.WarmUpOwner == r.HumanIndex;
-                string whose = twoPlayer ? names[m.WarmUpOwner] + "'s" : mine ? "Your" : "Their";
+                string hand = m.WarmUpInHand ? (twoPlayer ? names[m.WarmUpOwner] + ": ball in hand" : m.WarmUpOwner == r.HumanIndex ? "Ball in hand: " + IntentSource.Keys("Hit") + " to drop and hit" : "") : "Knock up together";
                 key = "Enter / Y";
-                prompt = "WARM-UP   ·   " + whose + " side   ·   " + Mathf.CeilToInt((float)m.WarmUpRemaining) + " s   ·   skip" +
+                prompt = "WARM-UP   ·   " + (hand.Length > 0 ? hand + "   ·   " : "") + Mathf.CeilToInt((float)m.WarmUpRemaining) + " s   ·   skip" +
                          (r.OnlineMatch != null ? " (either of you)" : "") + (r.OnlineMatch != null ? "   ·   1-4: quick chat" : "");
             }
             if (m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver)

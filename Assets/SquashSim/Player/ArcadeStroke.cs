@@ -108,6 +108,8 @@ namespace SquashSim
         public bool ServeCharging { get { return _serveCharging; } }
         public void BeginServeCharge() { _serveCharging = true; _charge = 0; }
         public void ChargeServe(double dt) { if (_serveCharging) _charge += dt; }
+        /// <summary>Drop a serve charge that never struck (a new knock-up ball).</summary>
+        public void CancelServe() { _serveCharging = false; _charge = 0; }
 
         // ---- dive ----
         double _diveT = -1, _diveRecover, _diveX, _diveZ;
