@@ -328,6 +328,7 @@ namespace SquashSim
         {
             var player = ctrl.Player;
             var mods = player.Mods;                                          // P5: the Gauntlet run's abilities (null: none)
+            if (mods != null) mods.AtStroke(charge, _stroke == "touch" && !ctrl.ServeStroke);   // chaos: the ultimate, a fireball
             if (mods != null && mods.Level("ghost") > 0 && !mods.GhostUsed && dist > c.Reach * ReachScale * AttrReach(player))
             {
                 mods.GhostUsed = true;                                       // reached only thanks to Ghost: spent for this rally
@@ -447,6 +448,7 @@ namespace SquashSim
             double power = player.Attributes.PowerScale;                     // P3-C1: the athlete's power (exactly 1 when neutral)
             if (power != 1.0 && (shot == "drive" || shot == "kill")) speed *= power;
             if (mods != null && !touch) speed *= mods.Pace(shot, straight, cross, charge);           // P5: the run's shots
+            if (mods != null && !touch) speed *= mods.MeteorPace(shot, charge) * (mods.ShotFire ? RunMods.FirePace : 1.0);   // chaos: Meteor, fireballs
 
             // Drives, kills and boasts leave the front wall heading down (lobs, drops and serves keep their arc).
             _dip = c.FrontWallRiseKeep < 1 && (shot == "drive" || shot == "kill" || boast);

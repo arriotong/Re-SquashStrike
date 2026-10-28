@@ -256,6 +256,8 @@ namespace SquashSim
             Referee.BeginRally(server, Score.ServeSide);
             Interference.Reset();
             _lastStriker = -1; _nickBy = -1;                                  // P5
+            _chaosStriker = -1; _curveT = 0; _curveArmed = false;               // chaos
+            if (!_gameInit) { _gameInit = true; for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.NewGame(); }
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
             HoldBallForServe(keepTemperature: true);
             Phase = MatchPhase.AwaitToss;
@@ -306,10 +308,13 @@ namespace SquashSim
 
             for (int i = 0; i < 2; i++)
                 if (Bots[i] != null) Bots[i].Fill(Intents[i], this, i, dt);
-            for (int i = 0; i < 2; i++)                                       // P5: Matador's slow wears off
+            for (int i = 0; i < 2; i++)                                       // P5: Matador's slow wears off (chaos: freeze, haste)
             {
                 var mm = Players[i].Player.Mods;
-                if (mm != null && mm.SlowTimer > 0) mm.SlowTimer -= dt;
+                if (mm == null) continue;
+                if (mm.SlowTimer > 0) mm.SlowTimer -= dt;
+                if (mm.FreezeTimer > 0) mm.FreezeTimer -= dt;
+                if (mm.HasteTimer > 0) mm.HasteTimer -= dt;
             }
 
             // ---- phase logic before anyone moves ----
@@ -391,7 +396,7 @@ namespace SquashSim
             for (int i = 0; i < 2; i++)
             {
                 var c = Players[i];
-                c.ContactEnabled = CanStrike(i);
+                c.ContactEnabled = CanStrike(i) && (c.Player.Mods == null || !c.Player.Mods.Frozen);   // chaos: frozen, no stroke
                 c.ServeStroke = Phase == MatchPhase.Rally && Referee.Shots == 0;
                 // Assisted, a local non-striker in the way: steered sideways off the striker's corridor (P2-M7).
                 var mv = Intents[i];
@@ -439,8 +444,10 @@ namespace SquashSim
             {
                 _prevBall.CopyFrom(Ball.Pos);
                 int before = StepEvents.Count;
+                if (_curveT > 0 && !Ball.Asleep) { Ball.Vel.X += _curveA * dt; _curveT -= dt; }   // chaos: Curveball
                 BallPhysics.Step(Ball, Surfaces, dt, StepEvents);
                 for (int k = before; k < StepEvents.Count; k++) StepEvents[k].Time = Time;
+                if (_chaosStriker >= 0) ChaosBall(before);
                 for (int i = 0; i < 2; i++)
                 {
                     SimEvent bh = BodyCollision.BallVsBody(Ball, _prevBall, Players[i].Player, i, Time);
@@ -561,6 +568,29 @@ namespace SquashSim
                     return 0;
                 }
             }
+            if (o.Loser >= 0 && o.Kind != RallyEnd.Let && o.Kind != RallyEnd.Fault && o.Kind != RallyEnd.FootFault)
+            {
+                // chaos: Shield (your own error a let), Rewind (any lost rally a let)
+                var lm = Players[o.Loser].Player.Mods;
+                if (lm != null)
+                {
+                    bool ownError = (o.Kind == RallyEnd.Down || o.Kind == RallyEnd.Out) && _lastStriker == o.Loser;
+                    if (ownError && lm.ShieldLeft)
+                    {
+                        lm.ShieldsUsed++;
+                        LastOutcome = new RallyOutcome { Kind = RallyEnd.Let, Reason = "Shield - play it again", Time = o.Time, Point = o.Point };
+                        Note(o.Loser, "shield", 0);
+                        return 0;
+                    }
+                    if (lm.RewindsUsed < lm.Rewinds)
+                    {
+                        lm.RewindsUsed++;
+                        LastOutcome = new RallyOutcome { Kind = RallyEnd.Let, Reason = "Rewind - the rally again", Time = o.Time, Point = o.Point };
+                        Note(o.Loser, "rewind", 0);
+                        return 0;
+                    }
+                }
+            }
             int w = o.Winner;
             if (w < 0 || o.Kind == RallyEnd.Let) return 0;
             int bonus = 0;
@@ -571,11 +601,112 @@ namespace SquashSim
                 if (rallyWon && Referee.Shots == 1 && w == Score.Server) bonus += wm.AceBonus;
                 if (rallyWon && _nickBy == w) bonus += wm.NickBonus;
                 if (rallyWon && wm.VampireHeal > 0) Players[w].Player.Stamina = System.Math.Min(1, Players[w].Player.Stamina + wm.VampireHeal);
+                // chaos: the points that stack (a jackpot, a fireball, a combo, the walls, a long rally, the first point)
+                bool first = Score.Points[0] == 0 && Score.Points[1] == 0;
+                int chaos = wm.ChaosBonus(rallyWon, _ultShot[w], _fireShot[w], _curvedShot[w], _chaosStriker == w ? _wallsAfterFront : 0, Referee.Shots, first, wm.Streak);
+                if (chaos > 0) { bonus += chaos; Note(w, "bonus", chaos); }
+                wm.MeterWin();
                 wm.Streak++;
             }
             var losing = Players[1 - w].Player.Mods;
             if (losing != null) losing.Streak = 0;
             return bonus;
+        }
+
+        // ---------------- the Gauntlet chaos remake (2026-10-28): the cards that bend the rules ----------------
+
+        /// <summary>What the chaos cards did, in order (the game shows them: the ultimate, a freeze, a fireball, the points).
+        /// Only a Gauntlet match ever adds to it.</summary>
+        public readonly List<ChaosNote> Chaos = new List<ChaosNote>();
+        void Note(int player, string kind, int value) { Chaos.Add(new ChaosNote { Player = player, Kind = kind, Value = value, Time = Time }); }
+
+        bool _gameInit;
+        int _chaosStriker = -1, _wallsAfterFront, _floorsAfterFront;
+        string _chaosTech;
+        bool _afterFront, _curveArmed;
+        double _curveA, _curveT;
+        readonly bool[] _ultShot = new bool[2], _fireShot = new bool[2], _curvedShot = new bool[2];
+
+        static RunMods ModsOf(TestPlayer p) { if (p.Mods == null) p.Mods = new RunMods(); return p.Mods; }
+
+        /// <summary>A stroke: the ultimate (Time Stop), the fireball spent, the meter, what it does to the opponent.</summary>
+        void ChaosAtContact(int i, SimEvent contact)
+        {
+            var mm = Players[i].Player.Mods;
+            _ultShot[i] = false; _fireShot[i] = false; _curvedShot[i] = false;
+            if (mm == null) { _chaosStriker = -1; _curveT = 0; return; }
+            _chaosStriker = i; _chaosTech = contact.Technique;
+            _afterFront = false; _wallsAfterFront = 0; _floorsAfterFront = 0; _curveT = 0; _curveArmed = false;
+            mm.ReachCut = 0; mm.GraceCut = 0;                                   // their own stroke made: the cuts against them spent
+            var op = Players[1 - i].Player;
+            _ultShot[i] = mm.UltNow; _fireShot[i] = mm.ShotFire;
+            if (mm.ShotFire) { if (mm.FireShots > 0) mm.FireShots--; Note(i, "fire", mm.FireShots); }
+            if (mm.UltNow)
+            {
+                Note(i, "ult", 0);
+                if (mm.FreezeSeconds > 0) { ModsOf(op).FreezeTimer = mm.FreezeSeconds; Note(1 - i, "freeze", 0); }
+            }
+            mm.UltNow = false;
+            mm.MeterShot();
+            if (mm.SlowFieldSeconds > 0) { var o = ModsOf(op); o.SlowTimer = mm.SlowFieldSeconds; o.SlowScale = mm.SlowFieldScale; }
+            if (mm.HasteSeconds > 0) mm.HasteTimer = mm.HasteSeconds;
+            if (mm.HeavyCut > 0 && (contact.Technique == "drive" || contact.Technique == "kill")) ModsOf(op).ReachCut = mm.HeavyCut;
+            if (mm.KnuckleCut > 0) ModsOf(op).GraceCut = mm.KnuckleCut;
+            _curveArmed = mm.CurveAccel > 0 && (contact.Technique == "drive" || contact.Technique == "kill");
+        }
+
+        /// <summary>The ball's walls and bounces after a chaos stroke: the curve starts at the front wall, Ricochet speeds it off
+        /// the side walls (and Wall Ride counts them), Dead Drop kills the bounce, Quake shakes the opponent.</summary>
+        void ChaosBall(int from)
+        {
+            var mm = Players[_chaosStriker].Player.Mods;
+            if (mm == null) return;
+            for (int k = from; k < StepEvents.Count; k++)
+            {
+                var ev = StepEvents[k];
+                if (ev.Type != SimEventType.Impact) continue;
+                switch (ev.SurfaceClass)
+                {
+                    case "frontWall":
+                        if (_afterFront) break;
+                        _afterFront = true;
+                        if (_curveArmed)
+                        {
+                            _curveArmed = false;
+                            _curveA = (Ball.Vel.X >= 0 ? 1 : -1) * mm.CurveAccel; _curveT = RunMods.CurveSeconds;
+                            _curvedShot[_chaosStriker] = true;
+                            Note(_chaosStriker, "curve", 0);
+                        }
+                        break;
+                    case "sideWall":
+                    case "backWall":
+                        if (!_afterFront || _floorsAfterFront > 0) break;
+                        _wallsAfterFront++;
+                        if (ev.SurfaceClass == "sideWall" && mm.Level("ricochet") > 0)
+                        {
+                            double r = mm.RicochetPace;
+                            Ball.Vel.X *= r; Ball.Vel.Y *= r; Ball.Vel.Z *= r;
+                            Note(_chaosStriker, "ricochet", _wallsAfterFront);
+                        }
+                        break;
+                    case "floor":
+                        if (!_afterFront) break;
+                        _floorsAfterFront++;
+                        if (_floorsAfterFront != 1) break;
+                        if ((_chaosTech == "drop" || _chaosTech == "boast") && mm.Level("deaddrop") > 0)
+                        {
+                            if (Ball.Vel.Y > 0) Ball.Vel.Y *= mm.DeadDropKeep;
+                            Note(_chaosStriker, "deaddrop", 0);
+                        }
+                        if (_chaosTech == "kill" && mm.QuakeSeconds > 0)
+                        {
+                            var o = ModsOf(Players[1 - _chaosStriker].Player);
+                            o.FreezeTimer = System.Math.Max(o.FreezeTimer, mm.QuakeSeconds);
+                            Note(_chaosStriker, "quake", 0);
+                        }
+                        break;
+                }
+            }
         }
 
         // ---------------- recovery + split-step ----------------
@@ -599,7 +730,9 @@ namespace SquashSim
                 var op = Players[1 - i].Player;
                 if (op.Mods == null) op.Mods = new RunMods();
                 op.Mods.SlowTimer = mm.MatadorSeconds;
+                op.Mods.SlowScale = RunMods.MatadorSpeed;
             }
+            ChaosAtContact(i, contact);
 
             SplitStep.Contact(i, Time, Players[1 - i].Player);
         }
@@ -612,6 +745,7 @@ namespace SquashSim
             if (Phase != MatchPhase.GameOver) return;
             Score.NextGame();
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.SecondUsed = false;   // P5: a new game, a new second serve
+            _gameInit = false;                                                // chaos: shields, rewinds, The World's meter
             if (PhysicsConfig.Current.Fatigue.FreshEachGame) { Players[0].Player.Stamina = 1.0; Players[1].Player.Stamina = 1.0; }   // P7: the break restores
             SetUpServe();
         }
@@ -621,6 +755,7 @@ namespace SquashSim
         {
             Score = MatchScore.FromConfig(firstServer);
             History.Clear();
+            Chaos.Clear(); _gameInit = false;
             ShotsPerRally.Clear();
             Stats.Clear();
             LastOutcome = null;

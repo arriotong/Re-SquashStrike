@@ -29,7 +29,7 @@ namespace SquashSim
             if (player.SpeedScale != 1.0) maxSpeed *= player.SpeedScale;      // game only (sprint, dive recovery)
             double attrSpeed = player.Attributes.SpeedScale;                  // P3-C1: exactly 1 when neutral
             if (attrSpeed != 1.0) maxSpeed *= attrSpeed;
-            if (player.Mods != null && player.Mods.SlowTimer > 0) maxSpeed *= RunMods.MatadorSpeed;   // P5: the opponent's Matador
+            if (player.Mods != null) { double ms = player.Mods.MoveScale; if (ms != 1.0) maxSpeed *= ms; }   // P5 / chaos: Matador, Slow Field, Time Stop, Haste
 
             // Match-only modifiers. All timers are zero in the lab, so this block
             // never runs there and the lab's arithmetic is exactly unchanged.

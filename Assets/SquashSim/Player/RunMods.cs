@@ -43,7 +43,7 @@ namespace SquashSim
         public int Level;
     }
 
-    public sealed class RunMods
+    public sealed partial class RunMods
     {
         public const int MaxLevel = 5;
         readonly SortedDictionary<string, int> _lv = new SortedDictionary<string, int>(System.StringComparer.Ordinal);
@@ -140,8 +140,8 @@ namespace SquashSim
         public double ServeBonus { get { return 1 + 0.3 * Level("thunder"); } }
 
         /// <summary>Reach multiplier (Long Arms) and release-grace multiplier (Early Bird).</summary>
-        public double ReachBonus { get { return 1 + 0.03 * Level("reach"); } }
-        public double GraceBonus { get { return 1 + 0.12 * Level("grace"); } }
+        public double ReachBonus { get { return (1 + 0.03 * Level("reach") + 0.06 * Level("magnet")) * (1 - ReachCut); } }   // chaos: Magnet, Heavy Ball against
+        public double GraceBonus { get { return (1 + 0.12 * Level("grace")) * (1 - GraceCut); } }                            // chaos: Knuckleball against
 
         /// <summary>Once a rally: reach this much further (Ghost).</summary>
         public double GhostReach { get { return Level("ghost") > 0 && !GhostUsed ? 1.6 : 1.0; } }
