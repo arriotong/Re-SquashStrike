@@ -36,7 +36,7 @@ namespace SquashGame.UI
             Text("STRIKE", "fe-logo-strike");
             Text("Real squash physics. Simple to play.", "fe-press");
             Text("v" + Application.version, "fe-version");
-            Add(new ButtonItem("START", () => Fe.Replace(new MainMenuScreen()), true));
+            Add(new ButtonItem("START", () => Fe.Replace(new HomeScreen()), true));
         }
         public override void Back() { }                                   // nowhere to go back to
 

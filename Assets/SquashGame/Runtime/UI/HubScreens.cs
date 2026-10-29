@@ -31,8 +31,7 @@ namespace SquashGame.UI
     public sealed class MainMenuScreen : GameScreen
     {
         protected override bool ShowCoins { get { return true; } }
-        protected override string Kicker { get { return "re:"; } }
-        protected override string Title { get { return "<color=#c8ff3d>SQUASH</color>STRIKE"; } }
+        protected override string Title { get { return Which == Hub.Play ? "PLAY" : "OTHERS"; } }
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }
 
         /// <summary>The menus' camera angles per card (MenuCinematics' scenes).</summary>
@@ -53,108 +52,148 @@ namespace SquashGame.UI
         /// UI redesign (2026-10-28: "modes re organise ... it's a bit too strange now"): what you came to do, most often first -
         /// a match, your career, today's challenges, the other modes, online; then training (the practice court with the
         /// Academy), you (kit, drops, records) and the replays.
+        /// 2026-10-29 ("instead of dumping everything in one singular ui ... split into 2 separate ui like things involve
+        /// playing is PLAY and others are like OTHERS"): two hubs from the home screen - PlaySections and OtherSections.
+        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };
+        public static readonly string[] OtherSections = { "YOU", "REPLAYS" };
+        /// <summary>Every section, both hubs (PLAY's first).</summary>
         public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "YOU", "REPLAYS" };
+
+        public enum Hub { Play, Others }
+        public readonly Hub Which;
+        /// <summary>This hub's sections.</summary>
+        public string[] MySections { get { return Which == Hub.Play ? PlaySections : OtherSections; } }
+        bool Has(string section) { return System.Array.IndexOf(MySections, section) >= 0; }
+        /// <summary>The hub a section is in.</summary>
+        public static Hub HubOf(string section) { return System.Array.IndexOf(OtherSections, section) >= 0 ? Hub.Others : Hub.Play; }
+
+        public MainMenuScreen(Hub which = Hub.Play) { Which = which; }
+        protected override string Kicker { get { return Which == Hub.Play ? "re:SQUASHSTRIKE" : "re:SQUASHSTRIKE  ·  OTHERS"; } }
 
         protected override void Compose()
         {
             // ---- PLAY: a match now ----
-            var play = Kit.Box(Page("PLAY"), "k-row");
-            AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
-                .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length] + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  abilities on" : ""))
-                .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
-            AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
-                .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
+            if (Has("PLAY"))
+            {
+                var play = Kit.Box(Page("PLAY"), "k-row");
+                AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
+                    .Line(() => "You v " + MatchChoices.Line(C.OpponentId) + "  ·  " + MatchChoices.LengthLabels[C.Length] + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  abilities on" : ""))
+                    .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
+                AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
+                    .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
+            }
 
             // ---- CAREER ----
-            var career = Kit.Box(Page("CAREER"), "k-row");
-            var cont = AddTo(career, new CardItem("CONTINUE CAREER", "CAREER", () => Fe.Push(new CareerHubScreen()), CardSize.Hero).Vignette("you")
-                .Line(CareerLine).Badge(() => CareerStore.Current != null ? Career.Money(CareerStore.Current.S.Earnings) : "", true));
-            cont.Visible = () => CareerStore.Exists;
-            var start = AddTo(career, new CardItem("START A CAREER", "CAREER", () => Fe.Push(new CreatePlayerScreen()), CardSize.Hero)
-                .Drawn("trophy", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
-                .Line("Club events to the World Finals. Climb the world ranking."));
-            start.Visible = () => !CareerStore.Exists;
-            var fresh = AddTo(career, new CardItem("NEW CAREER", "CAREER", () => Fe.Push(new ConfirmScreen("Start again? Your career will be lost.", () => Fe.Push(new CreatePlayerScreen()))))
-                .Drawn("trophy", new Color32(22, 22, 26, 255), new Color(1, 1, 1, 0.25f)).Line("Start again with a new player"));
-            fresh.Visible = () => CareerStore.Exists;
+            if (Has("CAREER"))
+            {
+                var career = Kit.Box(Page("CAREER"), "k-row");
+                var cont = AddTo(career, new CardItem("CONTINUE CAREER", "CAREER", () => Fe.Push(new CareerHubScreen()), CardSize.Hero).Vignette("you")
+                    .Line(CareerLine).Badge(() => CareerStore.Current != null ? Career.Money(CareerStore.Current.S.Earnings) : "", true));
+                cont.Visible = () => CareerStore.Exists;
+                var start = AddTo(career, new CardItem("START A CAREER", "CAREER", () => Fe.Push(new CreatePlayerScreen()), CardSize.Hero)
+                    .Drawn("trophy", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
+                    .Line("Club events to the World Finals. Climb the world ranking."));
+                start.Visible = () => !CareerStore.Exists;
+                var fresh = AddTo(career, new CardItem("NEW CAREER", "CAREER", () => Fe.Push(new ConfirmScreen("Start again? Your career will be lost.", () => Fe.Push(new CreatePlayerScreen()))))
+                    .Drawn("trophy", new Color32(22, 22, 26, 255), new Color(1, 1, 1, 0.25f)).Line("Start again with a new player"));
+                fresh.Visible = () => CareerStore.Exists;
+            }
 
             // ---- CHALLENGES (P3-R2; playable since 2026-10-28): today's three to play, and the week ----
-            var ch = Kit.Box(Page("CHALLENGES"), "k-row");
-            AddTo(ch, new CardItem("SHOT PUZZLE", "DAILY CHALLENGE", () => ChallengePlay.Puzzle(Fe), CardSize.Hero)
-                .Drawn("trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255))
-                .Line(() => "A rally freezes before your shot. Which one wins it?").Badge(() => ChallengeText.Status(Challenges.Puzzle), true));
-            AddTo(ch, new CardItem("RULES QUIZ", "DAILY CHALLENGE", () => ChallengePlay.Quiz(false))
-                .Drawn("rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
-                .Line("5 calls  ·  4 right to pass").Badge(() => ChallengeText.Status(Challenges.Quiz)));
-            AddTo(ch, new CardItem("SKILL TEST", "DAILY CHALLENGE", ChallengePlay.Skill)
-                .Drawn("chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255))
-                .Line(Challenges.SkillWords).Badge(() => ChallengeText.Status(Challenges.Skill)));
-            AddTo(ch, new CardItem("THIS WEEK", "STREAK  ·  WEEKLY", () => Fe.Push(new ChallengesScreen()))
-                .Drawn("clock", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
-                .Line(ChallengeText.Week).Badge(() => "STREAK " + Challenges.StreakNow()));
+            if (Has("CHALLENGES"))
+            {
+                var ch = Kit.Box(Page("CHALLENGES"), "k-row");
+                AddTo(ch, new CardItem("SHOT PUZZLE", "DAILY CHALLENGE", () => ChallengePlay.Puzzle(Fe), CardSize.Hero)
+                    .Drawn("trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255))
+                    .Line(() => "A rally freezes before your shot. Which one wins it?").Badge(() => ChallengeText.Status(Challenges.Puzzle), true));
+                AddTo(ch, new CardItem("RULES QUIZ", "DAILY CHALLENGE", () => ChallengePlay.Quiz(false))
+                    .Drawn("rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
+                    .Line("5 calls  ·  4 right to pass").Badge(() => ChallengeText.Status(Challenges.Quiz)));
+                AddTo(ch, new CardItem("SKILL TEST", "DAILY CHALLENGE", ChallengePlay.Skill)
+                    .Drawn("chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255))
+                    .Line(Challenges.SkillWords).Badge(() => ChallengeText.Status(Challenges.Skill)));
+                AddTo(ch, new CardItem("THIS WEEK", "STREAK  ·  WEEKLY", () => Fe.Push(new ChallengesScreen()))
+                    .Drawn("clock", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
+                    .Line(ChallengeText.Week).Badge(() => "STREAK " + Challenges.StreakNow()));
+            }
 
             // ---- MODES: the game's own modes (out from under PLAY and CHALLENGES) ----
-            var modes = Kit.Box(Page("MODES"), "k-row");
-            AddTo(modes, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()), CardSize.Hero)
-                .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
-                .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
-            AddTo(modes, new CardItem("SCENARIOS", "CLUTCH SITUATIONS", () => Fe.Push(new ScenarioScreen()))
-                .Drawn("rings", new Color32(16, 18, 30, 255), new Color32(255, 184, 59, 255))
-                .Line(() => "15 situations: save the match balls, win the decider").Badge(() => "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars, true));
-            AddTo(modes, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
-                .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
+            if (Has("MODES"))
+            {
+                var modes = Kit.Box(Page("MODES"), "k-row");
+                AddTo(modes, new CardItem("GAUNTLET", "HOW FAR CAN YOU GO", () => Fe.Push(new GauntletScreen()), CardSize.Hero)
+                    .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
+                    .Line(GauntletFlow.Line).Badge(() => GauntletFlow.Run != null && !GauntletFlow.Run.Over ? "RUN ON" : "BEST " + GauntletFlow.State.BestFloor, true));
+                AddTo(modes, new CardItem("SCENARIOS", "CLUTCH SITUATIONS", () => Fe.Push(new ScenarioScreen()))
+                    .Drawn("rings", new Color32(16, 18, 30, 255), new Color32(255, 184, 59, 255))
+                    .Line(() => "15 situations: save the match balls, win the decider").Badge(() => "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars, true));
+                AddTo(modes, new CardItem("TARGET ARCADE", "SOLO", () => Fe.Push(new TargetArcadeScreen())).Drawn("rings", new Color32(20, 23, 30, 255), Color.white)
+                    .Line("6 modes  ·  18 levels").Badge(() => "★ " + ArcadeStars() + " / 54"));
+            }
 
             // ---- ONLINE (P2-M8): against people, through the relay server ----
-            var on = Kit.Box(Page("ONLINE"), "k-row");
-            AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
-                .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
-                .Line(() => "Climb the ladder  ·  best of 3  ·  a pull's worth of coins a win").Badge(OnlineText.Rating, true));
-            AddTo(on, new CardItem("QUICK PLAY", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
-                .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
-                .Line("The next player looking  ·  unrated").Badge(OnlineText.Status));
-            AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new PrivateRoomScreen()))
-                .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(200, 255, 61, 255))
-                .Line("Play a friend with a 5-letter code"));
-            AddTo(on, new CardItem("LEADERBOARD", "ONLINE", () => Fe.Push(new LeaderboardScreen()))
-                .Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
-                .Line(() => "Playing as " + OnlineService.Me.Name));
+            if (Has("ONLINE"))
+            {
+                var on = Kit.Box(Page("ONLINE"), "k-row");
+                AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
+                    .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
+                    .Line(() => "Climb the ladder  ·  best of 3  ·  a pull's worth of coins a win").Badge(OnlineText.Rating, true));
+                AddTo(on, new CardItem("QUICK PLAY", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
+                    .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
+                    .Line("The next player looking  ·  unrated").Badge(OnlineText.Status));
+                AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new PrivateRoomScreen()))
+                    .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(200, 255, 61, 255))
+                    .Line("Play a friend with a 5-letter code"));
+                AddTo(on, new CardItem("LEADERBOARD", "ONLINE", () => Fe.Push(new LeaderboardScreen()))
+                    .Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
+                    .Line(() => "Playing as " + OnlineService.Me.Name));
+            }
 
             // ---- TRAINING: the practice court and the Academy, together ----
-            var academy = Kit.Box(Page("TRAINING"), "k-row");
-            AddTo(academy, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen()), CardSize.Hero).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
-                .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS", true));
-            AddTo(academy, new CardItem("ACADEMY", "LEARN", () => FrontEnd.LaunchLesson(AcademyScreen.NextUp().Id))
-                .Drawn("trail", new Color32(30, 18, 52, 255), Color.white)
-                .Line(() => "Next: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
-            AddTo(academy, new CardItem("ALL LESSONS", "ACADEMY", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))
-                .Line("Controls  ·  Rules of squash"));
+            if (Has("TRAINING"))
+            {
+                var academy = Kit.Box(Page("TRAINING"), "k-row");
+                AddTo(academy, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen()), CardSize.Hero).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
+                    .Line("Free play  ·  Feeder  ·  Drills").Badge(() => "5 DRILLS", true));
+                AddTo(academy, new CardItem("ACADEMY", "LEARN", () => FrontEnd.LaunchLesson(AcademyScreen.NextUp().Id))
+                    .Drawn("trail", new Color32(30, 18, 52, 255), Color.white)
+                    .Line(() => "Next: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
+                AddTo(academy, new CardItem("ALL LESSONS", "ACADEMY", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))
+                    .Line("Controls  ·  Rules of squash"));
+            }
 
             // ---- YOU (was LOCKER): your kit, the drops, your records ----
-            var locker = Kit.Box(Page("YOU"), "k-row");
-            AddTo(locker, new CardItem("YOUR KIT", "LOCKER ROOM", () => Fe.Push(new LockerRoomScreen()), CardSize.Hero).Vignette("you")
-                .Line("Kit, racket, celebration, card").Badge(() => "LEVEL " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp), true)).IsNew = AnyNew;
-            // P4: Gear Drops - kit and rackets by the pull, for coins earned by playing
-            AddTo(locker, new CardItem("GEAR DROPS", "LOCKER ROOM", () => Fe.Push(new GearDropScreen())).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
-                .Line(() => "6 banners  ·  Pro Shop  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " coins")
-                .Badge(() => GearDrops.Wallet.Coins / GearDrops.PullCost + (GearDrops.Wallet.Coins / GearDrops.PullCost == 1 ? " PULL" : " PULLS"), GearDrops.CanPull(1)));
-            AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
-                .Badge(() => Done() + " / " + Achievements.All().Count));
-            AddTo(locker, new CardItem("STATS", "LOCKER ROOM", () => Fe.Push(new StatsScreen())).Glyph("%")
-                .Line(() => ProfileStore.Current.Progress.Stats.MatchesWon + " matches won"));
+            if (Has("YOU"))
+            {
+                var locker = Kit.Box(Page("YOU"), "k-row");
+                AddTo(locker, new CardItem("YOUR KIT", "LOCKER ROOM", () => Fe.Push(new LockerRoomScreen()), CardSize.Hero).Vignette("you")
+                    .Line("Kit, racket, celebration, card").Badge(() => "LEVEL " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp), true)).IsNew = AnyNew;
+                // P4: Gear Drops - kit and rackets by the pull, for coins earned by playing
+                AddTo(locker, new CardItem("GEAR DROPS", "LOCKER ROOM", () => Fe.Push(new GearDropScreen())).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
+                    .Line(() => "6 banners  ·  Pro Shop  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " coins")
+                    .Badge(() => GearDrops.Wallet.Coins / GearDrops.PullCost + (GearDrops.Wallet.Coins / GearDrops.PullCost == 1 ? " PULL" : " PULLS"), GearDrops.CanPull(1)));
+                AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
+                    .Badge(() => Done() + " / " + Achievements.All().Count));
+                AddTo(locker, new CardItem("STATS", "LOCKER ROOM", () => Fe.Push(new StatsScreen())).Glyph("%")
+                    .Line(() => ProfileStore.Current.Progress.Stats.MatchesWon + " matches won"));
+            }
 
             // ---- REPLAYS (P2-M6) ----
-            var rep = Kit.Box(Page("REPLAYS"), "k-row");
-            var last = AddTo(rep, new CardItem("LAST MATCH", "REPLAY THEATRE", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e)); }, CardSize.Hero)
-                .Vignette("versus")
-                .Line(() => { var e = Replays.ReplayLibrary.Latest; return e == null ? "" : e.Result + "  " + e.Scores + "  ·  " + ReplayText.Title(e) + "  ·  " + e.Tagged + " highlights"; })
-                .Badge(() => { var e = Replays.ReplayLibrary.Latest; return e != null ? ReplayText.When(e) : ""; }, true));
-            last.Locked = () => Replays.ReplayLibrary.Latest == null; last.LockLine = () => "every match you play is kept here";
-            var reel = AddTo(rep, new CardItem("HIGHLIGHTS", "LAST MATCH", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e, true)); })
-                .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(255, 184, 59, 255))
-                .Line("The best rallies, back to back"));
-            reel.Locked = () => Replays.ReplayLibrary.Latest == null; reel.LockLine = () => "play a match first";
-            AddTo(rep, new CardItem("LIBRARY", "REPLAY THEATRE", () => Fe.Push(new ReplayLibraryScreen())).Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
-                .Line(() => { var l = Replays.ReplayLibrary.Entries; int p = l.FindAll(x => x.Pinned).Count; return l.Count + " replays  ·  " + p + " pinned"; }));
+            if (Has("REPLAYS"))
+            {
+                var rep = Kit.Box(Page("REPLAYS"), "k-row");
+                var last = AddTo(rep, new CardItem("LAST MATCH", "REPLAY THEATRE", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e)); }, CardSize.Hero)
+                    .Vignette("versus")
+                    .Line(() => { var e = Replays.ReplayLibrary.Latest; return e == null ? "" : e.Result + "  " + e.Scores + "  ·  " + ReplayText.Title(e) + "  ·  " + e.Tagged + " highlights"; })
+                    .Badge(() => { var e = Replays.ReplayLibrary.Latest; return e != null ? ReplayText.When(e) : ""; }, true));
+                last.Locked = () => Replays.ReplayLibrary.Latest == null; last.LockLine = () => "every match you play is kept here";
+                var reel = AddTo(rep, new CardItem("HIGHLIGHTS", "LAST MATCH", () => { var e = Replays.ReplayLibrary.Latest; if (e != null) Fe.Push(new MatchReplayScreen(e, true)); })
+                    .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(255, 184, 59, 255))
+                    .Line("The best rallies, back to back"));
+                reel.Locked = () => Replays.ReplayLibrary.Latest == null; reel.LockLine = () => "play a match first";
+                AddTo(rep, new CardItem("LIBRARY", "REPLAY THEATRE", () => Fe.Push(new ReplayLibraryScreen())).Drawn("stripes", new Color32(20, 24, 30, 255), new Color(1, 1, 1, 0.05f))
+                    .Line(() => { var l = Replays.ReplayLibrary.Entries; int p = l.FindAll(x => x.Pinned).Count; return l.Count + " replays  ·  " + p + " pinned"; }));
+            }
 
             // ---- settings: a small button top right, and Y ----
             var gear = new ActionItem("Settings", () => Fe.Push(new SettingsScreen()), PromptBar.Btn.Y);
@@ -164,11 +203,10 @@ namespace SquashGame.UI
 
         protected override void SetPrompts()
         {
-            Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Sections"), (PromptBar.Btn.Y, "Settings"), (PromptBar.Btn.X, "Quit"));
+            Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Sections"), (PromptBar.Btn.Y, "Settings"), (PromptBar.Btn.B, "Home"));
         }
 
         public override void OnActionY() { Fe.Push(new SettingsScreen()); }
-        public override void OnActionX() { Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame)); }
         /// <summary>The player tag top right: your profile (names, record).</summary>
         protected override System.Action OnChip { get { return () => Fe.Push(new ProfileScreen()); } }
 
@@ -211,9 +249,10 @@ namespace SquashGame.UI
                 { "YOU", GearDrops.Wallet.Coins.ToString("N0") + " coins  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp) },
                 { "REPLAYS", Replays.ReplayLibrary.Entries.Count + " replays" },
             };
-            for (int i = 0; i < Sections.Length && i < Tabs.Count; i++) if (lines.TryGetValue(Sections[i], out var line)) Tabs.SetSub(i, line);
-            Tabs.SetDot(System.Array.IndexOf(Sections, "CHALLENGES"), today < Challenges.DailyCount);
-            Tabs.SetDot(System.Array.IndexOf(Sections, "YOU"), AnyNew() || GearDrops.CanPull(1));
+            var mine = MySections;
+            for (int i = 0; i < mine.Length && i < Tabs.Count; i++) if (lines.TryGetValue(mine[i], out var line)) Tabs.SetSub(i, line);
+            Tabs.SetDot(System.Array.IndexOf(mine, "CHALLENGES"), today < Challenges.DailyCount);
+            Tabs.SetDot(System.Array.IndexOf(mine, "YOU"), AnyNew() || GearDrops.CanPull(1));
         }
         float _railAge;
 
@@ -235,7 +274,42 @@ namespace SquashGame.UI
         }
 
         public override void OnShow() { base.OnShow(); _shownFor = null; foreach (var i in Items) i.Refresh(); RefreshRail(); }
-        public override void Back() { }
+        /// <summary>Back: the home screen (PLAY / OTHERS / SETTINGS).</summary>
+        public override void Back() { Fe.Pop(); if (!(Fe.Top is HomeScreen)) Fe.Replace(new HomeScreen(Which)); }
+    }
+
+    // ---------------- the home screen ----------------
+
+    /// <summary>2026-10-29 ("these should have layout like the start button we have now, in the middle of the screen vertical,
+    /// up to down just three buttons"): the logo and PLAY, OTHERS, SETTINGS.</summary>
+    public sealed class HomeScreen : MenuScreen
+    {
+        MainMenuScreen.Hub _focus;                                            // the button you came back from keeps the focus
+        public HomeScreen(MainMenuScreen.Hub focus = MainMenuScreen.Hub.Play) { _focus = focus; }
+
+        protected override string Title { get { return "re:SquashStrike"; } }
+        protected override string RootClass { get { return "fe-screen--title"; } }
+        protected override bool Sidebar { get { return false; } }
+        protected override string Hint { get { return null; } }
+        ButtonItem _play, _others;
+
+        protected override void Build()
+        {
+            Content.style.alignItems = Align.Center;
+            Content.AddToClassList("fe-home");
+            Text("re:", "fe-logo-re");
+            Text("SQUASH", "fe-logo-squash");
+            Text("STRIKE", "fe-logo-strike");
+            _play = Add(new ButtonItem("PLAY", () => { _focus = MainMenuScreen.Hub.Play; Fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Play)); }, true));
+            _others = Add(new ButtonItem("OTHERS", () => { _focus = MainMenuScreen.Hub.Others; Fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Others)); }, true));
+            Add(new ButtonItem("SETTINGS", () => Fe.Push(new SettingsScreen()), true));
+            var prompts = new PromptBar(); prompts.AddToClassList("fe-home-prompts");
+            prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Quit"));
+            Root.Add(prompts);
+        }
+
+        public override void OnShow() { base.OnShow(); Focus(_focus == MainMenuScreen.Hub.Others ? _others : _play); }
+        public override void Back() { Fe.Push(new ConfirmScreen("Quit re:SquashStrike?", FrontEnd.QuitGame)); }
     }
 
     // ---------------- the versus screen ----------------

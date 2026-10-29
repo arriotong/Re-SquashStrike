@@ -180,9 +180,28 @@ namespace SquashGame.Tests
             yield return Tap(kb.enterKey);
             Assert.That(Replays.TheatreSession.Active, Is.Null, "the title's highlights stop with it");
             Assert.That(fe.Match.Demo, Is.True);
+            Assert.That(fe.Top, Is.InstanceOf<HomeScreen>());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "H1_Home.png");
+            // 2026-10-29: OTHERS first (its sections), back home, then PLAY
+            yield return Tap(kb.downArrowKey);
+            yield return Tap(kb.enterKey);
+            Assert.That(((MainMenuScreen)fe.Top).Which, Is.EqualTo(MainMenuScreen.Hub.Others));
+            foreach (var tab in MainMenuScreen.OtherSections)
+            {
+                Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));
+                yield return Wait(0.4f, () => false);
+                yield return CaptureUI(fe, "U2_Hub_" + tab + ".png");
+                yield return Tap(kb.eKey);
+            }
+            yield return Tap(kb.escapeKey);
+            Assert.That(fe.Top, Is.InstanceOf<HomeScreen>(), "back: home");
+            yield return Tap(kb.upArrowKey);
+            yield return Tap(kb.enterKey);
+            Assert.That(((MainMenuScreen)fe.Top).Which, Is.EqualTo(MainMenuScreen.Hub.Play));
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
-            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "YOU", "REPLAYS" })
+            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" })
             {
                 yield return Tap(kb.eKey);
                 Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));

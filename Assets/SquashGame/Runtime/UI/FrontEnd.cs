@@ -138,7 +138,7 @@ namespace SquashGame.UI
             if (Match != null)
             {
                 Match.BeginDemo();
-                if (StartAtTitle) Push(new TitleScreen()); else Push(new MainMenuScreen());
+                if (StartAtTitle) Push(new TitleScreen()); else { Push(new HomeScreen()); Push(new MainMenuScreen()); }   // (back from a match: PLAY, home under it)
                 StartAtTitle = false;                                       // the title only at boot
                 if (OpenOnLoad != null) { var open = OpenOnLoad; OpenOnLoad = null; Push(open()); }
             }
@@ -353,7 +353,8 @@ namespace SquashGame.UI
             Clear();
             Runner.Clock.Resume();
             Match.BeginDemo();
-            Push(new MainMenuScreen());
+            Push(new HomeScreen());
+            Push(new MainMenuScreen());                                       // back in PLAY (Back: the home screen under it)
         }
 
         public void GoPractice() { LaunchFreePractice(); }

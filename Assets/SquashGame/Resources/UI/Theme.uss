@@ -391,3 +391,9 @@
 .lk-ach-reward { font-size: 10px; margin: 2px 0 0 0; padding: 0; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 .rw-tickets { font-size: 12px; margin-top: 5px; color: rgb(255, 196, 64); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- 2026-10-29: the home screen - PLAY / OTHERS / SETTINGS, stacked in the middle ---------- */
+.fe-home .fe-item { margin-top: 18px; width: 420px; height: 66px; }
+.fe-home .fe-logo-strike { margin-bottom: 26px; }
+.fe-home .fe-item__label { font-size: 30px; letter-spacing: 6px; }
+.fe-home-prompts { position: absolute; left: 96px; bottom: 52px; }

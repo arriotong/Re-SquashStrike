@@ -68,7 +68,10 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<TitleScreen>(), "the game opens on the title");
             Assert.That(r.Demo, Is.True, "a demo rally plays behind the menus");
 
-            yield return Tap(pad1.buttonSouth);                     // title -> main menu
+            yield return Tap(pad1.buttonSouth);                     // title -> home
+            Assert.That(fe.Top, Is.InstanceOf<HomeScreen>(), "2026-10-29: PLAY / OTHERS / SETTINGS");
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("PLAY"));
+            yield return Tap(pad1.buttonSouth);                     // PLAY
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("QUICK MATCH"));
             yield return Tap(pad1.dpad.right);                       // (UI remake: Local Versus is next to Quick Match)
@@ -143,7 +146,8 @@ namespace SquashGame.Tests
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             Assert.That(MatchRunner.CanPlayTwoPlayer, Is.False);
-            yield return Tap(kb.enterKey);                          // title -> main menu
+            yield return Tap(kb.enterKey);                          // title -> home
+            yield return Tap(kb.enterKey);                          // PLAY
             var menu = fe.Top;
             Assert.That(menu, Is.InstanceOf<MainMenuScreen>());
             Assert.That(menu.Find("LOCAL VERSUS"), Is.Not.Null, "the card is there (its START needs a pad)");

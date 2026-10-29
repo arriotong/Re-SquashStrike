@@ -18,9 +18,18 @@ namespace SquashGame.Tests
         /// <summary>On the main menu hub: go to <paramref name="tab"/>, focus the card <paramref name="card"/>, and pick it.</summary>
         public static IEnumerator Open(FrontEnd fe, Keyboard kb, Func<ButtonControl, IEnumerator> tap, string tab, string card, bool pick = true)
         {
+            // 2026-10-29: from the home screen (PLAY / OTHERS / SETTINGS) into the hub with the section; or across to the other one
+            var want = MainMenuScreen.HubOf(tab);
+            if (fe.Top is MainMenuScreen other && other.Which != want) { fe.Top.Back(); yield return null; yield return null; }
+            if (fe.Top is HomeScreen)
+            {
+                if (want == MainMenuScreen.Hub.Others) yield return tap(kb.downArrowKey);
+                yield return tap(kb.enterKey);
+                yield return null; yield return null;
+            }
             var hub = fe.Top as MainMenuScreen;
             Assert.That(hub, Is.Not.Null, "on the main menu hub");
-            for (int i = 0; i < MainMenuScreen.Sections.Length && hub.Tabs.Current != tab; i++) yield return tap(kb.eKey);
+            for (int i = 0; i < hub.MySections.Length && hub.Tabs.Current != tab; i++) yield return tap(kb.eKey);
             Assert.That(hub.Tabs.Current, Is.EqualTo(tab));
             yield return null;
             for (int i = 0; i < 8 && !(hub.Focused is CardItem c && c.Title == card); i++) yield return tap(kb.rightArrowKey);
