@@ -379,7 +379,7 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P4_Glow_Trail.png");
         }
 
-        /// <summary>P4-G4: Gear Drops - a banner page, a x10 pull and its reveal, the Pro Shop.</summary>
+        /// <summary>P4-G4 / 2026-10-29: the store - the three gacha banners, a x10 pull and its reveal, the Pro Shop's pull.</summary>
         [UnityTest]
         public IEnumerator GearDropsPullAndShop()
         {
@@ -391,10 +391,22 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "YOU", "GEAR DROPS");
-            Assert.That(fe.Top, Is.InstanceOf<GearDropScreen>());
+            yield return HubNav.Open(fe, kb, Tap, "STORE", "COSMETICS");
+            Assert.That(fe.Top, Is.InstanceOf<StoreScreen>());
+            var store = (StoreScreen)fe.Top;
+            yield return null; yield return null;
+            Assert.That(store.Tabs.Current, Is.EqualTo(StoreScreen.CosmeticsTab));
+            Assert.That(store.Pulls[StoreScreen.CosmeticsTab][1].IsEnabled, Is.True, "x10 affordable");
             yield return Wait(0.6f, () => false);
             yield return CaptureUI(fe, "P4_GearDrops_Banner.png");
+            store.Tabs.Select(0);                                                       // CARD PACKS
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "S1_Store_Cards.png");
+            store.Tabs.Select(2);                                                       // PRO SHOP
+            yield return Wait(0.5f, () => false);
+            yield return CaptureUI(fe, "S1_Store_ProShop.png");
+            store.Tabs.Select(1);
+            yield return null;
 
             var drops = GearDrops.Pull("arena", GearDrops.TenPull);
             Assert.That(drops.Count, Is.EqualTo(10));
@@ -407,10 +419,13 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P4_GearDrops_Reveal.png");
             fe.Top.Back();
             yield return null; yield return null;
-            Assert.That(fe.Top, Is.InstanceOf<GearDropScreen>());
-            ((GearDropScreen)fe.Top).Tabs.Select(GearDrops.Banners().Count);              // PRO SHOP
-            yield return Wait(0.5f, () => false);
-            yield return CaptureUI(fe, "P4_GearDrops_Shop.png");
+            Assert.That(fe.Top, Is.InstanceOf<StoreScreen>(), "back to the store");
+            Assert.That(((StoreScreen)fe.Top).Banner, Is.EqualTo("arena"), "on the banner pulled");
+            // the Pro Shop is a gacha now: a pull gives its gear
+            GearDrops.Wallet.Coins = GearDrops.PullCost;
+            var shop = GearDrops.Pull(GearDrops.ProShopId, 1);
+            Assert.That(shop.Count, Is.EqualTo(1));
+            Assert.That(GearDrops.ProShop().Items, Does.Contain(shop[0].Item), "the kit store's gear");
         }
 
         [UnityTest]

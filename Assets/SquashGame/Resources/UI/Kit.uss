@@ -1247,3 +1247,41 @@
 .k-coins--inline .k-coins-amount { font-size: 18px; margin-left: 5px; }
 .rw-coins { flex-direction: row; align-items: center; margin-top: 4px; }
 .rw-coins > .rw-tickets { margin: 0 6px 0 0; }
+
+/* ---------- 2026-10-29: the store - three bright gacha banners (StoreScreen) ---------- */
+.gx-banner { flex-grow: 1; height: 760px; border-radius: 24px; overflow: hidden; padding: 26px 40px; position: relative; border-width: 2px; border-color: rgba(255, 255, 255, 0.35); -unity-background-scale-mode: stretch-to-fill; }
+.gx-watermark { position: absolute; right: -20px; bottom: 90px; font-size: 300px; color: rgba(255, 255, 255, 0.10); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); letter-spacing: 10px; }
+.gx-title { font-size: 84px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); -unity-font-style: bold-and-italic; -unity-text-outline-width: 3px; -unity-text-outline-color: rgba(30, 14, 60, 0.85); text-shadow: 4px 5px 0 rgba(30, 14, 60, 0.45); margin-bottom: 2px; }
+.gx-info { position: absolute; top: 28px; right: 40px; max-width: 560px; padding: 14px 22px; border-radius: 14px; background-color: rgba(18, 20, 40, 0.62); border-width: 1px; border-color: rgba(255, 255, 255, 0.3); }
+.gx-info-big { font-size: 26px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gx-info-small { font-size: 15px; margin-top: 2px; color: rgba(255, 255, 255, 0.85); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.gx-chips { flex-direction: row; flex-wrap: wrap; margin-top: 4px; }
+.gx-chips > .gx-chip { width: auto; height: 40px; padding: 0 16px; margin: 0 10px 8px 0; border-radius: 20px; background-color: rgba(18, 20, 40, 0.45); border-color: rgba(255, 255, 255, 0.35); }
+.gx-chip .k-action-label { font-size: 17px; }
+.gx-chip--on { background-color: rgb(255, 255, 255); }
+.gx-chip--on .k-action-label { color: rgb(30, 20, 60); }
+.gx-featured { flex-direction: row; justify-content: center; align-items: flex-end; margin-top: 18px; height: 400px; }
+.gx-feat { width: 290px; height: 340px; margin: 0 16px; border-radius: 20px; overflow: hidden; border-width: 3px; justify-content: flex-end; background-color: rgba(14, 16, 26, 0.88); rotate: -3deg; }
+.gx-feat--mid { width: 330px; height: 390px; rotate: 0deg; }
+.gx-feat > .gx-feat-art, .gx-feat > CardArt { flex-grow: 1; margin: 0; border-radius: 0; }
+.gx-feat-art { flex-grow: 1; align-items: center; justify-content: center; }
+.gx-feat-art > .gd-icon { width: 60%; height: 60%; }
+.gx-feat-tag { padding: 10px 14px 12px 14px; background-color: rgba(10, 12, 20, 0.92); }
+.gx-feat-rarity { font-size: 13px; letter-spacing: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.gx-feat-name { font-size: 26px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); white-space: normal; }
+.gx-foot { position: absolute; left: 40px; bottom: 26px; max-width: 760px; }
+.gx-blurb { font-size: 18px; color: rgb(255, 255, 255); white-space: normal; text-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gx-owned { font-size: 15px; margin: 4px 0 10px 0; color: rgba(255, 255, 255, 0.9); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.gx-acts { flex-direction: row; }
+.gx-acts > .gx-small { width: auto; height: 46px; padding: 0 18px; margin-right: 12px; background-color: rgba(18, 20, 40, 0.55); }
+.gx-pulls { position: absolute; right: 40px; bottom: 26px; flex-direction: row; align-items: flex-end; }
+.gx-pull { width: 310px; height: 118px; margin-left: 22px; border-radius: 16px; align-items: center; justify-content: center; background-color: rgb(255, 214, 51); border-width: 3px; border-color: rgb(255, 244, 190); transition-property: scale; transition-duration: 0.12s; }
+.gx-pull-label { font-size: 32px; letter-spacing: 2px; color: rgb(48, 34, 6); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gx-pull > .gx-pull-price { margin: 6px 0 0 0; padding: 3px 18px; border-radius: 12px; border-width: 0; background-color: rgba(70, 46, 0, 0.22); }
+.gx-pull-price .k-coins-amount { font-size: 24px; color: rgb(48, 34, 6); }
+.gx-pull-note { position: absolute; top: -30px; left: 0; right: 0; -unity-text-align: middle-center; font-size: 15px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 1px 2px 0 rgba(120, 10, 40, 0.7); }
+.gx-pull.fe-item--focused { scale: 1.07 1.07; border-color: rgb(255, 255, 255); background-color: rgb(255, 226, 90); }
+.gx-pull.fe-item--disabled { opacity: 0.55; }
+.gx-odds { margin-bottom: 8px; }
+.k-row.gx-reveal-ten { flex-wrap: wrap; }
+.gx-reveal-ten > .k-card { width: 250px; height: 300px; margin-bottom: 14px; }

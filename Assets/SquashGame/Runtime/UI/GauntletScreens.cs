@@ -53,13 +53,14 @@ namespace SquashGame.UI
             }
         }
 
-        /// <summary>A pack for coins (the one currency): the cards it gave, in order (empty: not enough coins).</summary>
-        public static List<string> BuyPack()
+        /// <summary>The card gacha (2026-10-29): 1 or 10 cards for coins - the cards, in order (empty: not enough coins).</summary>
+        public static List<string> BuyCards(int n)
         {
             var w = GearDrops.Wallet;
-            if (w.Coins < GauntletCards.PackCost) return new List<string>();
-            w.Coins -= GauntletCards.PackCost;
-            var got = GauntletCards.Open(Cards);
+            int cost = GauntletCards.Cost(n);
+            if (w.Coins < cost) return new List<string>();
+            w.Coins -= cost;
+            var got = GauntletCards.Draw(Cards, n);
             ProfileStore.Save();
             return got;
         }
@@ -336,19 +337,14 @@ namespace SquashGame.UI
                 {
                     Kit.L(about, "Endless floors: one game to 7 each. Every 5th an elite, every 10th a boss - and they keep getting harder.", "gt-text");
                     Kit.L(about, "Your deck of up to " + GauntletCards.DeckSize + " cards: none is active at first. Win a floor and three are drawn from it - activate one, at its level.", "gt-text");
-                    Kit.L(about, "Cards come in packs (" + GauntletCards.PackCost + " coins). Copies level a card to 3, then evolve it.", "gt-text");
+                    Kit.L(about, "Cards come from the store's Card Packs (" + GauntletCards.CardCost + " coins a card). Copies level a card to 3, then evolve it.", "gt-text");
                     Kit.L(about, "Lose a floor and it costs a heart. Coins from every floor buy talents that last.", "gt-text");
                 }
                 Records(grid, st);
                 AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));   // first: it has the focus
                 var more = Kit.Box(Content, "gt-more");
                 AddTo(more, new ActionItem("Your deck  ·  " + GauntletFlow.Cards.Deck.Count + " / " + GauntletCards.DeckSize, () => Fe.Push(new DeckScreen()), "▶"));
-                var pack = AddTo(more, new ActionItem("Open a pack  ·  " + GauntletCards.PackCost + " coins", () =>
-                {
-                    var got = GauntletFlow.BuyPack();
-                    if (got.Count > 0) { Sounds.Play("stamp"); Fe.Push(new PackScreen(got)); } else Sounds.Play("back");
-                }, "▶"));
-                pack.Enabled = () => GearDrops.Wallet.Coins >= GauntletCards.PackCost;
+                AddTo(more, new ActionItem("Card Packs", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), "▶"));
                 AddTo(more, new ActionItem("Talents  ·  " + st.Coins + " coins", () => Fe.Push(new TalentsScreen()), "▶"));
                 AddTo(more, new ActionItem("Codex", () => Fe.Push(new CodexScreen()), "▶"));
                 return;

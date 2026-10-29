@@ -41,7 +41,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "SHOT PUZZLE", 3 }, { "RULES QUIZ", 5 }, { "SKILL TEST", 4 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "GEAR DROPS", MenuCinematics.LockerScene },
+            { "SHOT PUZZLE", 3 }, { "RULES QUIZ", 5 }, { "SKILL TEST", 4 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "CARD PACKS", 3 }, { "COSMETICS", MenuCinematics.LockerScene }, { "PRO SHOP", 1 },
             { "QUICK PLAY", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
@@ -55,9 +55,9 @@ namespace SquashGame.UI
         /// 2026-10-29 ("instead of dumping everything in one singular ui ... split into 2 separate ui like things involve
         /// playing is PLAY and others are like OTHERS"): two hubs from the home screen - PlaySections and OtherSections.
         public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };
-        public static readonly string[] OtherSections = { "YOU", "REPLAYS" };
+        public static readonly string[] OtherSections = { "STORE", "YOU", "REPLAYS" };
         /// <summary>Every section, both hubs (PLAY's first).</summary>
-        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "YOU", "REPLAYS" };
+        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "STORE", "YOU", "REPLAYS" };
 
         public enum Hub { Play, Others }
         public readonly Hub Which;
@@ -162,16 +162,25 @@ namespace SquashGame.UI
                     .Line("Controls  ·  Rules of squash"));
             }
 
+            // ---- STORE (2026-10-29): the three gachas - card packs, cosmetics, the pro shop ----
+            if (Has("STORE"))
+            {
+                var store = Kit.Box(Page("STORE"), "k-row");
+                AddTo(store, new CardItem("CARD PACKS", "GACHA", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), CardSize.Hero)
+                    .Drawn("trail", new Color32(70, 44, 190, 255), new Color32(255, 102, 170, 255))
+                    .Line(() => "Gauntlet cards  ·  " + SquashSim.Modes.GauntletCards.CardCost + " coins a card").Badge(() => "×10 EPIC+", true));
+                AddTo(store, new CardItem("COSMETICS", "GACHA", () => Fe.Push(new StoreScreen(StoreScreen.CosmeticsTab))).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
+                    .Line(() => "6 banners  ·  " + GearDrops.PullCost + " coins a pull").Badge(() => GearDrops.Wallet.Coins / GearDrops.PullCost + " PULLS", GearDrops.CanPull(1)));
+                AddTo(store, new CardItem("PRO SHOP", "GACHA", () => Fe.Push(new StoreScreen(StoreScreen.ShopTab))).Drawn("chevrons", new Color32(60, 36, 10, 255), new Color32(255, 184, 59, 255))
+                    .Line("The kit store's gear, by the pull"));
+            }
+
             // ---- YOU (was LOCKER): your kit, the drops, your records ----
             if (Has("YOU"))
             {
                 var locker = Kit.Box(Page("YOU"), "k-row");
                 AddTo(locker, new CardItem("YOUR KIT", "LOCKER ROOM", () => Fe.Push(new LockerRoomScreen()), CardSize.Hero).Vignette("you")
                     .Line("Kit, racket, celebration, card").Badge(() => "LEVEL " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp), true)).IsNew = AnyNew;
-                // P4: Gear Drops - kit and rackets by the pull, for coins earned by playing
-                AddTo(locker, new CardItem("GEAR DROPS", "LOCKER ROOM", () => Fe.Push(new GearDropScreen())).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
-                    .Line(() => "6 banners  ·  Pro Shop  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " coins")
-                    .Badge(() => GearDrops.Wallet.Coins / GearDrops.PullCost + (GearDrops.Wallet.Coins / GearDrops.PullCost == 1 ? " PULL" : " PULLS"), GearDrops.CanPull(1)));
                 AddTo(locker, new CardItem("ACHIEVEMENTS", "LOCKER ROOM", () => Fe.Push(new AchievementsScreen())).Drawn("trophy", new Color32(24, 22, 16, 255), new Color32(255, 184, 59, 255))
                     .Badge(() => Done() + " / " + Achievements.All().Count));
                 AddTo(locker, new CardItem("STATS", "LOCKER ROOM", () => Fe.Push(new StatsScreen())).Glyph("%")
@@ -247,12 +256,14 @@ namespace SquashGame.UI
                 { "ONLINE", OnlineText.Rating() },
                 { "TRAINING", AcademyScreen.Summary() },
                 { "YOU", GearDrops.Wallet.Coins.ToString("N0") + " coins  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp) },
+                { "STORE", GearDrops.Wallet.Coins / GearDrops.PullCost + " pulls of coins" },
                 { "REPLAYS", Replays.ReplayLibrary.Entries.Count + " replays" },
             };
             var mine = MySections;
             for (int i = 0; i < mine.Length && i < Tabs.Count; i++) if (lines.TryGetValue(mine[i], out var line)) Tabs.SetSub(i, line);
             Tabs.SetDot(System.Array.IndexOf(mine, "CHALLENGES"), today < Challenges.DailyCount);
-            Tabs.SetDot(System.Array.IndexOf(mine, "YOU"), AnyNew() || GearDrops.CanPull(1));
+            Tabs.SetDot(System.Array.IndexOf(mine, "YOU"), AnyNew());
+            Tabs.SetDot(System.Array.IndexOf(mine, "STORE"), GearDrops.CanPull(1));
         }
         float _railAge;
 

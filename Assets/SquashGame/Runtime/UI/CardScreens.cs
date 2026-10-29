@@ -125,7 +125,7 @@ namespace SquashGame.UI
             Kit.L(_detail, a.Blurb, "gt-text");
             int dl = r != null ? GauntletCards.DeckLevel(r) : 1;
             Kit.L(_detail, (r == null ? "At level 1: " : r.Evolved ? "Evolved: " : "Now: ") + a.Level(GauntletCards.PlayLevel(a, dl)), "gt-text");
-            if (r == null) { Kit.L(_detail, "Find it in a pack (" + GauntletCards.PackCost + " coins, on the Gauntlet screen).", "k-tro-line"); return; }
+            if (r == null) { Kit.L(_detail, "Find it in Card Packs (the store, " + GauntletCards.CardCost + " coins a card).", "k-tro-line"); return; }
             if (!r.Evolved)
             {
                 int lv = GauntletCards.LevelFor(r.Copies);
@@ -156,6 +156,7 @@ namespace SquashGame.UI
         protected override void Compose()
         {
             var row = Kit.Box(Content, "k-row");
+            if (_got.Count > 5) row.AddToClassList("gx-reveal-ten");                  // ten cards: two rows of five
             // each card's copies before the pack, then counted up through it in order (two of one card: new, then a copy)
             var copiesNow = new Dictionary<string, int>();
             foreach (var id in _got)
@@ -174,12 +175,7 @@ namespace SquashGame.UI
                     .Badge(() => GauntletAbilities.RarityNames[(int)a.Rarity].ToUpperInvariant(), a.Rarity >= Rarity.Epic));
                 card.Root.AddToClassList("gt-card");
             }
-            var again = AddTo(Root, new PrimaryItem("Open another  ·  " + GauntletCards.PackCost, () =>
-            {
-                var got = GauntletFlow.BuyPack();
-                if (got.Count > 0) { Sounds.Play("stamp"); Fe.Replace(new PackScreen(got)); } else Sounds.Play("back");
-            }));
-            again.Enabled = () => GearDrops.Wallet.Coins >= GauntletCards.PackCost;
+            AddTo(Root, new PrimaryItem("Back to the store", () => Fe.Pop()));
             var more = Kit.Box(Content, "gt-more");
             AddTo(more, new ActionItem("Your deck", () => Fe.Replace(new DeckScreen()), "▶"));
         }

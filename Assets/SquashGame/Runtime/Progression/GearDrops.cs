@@ -35,7 +35,10 @@ namespace SquashGame.Progression
     {
         public string Id, Name, Blurb, Court;
         public readonly List<Item> Items = new List<Item>();          // the standard editions
-        public List<Item> Of(Rarity r) { return Items.FindAll(i => i.Rarity == (int)r); }
+        /// <summary>A banner's own rarity for an item (the Pro Shop's gear has none in the catalogue); else the item's.</summary>
+        public Dictionary<string, int> Rarities;
+        public int RarityOf(Item i) { return Rarities != null && Rarities.TryGetValue(i.Id, out int r) ? r : i.Rarity; }
+        public List<Item> Of(Rarity r) { return Items.FindAll(i => RarityOf(i) == (int)r); }
     }
 
     /// <summary>One item out of a pull.</summary>
@@ -90,7 +93,27 @@ namespace SquashGame.Progression
 
         static List<GearBanner> _banners;
         public static List<GearBanner> Banners() { if (_banners == null) Cosmetics.All(); return _banners; }
-        public static GearBanner Banner(string id) { foreach (var b in Banners()) if (b.Id == id) return b; return null; }
+        public static GearBanner Banner(string id) { foreach (var b in Banners()) if (b.Id == id) return b; return id == ProShopId ? ProShop() : null; }
+
+        // ---------------- 2026-10-29: the Pro Shop is a gacha ("we are changing pro shop into gacha now") ----------------
+
+        public const string ProShopId = "proshop";
+        static GearBanner _shop;
+
+        /// <summary>The Pro Shop's banner: the kit store's gear (the kit levels used to give), the later its old level the rarer.</summary>
+        public static GearBanner ProShop()
+        {
+            if (_shop != null) return _shop;
+            Cosmetics.All();
+            var b = new GearBanner { Id = ProShopId, Name = "Pro Shop", Blurb = "The pro shop's racks: club kit, rackets and the gear the pros wear.", Court = "club", Rarities = new Dictionary<string, int>() };
+            foreach (var it in Cosmetics.All())
+            {
+                if (it.Unlock != UnlockKind.Level || it.Gold) continue;
+                b.Items.Add(it);
+                b.Rarities[it.Id] = it.Level >= 41 ? 4 : it.Level >= 31 ? 3 : it.Level >= 21 ? 2 : it.Level >= 11 ? 1 : 0;
+            }
+            return _shop = b;
+        }
 
         static Color H(uint rgb) { return new Color(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f); }
 
@@ -230,8 +253,9 @@ namespace SquashGame.Progression
                 if (n == TenPull && i == n - 1 && r < Rarity.Epic && !drops.Exists(x => x.Rarity >= Rarity.Epic)) r = Rarity.Epic;   // a x10 has an Epic
                 SetPity(b.Id, r == Rarity.Legendary ? 0 : PityOf(b.Id) + 1);
                 var pool = b.Of(r);
+                while (pool.Count == 0 && r > Rarity.Common) { r--; pool = b.Of(r); }               // (a banner without that rarity)
                 var item = pool[(int)(Roll(pull, 2) * pool.Count) % pool.Count];
-                bool gold = Roll(pull, 3) < GoldChance && !P.Owned.Contains(item.Id + "_gold");       // a gold edition never repeats
+                bool gold = Roll(pull, 3) < GoldChance && !P.Owned.Contains(item.Id + "_gold") && Cosmetics.Find(item.Id + "_gold") != null;   // a gold edition never repeats
                 drops.Add(Give(gold ? Cosmetics.Find(item.Id + "_gold") : item, r, gold));
             }
             ProfileStore.Save();

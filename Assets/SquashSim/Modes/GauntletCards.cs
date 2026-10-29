@@ -11,8 +11,9 @@
 //   cards      the Gauntlet's abilities - shots, powers, stats, perks,
 //              ultimates (not the one-off bonuses, nor the in-run
 //              evolutions two maxed cards make)
-//   packs      PackSize cards for PackCost coins, by rarity (PackWeight);
-//              a duplicate is a copy of the card
+//   the gacha  a card for CardCost coins, ten for TenCost (an Epic or better
+//              among them), by rarity (PackWeight); a duplicate is a copy
+//              of the card (2026-10-29: was packs of 5)
 //   levels     1 copy level 1, CopiesFor[2] level 2, CopiesFor[3] level 3;
 //              at level 3, EVOLVE for coins: it plays at its ability's top
 //              level
@@ -46,12 +47,14 @@ namespace SquashSim.Modes
         public List<CardRec> Cards = new List<CardRec>();
         public List<string> Deck = new List<string>();
         public uint Seed;
-        public int Packs;
+        public int Packs;                    // the cards drawn so far (the gacha's position; was packs before 2026-10-29)
     }
 
     public static class GauntletCards
     {
-        public const int DeckSize = 20, PackSize = 5, PackCost = 600, MaxLevel = 3, StarterRares = 5;
+        public const int DeckSize = 20, MaxLevel = 3, StarterRares = 5;
+        /// <summary>A card's price, ten (one free; an Epic or better in them), and the x10's size.</summary>
+        public const int CardCost = 120, TenPull = 10, TenCost = 9 * CardCost;
         /// <summary>Copies for level 1, 2, 3.</summary>
         public static readonly int[] CopiesFor = { 0, 1, 3, 6 };
         /// <summary>A pack's odds by rarity (Common, Rare, Epic, Legendary).</summary>
@@ -139,39 +142,42 @@ namespace SquashSim.Modes
             return d;
         }
 
-        // ---------------- packs ----------------
+        // ---------------- the card gacha (2026-10-29: a card a pull, like the other gachas) ----------------
 
         static uint Hash(uint x) { x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16; return x; }
 
-        /// <summary>Pack number <paramref name="pack"/> from this seed: PackSize card ids, by PackWeight.</summary>
-        public static List<string> Pack(uint seed, int pack)
+        /// <summary>Card number <paramref name="k"/> from this seed, by PackWeight (a x10's last card at least Epic when
+        /// <paramref name="epic"/>).</summary>
+        public static string CardAt(uint seed, int k, bool epic = false)
         {
             var cards = All();
             var byRarity = new List<Ability>[PackWeight.Length];
             for (int r = 0; r < byRarity.Length; r++) byRarity[r] = cards.FindAll(a => (int)a.Rarity == r);
-            var got = new List<string>();
-            uint h = Hash(seed ^ Hash((uint)pack * 2654435761u + 0x9ACu));
-            for (int i = 0; i < PackSize; i++)
-            {
-                h = Hash(h + 0x6D2B79F5u);
-                int total = 0;
-                for (int r = 0; r < PackWeight.Length; r++) if (byRarity[r].Count > 0) total += PackWeight[r];
-                int x = (int)(h % (uint)total), rar = 0;
-                for (int r = 0; r < PackWeight.Length; r++) { if (byRarity[r].Count == 0) continue; if (x < PackWeight[r]) { rar = r; break; } x -= PackWeight[r]; }
-                h = Hash(h + 0x1B873593u);
-                var pool = byRarity[rar];
-                got.Add(pool[(int)(h % (uint)pool.Count)].Id);
-            }
-            return got;
+            uint h = Hash(seed ^ Hash((uint)k * 2654435761u + 0x9ACu));
+            int total = 0, from = epic ? (int)Rarity.Epic : 0;
+            for (int r = from; r < PackWeight.Length; r++) if (byRarity[r].Count > 0) total += PackWeight[r];
+            int x = (int)(h % (uint)total), rar = from;
+            for (int r = from; r < PackWeight.Length; r++) { if (byRarity[r].Count == 0) continue; if (x < PackWeight[r]) { rar = r; break; } x -= PackWeight[r]; }
+            h = Hash(h + 0x1B873593u);
+            var pool = byRarity[rar];
+            return pool[(int)(h % (uint)pool.Count)].Id;
         }
 
-        /// <summary>Open the collection's next pack (the game takes the coins first): the ids, in order.</summary>
-        public static List<string> Open(CardCollection c)
+        /// <summary>Pull <paramref name="n"/> cards (1, or TenPull: the last at least Epic if none came) from the collection's
+        /// gacha - the game takes the coins first. The ids, in order; each is added (new, or a copy).</summary>
+        public static List<string> Draw(CardCollection c, int n)
         {
-            var ids = Pack(c.Seed, c.Packs++);
+            var ids = new List<string>();
+            for (int i = 0; i < n; i++)
+            {
+                bool lastOfTen = n == TenPull && i == n - 1 && !ids.Exists(id => GauntletAbilities.Find(id).Rarity >= Rarity.Epic);
+                ids.Add(CardAt(c.Seed, c.Packs++, lastOfTen));
+            }
             foreach (var id in ids) Add(c, id, out _);
             return ids;
         }
+
+        public static int Cost(int n) { return n == TenPull ? TenCost : n * CardCost; }
 
         /// <summary>A new collection: every common and StarterRares rares at level 1, all in the deck.</summary>
         public static CardCollection Starter(uint seed)

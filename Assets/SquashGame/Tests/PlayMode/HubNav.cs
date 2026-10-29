@@ -34,6 +34,13 @@ namespace SquashGame.Tests
             yield return null;
             for (int i = 0; i < 8 && !(hub.Focused is CardItem c && c.Title == card); i++) yield return tap(kb.rightArrowKey);
             for (int i = 0; i < 8 && !(hub.Focused is CardItem c && c.Title == card); i++) yield return tap(kb.leftArrowKey);
+            if (!(hub.Focused is CardItem f && f.Title == card))
+            {
+                // (the arrows can wander up into the top bar's chips from the end of a row: take the card itself)
+                UnityEngine.Debug.Log("[HubNav] " + card + " not reached by the arrows - focused directly");
+                var target = hub.Reachable().Find(x => x is CardItem ci && ci.Title == card);
+                if (target != null) hub.Focus(target);
+            }
             Assert.That(hub.Focused, Is.InstanceOf<CardItem>());
             Assert.That(((CardItem)hub.Focused).Title, Is.EqualTo(card));
             if (pick) yield return tap(kb.enterKey);

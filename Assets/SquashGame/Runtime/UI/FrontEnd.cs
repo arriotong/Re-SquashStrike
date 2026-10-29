@@ -500,7 +500,7 @@ namespace SquashGame.UI
             if (top is CreatePlayerScreen || top is CareerHubScreen || top is MatchPreviewScreen || top is SimResultScreen || top is DrawScreen ||
                 top is EventResultScreen || top is SeasonSummaryScreen || top is SponsorScreen || top is CareerSettingsScreen) return Audio.MusicMood.Career;
             if (top is GauntletScreen || top is TalentsScreen || top is CodexScreen) return Audio.MusicMood.Gauntlet;
-            if (top is LockerRoomScreen || top is GearDropScreen || top is PullRevealScreen || top is GoldPlateScreen ||
+            if (top is LockerRoomScreen || top is StoreScreen || top is PullRevealScreen || top is GoldPlateScreen ||
                 top is OnlineSearchScreen || top is PrivateRoomScreen || top is LeaderboardScreen || top is OnlineNameScreen) return Audio.MusicMood.Locker;
             return Audio.MusicMood.Menu;
         }

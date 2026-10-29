@@ -2,8 +2,8 @@
 // Assets/SquashSim.Testing/Editor/GauntletCardsTests.cs
 // The Gauntlet's card decks (2026-10-28):
 //   - the starter set: every common and some rares, at level 1, in the deck
-//   - packs: five cards, the same seed and number the same cards, by
-//     rarity; copies level a card to 3; level 3 evolves
+//   - the card gacha: by rarity, a x10 has an Epic or better, the same
+//     seed the same cards; copies level a card to 3; level 3 evolves
 //   - Auto: the deck is the best 20; a full deck takes no more
 //   - a run: nothing active at first; a floor won draws cards from the
 //     deck only, none already active; a pick plays at its card's level
@@ -29,16 +29,23 @@ namespace SquashSim.Tests
             Assert.That(GauntletCards.Starter(42).Cards.ConvertAll(r => r.Id), Is.EqualTo(c.Cards.ConvertAll(r => r.Id)), "the same seed, the same set");
         }
 
-        [Test] public void PacksAreSeededAndCopiesLevelACard()
+        [Test] public void TheGachaIsSeededAndCopiesLevelACard()
         {
-            Assert.That(GauntletCards.Pack(7, 3), Is.EqualTo(GauntletCards.Pack(7, 3)));
-            Assert.That(GauntletCards.Pack(7, 3), Is.Not.EqualTo(GauntletCards.Pack(7, 4)));
+            Assert.That(GauntletCards.CardAt(7, 3), Is.EqualTo(GauntletCards.CardAt(7, 3)));
             var counts = new int[4];
-            for (int p = 0; p < 400; p++) foreach (var id in GauntletCards.Pack(11, p)) counts[(int)GauntletAbilities.Find(id).Rarity]++;
+            for (int k = 0; k < 2000; k++) counts[(int)GauntletAbilities.Find(GauntletCards.CardAt(11, k)).Rarity]++;
             Assert.That(counts[(int)Rarity.Common], Is.GreaterThan(counts[(int)Rarity.Rare]));
             Assert.That(counts[(int)Rarity.Rare], Is.GreaterThan(counts[(int)Rarity.Epic]));
             Assert.That(counts[(int)Rarity.Epic], Is.GreaterThan(0));
 
+            // a x10 (2026-10-29: a card a pull): ten cards, an Epic or better among them; the same seed, the same cards
+            for (uint seed = 1; seed <= 20; seed++)
+            {
+                var ten = GauntletCards.Draw(new CardCollection { Seed = seed }, GauntletCards.TenPull);
+                Assert.That(ten.Count, Is.EqualTo(10));
+                Assert.That(ten.Exists(id => GauntletAbilities.Find(id).Rarity >= Rarity.Epic), Is.True, "seed " + seed);
+                Assert.That(GauntletCards.Draw(new CardCollection { Seed = seed }, GauntletCards.TenPull), Is.EqualTo(ten));
+            }
             var c = new CardCollection();
             Assert.That(GauntletCards.Add(c, "meteor", out bool fresh), Is.EqualTo(1)); Assert.That(fresh, Is.True);
             Assert.That(GauntletCards.Add(c, "meteor", out fresh), Is.EqualTo(1)); Assert.That(fresh, Is.False);

@@ -2,7 +2,7 @@
 // Assets/SquashGame/Runtime/UI/GearDropScreens.cs
 // P4: Gear Drops' screens (the rules: Progression/GearDrops).
 //
-//   GearDropScreen     a page per banner - its legendaries, what you own
+//   (the banners themselves: StoreScreen, since 2026-10-29)
 //                      of it, the pity count, Pull x1 / Pull x10, and the
 //                      odds and rules in full - and the PRO SHOP page:
 //                      today's 8 for coins, and gold-plating
@@ -45,106 +45,6 @@ namespace SquashGame.UI
         public static Color RarityColour(Item it) { return it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[Mathf.Clamp(it.Rarity, 0, 4)]; }
     }
 
-    public sealed class GearDropScreen : GameScreen
-    {
-        protected override bool ShowCoins { get { return true; } }
-        readonly string _start;
-        public GearDropScreen(string startBanner = null) { _start = startBanner; }
-        protected override string Kicker { get { return "LOCKER ROOM  ·  " + GearUi.Wallet(); } }
-        protected override string Title { get { return "Gear Drops"; } }
-        protected override bool ShowChip { get { return false; } }
-
-        protected override void Compose()
-        {
-            var banners = GearDrops.Banners();
-            foreach (var b in banners)
-            {
-                var bn = b;
-                var page = Kit.Box(Page(b.Name.ToUpperInvariant()), "gd-page");
-                var left = Kit.Panel(page, b.Name.ToUpperInvariant()); left.AddToClassList("gd-banner");
-                Kit.L(left, b.Blurb, "gd-blurb");
-                var legends = Kit.Box(left, "gd-legends");
-                foreach (var it in b.Of(Rarity.Legendary))
-                {
-                    var l = Kit.Box(legends, "gd-legend");
-                    l.Add(GearUi.Swatch(it, "gd-sw-big"));
-                    Kit.L(l, it.Name, "gd-legend-name");
-                    Kit.L(l, "LEGENDARY  ·  " + GearUi.SlotName(it).ToUpperInvariant() + (it.Glow ? "  ·  GLOWS" : ""), "gd-legend-k");
-                }
-                int owned = GearDrops.OwnedIn(b, out int gold);
-                Kit.L(left, "Owned " + owned + " / " + b.Items.Count + (gold > 0 ? "   ·   ★ " + gold + " gold" : ""), "gd-count");
-                Kit.L(left, "Pulls without a Legendary: " + GearDrops.PityOf(b.Id) + " / " + GearDrops.Pity, "gd-pity");
-                var acts = Kit.Box(left, "gd-acts");
-                var one = AddTo(acts, new ActionItem("Pull ×1  ·  " + GearDrops.PullCost + " coins", () => Pull(bn.Id, 1)));
-                one.Enabled = () => GearDrops.CanPull(1);
-                var ten = AddTo(acts, new ActionItem("Pull ×10  ·  " + GearDrops.TenPullCost.ToString("N0") + " coins", () => Pull(bn.Id, GearDrops.TenPull)));
-                ten.Enabled = () => GearDrops.CanPull(GearDrops.TenPull);
-                Odds(page);
-            }
-
-            // ---- the Pro Shop ----
-            var shop = Kit.Box(Page("PRO SHOP"), "gd-page gd-shop");
-            Kit.L(shop, "Today's eight, for coins (duplicates pay them)  ·  new stock in " + GearDrops.RestockIn(), "gd-blurb");
-            var row = Kit.Box(shop, "k-row");
-            foreach (var it in GearDrops.ShopToday())
-            {
-                var item = it;
-                var card = AddTo(row, new CardItem(it.Name, GearDrops.RarityNames[it.Rarity].ToUpperInvariant() + "  ·  " + GearUi.SlotName(it).ToUpperInvariant(), () => Buy(item))
-                    .Line(() => GearDrops.Owns(item) ? "Owned" : GearDrops.Price(item).ToString("N0") + " coins")
-                    .Badge(() => GearDrops.Owns(item) ? "OWNED" : GearDrops.Price(item).ToString("N0")));
-                card.Art.Add(GearUi.Swatch(it, "gd-sw-card"));
-                card.Art.style.borderBottomColor = GearUi.RarityColour(it); card.Art.style.borderBottomWidth = 6;
-                card.Root.AddToClassList("gd-shopcard");
-                card.Locked = () => GearDrops.Owns(item) || GearDrops.Wallet.Coins < GearDrops.Price(item);
-                card.LockLine = () => GearDrops.Owns(item) ? "owned" : "not enough coins";
-            }
-            var plate = AddTo(shop, new ActionItem("Gold-plate gear you own", () => Fe.Push(new GoldPlateScreen())));
-            plate.Root.AddToClassList("gd-plate");
-
-            if (_start != null) { int i = banners.FindIndex(x => x.Id == _start); if (i > 0) Root.schedule.Execute(() => Tabs.Select(i)); }
-        }
-
-        static void Odds(VisualElement page)
-        {
-            var o = Kit.Panel(page, "ODDS"); o.AddToClassList("gd-odds");
-            for (int r = 4; r >= 0; r--)
-            {
-                var line = Kit.Box(o, "gd-odd");
-                var dot = Kit.Box(line, "gd-odd-dot"); dot.style.backgroundColor = GearDrops.RarityColours[r];
-                Kit.L(line, GearDrops.RarityNames[r], "gd-odd-name");
-                Kit.L(line, (GearDrops.Odds[r] * 100).ToString("0.#") + "%", "gd-odd-pct");
-            }
-            var g = Kit.Box(o, "gd-odd");
-            var gd = Kit.Box(g, "gd-odd-dot"); gd.style.backgroundColor = GearDrops.GoldAccent;
-            Kit.L(g, "Gold edition", "gd-odd-name"); Kit.L(g, (GearDrops.GoldChance * 100).ToString("0") + "%", "gd-odd-pct");
-            foreach (var rule in new[]
-            {
-                "A ×10 pull has at least one Epic.",
-                "After " + GearDrops.Pity + " pulls on a banner without a Legendary, the next one is.",
-                "Duplicates pay coins: " + string.Join(" / ", System.Array.ConvertAll(GearDrops.DupeCoins, c => c.ToString())) + " (Common to Legendary).",
-                "Gold editions never repeat - or gold-plate what you own with coins.",
-                "Coins come from playing every mode: matches, levels, challenges, the Gauntlet, Scenarios, the career, online. A pull is " + GearDrops.PullCost + ", ×10 is " + GearDrops.TenPullCost.ToString("N0") + " (one free). Never real money.",
-            })
-                Kit.L(o, "·  " + rule, "gd-rule");
-        }
-
-        void Pull(string banner, int n)
-        {
-            var drops = GearDrops.Pull(banner, n);
-            if (drops.Count == 0) { Sounds.Play("back"); return; }
-            Fe.Push(new PullRevealScreen(drops, banner));
-        }
-
-        void Buy(Item it)
-        {
-            if (!GearDrops.Buy(it)) { Sounds.Play("back"); return; }
-            Sounds.Play("stamp");
-            Fe.Replace(new GearDropScreen());
-        }
-
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Banners"), (PromptBar.Btn.B, "Back")); }
-    }
-
     public sealed class PullRevealScreen : GameScreen
     {
         readonly List<Drop> _drops;
@@ -178,7 +78,7 @@ namespace SquashGame.UI
                 if (d.Rarity >= Rarity.Epic || d.Gold) c.AddToClassList("gd-card--big");
                 _cards.Add(c);
             }
-            AddTo(Root, new PrimaryItem("Done", () => { RevealAll(); Fe.Pop(); Fe.Replace(new GearDropScreen(_banner)); }));
+            AddTo(Root, new PrimaryItem("Done", () => { RevealAll(); Fe.Pop(); Fe.Replace(StoreScreen.For(_banner)); }));
             var best = Best();
             if (best != null)
             {
@@ -217,7 +117,7 @@ namespace SquashGame.UI
 
         public override void OnActionX() { RevealAll(); }
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Done"), (PromptBar.Btn.X, "Show all"), (PromptBar.Btn.Y, "Wear it"), (PromptBar.Btn.B, "Back")); }
-        public override void Back() { RevealAll(); Fe.Pop(); Fe.Replace(new GearDropScreen(_banner)); }
+        public override void Back() { RevealAll(); Fe.Pop(); Fe.Replace(StoreScreen.For(_banner)); }
     }
 
     public sealed class GoldPlateScreen : GameScreen

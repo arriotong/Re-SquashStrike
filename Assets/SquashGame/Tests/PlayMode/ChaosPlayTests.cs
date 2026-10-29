@@ -63,19 +63,22 @@ namespace SquashGame.Tests
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             var cards = GauntletFlow.Cards;
             Assert.That(cards.Cards.Count, Is.GreaterThanOrEqualTo(10), "a starter set");
-            Progression.GearDrops.Wallet.Coins = 3 * SquashSim.Modes.GauntletCards.PackCost;
+            Progression.GearDrops.Wallet.Coins = SquashSim.Modes.GauntletCards.TenCost + 100;
             fe.Push(new GauntletScreen());
             yield return null; yield return null;
-            var pack = fe.Top.Reachable().Find(i => i.Name.StartsWith("Open a pack"));
-            Assert.That(pack, Is.Not.Null);
+            var packs = fe.Top.Reachable().Find(i => i.Name == "Card Packs");
+            Assert.That(packs, Is.Not.Null, "the Gauntlet points to the store");
+            packs.Submit();
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<StoreScreen>());
             int before = 0; foreach (var c in cards.Cards) before += c.Copies;
-            pack.Submit();
+            ((StoreScreen)fe.Top).Pulls[StoreScreen.CardsTab][1].Submit();             // 10x
             yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<PackScreen>());
-            Assert.That(((PackScreen)fe.Top).Count, Is.EqualTo(SquashSim.Modes.GauntletCards.PackSize));
+            Assert.That(((PackScreen)fe.Top).Count, Is.EqualTo(10));
             int after = 0; foreach (var c in cards.Cards) after += c.Copies;
-            Assert.That(after, Is.EqualTo(before + SquashSim.Modes.GauntletCards.PackSize), "five cards in");
-            Assert.That(Progression.GearDrops.Wallet.Coins, Is.EqualTo(2 * SquashSim.Modes.GauntletCards.PackCost), "paid in coins");
+            Assert.That(after, Is.EqualTo(before + 10), "ten cards in");
+            Assert.That(Progression.GearDrops.Wallet.Coins, Is.EqualTo(100), "paid in coins");
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "G6_Pack.png");
 
