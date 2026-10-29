@@ -92,9 +92,17 @@ namespace SquashGame.Tests
             var hub = (CareerHubScreen)fe.Top;
             hub.Tabs.Select(3);
             yield return null; yield return null;
+            hub.Tabs.Select(4);                                                        // GOALS
+            yield return null; yield return null;
+            var record = fe.Top.Find("Your record  ·  titles, rivals");
+            Assert.That(record, Is.Not.Null, "the GOALS tab's way to your record (2026-10-29)");
+            hub.Focus(record);
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null;
+            Assert.That(fe.Top, Is.InstanceOf<CareerRecordScreen>());
             var button = fe.Top.Find("Trophy cabinet  ·  8 titles");
-            Assert.That(button, Is.Not.Null, "the PLAYER tab's way in, with the count");
-            hub.Focus(button);
+            Assert.That(button, Is.Not.Null, "the record's way into the cabinet, with the count");
+            fe.Top.Focus(button);
             yield return Tap(kb.enterKey);
             yield return null; yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<TrophyCabinetScreen>());

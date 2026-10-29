@@ -1285,3 +1285,59 @@
 .gx-odds { margin-bottom: 8px; }
 .k-row.gx-reveal-ten { flex-wrap: wrap; }
 .gx-reveal-ten > .k-card { width: 250px; height: 300px; margin-bottom: 14px; }
+
+/* ---------- 2026-10-29: the career's PLAYER page, after EA FC's Clubs archetypes (CareerPlayer.cs) ---------- */
+.fc-player { flex-grow: 1; }
+.fc-icons { flex-direction: row; justify-content: center; margin: 0 0 18px 0; }
+.fc-icon { width: 150px; align-items: center; margin: 0 22px; }
+.fc-icon-ring { width: 96px; height: 96px; border-radius: 48px; border-width: 3px; border-color: rgba(255, 255, 255, 0.55); background-color: rgba(14, 16, 22, 0.8); align-items: center; justify-content: center; transition-property: scale, background-color; transition-duration: 0.14s; }
+.fc-icon-art { width: 64px; height: 64px; }
+.fc-icon-name { margin-top: 8px; font-size: 18px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-icon-dot { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 8px; background-color: rgb(255, 196, 64); display: none; }
+.fc-icon--on .fc-icon-ring { background-color: rgb(200, 255, 61); border-color: rgb(255, 255, 255); scale: 1.12 1.12; }
+.fc-icon--on .fc-icon-name { color: rgb(255, 255, 255); }
+.fc-icon--on::before { }
+.fc-icon.fe-item--focused .fc-icon-ring { border-color: rgb(200, 255, 61); border-width: 4px; }
+.fc-body { flex-direction: row; align-items: flex-start; padding: 26px 30px; border-radius: 22px; background-color: rgba(10, 12, 16, 0.86); border-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.fc-card { width: 330px; height: 540px; border-radius: 18px; overflow: hidden; margin-right: 40px; border-width: 3px; border-color: rgba(255, 255, 255, 0.85); background-color: rgb(196, 202, 212); }
+.fc-card-pic { position: absolute; left: 0; right: 0; top: 0; bottom: 92px; }
+.fc-card-level { position: absolute; top: 14px; right: 14px; width: 70px; padding: 4px 0; border-radius: 8px; align-items: center; background-color: rgba(240, 240, 236, 0.95); }
+.fc-card-level-k { font-size: 11px; color: rgb(60, 60, 60); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.fc-card-level-v { font-size: 34px; color: rgb(20, 20, 24); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-card-stats { position: absolute; left: 12px; top: 14px; width: 64px; padding: 8px 0; border-radius: 8px; align-items: center; background-color: rgba(240, 240, 236, 0.92); }
+.fc-card-nat { font-size: 14px; color: rgb(170, 30, 40); margin-bottom: 4px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.fc-card-stat { align-items: center; margin: 1px 0; }
+.fc-card-stat-k { font-size: 10px; color: rgb(80, 80, 86); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.fc-card-stat-v { font-size: 20px; color: rgb(20, 20, 24); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-card-total { margin-top: 6px; border-top-width: 1px; border-top-color: rgba(0, 0, 0, 0.25); padding-top: 4px; }
+.fc-card-plate { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 74px; padding: 8px 14px; border-radius: 12px; justify-content: center; background-color: rgba(250, 250, 248, 0.94); }
+.fc-card-name { font-size: 24px; color: rgb(20, 20, 24); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-card-rank { font-size: 13px; color: rgb(70, 70, 80); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.fc-mid { width: 760px; }
+.fc-head { flex-direction: row; justify-content: space-between; align-items: center; }
+.fc-attr-name { font-size: 64px; letter-spacing: 3px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-points { font-size: 22px; color: rgb(255, 255, 255); padding: 6px 14px; border-radius: 16px; background-color: rgba(255, 196, 64, 0.18); border-width: 1px; border-color: rgba(255, 196, 64, 0.6); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-desc { font-size: 20px; color: rgba(255, 255, 255, 0.86); white-space: normal; margin: 10px 0 14px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-rule { height: 2px; background-color: rgba(255, 255, 255, 0.28); margin-bottom: 16px; }
+.fc-sub { font-size: 26px; color: rgb(255, 255, 255); margin: 6px 0 8px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-level { flex-direction: row; align-items: center; margin-bottom: 14px; }
+.fc-lv-now { width: 78px; height: 78px; border-radius: 6px; -unity-text-align: middle-center; font-size: 40px; color: rgb(255, 255, 255); background-color: rgb(110, 116, 126); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-lv-line { width: 90px; height: 6px; background-color: rgb(110, 116, 126); }
+.fc-lv-next { flex-direction: row; align-items: center; height: 78px; padding: 0 18px; border-radius: 6px; border-width: 2px; border-color: rgb(255, 200, 90); background-color: rgb(180, 120, 30); }
+.fc-lv-next-n { font-size: 40px; color: rgb(255, 255, 255); margin-right: 18px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-lv-cost { font-size: 24px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fc-level--can .fc-lv-next { background-color: rgb(214, 146, 30); border-color: rgb(255, 230, 150); }
+.fc-pips { flex-direction: row; margin-bottom: 8px; }
+.fc-pip { width: 52px; height: 22px; margin-right: 8px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.12); border-width: 1px; border-color: rgba(255, 255, 255, 0.2); }
+.fc-pip--on { background-color: rgb(200, 255, 61); border-color: rgb(200, 255, 61); }
+.fc-pip--gear { background-color: rgba(110, 184, 255, 0.85); border-color: rgb(110, 184, 255); }
+.fc-effect { font-size: 18px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); margin-bottom: 10px; }
+.fc-xp { font-size: 14px; color: rgba(255, 255, 255, 0.65); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.fc-right { margin-left: 40px; padding-left: 40px; border-left-width: 2px; border-left-color: rgba(255, 255, 255, 0.25); min-height: 440px; }
+.fc-right > .fc-btn { width: 330px; height: 62px; margin-bottom: 16px; border-radius: 31px; background-color: rgba(70, 76, 90, 0.85); }
+.fc-right > .fc-btn .k-action-label { font-size: 20px; }
+.fc-right > .fc-btn--main { background-color: rgb(52, 86, 220); border-color: rgb(150, 180, 255); }
+.fc-wearing { margin-top: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6); white-space: normal; width: 330px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.fc-icon.fe-item--focused { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.fc-icon.fe-item--focused .fc-icon-name { color: rgb(200, 255, 61); }
+.fc-right > .fc-hint { width: 330px; min-height: 62px; margin-bottom: 16px; padding: 0 24px; border-radius: 31px; -unity-text-align: middle-left; white-space: normal; font-size: 18px; color: rgb(255, 255, 255); background-color: rgb(52, 86, 220); border-width: 2px; border-color: rgb(150, 180, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }

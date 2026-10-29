@@ -584,93 +584,73 @@ namespace SquashGame.UI
                 Kit.L(lr, open ? "IN" : (t == (int)Tier.WorldTourFinals ? "ROAD TOP 8" : "~#" + lastIn), "k-cr-lad-gate");
             }
 
-            // ---- PLAYER ----
-            var pg = Kit.Box(Page("PLAYER"), "k-cr-pgrid");
-            var card2 = Kit.Panel(pg, "PLAYER CARD"); card2.AddToClassList("k-cr-pcard");
-            var ppic = Kit.Box(card2, "k-cr-ppic"); Vignettes.Attach(ppic, "you", 400, 400);
-            Kit.L(card2, s.Name, "k-cr-pname");
-            Kit.L(card2, s.Nat + "  ·  SEASON " + s.Season + "  ·  " + Career.Rank(rank).ToUpperInvariant(), "k-cr-pmeta");
-            var mid = Kit.Box(pg, "k-cr-pmid");
-            var cs = Kit.Panel(mid, "CAREER");
-            var tiles = Kit.Box(cs, "k-cr-tiles");
-            int won = 0, lost = 0;
-            foreach (var mrec in s.Matches) if (mrec.Won) won++; else lost++;
-            Career.Tile(tiles, "MATCHES", won + "-" + lost);
-            Career.Tile(tiles, "WIN %", won + lost == 0 ? "–" : (100 * won / (won + lost)) + "%");
-            Career.Tile(tiles, "TITLES", s.Titles.ToString());
-            Career.Tile(tiles, "EARNINGS", Career.Money(s.Earnings));
-            Career.Tile(tiles, "CASH", Career.Money(s.Cash));
-            var byTier = Kit.Box(cs, "k-cr-bytier");
-            var counts = new int[Career.BandNames.Length];
-            foreach (var r in s.Results) if (r.Player == You && r.Reached == 0) counts[Tour.Band(r.Tier)]++;
-            for (int b0 = 0; b0 < counts.Length; b0++)
-            {
-                var b = Kit.Box(byTier, "k-cr-bytier-item");
-                b.Add(new TierBadge(b0, 18));
-                Kit.L(b, counts[b0] + "  " + Career.BandNames[b0], "k-cr-bytier-n");
-            }
-            int best = CareerSession.Unranked;
-            foreach (var sr in s.Seasons) best = Mathf.Min(best, sr.Rank);
-            Kit.L(cs, "Best season finish " + (s.Seasons.Count == 0 ? "– (first season)" : Career.Rank(best)) + "   ·   rating " + s.Rating.ToString("0.00"), "k-cr-note");
-            // P3-R3: your attributes, and the points to spend on them
-            var at = Kit.Panel(mid, AttrTitle(c)); at.AddToClassList("k-cr-attr");
-            _attrTitle = at.Q<Label>(className: "k-panel-title");
+            // ---- PLAYER (2026-10-29: after EA FC's Clubs archetypes page - CareerPlayer.cs) ----
+            var pg = Kit.Box(Page("PLAYER"), "fc-player");
+            var icons = Kit.Box(pg, "fc-icons");
             foreach (var name in CareerSession.AttributeNames)
             {
-                var n = name;
-                var r0 = Kit.Box(at, "k-cr-attr-row");
-                Kit.L(r0, CareerSession.DisplayName(n).ToUpperInvariant(), "k-cr-attr-name");
-                var bar = Kit.Box(r0, "k-cr-attr-bar");
-                var fill = Kit.Box(bar, "k-cr-attr-fill");
-                var val = Kit.L(r0, "", "k-cr-attr-val");
-                var plus = AddTo(r0, new ActionItem("+", () => { if (c.Spend(n)) { CareerStore.Save(); RefreshAttrs(); } }));
-                plus.Root.AddToClassList("k-cr-attr-plus");
-                plus.Enabled = () => c.CanRaise(n);
-                Kit.L(at, AttrLine(n), "k-cr-attr-line");
-                _attrs.Add((n, fill, val));
+                var it = AddTo(icons, new AttrIconItem(name));
+                it.OnPress = () => Raise(it.Attribute);
+                _icons.Add(it);
             }
-            RefreshAttrs();
-            _levelBar = Kit.Box(Kit.Box(at, "k-cr-attr-bar"), "k-cr-attr-fill");
-            Kit.L(at, "Every match gives XP - more at the bigger events - and every level a point. 5 in a stat is a Quick Match player; you start at " + CareerSession.StartStat + " (-16%), 10 is +20%.", "k-cr-note");
-            // P7 phase 5: your gear, and the Equipment screen
+            var body = Kit.Box(pg, "fc-body");
+            // your trading card
+            var tcard = Kit.Box(body, "fc-card");
+            var pic = Kit.Box(tcard, "fc-card-pic"); Vignettes.Attach(pic, "you", 420, 520);
+            var lvl = Kit.Box(tcard, "fc-card-level");
+            Kit.L(lvl, "LEVEL", "fc-card-level-k");
+            _cardLevel = Kit.L(lvl, "", "fc-card-level-v");
+            var stats = Kit.Box(tcard, "fc-card-stats");
+            Kit.L(stats, s.Nat, "fc-card-nat");
+            foreach (var name in CareerSession.AttributeNames)
+            {
+                var row = Kit.Box(stats, "fc-card-stat");
+                Kit.L(row, CareerSession.DisplayName(name).Substring(0, 3).ToUpperInvariant(), "fc-card-stat-k");
+                _cardStats[name] = Kit.L(row, "", "fc-card-stat-v");
+            }
+            var tot = Kit.Box(stats, "fc-card-stat fc-card-total");
+            Kit.L(tot, "TOTAL", "fc-card-stat-k");
+            _cardTotal = Kit.L(tot, "", "fc-card-stat-v");
+            var plate = Kit.Box(tcard, "fc-card-plate");
+            Kit.L(plate, s.Name.ToUpperInvariant(), "fc-card-name");
+            Kit.L(plate, Career.Rank(rank) + "  ·  SEASON " + s.Season, "fc-card-rank");
+            // the attribute picked
+            var mid = Kit.Box(body, "fc-mid");
+            var fhead = Kit.Box(mid, "fc-head");
+            _attrName = Kit.L(fhead, "", "fc-attr-name");
+            _points = Kit.L(fhead, "", "fc-points");
+            _attrDesc = Kit.L(mid, "", "fc-desc");
+            Kit.Box(mid, "fc-rule");
+            Kit.L(mid, "Level", "fc-sub");
+            var lv = Kit.Box(mid, "fc-level");
+            _lvNow = Kit.L(lv, "", "fc-lv-now");
+            Kit.Box(lv, "fc-lv-line");
+            var nxt = Kit.Box(lv, "fc-lv-next");
+            _lvNext = Kit.L(nxt, "", "fc-lv-next-n");
+            _lvCost = Kit.L(nxt, "", "fc-lv-cost");
+            Kit.L(mid, "Effect", "fc-sub");
+            _pips = Kit.Box(mid, "fc-pips");
+            for (int k = 0; k < (int)SquashSim.AthleteAttributes.Max; k++) Kit.Box(_pips, "fc-pip");
+            _effect = Kit.L(mid, "", "fc-effect");
+            _xp = Kit.L(mid, "", "fc-xp");
+            // the actions, down the right
+            var right = Kit.Box(body, "fc-right");
+            // (six choices at most: the icons upgrade on confirm - this says so)
+            _upgrade = Kit.L(right, "", "fc-hint");
+            var shop = AddTo(right, new ActionItem("Equipment  ·  rackets, shoes, kit", () => Fe.Push(new EquipmentScreen())));
+            shop.Root.AddToClassList("fc-btn");
             var gearNames = new List<string>();
             foreach (var g in c.Wearing()) gearNames.Add(g.Name);
-            var eff = c.Effective;
-            Kit.L(card2, "GEAR  " + string.Join("  ·  ", gearNames) + (eff.Stability != SquashSim.AthleteAttributes.Neutral ? "  ·  stability " + eff.Stability.ToString("0") : ""), "k-cr-attr-line");
-            var shop = AddTo(card2, new ActionItem("Equipment  ·  rackets, shoes, kit", () => Fe.Push(new EquipmentScreen())));
-            shop.Root.AddToClassList("k-cr-eq-btn");
-            var cab = AddTo(card2, new ActionItem("Trophy cabinet  ·  " + c.Trophies.Count + (c.Trophies.Count == 1 ? " title" : " titles"), () => Fe.Push(new TrophyCabinetScreen())));
-            cab.Root.AddToClassList("k-cr-eq-btn");
-            var rv = Kit.Box(card2, "k-cr-privals");
-            Kit.L(rv, "RIVALS", "k-cr-attr-line");
-            var rivals = c.Rivals();
-            if (rivals.Count == 0) Kit.L(rv, "None yet. A pro who beats you twice, or meets you in two finals, becomes one.", "k-cr-empty");
-            foreach (var id in rivals)
-            {
-                c.HeadToHead(id, out int w, out int l);
-                var rr = Kit.Box(rv, "k-cr-rival");
-                Kit.L(rr, "★", "k-cr-rival-star");
-                Kit.L(rr, c.NameOf(id), "k-cr-rival-name");
-                Kit.L(rr, Career.Rank(c.RankOf(id)) + "   " + w + "-" + l, "k-cr-rival-h2h");
-            }
-            var hist = Kit.Panel(pg, "MATCH HISTORY"); hist.AddToClassList("k-cr-hist");
-            if (s.Matches.Count == 0) Kit.L(hist, "No matches yet. Your first event is waiting.", "k-cr-empty");
-            for (int i = s.Matches.Count - 1, k = 0; i >= 0 && k < 9; i--, k++)
-            {
-                var mrec = s.Matches[i];
-                var hr = Kit.Box(hist, "k-cr-hrow");
-                var wl = Kit.L(hr, mrec.Won ? "W" : "L", "k-cr-chip"); if (mrec.Won) wl.AddToClassList("k-cr-chip--w");
-                var mid2 = Kit.Box(hr, "k-cr-hmid");
-                Kit.L(mid2, "v " + c.NameOf(mrec.Opp) + "  (" + Career.Rank(mrec.OppRank) + ")", "k-cr-hname");
-                Kit.L(mid2, mrec.Event + "  ·  " + Tour.RoundName(mrec.Left) + (mrec.Simulated ? "  ·  simulated" : ""), "k-cr-hline");
-                Kit.L(hr, mrec.Score ?? "", "k-cr-hscore");
-            }
+            Kit.L(right, "WEARING  " + string.Join("  ·  ", gearNames), "fc-wearing");
+            Pick(CareerSession.AttributeNames[0]);
 
             // ---- GOALS (P3-R4): the season's goals and your sponsor ----
             var gg = Kit.Box(Page("GOALS"), "k-cr-ggrid");
             var gp = Kit.Panel(gg, "SEASON " + s.Season + " GOALS  ·  " + c.GoalsDoneNow + " OF " + c.Goals.Count + " DONE"); gp.AddToClassList("k-cr-goals");
             foreach (var g in c.Goals) Career.GoalRow(gp, g);
             Kit.L(gp, "Goals are set from your ranking at the start of each season. Each one pays XP and prize money.", "k-cr-note");
+            var rec = AddTo(gp, new ActionItem("Your record  ·  titles, rivals", () => Fe.Push(new CareerRecordScreen())));   // (2026-10-29: off the PLAYER page)
+            rec.Root.AddToClassList("k-cr-eq-btn");
             var sp = Kit.Panel(gg, "SPONSOR"); sp.AddToClassList("k-cr-sponsor");
             if (s.Sponsor != null)
             {
@@ -696,41 +676,83 @@ namespace SquashGame.UI
             AddTo(TopBar, gear);
         }
 
-        readonly List<(string name, VisualElement fill, Label val)> _attrs = new List<(string, VisualElement, Label)>();
-        Label _attrTitle;
+        // ---- the PLAYER page (2026-10-29) ----
+        readonly List<AttrIconItem> _icons = new List<AttrIconItem>();
+        readonly Dictionary<string, Label> _cardStats = new Dictionary<string, Label>();
+        Label _cardLevel, _cardTotal, _attrName, _points, _attrDesc, _lvNow, _lvNext, _lvCost, _effect, _xp;
+        VisualElement _pips;
+        Label _upgrade;
+        string _sel = "Speed";
+        /// <summary>The attribute picked on the PLAYER page (tests).</summary>
+        public string PickedAttribute { get { return _sel; } }
 
         static string AttrLine(string n)
         {
             switch (n)
             {
-                case "Speed": return "Top speed, acceleration and reach: -20% at 0, +20% at 10";
-                case "Stamina": return "Tires slower - longer rallies, sprints, dives: drain x1.4 to x0.6";
-                case "Power": return "Harder drives and kills: -20% to +20% pace";
-                default: return "Tighter shots, fewer miss-hits: spread x1.4 to x0.6";
+                case "Speed": return "Top speed, acceleration and reach. Get to the corners and back to the T before the ball does.";
+                case "Stamina": return "Tire slower: long rallies, sprints and dives cost you less, deep into the fifth game.";
+                case "Power": return "Harder drives and kills - the ball through the court before they turn.";
+                default: return "Tighter shots, fewer miss-hits: the ball goes where you aim, tight to the wall.";
             }
         }
 
-        void RefreshAttrs()
+        static string Effect(string n, double e)
         {
-            var s = Career.S;
-            foreach (var (n, fill, val) in _attrs)
+            double k = (e - SquashSim.AthleteAttributes.Neutral) / (SquashSim.AthleteAttributes.Max - SquashSim.AthleteAttributes.Neutral);   // -1 .. +1
+            switch (n)
             {
-                double v = CareerSession.Get(s.Attributes, n), e = CareerSession.Get(Career.C.Effective, n);   // your level; with your gear
-                fill.style.width = Length.Percent((float)(100 * e / SquashSim.AthleteAttributes.Max));
-                int pct = (int)System.Math.Round((e - SquashSim.AthleteAttributes.Neutral) * 4);
-                string gear = e == v ? "" : " (" + (e > v ? "+" : "−") + System.Math.Abs(e - v).ToString("0") + ")";
-                val.text = (v >= SquashSim.AthleteAttributes.Max ? "10 MAX" : v.ToString("0")) + gear + "  ·  " + (pct >= 0 ? "+" : "") + pct + "%";
+                case "Speed": return "Speed and reach " + Pct(0.2 * k);
+                case "Stamina": return "Tiring  x" + (1.0 - 0.4 * k).ToString("0.00");
+                case "Power": return "Drive and kill pace " + Pct(0.2 * k);
+                default: return "Shot spread  x" + (1.0 - 0.4 * k).ToString("0.00");
             }
-            if (_attrTitle != null) _attrTitle.text = AttrTitle(Career.C);
-            if (_levelBar != null) _levelBar.style.width = Length.Percent(100f * Career.C.LevelProgress);
         }
 
-        VisualElement _levelBar;
+        /// <summary>A stat as the card shows it, FC-style: 0 is 50, 10 is 99.</summary>
+        static int Rating(double v) { return System.Math.Min(99, (int)System.Math.Round(50 + 4.9 * v)); }
 
-        static string AttrTitle(CareerSession c)
+        static string Pct(double v) { int p = (int)System.Math.Round(v * 100); return (p >= 0 ? "+" : "") + p + "%"; }
+
+        /// <summary>Show an attribute on the PLAYER page.</summary>
+        void Pick(string attribute)
         {
-            int p = c.S.TrainingPoints;
-            return "LEVEL " + c.Level + "  ·  " + c.S.Xp.ToString("N0") + " XP  ·  " + p + (p == 1 ? " POINT" : " POINTS") + " TO SPEND";
+            _sel = attribute;
+            var c = Career.C;
+            var s = c.S;
+            foreach (var it in _icons) it.SetPicked(it.Attribute == attribute, c.CanRaise(it.Attribute));
+            int total = 0;
+            foreach (var n in CareerSession.AttributeNames)
+            {
+                int r = Rating(CareerSession.Get(c.Effective, n));
+                total += r;
+                _cardStats[n].text = r.ToString();
+            }
+            _cardTotal.text = total.ToString();
+            _cardLevel.text = c.Level.ToString();
+            double v = CareerSession.Get(s.Attributes, attribute), eff = CareerSession.Get(c.Effective, attribute);
+            _attrName.text = CareerSession.DisplayName(attribute).ToUpperInvariant();
+            _points.text = "★ " + s.TrainingPoints + " available";
+            _attrDesc.text = AttrLine(attribute);
+            bool top = v >= SquashSim.AthleteAttributes.Max;
+            _lvNow.text = v.ToString("0");
+            _lvNext.text = top ? "MAX" : (v + 1).ToString("0");
+            _lvCost.text = top ? "" : "★ " + CareerSession.CostToRaise(v);
+            _lvNow.parent.EnableInClassList("fc-level--can", c.CanRaise(attribute));
+            int i = 0;
+            foreach (var pip in _pips.Children()) { pip.EnableInClassList("fc-pip--on", i < v); pip.EnableInClassList("fc-pip--gear", i >= v && i < eff); i++; }
+            _effect.text = Effect(attribute, eff) + (eff != v ? "   (gear " + (eff > v ? "+" : "-") + System.Math.Abs(eff - v).ToString("0") + ")" : "");
+            _xp.text = "LEVEL " + c.Level + "  ·  " + s.Xp.ToString("N0") + " XP  ·  " + (CareerSession.XpFor(c.Level + 1) - s.Xp).ToString("N0") + " to the next point";
+            _upgrade.text = top ? CareerSession.DisplayName(attribute) + " is at the top" : c.CanRaise(attribute) ? "Enter on the icon: upgrade (★ " + CareerSession.CostToRaise(v) + ")" : "Play for XP: ★ every level";
+        }
+
+        void Raise(string attribute)
+        {
+            var c = Career.C;
+            if (!c.Spend(attribute)) { Sounds.Play("back"); return; }
+            CareerStore.Save();
+            Sounds.Play("stamp");
+            Pick(attribute);
         }
 
         void FillTable()
@@ -825,6 +847,7 @@ namespace SquashGame.UI
             var c = Career.C;
             if (c == null) { Fe.Pop(); return; }                     // the career is gone (deleted)
             if (Focused is CardItem fc) foreach (var (card, _) in _events) if (card == fc) _lastEvent = fc;
+            if (Focused is AttrIconItem ai && ai.Attribute != _sel) Pick(ai.Attribute);   // the PLAYER page's icon row
             if (c.S.Current != null && c.CanFinishSlot)
             {
                 c.FinishSlot();
