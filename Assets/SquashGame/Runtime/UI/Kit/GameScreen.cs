@@ -26,6 +26,9 @@ namespace SquashGame.UI
         protected override string RootClass { get { return "k-screen"; } }
         /// <summary>Show the player chip top right.</summary>
         protected virtual bool ShowChip { get { return true; } }
+        /// <summary>2026-10-29: the wallet top right - a coin and the amount (the screens where coins matter).</summary>
+        protected virtual bool ShowCoins { get { return false; } }
+        public CoinCount Coins { get; private set; }
         /// <summary>What pressing the player tag does (null: it is just a tag). The main menu: your profile.</summary>
         protected virtual Action OnChip { get { return null; } }
         /// <summary>The tag as a menu item, when it does something.</summary>
@@ -65,6 +68,7 @@ namespace SquashGame.UI
                 Root.AddToClassList(TabsAs == TabStyle.Rail ? "k-screen--rail" : "k-screen--tabbed");
                 ShowPage(0);
             }
+            if (ShowCoins) { Coins = new CoinCount(); TopBar.Add(Coins); }
             if (ShowChip)
             {
                 Chip = new PlayerChip();

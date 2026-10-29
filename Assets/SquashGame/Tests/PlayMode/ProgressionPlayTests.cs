@@ -96,6 +96,8 @@ namespace SquashGame.Tests
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_charcoal"), "the worn shirt first");
             // 2026-10-29: the athlete stands still in the Locker Room, so the kit can be seen
             Assert.That(MatchRunner.Showcase, Is.True);
+            Assert.That(locker.Coins, Is.Not.Null, "2026-10-29: the coins top right");
+            Assert.That(locker.Coins.Text, Is.EqualTo(GearDrops.Wallet.Coins.ToString("N0")));
             var still = You().transform.position;
             Assert.That(Vector3.Distance(still, MatchRunner.ShowcaseSpot), Is.LessThan(0.2f), "mid-court");
             yield return Wait(1.0f, () => false);

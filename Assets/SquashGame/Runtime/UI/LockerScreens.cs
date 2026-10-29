@@ -285,6 +285,7 @@ namespace SquashGame.UI
 
     public sealed class LockerRoomScreen : GameScreen
     {
+        protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "LOCKER ROOM"; } }
         protected override string Title { get { return "Your kit"; } }
         protected override bool ShowChip { get { return false; } }

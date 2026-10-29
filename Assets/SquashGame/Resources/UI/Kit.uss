@@ -1239,3 +1239,11 @@
 .k-pick-scroll { max-height: 640px; }
 .k-pick-scroll .k-action { height: 54px; margin-bottom: 6px; }
 .k-pick-row--now { border-left-width: 4px; border-left-color: rgb(200, 255, 61); }
+
+/* ---------- 2026-10-29: coins as an icon + the amount ---------- */
+.k-coins { flex-direction: row; align-items: center; padding: 8px 16px 8px 10px; margin-left: auto; margin-right: 18px; border-radius: 22px; background-color: rgba(12, 13, 16, 0.85); border-width: 1px; border-color: rgba(255, 196, 64, 0.45); }
+.k-coins-amount { margin-left: 8px; font-size: 22px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-coins--inline { padding: 0; margin: 0 4px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.k-coins--inline .k-coins-amount { font-size: 18px; margin-left: 5px; }
+.rw-coins { flex-direction: row; align-items: center; margin-top: 4px; }
+.rw-coins > .rw-tickets { margin: 0 6px 0 0; }

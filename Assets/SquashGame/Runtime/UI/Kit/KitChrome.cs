@@ -218,6 +218,55 @@ namespace SquashGame.UI
     }
 
     /// <summary>Top right on the hubs: the banner colour, name, title, level ring.</summary>
+    /// <summary>2026-10-29 ("I want the coins show as an icon + the amount you have"): a gold coin, drawn.</summary>
+    public sealed class CoinIcon : VisualElement
+    {
+        static readonly Color Gold = new Color32(255, 196, 64, 255), Rim = new Color32(196, 128, 22, 255), Shine = new Color32(255, 236, 160, 255);
+
+        public CoinIcon(float size = 22f)
+        {
+            AddToClassList("k-coin-icon");
+            pickingMode = PickingMode.Ignore;
+            style.width = size; style.height = size; style.flexShrink = 0;
+            generateVisualContent += Paint;
+        }
+
+        void Paint(MeshGenerationContext mgc)
+        {
+            var r = contentRect;
+            float rad = Mathf.Min(r.width, r.height) * 0.5f;
+            if (rad <= 1f) return;
+            var c = r.center;
+            var p = mgc.painter2D;
+            p.fillColor = Rim; p.BeginPath(); p.Arc(c, rad, Angle.Degrees(0), Angle.Degrees(360)); p.Fill();
+            p.fillColor = Gold; p.BeginPath(); p.Arc(c, rad * 0.82f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill();
+            p.lineWidth = Mathf.Max(1f, rad * 0.12f);
+            p.strokeColor = Rim; p.BeginPath(); p.Arc(c, rad * 0.55f, Angle.Degrees(0), Angle.Degrees(360)); p.Stroke();
+            p.fillColor = Shine; p.BeginPath(); p.Arc(c + new Vector2(-rad * 0.3f, -rad * 0.32f), rad * 0.16f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill();
+        }
+    }
+
+    /// <summary>The coin icon and an amount - by default the wallet, kept up to date (the top bars).</summary>
+    public sealed class CoinCount : VisualElement
+    {
+        readonly Label _amount;
+        readonly Func<int> _get;
+
+        public CoinCount(Func<int> amount = null, float icon = 22f)
+        {
+            AddToClassList("k-coins");
+            pickingMode = PickingMode.Ignore;
+            _get = amount ?? (() => GearDrops.Wallet.Coins);
+            Add(new CoinIcon(icon));
+            _amount = Kit.L(this, "", "k-coins-amount");
+            Refresh();
+            if (amount == null) schedule.Execute(Refresh).Every(250);
+        }
+
+        public string Text { get { return _amount.text; } }
+        public void Refresh() { _amount.text = _get().ToString("N0"); }
+    }
+
     public sealed class PlayerChip : VisualElement
     {
         readonly Ring _ring = new Ring();

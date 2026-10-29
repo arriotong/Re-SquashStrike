@@ -30,6 +30,7 @@ namespace SquashGame.UI
 
     public sealed class MainMenuScreen : GameScreen
     {
+        protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "re:"; } }
         protected override string Title { get { return "<color=#c8ff3d>SQUASH</color>STRIKE"; } }
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }

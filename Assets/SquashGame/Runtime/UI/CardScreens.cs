@@ -21,7 +21,8 @@ namespace SquashGame.UI
 {
     public sealed class DeckScreen : GameScreen
     {
-        protected override string Kicker { get { return "THE GAUNTLET  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " COINS"; } }
+        protected override bool ShowCoins { get { return true; } }
+        protected override string Kicker { get { return "THE GAUNTLET"; } }
         protected override string Title { get { return "Your deck  ·  " + GauntletFlow.Cards.Deck.Count + " / " + GauntletCards.DeckSize; } }
         protected override bool ShowChip { get { return false; } }
 
@@ -142,7 +143,8 @@ namespace SquashGame.UI
 
     public sealed class PackScreen : GameScreen
     {
-        protected override string Kicker { get { return "THE GAUNTLET  ·  A PACK  ·  " + GearDrops.Wallet.Coins.ToString("N0") + " COINS LEFT"; } }
+        protected override bool ShowCoins { get { return true; } }
+        protected override string Kicker { get { return "THE GAUNTLET  ·  A PACK"; } }
         protected override string Title { get { return "Your cards"; } }
         protected override bool ShowChip { get { return false; } }
         readonly List<string> _got;

@@ -298,6 +298,7 @@ namespace SquashGame.UI
 
     public sealed class GauntletScreen : GameScreen
     {
+        protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "MODES  ·  THE GAUNTLET"; } }
         protected override string Title
         {

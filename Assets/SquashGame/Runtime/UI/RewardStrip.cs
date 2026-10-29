@@ -53,8 +53,14 @@ namespace SquashGame.UI
             // batch 3: the coins this earned (2026-10-28: the one currency - pulls are paid in them)
             if (r.Coins > 0)
             {
-                var c = new Label("COINS   +" + r.Coins.ToString("N0") + "   ·   " + GearDrops.Wallet.Coins.ToString("N0") + " in all   ·   " + (GearDrops.Wallet.Coins / GearDrops.PullCost) + " pulls in Gear Drops (You)");
-                c.AddToClassList("rw-tickets"); Add(c);
+                // 2026-10-29: as the coin icon and amounts - "+ (coin) 120   ·   (coin) 3,350 in all"
+                var c = new VisualElement(); c.AddToClassList("rw-coins");
+                var plus = new Label("+"); plus.AddToClassList("rw-tickets"); c.Add(plus);
+                var got = new CoinCount(() => r.Coins, 18f); got.AddToClassList("k-coins--inline"); c.Add(got);
+                var mid = new Label("·"); mid.AddToClassList("rw-tickets"); c.Add(mid);
+                var all = new CoinCount(() => GearDrops.Wallet.Coins, 18f); all.AddToClassList("k-coins--inline"); c.Add(all);
+                var rest = new Label("in all  ·  " + (GearDrops.Wallet.Coins / GearDrops.PullCost) + " pulls"); rest.AddToClassList("rw-tickets"); c.Add(rest);
+                Add(c);
             }
             // P3-R1: what the next level brings - always something to play for
             int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);

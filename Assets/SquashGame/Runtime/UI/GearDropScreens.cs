@@ -24,8 +24,7 @@ namespace SquashGame.UI
     {
         public static string Wallet()
         {
-            var w = GearDrops.Wallet;
-            return w.Coins.ToString("N0") + " COINS   ·   a pull " + GearDrops.PullCost + "   ·   ×10 " + GearDrops.TenPullCost.ToString("N0");
+            return "A PULL " + GearDrops.PullCost + "   ·   ×10 " + GearDrops.TenPullCost.ToString("N0");          // (the coins: top right)
         }
 
         /// <summary>An item for cards: its shape (a shirt, a shoe, a racket...) in its own colour, on a backing that contrasts with it
@@ -48,6 +47,7 @@ namespace SquashGame.UI
 
     public sealed class GearDropScreen : GameScreen
     {
+        protected override bool ShowCoins { get { return true; } }
         readonly string _start;
         public GearDropScreen(string startBanner = null) { _start = startBanner; }
         protected override string Kicker { get { return "LOCKER ROOM  ·  " + GearUi.Wallet(); } }
