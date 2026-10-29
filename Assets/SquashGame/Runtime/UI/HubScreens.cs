@@ -311,6 +311,7 @@ namespace SquashGame.UI
             Text("re:", "fe-logo-re");
             Text("SQUASH", "fe-logo-squash");
             Text("STRIKE", "fe-logo-strike");
+            if (DevMode.On) Text("DEVELOPER MODE  ·  unlimited coins and career points", "fe-dev");
             _play = Add(new ButtonItem("PLAY", () => { _focus = MainMenuScreen.Hub.Play; Fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Play)); }, true));
             _others = Add(new ButtonItem("OTHERS", () => { _focus = MainMenuScreen.Hub.Others; Fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Others)); }, true));
             Add(new ButtonItem("SETTINGS", () => Fe.Push(new SettingsScreen()), true));

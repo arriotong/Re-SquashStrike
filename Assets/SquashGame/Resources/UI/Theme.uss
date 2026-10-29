@@ -397,3 +397,4 @@
 .fe-home .fe-logo-strike { margin-bottom: 26px; }
 .fe-home .fe-item__label { font-size: 30px; letter-spacing: 6px; }
 .fe-home-prompts { position: absolute; left: 96px; bottom: 52px; }
+.fe-dev { font-size: 15px; color: rgb(255, 196, 64); letter-spacing: 2px; margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); -unity-text-align: middle-center; }

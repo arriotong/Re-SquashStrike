@@ -185,6 +185,23 @@ namespace SquashGame.Tests
             Assert.That(Rewards.Quiz(Challenges.QuizSize, 5, true).CoinWhy, Does.Contain("a rules quiz"), "a quiz passed");
         }
 
+        [Test] public void TheDevelopersNameHasUnlimitedCoins()
+        {
+            // 2026-10-29: "when I type arrio as my name I get unlimited resources"
+            var on = ProfileStore.Current.Online ?? (ProfileStore.Current.Online = new OnlineIdentity());
+            on.Name = "Someone"; on.NameChosen = true;
+            GearDrops.Wallet.Coins = 10;
+            Assert.That(DevMode.On, Is.False);
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(10), "anyone else: their own coins");
+            on.Name = "Arrio";
+            Assert.That(DevMode.On, Is.True, "any capitals");
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(DevMode.Coins));
+            Assert.That(GearDrops.Pull("show", GearDrops.TenPull).Count, Is.EqualTo(10));
+            Assert.That(GearDrops.Wallet.Coins, Is.GreaterThanOrEqualTo(DevMode.Coins), "never runs out (duplicates pay on top)");
+            on.Name = "Someone";
+            Assert.That(DevMode.On, Is.False, "renamed: off");
+        }
+
         [Test] public void OldTicketsTurnIntoCoins()
         {
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":7,\"Progress\":{\"Xp\":900,\"Wallet\":{\"Tickets\":3,\"TenTickets\":1,\"Coins\":100}}}");

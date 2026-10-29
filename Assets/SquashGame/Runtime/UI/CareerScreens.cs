@@ -718,6 +718,7 @@ namespace SquashGame.UI
         void Pick(string attribute)
         {
             _sel = attribute;
+            DevMode.TopUpCareer();                                           // (the developer's test mode)
             var c = Career.C;
             var s = c.S;
             foreach (var it in _icons) it.SetPicked(it.Attribute == attribute, c.CanRaise(it.Attribute));
@@ -748,6 +749,7 @@ namespace SquashGame.UI
 
         void Raise(string attribute)
         {
+            DevMode.TopUpCareer();
             var c = Career.C;
             if (!c.Spend(attribute)) { Sounds.Play("back"); return; }
             CareerStore.Save();

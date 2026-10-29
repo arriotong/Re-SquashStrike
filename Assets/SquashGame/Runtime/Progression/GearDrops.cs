@@ -195,7 +195,15 @@ namespace SquashGame.Progression
         // ---------------- state ----------------
 
         static Progress P { get { return ProfileStore.Current.Progress; } }
-        public static Wallet Wallet { get { if (P.Wallet == null) P.Wallet = new Wallet(); return P.Wallet; } }
+        public static Wallet Wallet
+        {
+            get
+            {
+                if (P.Wallet == null) P.Wallet = new Wallet();
+                if (P.Wallet.Coins < DevMode.Coins && DevMode.On) P.Wallet.Coins = DevMode.Coins;   // 2026-10-29: the developer's test mode
+                return P.Wallet;
+            }
+        }
         public static GachaState State
         {
             get
