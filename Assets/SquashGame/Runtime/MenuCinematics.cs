@@ -91,14 +91,15 @@ namespace SquashGame
         static void Orbit(Camera cam, SimRunnerBase runner, float dt, bool racket)
         {
             var a = runner != null ? runner.Athletes : null;
-            Vector3 p = a != null && a.Length > 0 ? new Vector3((float)a[0].Player.Pos.X, 0f, (float)a[0].Player.Pos.Z) : new Vector3(0, 0, 5);
+            Vector3 p = MatchRunner.Showcase ? MatchRunner.ShowcaseSim                 // 2026-10-29: standing still for the Locker Room
+                      : a != null && a.Length > 0 ? new Vector3((float)a[0].Player.Pos.X, 0f, (float)a[0].Player.Pos.Z) : new Vector3(0, 0, 5);
             float k = 1f - Mathf.Exp(-3f * dt);
             if (!_haveAction) { _subject = p; _haveAction = true; } else _subject += (p - _subject) * k;
             _orbit += dt * (racket ? 0.25f : 0.18f);
             float r = racket ? 1.3f : 3.1f, h = racket ? 1.2f : 1.25f, look = racket ? 0.95f : 0.8f;
             Vector3 pos = _subject + new Vector3(Mathf.Sin(_orbit) * r, h, Mathf.Cos(_orbit) * r);
             // 2026-10-25 playtest: the other athlete walked into the lens (an arm across the shot) - the orbit hurries past them
-            if (a != null && a.Length > 1)
+            if (a != null && a.Length > 1 && !MatchRunner.Showcase)
             {
                 var o = a[1].Player.Pos;
                 Vector3 toCam = new Vector3(pos.x - (float)o.X, 0f, pos.z - (float)o.Z);

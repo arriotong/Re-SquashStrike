@@ -94,6 +94,12 @@ namespace SquashGame.Tests
             var row = (LockerRow)fe.Top.Focused;
             Assert.That(row.Slot, Is.EqualTo(Slot.Shirt));
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_charcoal"), "the worn shirt first");
+            // 2026-10-29: the athlete stands still in the Locker Room, so the kit can be seen
+            Assert.That(MatchRunner.Showcase, Is.True);
+            var still = You().transform.position;
+            Assert.That(Vector3.Distance(still, MatchRunner.ShowcaseSpot), Is.LessThan(0.2f), "mid-court");
+            yield return Wait(1.0f, () => false);
+            Assert.That(Vector3.Distance(still, You().transform.position), Is.LessThan(0.02f), "not running about");
 
             yield return Tap(kb.rightArrowKey);                                      // the next shirt: white (free)
             Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"));
@@ -158,6 +164,7 @@ namespace SquashGame.Tests
             yield return Tap(kb.escapeKey);
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>());
             Assert.That(KitDirector.Preview, Is.Null, "the preview ends with the screen");
+            Assert.That(MatchRunner.Showcase, Is.False, "the menus' rally plays again");
             Assert.That(KitDirector.PreviewPose, Is.Null);
             yield return null; yield return null;
             Assert.That(You().Worn.Shirt, Is.EqualTo("shirt_white"), "still wearing the chosen shirt");

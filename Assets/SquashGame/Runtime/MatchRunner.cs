@@ -451,7 +451,9 @@ namespace SquashGame
                 // The menus' demo rally: on and on.
                 if (Sim.Phase == MatchPhase.MatchOver || Sim.Phase == MatchPhase.GameOver) { BeginDemo(); return; }
                 Input.ConsumeReady();
+                if (Showcase != Clock.Paused) { if (Showcase) Clock.Pause(); else Clock.Resume(); }
                 base.Update();
+                if (Showcase) View = ShowcaseView(View);
                 return;
             }
 
@@ -554,6 +556,33 @@ namespace SquashGame
             _puzzleFrom = Sim.Time;
             Clock.Resume();
             Clock.TimeScale = GameSpeed * PuzzleReplaySpeed;
+        }
+
+        /// <summary>2026-10-29 ("in the choosing kit page the character keeps on moving so I couldn't tell what I'm wearing"): the
+        /// Locker Room holds the menus' rally - you stand still mid-court in your ready stance, the opponent and the ball out of shot.</summary>
+        public static bool Showcase;
+        protected override void Awake() { Showcase = false; base.Awake(); }   // (a new scene: no Locker Room open)
+        /// <summary>Where you stand for it: sim (x, 0, z) for the cameras, and in the world.</summary>
+        public static readonly Vector3 ShowcaseSim = new Vector3(0f, 0f, 5.2f);
+        public static readonly Vector3 ShowcaseSpot = SimToWorld.Pos(ShowcaseSim.x, 0.0, ShowcaseSim.z);
+
+        static RenderSnapshot ShowcaseView(RenderSnapshot v)
+        {
+            v.A0 = Still(v.A0, ShowcaseSpot);
+            if (v.Count > 1) v.A1 = Still(v.A1, SimToWorld.Pos(-2.6, 0.0, 9.2));
+            v.BallPos = new Vector3(0f, -20f, 0f);
+            return v;
+        }
+
+        static AthleteSnapshot Still(AthleteSnapshot a, Vector3 at)
+        {
+            var shift = at - a.Pos;
+            a.Pos = at;
+            a.RacketAnchor += shift; a.RacketHead += shift;
+            a.Forward = SimToWorld.YawForward(0); a.ShoulderForward = a.Forward;
+            a.Velocity = Vector3.zero;
+            a.Swinging = false; a.Swing = SwingPhase.Idle; a.SwingT = 0; a.HasPred = false; a.Diving = false; a.GetUp = 0; a.Reach = 0; a.Stamina = 1f;
+            return a;
         }
 
         float _puzzleOverFor;

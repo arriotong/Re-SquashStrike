@@ -158,7 +158,7 @@ namespace SquashGame
         public IntentSource Input { get; private set; }
 
         /// <summary>The state views should draw this frame.</summary>
-        public RenderSnapshot View { get; private set; }
+        public RenderSnapshot View { get; protected set; }
 
         public abstract BallState Ball { get; }
         public abstract TestPlayerController[] Athletes { get; }

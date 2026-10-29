@@ -390,14 +390,21 @@ namespace SquashGame.UI
         public override void OnShow()
         {
             base.OnShow();
-            LockerRow.ListOpener = r => Fe.Push(new PickListScreen(Cosmetics.SlotNames[(int)r.Slot], r.Labels(), r.BrowseIndex, r.BrowseTo));
+            LockerRow.ListOpener = r => { _listing = true; Fe.Push(new PickListScreen(Cosmetics.SlotNames[(int)r.Slot], r.Labels(), r.BrowseIndex, r.BrowseTo)); };
+            _listing = false;
+            MatchRunner.Showcase = true;                                     // 2026-10-29: stand still, so the kit can be seen
             MenuCinematics.Scene = MenuCinematics.LockerScene;
             _shown = null;
             if (_card != null) _card.Rebuild();
         }
 
+        /// <summary>A slot's list is up over this screen: the athlete stays as they are (still, in what is browsed).</summary>
+        bool _listing;
+
         public override void OnHide()
         {
+            if (_listing) return;
+            MatchRunner.Showcase = false;
             KitDirector.Preview = null;
             KitDirector.PreviewPose = null;
             foreach (var i in Items) if (i is LockerRow r) r.Revert();         // a locked item tried on comes off

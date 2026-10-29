@@ -96,6 +96,7 @@ namespace SquashGame.UI
             Vector3 you = new Vector3(0, 0, 5f), them = new Vector3(0, 0, 6f);
             var a = Runner != null ? Runner.Athletes : null;
             if (a != null && a.Length > 0) you = new Vector3((float)a[0].Player.Pos.X, 0, (float)a[0].Player.Pos.Z);
+            if (MatchRunner.Showcase) you = MatchRunner.ShowcaseSim;                // 2026-10-29: the Locker Room's still athlete
             if (a != null && a.Length > 1) them = new Vector3((float)a[1].Player.Pos.X, 0, (float)a[1].Player.Pos.Z);
             Vector3 pos, look; float fov;
             switch (e.Shot)
