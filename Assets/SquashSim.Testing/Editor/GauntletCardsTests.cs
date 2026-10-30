@@ -99,6 +99,24 @@ namespace SquashSim.Tests
             Assert.That(run.Offer, Is.EqualTo(new List<string> { "life" }).Or.EqualTo(new List<string> { "coins" }), "the deck spent: a bonus instead");
         }
 
+        [Test] public void LuckyMeansMoreCardsInADeckRun()
+        {
+            // 2026-10-30: Lucky made rarer cards likelier - nothing in a deck run; now it is more cards to choose from
+            var c = new CardCollection();
+            foreach (var a in GauntletCards.All()) { c.Cards.Add(new CardRec { Id = a.Id, Copies = 1 }); c.Deck.Add(a.Id); }
+            var run = Gauntlet.NewRun(7, null, GauntletCards.RunDeck(c));
+            Gauntlet.Won(run, 3, 0, 0, null);
+            Assert.That(run.Offer.Count, Is.EqualTo(3));
+            Gauntlet.Pick(run, run.Offer[0]);
+            run.Abilities.Add(new RunMod { Id = "lucky", Level = 1 });
+            Gauntlet.Won(run, 3, 0, 0, null);
+            Assert.That(run.Offer.Count, Is.EqualTo(4), "Lucky 1: one more");
+            run.Rerolls = 1;
+            Assert.That(Gauntlet.Reroll(run, null), Is.True);
+            Assert.That(run.Offer.Count, Is.EqualTo(4), "a reroll keeps the size");
+            Assert.That(Gauntlet.LuckyCards(3), Is.EqualTo(2));
+        }
+
         [Test] public void TheFloorsKeepGettingHarder()
         {
             for (int f = 2; f <= 60; f++) Assert.That(Gauntlet.Difficulty(f), Is.GreaterThanOrEqualTo(Gauntlet.Difficulty(f - 1)));

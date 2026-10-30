@@ -98,9 +98,25 @@ namespace SquashGame.Progression
         // ---------------- 2026-10-29: the Pro Shop is a gacha ("we are changing pro shop into gacha now") ----------------
 
         public const string ProShopId = "proshop";
+
+        static int ShopRarity(Item it)
+        {
+            if (it.Id.EndsWith("_gold")) return (int)Rarity.Legendary;
+            switch (it.Slot)
+            {
+                case Slot.Frame: case Slot.Banner: case Slot.Celebration: case Slot.Trail: return (int)Rarity.Epic;
+                case Slot.Title: return (int)Rarity.Rare;
+                case Slot.Shirt: return it.A != it.B ? (int)Rarity.Epic : (int)Rarity.Common;
+                case Slot.Shoes: case Slot.Grip: case Slot.Strings: return (int)Rarity.Rare;
+                case Slot.Shorts: case Slot.Headband: case Slot.Wristband: return (int)Rarity.Uncommon;
+                default: return (int)Rarity.Common;
+            }
+        }
         static GearBanner _shop;
 
-        /// <summary>The Pro Shop's banner: the kit store's gear (the kit levels used to give), the later its old level the rarer.</summary>
+        /// <summary>The Pro Shop's banner: the kit store's gear (the kit levels used to give). Rarer by what it is (2026-10-30: its
+        /// Legendaries were plain shirts) - gold anything Legendary; frames, banners, celebrations, trails, two-tone shirts Epic;
+        /// shoes, grips, strings, titles Rare; shorts, headbands, wristbands Uncommon; plain shirts and socks Common.</summary>
         public static GearBanner ProShop()
         {
             if (_shop != null) return _shop;
@@ -110,7 +126,7 @@ namespace SquashGame.Progression
             {
                 if (it.Unlock != UnlockKind.Level || it.Gold) continue;
                 b.Items.Add(it);
-                b.Rarities[it.Id] = it.Level >= 41 ? 4 : it.Level >= 31 ? 3 : it.Level >= 21 ? 2 : it.Level >= 11 ? 1 : 0;
+                b.Rarities[it.Id] = ShopRarity(it);
             }
             return _shop = b;
         }

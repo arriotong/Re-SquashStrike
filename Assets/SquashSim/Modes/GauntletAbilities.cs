@@ -127,7 +127,7 @@ namespace SquashSim.Modes
 
             // ---- run perks ----
             A("head", "Head Start", AbilityKind.Perk, Rarity.Rare, "Start every game ahead.", l => "Every game starts " + l + "-0 up", max: 3, inSim: false);
-            A("lucky", "Lucky", AbilityKind.Perk, Rarity.Rare, "Better cards.", l => "Rare and better cards " + Pct(l, 0.25) + " more often", max: 3, locked: true, inSim: false);
+            A("lucky", "Lucky", AbilityKind.Perk, Rarity.Rare, "More cards to choose from.", l => "Every floor's draw has " + Gauntlet.LuckyCards(l) + (Gauntlet.LuckyCards(l) == 1 ? " more card" : " more cards"), max: 3, locked: true, inSim: false);   // 2026-10-30: was rarer cards - meaningless in a deck run
             A("treasure", "Treasure", AbilityKind.Perk, Rarity.Common, "More coins from every floor.", l => "Coins " + Pct(l, 0.2), max: 3, inSim: false);
             A("scout", "Scout", AbilityKind.Perk, Rarity.Common, "Know who is next.", l => "See the next floor's opponent and trait before you pick", max: 1, locked: true, inSim: false);
 

@@ -10,9 +10,15 @@
 //   career points  never below CareerPoints to spend on your stats
 //
 // Rename and it is off again; what was bought stays bought.
+//
+// 2026-10-30: only on the developer's own PC - in the Unity editor, or
+// where the save folder holds a file called "devmode" (MarkerFile). A
+// shared build has no such file, so the name does nothing there.
 // ===========================================================
 
 using System;
+using System.IO;
+using UnityEngine;
 
 namespace SquashGame.Profile
 {
@@ -23,11 +29,24 @@ namespace SquashGame.Profile
 
         static bool Is(string name) { return name != null && string.Equals(name.Trim(), Name, StringComparison.OrdinalIgnoreCase); }
 
-        /// <summary>Your name is the developer's.</summary>
+        public const string MarkerFile = "devmode";
+        static bool? _allowed;
+        /// <summary>This PC may use it: the editor, or the marker file in the save folder.</summary>
+        public static bool Allowed
+        {
+            get
+            {
+                if (_allowed == null) _allowed = Application.isEditor || File.Exists(Path.Combine(Application.persistentDataPath, MarkerFile));
+                return _allowed.Value;
+            }
+        }
+
+        /// <summary>Your name is the developer's (on a PC that allows it).</summary>
         public static bool On
         {
             get
             {
+                if (!Allowed) return false;
                 var on = ProfileStore.Current.Online;
                 if (on != null && on.NameChosen && Is(on.Name)) return true;
                 var c = CareerStore.Current;

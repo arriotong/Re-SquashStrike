@@ -202,6 +202,16 @@ namespace SquashGame.Tests
             Assert.That(DevMode.On, Is.False, "renamed: off");
         }
 
+        [Test] public void TheProShopsLegendariesAreTheGoldGear()
+        {
+            var shop = GearDrops.ProShop();
+            var top = shop.Of(Rarity.Legendary);
+            Assert.That(top.Count, Is.GreaterThan(0));
+            foreach (var it in top) Assert.That(it.Id, Does.EndWith("_gold"), it.Id);
+            foreach (Rarity r in System.Enum.GetValues(typeof(Rarity))) Assert.That(shop.Of(r).Count, Is.GreaterThan(0), "every rarity has gear: " + r);
+            foreach (var it in shop.Of(Rarity.Common)) Assert.That(it.Slot == Slot.Shirt || it.Slot == Slot.Socks, Is.True, it.Id);
+        }
+
         [Test] public void OldTicketsTurnIntoCoins()
         {
             File.WriteAllText(Path.Combine(_dir, ProfileStore.FileName), "{\"Version\":7,\"Progress\":{\"Xp\":900,\"Wallet\":{\"Tickets\":3,\"TenTickets\":1,\"Coins\":100}}}");

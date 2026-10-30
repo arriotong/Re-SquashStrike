@@ -288,7 +288,7 @@ namespace SquashSim.Modes
             run.Floor++;
             run.BossPick = kind == FloorKind.Boss;
             run.Roll = 0;
-            int cards = run.Cards + (kind == FloorKind.Elite ? 1 : 0);
+            int cards = Math.Min(MaxDraw, run.Cards + (kind == FloorKind.Elite ? 1 : 0) + LuckyCards(Level(run, "lucky")));   // 2026-10-30: Lucky, more cards
             run.Offer = OfferFor(run, talents, cards);
             run.AwaitingPick = run.Offer.Count > 0;
         }
@@ -313,10 +313,9 @@ namespace SquashSim.Modes
         /// <summary>The cards on offer now (seeded: the run, the floor, the rerolls so far).</summary>
         public static List<string> OfferFor(GauntletRun run, List<RunMod> talents, int cards = -1)
         {
-            if (cards < 0) cards = run.Cards + (KindOf(run.Floor - 1) == FloorKind.Elite ? 1 : 0);
+            if (cards < 0) cards = Math.Min(MaxDraw, run.Cards + (KindOf(run.Floor - 1) == FloorKind.Elite ? 1 : 0) + LuckyCards(Level(run, "lucky")));
             if (run.HasDeck) return DeckOffer(run, cards);
             bool boss = run.BossPick;
-            int lucky = Level(run, "lucky");
             var offer = new List<string>();
             var pool = new List<(string id, double w)>();
             bool activeFull = Count(run, true) >= GauntletAbilities.ActiveSlots, passiveFull = Count(run, false) >= GauntletAbilities.PassiveSlots;
@@ -346,7 +345,6 @@ namespace SquashSim.Modes
                     if (lv == 0 && (a.Active ? activeFull : passiveFull)) continue;
                     if (boss && a.Rarity == Rarity.Common) continue;
                     w = RarityWeight[(int)a.Rarity];
-                    if (a.Rarity != Rarity.Common) w *= 1 + 0.25 * lucky;
                     if (lv > 0) w *= 1.4;                                      // the build you have comes up a little more
                 }
                 pool.Add((a.Id, w));
@@ -367,6 +365,11 @@ namespace SquashSim.Modes
 
         /// <summary>A deck's draw: cards not yet active, any of them alike (it is your deck); an in-run evolution that is ready
         /// always; with the deck spent (or the slots full), a bonus (a heart, the purse) instead.</summary>
+        /// <summary>Lucky: more cards in every draw (1 at levels 1-2, 2 at 3).</summary>
+        public static int LuckyCards(int level) { return level >= 3 ? 2 : level >= 1 ? 1 : 0; }
+        /// <summary>The most cards a floor's draw shows (the pick screen's room).</summary>
+        public const int MaxDraw = 5;
+
         static List<string> DeckOffer(GauntletRun run, int cards)
         {
             var offer = new List<string>();
