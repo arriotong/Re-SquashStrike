@@ -45,8 +45,9 @@ namespace SquashGame.UI
             { "QUICK PLAY", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
-        /// <summary>UI remake (2026-10-28): the sections down a rail on the left, all in sight - "getting a bit too crowded".</summary>
-        protected override TabStyle TabsAs { get { return TabStyle.Rail; } }
+        /// <summary>2026-10-30 ("make the main ui back to the horizontal QE bar on the top right of the screen"): the sections as
+        /// the Q / E strip, up in the top bar on the right (was a rail down the left, 2026-10-28).</summary>
+        protected override TabStyle TabsAs { get { return TabStyle.Strip; } }
 
         /// <summary>The sections, top to bottom (the rail).</summary>
         /// UI redesign (2026-10-28: "modes re organise ... it's a bit too strange now"): what you came to do, most often first -
@@ -204,10 +205,8 @@ namespace SquashGame.UI
                     .Line(() => { var l = Replays.ReplayLibrary.Entries; int p = l.FindAll(x => x.Pinned).Count; return l.Count + " replays  ·  " + p + " pinned"; }));
             }
 
-            // ---- settings: a small button top right, and Y ----
-            var gear = new ActionItem("Settings", () => Fe.Push(new SettingsScreen()), PromptBar.Btn.Y);
-            gear.Root.AddToClassList("k-action--chip");
-            AddTo(TopBar, gear);
+            // ---- settings: Y (and the home screen's SETTINGS) - the top bar is the tabs' now ----
+            Root.AddToClassList("k-screen--toptabs");
         }
 
         protected override void SetPrompts()

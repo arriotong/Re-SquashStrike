@@ -1341,3 +1341,7 @@
 .fc-icon.fe-item--focused { background-color: rgba(0, 0, 0, 0); border-width: 0; }
 .fc-icon.fe-item--focused .fc-icon-name { color: rgb(200, 255, 61); }
 .fc-right > .fc-hint { width: 330px; min-height: 62px; margin-bottom: 16px; padding: 0 24px; border-radius: 31px; -unity-text-align: middle-left; white-space: normal; font-size: 18px; color: rgb(255, 255, 255); background-color: rgb(52, 86, 220); border-width: 2px; border-color: rgb(150, 180, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* ---------- 2026-10-30: the hubs' sections back to the Q / E strip, in the top bar on the right ---------- */
+.k-screen--toptabs > .k-tabs--strip { left: auto; right: 520px; top: 66px; flex-wrap: nowrap; }
+.k-screen--toptabs > .k-content { top: 170px; }

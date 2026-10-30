@@ -64,23 +64,15 @@ namespace SquashGame.Tests
                 Assert.That(menu.Tabs.Current, Is.EqualTo(tab));
                 Assert.That(menu.CardsInView, Is.InRange(1, 4), tab + ": at most 4 cards in view");
             }
-            // UI remake: the rail - up / down step the sections (from the cards), each section has its live line
-            yield return null; yield return null;
-            yield return Tap(kb.downArrowKey);
-            Assert.That(menu.Tabs.Current, Is.EqualTo("PLAY"), "down from the last section: round to the first");
-            yield return null; yield return null;
-            yield return Tap(kb.downArrowKey);
-            Assert.That(menu.Tabs.Current, Is.EqualTo("CAREER"), "down: the next section");
-            yield return null; yield return null;
-            yield return Tap(kb.upArrowKey);
-            Assert.That(menu.Tabs.Current, Is.EqualTo("PLAY"), "up: the section above");
-            yield return null; yield return null;
-            yield return Tap(kb.upArrowKey);
-            Assert.That(menu.Tabs.Current, Is.EqualTo("PLAY"), "up from the first: the top bar, not round");
-            Assert.That(menu.Focused, Is.Not.InstanceOf<CardItem>(), "the settings / profile chips up top");
-            Assert.That(menu.Tabs.Style, Is.EqualTo(TabStyle.Rail));
-            Assert.That(menu.Tabs.Sub(0), Does.StartWith("v "), "PLAY's line: who you play");
-            Assert.That(menu.Tabs.Sub(System.Array.IndexOf(MainMenuScreen.Sections, "CHALLENGES")), Does.Contain("today"), "CHALLENGES' line");
+            // 2026-10-30: the Q / E strip in the top bar (no more rail) - E round to the first, Q back
+            yield return Tap(kb.eKey);
+            Assert.That(menu.Tabs.Current, Is.EqualTo("PLAY"), "E from the last section: round to the first");
+            yield return Tap(kb.qKey);
+            Assert.That(menu.Tabs.Current, Is.EqualTo("TRAINING"), "Q: the one before");
+            Assert.That(menu.Tabs.Style, Is.EqualTo(TabStyle.Strip));
+            Assert.That(menu.Tabs.worldBound.yMax, Is.LessThan(menu.Coins.worldBound.yMax + 30f), "up in the top bar");
+            Assert.That(menu.Tabs.worldBound.xMax, Is.LessThanOrEqualTo(menu.Coins.worldBound.xMin), "on the right, before the coins");
+            yield return FrontEndTests.CaptureUI(fe, "H2_TopTabs.png");
 
             fe.StartMatch(MatchSettings.QuickGame());
             yield return null; yield return null;
