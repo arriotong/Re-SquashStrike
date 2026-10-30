@@ -96,17 +96,26 @@ namespace SquashGame.Athlete
         {
             var m = new MeshData();
             foreach (int s in new[] { -1, 1 })
-                m.Append(Ell(0.018f, 0.010f, 0.010f, s * 0.032f, 1.668f, -0.087f, 12, 8));     // eyes
+                m.Append(Ell(0.010f, 0.006f, 0.010f, s * 0.032f, 1.668f, -0.0915f, 12, 8));    // irises (2026-10-30: open eyes - on their whites)
             m.Append(Ell(0.032f, 0.008f, 0.006f, 0, 1.610f, -0.088f, 12, 6));                  // mouth
             return m;
         }
 
-        /// <summary>Brows: drawn in the hair's colour.</summary>
+        /// <summary>Brows: drawn in the hair's colour (2026-10-30: bolder, they read from the back of the court).</summary>
         public static MeshData Brows()
         {
             var m = new MeshData();
             foreach (int s in new[] { -1, 1 })
-                m.Append(Ell(0.032f, 0.010f, 0.007f, s * 0.033f, 1.686f, -0.087f, 12, 6));
+                m.Append(Ell(0.034f, 0.011f, 0.010f, s * 0.033f, 1.688f, -0.088f, 12, 6));
+            return m;
+        }
+
+        /// <summary>The whites of the eyes (2026-10-30: the eyes looked closed - dark slits).</summary>
+        public static MeshData EyeWhites()
+        {
+            var m = new MeshData();
+            foreach (int s in new[] { -1, 1 })
+                m.Append(Ell(0.022f, 0.008f, 0.014f, s * 0.032f, 1.668f, -0.0875f, 14, 8));
             return m;
         }
     }

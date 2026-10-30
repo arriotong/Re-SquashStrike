@@ -83,6 +83,9 @@ namespace SquashGame.Athlete
             _region[(int)Region.Socks].color = k.Socks;
             _region[(int)Region.Shoes].color = k.Shoes;
             _region[(int)Region.Skin].color = k.Skin;
+            // 2026-10-30: a faint glow of its own, so a face in the court's shade never goes black and its features read
+            _region[(int)Region.Skin].EnableKeyword("_EMISSION");
+            _region[(int)Region.Skin].SetColor("_EmissionColor", k.Skin * 0.12f);
             _headbandGo.SetActive(k.HasHeadband); _headband.color = k.Headband;
             _wristbandGo.SetActive(k.HasWristband); _wristband.color = k.Wristband;
             _frame.color = k.Frame; _grip.color = k.Grip;
@@ -168,6 +171,14 @@ namespace SquashGame.Athlete
 
             // ---- body forms (a material per kit region; all bodyColor until a kit is applied) ----
             for (int i = 0; i < _region.Length; i++) _region[i] = palette.LitColor(bodyColor);
+            // 2026-10-30: the finish of each - skin soft and matte (it had the mannequin's wooden sheen), cloth flat, shoes a little shine
+            for (int i = 0; i < _region.Length; i++)
+            {
+                var r = (Region)i;
+                _region[i].SetFloat("_Smoothness", r == Region.Skin ? 0.22f : r == Region.Shoes ? 0.38f : 0.1f);
+                _region[i].SetFloat("_Metallic", 0f);
+                if (r == Region.Skin && _region[i].HasProperty("_SpecColor")) _region[i].SetColor("_SpecColor", new Color(0.18f, 0.16f, 0.15f));
+            }
             foreach (FormPart f in MannequinForms.Build())
             {
                 var go = new GameObject(f.Name);
@@ -240,6 +251,8 @@ namespace SquashGame.Athlete
             for (int i = 0; i < _hairGo.Length; i++) _hairGo[i] = HeadPart("hair_" + i, HeadDetail.Hair(i), _hair, true);
             ShowHair(HairStyleShown);
             HeadPart("face_skin", HeadDetail.SkinFeatures(), _region[(int)Region.Skin], false);
+            var whites = palette.LitColor(new Color(0.93f, 0.92f, 0.88f)); whites.SetFloat("_Smoothness", 0.5f);
+            HeadPart("face_eyewhites", HeadDetail.EyeWhites(), whites, false);
             HeadPart("face_dark", HeadDetail.DarkFeatures(), _features, false);
             HeadPart("face_brows", HeadDetail.Brows(), _hair, false);
         }
@@ -311,7 +324,7 @@ namespace SquashGame.Athlete
             if (n.Contains("pelvis") || n.Contains("abdomen") || n.Contains("chest") || n.Contains("neck"))
                 return new[] { B("Pelvis", 0f, 0f), B("Spine_01", RigContract.Spine01Y, 0.04f), B("Spine_02", RigContract.Spine02Y, 0.05f),
                                B("Chest", RigContract.ChestY, 0.06f), B("Neck", GateA.NeckBase, 0.025f), B("Head", RigContract.HeadY, 0.02f) };
-            if (n.Contains("upperarm") || n.Contains("forearm"))
+            if (n.Contains("upperarm") || n.Contains("forearm") || n.Contains("hand") || n.Contains("thumb"))     // (the hand: a soft wrist)
                 return new[] { B("Clavicle_" + side, 0f, 0f), B("UpperArm_" + side, GateA.Shoulder, 0.03f), B("Forearm_" + side, RigContract.ElbowY, 0.05f),
                                B("Hand_" + side, RigContract.WristY, 0.03f) };
             if (n.Contains("thigh") || n.Contains("shin"))
