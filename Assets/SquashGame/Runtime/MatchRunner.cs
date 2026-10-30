@@ -123,6 +123,13 @@ namespace SquashGame
         int _reviewFrames;
 
         public string OpponentName { get; private set; }
+
+        /// <summary>2026-10-30 (the kid test): a name without the grown-ups' "(Medium)" after it.</summary>
+        public static string PlainName(string name)
+        {
+            int i = name.IndexOf(" (", System.StringComparison.Ordinal);
+            return i > 0 ? name.Substring(0, i) : name;
+        }
         /// <summary>HUD names for athlete 0 and 1.</summary>
         public readonly string[] Names = { "YOU", "OPPONENT" };
         /// <summary>The second local player's input (Local 2P), else null.</summary>
@@ -261,7 +268,7 @@ namespace SquashGame
                 var star = SquashSim.Career.Stars.Find(Settings.Opponent);
                 OpponentName = Settings.Opponent == "wallbot" ? "WALL-BOT"
                              : star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant()           // P6: the score bug's surname
-                             : AiProfile.For(Settings.Opponent, Settings.Difficulty).Name.ToUpperInvariant();
+                             : PlainName(AiProfile.For(Settings.Opponent, Settings.Difficulty).Name).ToUpperInvariant();
                 if (!string.IsNullOrEmpty(Settings.P2Name)) OpponentName = Settings.P2Name;
                 Names[0] = string.IsNullOrEmpty(Settings.P1Name) ? "YOU" : Settings.P1Name; Names[1] = OpponentName;
             }

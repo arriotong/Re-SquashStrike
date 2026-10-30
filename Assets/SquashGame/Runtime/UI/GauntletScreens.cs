@@ -329,7 +329,7 @@ namespace SquashGame.UI
 
             if (run == null || run.Over)
             {
-                var about = Kit.Panel(grid, run != null ? "THE RUN" : "HOW IT WORKS"); about.AddToClassList("gt-main");
+                var about = Kit.Panel(grid, run != null ? "THE RUN" : "HOW TO PLAY"); about.AddToClassList("gt-main");
                 if (run != null)
                 {
                     Kit.L(about, "Floor " + run.FloorsWon + " cleared  ·  " + run.Score.ToString("N0") + " points", "gt-big");
@@ -338,18 +338,18 @@ namespace SquashGame.UI
                 }
                 else
                 {
-                    Kit.L(about, "Endless floors: one game to 7 each. Every 5th an elite, every 10th a boss - and they keep getting harder.", "gt-text");
-                    Kit.L(about, "Your deck of up to " + GauntletCards.DeckSize + " cards: none is active at first. Win a floor and three are drawn from it - activate one, at its level.", "gt-text");
-                    Kit.L(about, "Cards come from the store's Card Packs (" + GauntletCards.CardCost + " coins a card). Copies level a card to 3, then evolve it.", "gt-text");
-                    Kit.L(about, "Lose a floor and it costs a heart. Coins from every floor buy talents that last.", "gt-text");
+                    // 2026-10-30 (the kid test): three short steps instead of four paragraphs of rules
+                    Kit.L(about, "1   Win a short game to go up a floor. How high can you climb?", "gt-text");
+                    Kit.L(about, "2   After every win, pick a power card. It makes you stronger!", "gt-text");
+                    Kit.L(about, "3   Lose a game and you lose a heart. No hearts left? Start again.", "gt-text");
                 }
                 Records(grid, st);
                 AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));   // first: it has the focus
                 var more = Kit.Box(Content, "gt-more");
-                AddTo(more, new ActionItem("Your deck  ·  " + GauntletFlow.Cards.Deck.Count + " / " + GauntletCards.DeckSize, () => Fe.Push(new DeckScreen()), "▶"));
-                AddTo(more, new ActionItem("Card Packs", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), "▶"));
-                AddTo(more, new ActionItem("Talents  ·  " + st.Coins + " coins", () => Fe.Push(new TalentsScreen()), "▶"));
-                AddTo(more, new ActionItem("Codex", () => Fe.Push(new CodexScreen()), "▶"));
+                AddTo(more, new ActionItem("Your cards  ·  " + GauntletFlow.Cards.Deck.Count, () => Fe.Push(new DeckScreen()), "▶"));
+                AddTo(more, new ActionItem("Get more cards", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), "▶"));
+                AddTo(more, new ActionItem("Upgrades", () => Fe.Push(new TalentsScreen()), "▶"));
+                AddTo(more, new ActionItem("Card book", () => Fe.Push(new CodexScreen()), "▶"));
                 return;
             }
 
@@ -378,17 +378,17 @@ namespace SquashGame.UI
                     card.Root.AddToClassList("gt-card");
                 }
                 var acts = Kit.Box(Content, "gt-more");
-                if (run.Rerolls > 0) AddTo(acts, new ActionItem("Reroll  ·  " + run.Rerolls + " left", () => { if (GauntletFlow.Reroll()) Fe.Replace(new GauntletScreen()); }));
+                if (run.Rerolls > 0) AddTo(acts, new ActionItem("New cards  ·  " + run.Rerolls + " left", () => { if (GauntletFlow.Reroll()) Fe.Replace(new GauntletScreen()); }));
                 if (run.Banishes > 0)
                 {
                     ActionItem b = null;
-                    b = AddTo(acts, new ActionItem("Banish a card  ·  " + run.Banishes + " left", () =>
+                    b = AddTo(acts, new ActionItem("Throw a card away  ·  " + run.Banishes + " left", () =>
                     {
                         _banishing = !_banishing;
-                        b.SetLabel(_banishing ? "Banishing: choose the card to strike" : "Banish a card  ·  " + run.Banishes + " left");
+                        b.SetLabel(_banishing ? "Now pick the card to throw away" : "Throw a card away  ·  " + run.Banishes + " left");
                     }));
                 }
-                Kit.L(Content, "Pick one. " + (run.Banishes > 0 ? "Banish: choose it, then the card to strike out of this run." : ""), "k-cr-note");
+                Kit.L(Content, "Pick one!", "k-cr-note");
                 return;
             }
 
@@ -447,10 +447,9 @@ namespace SquashGame.UI
 
         static void Records(VisualElement grid, GauntletState st)
         {
-            var r = Kit.Panel(grid, "RECORDS"); r.AddToClassList("gt-side");
-            Kit.L(r, "Best floor " + st.BestFloor, "gt-big");
-            Kit.L(r, "Best score " + st.BestScore.ToString("N0") + "  ·  " + st.Runs + (st.Runs == 1 ? " run" : " runs") + "  ·  " + st.BossesBeaten + " bosses", "gt-text");
-            Kit.L(r, st.Coins + " coins to spend on talents", "gt-text");
+            var r = Kit.Panel(grid, "YOUR BEST"); r.AddToClassList("gt-side");
+            Kit.L(r, st.BestFloor > 0 ? "Floor " + st.BestFloor : "Not played yet", "gt-big");
+            if (st.Coins > 0) Kit.L(r, st.Coins + " Gauntlet coins to spend on upgrades", "gt-text");
         }
 
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
@@ -460,14 +459,14 @@ namespace SquashGame.UI
 
     public sealed class TalentsScreen : GameScreen
     {
-        protected override string Kicker { get { return "THE GAUNTLET  ·  " + GauntletFlow.State.Coins + " COINS"; } }
-        protected override string Title { get { return "Talents"; } }
+        protected override string Kicker { get { return "THE GAUNTLET  ·  YOU HAVE " + GauntletFlow.State.Coins + " GAUNTLET COINS"; } }
+        protected override string Title { get { return "Upgrades"; } }
         protected override bool ShowChip { get { return false; } }
         static readonly string[][] Pages = { new[] { "hearty", "reroll", "wider", "banish" }, new[] { "kit", "revive", "treasure" } };
 
         protected override void Compose()
         {
-            string[] names = { "THE RUN", "THE EDGE" };
+            string[] names = { "HELP", "MORE HELP" };
             for (int p = 0; p < Pages.Length; p++)
             {
                 var row = Kit.Box(Page(names[p]), "k-row");
@@ -476,7 +475,7 @@ namespace SquashGame.UI
             var unlocks = GauntletTalents.All().FindAll(t => t.Unlocks != null);
             for (int i = 0; i < unlocks.Count; i += 4)
             {
-                var row = Kit.Box(Page(i == 0 ? "UNLOCKS" : "MORE UNLOCKS"), "k-row");
+                var row = Kit.Box(Page(i == 0 ? "NEW CARDS" : "MORE NEW CARDS"), "k-row");
                 for (int k = i; k < i + 4 && k < unlocks.Count; k++) Card(row, unlocks[k]);
             }
         }
@@ -486,10 +485,26 @@ namespace SquashGame.UI
             if (t == null) return;
             var owned = GauntletFlow.State.Talents;
             AddTo(row, new CardItem(t.Name, "", () => { if (GauntletFlow.BuyTalent(t.Id)) Fe.Replace(new TalentsScreen()); })
-                .Drawn(t.Unlocks != null ? "rings" : "bracket", new Color32(20, 22, 30, 255), new Color32(255, 184, 59, 255))
-                .Line(t.Text + "\n" + (t.MaxLevel > 1 ? GauntletFlow.Pips(GauntletTalents.Level(owned, t.Id), t.MaxLevel) : ""))
+                .Drawn(TalentArt(t), new Color32(20, 22, 30, 255), new Color32(255, 184, 59, 255))
+                .Line(t.Text + (t.MaxLevel > 1 ? "\nBought " + GauntletTalents.Level(owned, t.Id) + " of " + t.MaxLevel : ""))
                 .Badge(() => { int c = GauntletTalents.NextCost(owned, t.Id); return c < 0 ? (t.Unlocks != null ? "UNLOCKED" : "MAX") : c + " COINS"; },
                        GauntletTalents.NextCost(owned, t.Id) >= 0 && GauntletTalents.NextCost(owned, t.Id) <= GauntletFlow.State.Coins));
+        }
+
+        /// <summary>2026-10-30 (the kid test): each upgrade its own picture (they were all the same bracket).</summary>
+        static string TalentArt(Talent t)
+        {
+            if (t.Unlocks != null) { var a = GauntletAbilities.Find(t.Unlocks); return a != null ? GauntletFlow.Art(a) : "rings"; }
+            switch (t.Id)
+            {
+                case "hearty": return "trophy";
+                case "reroll": return "split";
+                case "wider": return "menu";
+                case "banish": return "angle";
+                case "kit": return "spots";
+                case "revive": return "clock";
+                default: return "corner";
+            }
         }
 
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Buy"), (PromptBar.Btn.Tabs, "Pages"), (PromptBar.Btn.B, "Back")); }
@@ -499,13 +514,15 @@ namespace SquashGame.UI
 
     public sealed class CodexScreen : GameScreen
     {
-        protected override string Kicker { get { return "THE GAUNTLET"; } }
-        protected override string Title { get { return "Codex"; } }
+        protected override string Kicker { get { return "THE GAUNTLET  ·  EVERY CARD"; } }
+        protected override string Title { get { return "Card book"; } }
         protected override bool ShowChip { get { return false; } }
 
         protected override void Compose()
         {
             var st = GauntletFlow.State;
+            // 2026-10-30 (the kid test): what the colours and the lines mean
+            Kit.L(Content, "Every power card. Bright: you've used it.  Grey: not yet.  (in Upgrades): buy it there first.  \"mix\": use both cards to make it!", "k-cr-note");
             var grid = Kit.Box(Content, "gt-codex");
             // the chaos remake: by build (the retired cards are out)
             foreach (var fam in new[] { Family.Time, Family.Power, Family.Trick, Family.Jackpot, Family.Guard, Family.None })
@@ -517,9 +534,9 @@ namespace SquashGame.UI
                     var best = st.Codex != null ? st.Codex.Find(c => c.Id == a.Id) : null;
                     bool open = GauntletTalents.Unlocked(st.Talents, a);
                     var r = Kit.Box(p, "gt-ab");
-                    var n = Kit.L(r, open ? a.Name : a.Name + "  (locked)", "gt-ab-name");
+                    var n = Kit.L(r, open ? a.Name : a.Name + "  (in Upgrades)", "gt-ab-name");
                     n.style.color = best != null ? GauntletFlow.RarityColour(a.Rarity) : new Color(1, 1, 1, open ? 0.55f : 0.3f);
-                    Kit.L(r, best != null ? (a.MaxLevel > 1 ? GauntletFlow.Pips(best.Level, a.MaxLevel) : "✓") : (a.Recipe != null ? GauntletAbilities.Find(a.Recipe[0]).Name + " + " + GauntletAbilities.Find(a.Recipe[1]).Name : "-"), "gt-ab-pips");
+                    Kit.L(r, best != null ? (a.MaxLevel > 1 ? GauntletFlow.Pips(best.Level, a.MaxLevel) : "✓") : (a.Recipe != null ? "mix " + GauntletAbilities.Find(a.Recipe[0]).Name + " + " + GauntletAbilities.Find(a.Recipe[1]).Name : ""), "gt-ab-pips");
                 }
             }
         }

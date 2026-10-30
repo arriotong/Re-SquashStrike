@@ -322,7 +322,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "MODES", "SCENARIOS");
+            yield return HubNav.Open(fe, kb, Tap, "MODES", "BIG MOMENTS");
             Assert.That(fe.Top, Is.InstanceOf<ScenarioScreen>());
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "P3_Scenarios.png");
@@ -391,7 +391,7 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Menu(null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            yield return HubNav.Open(fe, kb, Tap, "STORE", "COSMETICS");
+            yield return HubNav.Open(fe, kb, Tap, "STORE", "CLOTHES");
             Assert.That(fe.Top, Is.InstanceOf<StoreScreen>());
             var store = (StoreScreen)fe.Top;
             yield return null; yield return null;

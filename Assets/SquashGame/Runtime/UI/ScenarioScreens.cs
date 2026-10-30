@@ -95,8 +95,8 @@ namespace SquashGame.UI
         static readonly string[] Arts = { "rings", "clock", "chevrons", "trophy", "bracket", "wall", "corner", "split", "nick", "menu", "drop", "angle", "spots", "stripes", "trophy" };
         readonly int _startGroup;
         public ScenarioScreen(int group = 0) { _startGroup = group; }
-        protected override string Kicker { get { return "MODES  ·  SCENARIOS"; } }
-        protected override string Title { get { return "Clutch situations"; } }
+        protected override string Kicker { get { return "MODES  ·  BIG MOMENTS"; } }
+        protected override string Title { get { return "Can you win from here?"; } }
         protected override bool ShowChip { get { return false; } }
 
         protected override void Compose()
@@ -119,9 +119,9 @@ namespace SquashGame.UI
                 {
                     var s = sc;
                     string art = Arts[(g * 5 + k++) % Arts.Length];                    // 2026-10-25 playtest: each card its own picture
-                    var card = AddTo(row, new CardItem(s.Name, s.Score + "  ·  " + ScenarioFlow.Opp(s), () => ScenarioFlow.Play(Fe, s))
+                    var card = AddTo(row, new CardItem(s.Name, KidScore(s.Score), () => ScenarioFlow.Play(Fe, s))
                         .Drawn(art, new Color32(18, 20, 28, 255), g == 2 ? (Color)new Color32(255, 184, 59, 255) : new Color32(200, 255, 61, 255))
-                        .Line(s.Story + "\n★ win   ★ " + s.Star2Text.ToLowerInvariant() + "   ★ " + s.Star3Text.ToLowerInvariant())
+                        .Line(s.Story + "\n★ Win   ★ " + s.Star2Text + "   ★ " + s.Star3Text)
                         .Badge(() => ScenarioFlow.StarText(ScenarioFlow.StarsOf(s.Id)), ScenarioFlow.StarsOf(s.Id) == 3));
                     card.Root.AddToClassList("k-card--scenario");
                     card.Locked = () => !ScenarioFlow.GroupOpen(group);
@@ -129,6 +129,15 @@ namespace SquashGame.UI
                 }
             }
             if (_startGroup > 0 && _startGroup < Scenarios.GroupNames.Length) Root.schedule.Execute(() => Tabs.Select(_startGroup));
+        }
+
+        /// <summary>2026-10-30 (the kid test): "10-7" as "YOU 10 - 7 THEM" ("0-0, games 1-1": "GAMES 1 - 1").</summary>
+        public static string KidScore(string score)
+        {
+            int g = score.IndexOf(", games ", System.StringComparison.Ordinal);
+            string pts = g >= 0 ? score.Substring(0, g) : score, games = g >= 0 ? score.Substring(g + 8) : null;
+            if (games != null && pts == "0-0") return "GAMES  YOU " + games.Replace("-", " – ") + " THEM";
+            return "YOU " + pts.Replace("-", " – ") + " THEM" + (games != null ? "  ·  GAMES " + games.Replace("-", " – ") : "");
         }
 
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Play"), (PromptBar.Btn.Tabs, "Groups"), (PromptBar.Btn.B, "Back")); }

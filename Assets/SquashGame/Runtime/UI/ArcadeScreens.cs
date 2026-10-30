@@ -113,18 +113,18 @@ namespace SquashGame.UI
         {
             var head = Kit.Box(Content, "k-ta-head");
             Kit.L(head, "★ " + Stars.All() + " / 54", "k-ta-total");
-            Kit.L(head, "Just you, the feeder and the targets. Three stars on every level.", "k-ta-sub");
+            Kit.L(head, "Hit the targets! Can you get 3 stars on every level?", "k-ta-sub");
             var row = Kit.Box(Content, "k-row"); row.AddToClassList("k-ta-cabs");
             for (int m = 0; m < Challenges.ModeNames.Length; m++)
             {
                 var mode = (ArcadeMode)m;
-                var card = AddTo(row, new CardItem(Challenges.ModeNames[m], "CABINET " + (m + 1), () => Fe.Push(new LevelScreen(mode)))
+                var card = AddTo(row, new CardItem(Challenges.ModeNames[m], "GAME " + (m + 1), () => Fe.Push(new LevelScreen(mode)))
                     .Drawn(Stars.Art(mode), Stars.Bg(m), Color.white)
                     .Line(() => Challenges.ModeBlurbs[(int)mode] + "\n" + BestLine(mode))
                     .Badge(() => "★ " + Stars.Mode(mode) + " / 9", Stars.Mode(mode) == 9));
                 card.Root.AddToClassList("k-card--cab");
             }
-            AddTo(Root, new PrimaryItem("Next challenge", PlayNext));
+            AddTo(Root, new PrimaryItem("Play", PlayNext));
         }
 
         static string BestLine(ArcadeMode mode)
@@ -224,18 +224,14 @@ namespace SquashGame.UI
             // ---- FREE PRACTICE ----
             var free = Kit.Box(Page("FREE PRACTICE"), "k-ta-free");
             var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => FrontEnd.LaunchFreePractice(), CardSize.Hero).Vignette("court")
-                .Line("Just you and the wall: walk anywhere with the ball in your hand, drop it and hit, keep it going. Miss, and it is back in your hand. Want feeds? Switch the Coach tray to the feeder."));
+                .Line("Just you, the ball and the wall."));
             hero.Root.AddToClassList("k-card--free");
-            var tray = Kit.Panel(free, "THE COACH TRAY  ·  TAB / VIEW WHILE YOU PLAY");
+            // 2026-10-30 (the kid test): three plain steps, not an eight-row table of the coach tray's settings
+            var tray = Kit.Panel(free, "HOW IT WORKS");
             tray.AddToClassList("k-ta-traypanel");
-            Line(tray, "MODE", "free play (ball in hand, the default)  ·  feeder");
-            Line(tray, "FEED", string.Join("  ·  ", CoachFeeder.FeedNames));
-            Line(tray, "SIDE", string.Join("  ·  ", CoachFeeder.SideNames));
-            Line(tray, "SPEED", string.Join("  ·  ", CoachFeeder.SpeedNames));
-            Line(tray, "FEEDING", "automatic, every " + string.Join(" / ", CoachFeeder.IntervalNames) + ", or on your button (F)");
-            Line(tray, "SLOW MOTION", string.Join("  ·  ", CoachFeeder.SlowNames));
-            Line(tray, "TRAIL", "short, or long: see where every shot went");
-            Line(tray, "BALL", "cold, or warm like a match ball");
+            Line(tray, "1", "Drop the ball and hit it at the front wall.");
+            Line(tray, "2", "Missed it? The ball comes back to your hand.");
+            Line(tray, "3", "Want someone to throw you balls? Press Tab (or View on a pad) and pick the feeder. Slow motion is in there too.");
 
             // ---- DRILLS ----
             var drills = Kit.Box(Page("DRILLS"), "k-row");

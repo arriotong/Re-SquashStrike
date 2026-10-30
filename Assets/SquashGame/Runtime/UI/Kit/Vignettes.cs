@@ -91,6 +91,14 @@ namespace SquashGame.UI
             foreach (var e in _live) if (Shown(e.Owner)) Draw(e, step);
         }
 
+        static Renderer[] BallRenderers()
+        {
+            var list = new List<Renderer>();
+            foreach (var b in FindObjectsByType<BallView>(FindObjectsSortMode.None))
+                foreach (var r in b.GetComponentsInChildren<Renderer>()) if (r.enabled) list.Add(r);
+            return list.ToArray();
+        }
+
         void Draw(Entry e, float dt)
         {
             Vector3 you = new Vector3(0, 0, 5f), them = new Vector3(0, 0, 6f);
@@ -118,7 +126,13 @@ namespace SquashGame.UI
             e.Cam.fieldOfView = fov;
             e.Cam.transform.position = SimToWorld.Pos(pos.x, pos.y, pos.z);
             e.Cam.transform.LookAt(SimToWorld.Pos(look.x, look.y, look.z), Vector3.up);
+            // 2026-10-30 (the kid test): a close-up of a player has no ball in it - the ball in their hand, right by the
+            // camera, read as a big brown hole in the picture
+            bool close = e.Shot == "you" || e.Shot == "them" || e.Shot == "racket";
+            Renderer[] hide = close ? BallRenderers() : null;
+            if (hide != null) foreach (var r in hide) r.enabled = false;
             e.Cam.Render();
+            if (hide != null) foreach (var r in hide) r.enabled = true;
             Rendered++;
             e.Owner.MarkDirtyRepaint();
         }

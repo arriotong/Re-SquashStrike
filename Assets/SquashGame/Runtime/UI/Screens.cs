@@ -123,9 +123,12 @@ namespace SquashGame.UI
         public static readonly float[] DifficultyValues = System.Array.ConvertAll(SquashSim.GameTuning.Ai.Levels, v => (float)v);
         public static readonly string[] LengthLabels = { "One game", "Best of 3", "Best of 5" };
         public static readonly int[] LengthGames = { 1, 2, 3 };
-        public static readonly string[] ScoringLabels = { "PAR-11", "English (to 9)" };
+        // 2026-10-30 (the kid test): plain words - "PAR-11 / English / Non-assisted" meant nothing to a new player
+        public static readonly string[] ScoringLabels = { "To 11", "To 9 (old rules)" };
+        public static readonly string[] ScoringShort = { "To 11", "To 9" };
         public static readonly string[] ScoringValues = { "par", "english" };
-        public static readonly string[] ControlLabels = { "Non-assisted", "Assisted" };
+        public static readonly string[] ControlLabels = { "Normal", "Extra" };
+        public const string ControlName = "Aim help";
     }
 
     // ---------------- settings (UI redesign U5: one screen, five tabs) ----------------
@@ -147,8 +150,8 @@ namespace SquashGame.UI
         {
             // ---- CONTROLS ----
             var c = Panel("CONTROLS");
-            Row(c, new SelectorItem("Control mode", MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => { S.Assisted = i == 1; Changed(false); }),
-                "Assisted pulls your aim toward the shot's line and keeps straight drives off the wall. Non-assisted pulls only a little - your aim matters more.");
+            Row(c, new SelectorItem(MatchChoices.ControlName, MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => { S.Assisted = i == 1; Changed(false); }),
+                "Extra: the game helps your shots go where you meant. Normal: a little help - your aim matters more.");
             Row(c, new SelectorItem("Aim speed", new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" }, () => Nearest(IntentSource.SensitivitySteps, S.AimSpeed),
                 i => { S.AimSpeed = IntentSource.SensitivitySteps[i]; Changed(false); }, true), "How fast the ring moves with the mouse or the right stick.");
             Row(c, new SelectorItem("Invert mouse Y", new[] { "Off", "On" }, () => S.InvertMouseY ? 1 : 0, i => { S.InvertMouseY = i == 1; Changed(false); }), "Mouse up moves the ring down.");
@@ -269,7 +272,8 @@ namespace SquashGame.UI
         protected override string Title { get { return "Controls"; } }
         protected override bool ShowChip { get { return false; } }
         public override bool Dims { get { return Fe.Match == null || !Fe.Match.Demo; } }
-        static string K(string a) { return IntentSource.BindingLabel(a, false); }
+        // 2026-10-30 (the kid test): "LMB" and "RMB" in words
+        static string K(string a) { string k = IntentSource.BindingLabel(a, false); return k == "LMB" ? "left mouse button" : k == "RMB" ? "right mouse button" : k == "MMB" ? "middle mouse button" : k; }
         static string P(string a) { return IntentSource.BindingLabel(a, true); }
         /// <summary>The card, with your keys (Settings > Controls > Change keys).</summary>
         static string[,] Rows
@@ -278,17 +282,17 @@ namespace SquashGame.UI
             {
                 return new string[,]
                 {
-                    { "Move", "WASD", "left stick" },
-                    { "Aim", "mouse", "right stick" },
-                    { "Hit", "hold " + K("Hit") + ", let go as it arrives", "hold " + P("Hit") + ", let go" },
-                    { "Height picks the shot", "high = lob, middle = drive, low = drop", "" },
-                    { "Straight or cross", "your half of the wall = straight, the other = cross", "" },
-                    { "Boast", "tap " + K("Boast"), P("Boast") },
-                    { "Dive", K("Dive"), P("Dive") },
-                    { "Sprint", K("Sprint"), P("Sprint") },
-                    { "Serve", "tap: lob serve, hold: hard serve", "" },
-                    { "Ask for a let", K("Appeal") + " (when LET? shows)", P("Appeal") },
-                    { "Replay the last call", "V", "View" },
+                    { "Move", "W A S D keys", "left stick" },
+                    { "Aim", "move the mouse", "right stick" },
+                    { "Hit", "hold the " + K("Hit") + ", let go when the ball comes", "hold " + P("Hit") + ", let go" },
+                    { "Pick your shot", "aim high = a high, slow lob  ·  middle = a hard drive  ·  low = a short drop", "" },
+                    { "Straight or across", "aim at your side of the wall = straight  ·  the other side = across", "" },
+                    { "Hit the side wall first (a boast)", "tap " + K("Boast"), P("Boast") },
+                    { "Dive for the ball", K("Dive"), P("Dive") },
+                    { "Run faster", K("Sprint"), P("Sprint") },
+                    { "Serve", "tap = high and slow  ·  hold = hard and fast", "" },
+                    { "Ask to play the point again (a let)", K("Appeal") + " when LET? shows", P("Appeal") },
+                    { "See the last call again", "V", "View" },
                     { "Pause", "Esc", "Start" },
                 };
             }
@@ -305,7 +309,7 @@ namespace SquashGame.UI
                 Kit.L(keys, rows[i, 1], "k-ctl-key");
                 if (rows[i, 2].Length > 0) { Kit.L(keys, "·", "k-ctl-or"); var pad = Kit.L(keys, rows[i, 2], "k-ctl-key"); pad.AddToClassList("k-ctl-key--pad"); }
             }
-            Kit.L(Content, "Get set early and let go on time: the ring flashes on a great hit.", "k-cr-note");
+            Kit.L(Content, "Get there early, let go on time - the ring flashes when it's a great hit!", "k-cr-note");
         }
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.B, "Back")); }
     }

@@ -48,7 +48,7 @@ namespace SquashGame.UI
 
     public sealed class StoreScreen : GameScreen
     {
-        public const string CardsTab = "CARD PACKS", CosmeticsTab = "COSMETICS", ShopTab = "PRO SHOP";
+        public const string CardsTab = "CARD PACKS", CosmeticsTab = "CLOTHES", ShopTab = "PRO SHOP";
         static readonly string[] Tabs3 = { CardsTab, CosmeticsTab, ShopTab };
 
         readonly string _tab, _banner;
@@ -57,7 +57,7 @@ namespace SquashGame.UI
         /// <summary>The store on a banner (the reveal goes back to it): the Pro Shop's, else a cosmetics one.</summary>
         public static StoreScreen For(string banner) { return banner == GearDrops.ProShopId ? new StoreScreen(ShopTab) : new StoreScreen(CosmeticsTab, banner); }
 
-        protected override string Kicker { get { return "OTHERS  ·  STORE"; } }
+        protected override string Kicker { get { return "SHOP & KIT  ·  MYSTERY PACKS"; } }
         protected override string Title { get { return "Store"; } }
         protected override bool ShowChip { get { return false; } }
         protected override bool ShowCoins { get { return true; } }
@@ -81,7 +81,8 @@ namespace SquashGame.UI
         void Cards(VisualElement page)
         {
             var b = BannerBox(page, "Card Packs", "CARDS", new Color32(92, 64, 236, 255), new Color32(255, 102, 170, 255));
-            Info(b, "EPIC OR BETTER in every ×10", "Copies level your cards to 3 - then evolve them");
+            // 2026-10-30 (the kid test): no "pulls", "×10" or "evolve" - what you get, in plain words
+            Info(b, "OPEN 10: AT LEAST ONE SUPER CARD", "Get a card again and it gets stronger");
             var feat = Kit.Box(b, "gx-featured");
             var picks = GauntletCards.All().FindAll(a => a.Rarity == SquashSim.Modes.Rarity.Epic && a.Kind == AbilityKind.Ultimate);
             if (picks.Count < 3) picks = GauntletCards.All().FindAll(a => a.Rarity >= SquashSim.Modes.Rarity.Epic);
@@ -93,15 +94,15 @@ namespace SquashGame.UI
             }
             var c = GauntletFlow.Cards;
             int owned = 0; foreach (var a in GauntletCards.All()) if (GauntletCards.Find(c, a.Id) != null) owned++;
-            Footer(b, "Every Gauntlet ability is a card. Build a deck of " + GauntletCards.DeckSize + ".", "Owned " + owned + " / " + GauntletCards.All().Count,
-                   new ActionItem("Your deck", () => Fe.Push(new DeckScreen()), "▶"), CardOdds);
+            Footer(b, "Power cards for the Gauntlet.", "You have " + owned + " of " + GauntletCards.All().Count,
+                   new ActionItem("Your cards", () => Fe.Push(new DeckScreen()), "▶"), CardOdds);
             PullsFor(b, CardsTab, GauntletCards.CardCost, GauntletCards.TenCost, n =>
             {
                 var got = GauntletFlow.BuyCards(n);
                 if (got.Count == 0) { Sounds.Play("back"); return; }
                 Sounds.Play("stamp");
                 Fe.Push(new PackScreen(got));
-            }, n => GearDrops.Wallet.Coins >= GauntletCards.Cost(n), "Epic or better guaranteed");
+            }, n => GearDrops.Wallet.Coins >= GauntletCards.Cost(n), "A super one for sure!");
         }
 
         void Cosmetics_(VisualElement page)
@@ -120,8 +121,8 @@ namespace SquashGame.UI
             GearInfo(b, bn);
             GearFeatured(b, bn, new List<Item>(bn.Of(GearRarity.Legendary)) { bn.Of(GearRarity.Epic)[0] });
             int owned = GearDrops.OwnedIn(bn, out int gold);
-            Footer(b, bn.Blurb, "Owned " + owned + " / " + bn.Items.Count + (gold > 0 ? "   ·   ★ " + gold + " gold" : ""),
-                   new ActionItem("Gold-plate", () => Fe.Push(new GoldPlateScreen()), "▶"), GearOdds);
+            Footer(b, bn.Blurb, "You have " + owned + " of " + bn.Items.Count + (gold > 0 ? "   ·   ★ " + gold + " gold" : ""),
+                   new ActionItem("Make it gold", () => Fe.Push(new GoldPlateScreen()), "▶"), GearOdds);
             GearPulls(b, CosmeticsTab, bn.Id);
         }
 
@@ -134,7 +135,7 @@ namespace SquashGame.UI
             for (int r = 4; r >= 0 && top.Count < 3; r--) foreach (var it in bn.Of((GearRarity)r)) if (top.Count < 3) top.Add(it);
             GearFeatured(b, bn, top);
             int owned = GearDrops.OwnedIn(bn, out _);
-            Footer(b, bn.Blurb, "Owned " + owned + " / " + bn.Items.Count, null, GearOdds);
+            Footer(b, bn.Blurb, "You have " + owned + " of " + bn.Items.Count, null, GearOdds);
             GearPulls(b, ShopTab, bn.Id);
         }
 
@@ -172,7 +173,7 @@ namespace SquashGame.UI
         static void GearInfo(VisualElement b, GearBanner bn)
         {
             int left = GearDrops.Pity - GearDrops.PityOf(bn.Id);
-            Info(b, "LEGENDARY in " + left + (left == 1 ? " pull" : " pulls") + " at most", "An Epic or better in every ×10  ·  duplicates pay coins");
+            Info(b, "THE BEST PRIZE IN " + left + (left == 1 ? " OPEN" : " OPENS") + " OR LESS", "Open 10: at least one super prize  ·  Got it already? Coins back");
         }
 
         static VisualElement Tile(VisualElement row, int i, string name, string rarity, Color colour)
@@ -204,7 +205,7 @@ namespace SquashGame.UI
             Kit.L(f, blurb, "gx-blurb");
             Kit.L(f, owned, "gx-owned");
             var acts = Kit.Box(f, "gx-acts");
-            var o = AddTo(acts, new ActionItem("Odds & rules", () => Fe.Push(new StoreOddsScreen(odds)), "i"));
+            var o = AddTo(acts, new ActionItem("What's inside?", () => Fe.Push(new StoreOddsScreen(odds)), "i"));
             o.Root.AddToClassList("gx-small");
             if (extra != null) { AddTo(acts, extra); extra.Root.AddToClassList("gx-small"); }
         }
@@ -212,8 +213,8 @@ namespace SquashGame.UI
         void PullsFor(VisualElement b, string tab, int one, int ten, System.Action<int> pull, System.Func<int, bool> can, string tenNote)
         {
             var row = Kit.Box(b, "gx-pulls");
-            var p1 = AddTo(row, new PullButton("1× PULL", one, () => pull(1)));
-            var p10 = AddTo(row, new PullButton("10× PULL", ten, () => pull(10), tenNote));
+            var p1 = AddTo(row, new PullButton("OPEN 1", one, () => pull(1)));
+            var p10 = AddTo(row, new PullButton("OPEN 10", ten, () => pull(10), tenNote));
             p1.Enabled = () => can(1); p10.Enabled = () => can(10);
             Pulls[tab] = new[] { p1, p10 };
         }
@@ -225,7 +226,7 @@ namespace SquashGame.UI
                 var drops = GearDrops.Pull(banner, n == 10 ? GearDrops.TenPull : 1);
                 if (drops.Count == 0) { Sounds.Play("back"); return; }
                 Fe.Push(new PullRevealScreen(drops, banner));
-            }, n => GearDrops.CanPull(n == 10 ? GearDrops.TenPull : 1), "Epic or better guaranteed");
+            }, n => GearDrops.CanPull(n == 10 ? GearDrops.TenPull : 1), "A super one for sure!");
         }
 
         // ---------------- the odds ----------------
@@ -272,7 +273,7 @@ namespace SquashGame.UI
             return o;
         }
 
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Gachas"), (PromptBar.Btn.B, "Back")); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Tabs, "Pages"), (PromptBar.Btn.B, "Back")); }
 
         // ---------------- the banner's gradient ----------------
 
@@ -306,7 +307,7 @@ namespace SquashGame.UI
     {
         readonly System.Func<VisualElement, VisualElement> _fill;
         public StoreOddsScreen(System.Func<VisualElement, VisualElement> fill) { _fill = fill; }
-        protected override string Title { get { return "Odds & rules"; } }
+        protected override string Title { get { return "What's inside?"; } }
         protected override string YesLabel { get { return "OK"; } }
         protected override string NoLabel { get { return "Back"; } }
         protected override void OnYes() { Fe.Pop(); }

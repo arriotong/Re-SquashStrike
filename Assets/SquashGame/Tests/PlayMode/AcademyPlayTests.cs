@@ -87,7 +87,7 @@ namespace SquashGame.Tests
             fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<MainMenuScreen>(), "only once");
-            Assert.That(fe.Top.Find("ACADEMY"), Is.Not.Null, "the Academy card is on the hub");
+            Assert.That(fe.Top.Find("LEARN TO PLAY"), Is.Not.Null, "the Academy card is on the hub");
         }
 
         /// <summary>Hold the WASD keys that walk the player towards (x, z) - D is +x, W is towards the front wall.</summary>

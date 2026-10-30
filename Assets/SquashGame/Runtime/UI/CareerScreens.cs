@@ -159,7 +159,7 @@ namespace SquashGame.UI
         public static string ToNext(CareerSession c)
         {
             var all = c.Ranking();
-            if (!c.IsRanked(You)) return "Unranked. Your first event puts you on the list.";
+            if (!c.IsRanked(You)) return "Not on the list yet. Play an event to get on it!";
             int at = c.RankOf(You) - 1;
             if (at <= 0) return "World No. 1. Stay there.";
             double gap = all[at - 1].Average - all[at].Average;
@@ -184,7 +184,7 @@ namespace SquashGame.UI
                 {
                     var top = Tour.HeadlineOf(m);
                     note = Tour.Week(m).Count == 0 ? (m >= Tour.OffSeasonFrom ? "OFF" : "–") : top == Tier.WorldTourFinals ? "FINALS" : top == Tier.WorldChampionship ? "WORLDS"
-                         : top == Tier.Platinum ? "PLAT" : Tour.Info(top).WorldTour ? Tour.Info(top).Name.ToUpperInvariant() : Tour.Info(top).Short;
+                         : new string('★', Mathf.Clamp(Tour.Band((int)top) + 1, 1, 5));      // (the kid test: how big, in stars - not "C9", "PLAT")
                 }
                 list.Add(("WK " + (m + 1), note, state));
             }
@@ -379,7 +379,7 @@ namespace SquashGame.UI
             _steps[2] = Kit.Box(right, "k-cr-step");
             Kit.L(_steps[2], "How long are your matches?", "k-cr-step-q");
             AddTo(_steps[2], new SelectorItem("Match", Career.LengthLabels, () => _length, v => _length = v));
-            AddTo(_steps[2], new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => _scoring, v => _scoring = v));
+            AddTo(_steps[2], new SelectorItem("Scoring", MatchChoices.ScoringShort, () => _scoring, v => _scoring = v));
             Kit.L(_steps[2], "No stats to buy: your skill is the only thing that improves. You can change these from the career hub.", "k-cr-step-hint");
 
             _summary = Kit.L(right, "", "k-cr-summary");
@@ -460,7 +460,7 @@ namespace SquashGame.UI
                 string round = Tour.RoundName(c.PlayersLeft);
                 MatchCard = AddTo(row, new CardItem(round + " v " + p.Last, s.Current.Name.ToUpperInvariant() + "  ·  " + Career.TierName(s.Current.Tier).ToUpperInvariant(),
                         () => Fe.Push(new MatchPreviewScreen(opp)), CardSize.Hero).Vignette("them")
-                    .Line(Career.Rank(c.RankOf(opp)) + " " + p.Nat + "  ·  " + Roster.StyleName(p.Style) + " " + Roster.RatingOf(p) + "  ·  head to head " + w + "-" + l + "  ·  form " + Career.Form(c, opp))
+                    .Line(Career.Rank(c.RankOf(opp)) + "  ·  " + p.Nat + "  ·  a " + Roster.StyleName(p.Style).ToLowerInvariant() + (w + l > 0 ? "  ·  you've won " + w + ", lost " + l : "  ·  you've never played them"))
                     .Badge(() => c.IsRival(opp) ? "RIVAL" : round.ToUpperInvariant(), true));
                 MatchCard.Root.AddToClassList("k-card--match");
                 Career.TierOn(MatchCard.Art, s.Current.Tier);
@@ -471,12 +471,12 @@ namespace SquashGame.UI
             }
             else
             {
-                Kit.L(hero, Tour.WeekLabel(s.Week).ToUpperInvariant() + "  ·  " + s.City.ToUpperInvariant() + "  ·  " + Career.Money(s.Cash) + "  ·  CHOOSE YOUR EVENT", "k-cr-head");
+                Kit.L(hero, "PICK WHERE TO PLAY THIS WEEK  ·  YOU'RE IN " + s.City.ToUpperInvariant() + "  ·  YOU HAVE " + Career.Money(s.Cash), "k-cr-head");
                 var row = Kit.Box(hero, "k-row");
                 // P7 phase 4: the world map - every event this week, the trips
                 int count = Tour.Week(s.Slot).Count;
                 var map = AddTo(row, new CardItem("World map", count == 0 ? (s.Week >= Tour.OffSeasonFrom ? "THE OFF-SEASON" : "A QUIET WEEK") : count + (count == 1 ? " EVENT THIS WEEK" : " EVENTS THIS WEEK"), () => Fe.Push(new WorldMapScreen()))
-                    .Line("Every event, its entry and the trip from " + s.City));
+                    .Line("See every event in the world"));
                 map.Art.Add(new WorldMapView(true));
                 map.Root.AddToClassList("k-card--event"); map.Root.AddToClassList("k-card--map");
                 MapCard = map;
@@ -485,11 +485,12 @@ namespace SquashGame.UI
                     int index = o.Index;
                     var info = o.Info;
                     int t = (int)o.Tier;
-                    string how = o.Home ? "home - no entry needed" : o.Via == CareerSession.Via.Wildcard ? "a wildcard (" + c.WildcardsLeft + " left)"
-                               : o.Via == CareerSession.Via.Qualifying ? "through qualifying" : o.LastIn == int.MaxValue ? "open entry" : "last in #" + o.LastIn;
+                    // 2026-10-30 (the kid test): how you get in and what it pays, in plain words
+                    string how = o.Home ? "Your home club: you can always play" : o.Via == CareerSession.Via.Wildcard ? "A free pass gets you in (" + c.WildcardsLeft + " left)"
+                               : o.Via == CareerSession.Via.Qualifying ? "Win a match first to get in" : o.LastIn == int.MaxValue ? "Anyone can play" : "For players ranked " + o.LastIn + " or better";
                     var card = AddTo(row, new CardItem(o.Name, (o.Home ? "CLUB OPEN" : info.Name.ToUpperInvariant()) + "  ·  " + o.City.ToUpperInvariant(), () => Enter(index))
                         .Drawn("trophy", Career.TierBg(t), Career.TierColor(t))
-                        .Line("Winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "\n" + how + "  ·  trip " + (o.Cost == 0 ? "free" : Career.Money(o.Cost)))
+                        .Line("Win it: " + Career.Money(info.Prize[0]) + " and " + info.Points[0].ToString("N0") + " ranking points\n" + how + "  ·  " + (o.Cost == 0 ? "no travel" : "travel " + Career.Money(o.Cost)))
                         .Badge(() => Career.Stars(t)));
                     card.Root.AddToClassList("k-card--event");
                     card.Locked = () => c.Entry(index) != null;
@@ -498,9 +499,9 @@ namespace SquashGame.UI
                     _events.Add((card, index));
                 }
                 // P3-R3: or a week on the practice court
-                var train = AddTo(row, new CardItem("Training block", "TRAIN THIS WEEK", Train)
+                var train = AddTo(row, new CardItem("Practise this week", "NO EVENT", Train)
                     .Drawn("stripes", new Color32(18, 30, 24, 255), new Color(0.78f, 1f, 0.24f, 0.08f))
-                    .Line("+" + CareerSession.TrainingWeekXp + " XP\nThe week's events go on without you")
+                    .Line("Skip the events and get better instead")
                     .Badge(() => c.S.TrainingPoints > 0 ? c.S.TrainingPoints + " TO SPEND" : "+" + CareerSession.TrainingWeekXp + " XP", true));
                 train.Root.AddToClassList("k-card--event");
             }
@@ -509,10 +510,10 @@ namespace SquashGame.UI
             var rw = Kit.Panel(top, "WORLD RANKING"); rw.AddToClassList("k-cr-rankw");
             int rank = c.RankOf(You), mv = c.Movement(You);
             var big = Kit.Box(rw, "k-cr-rank-row");
-            Kit.L(big, rank == CareerSession.Unranked ? "NR" : "#" + rank, "k-cr-rank-big");
+            Kit.L(big, rank == CareerSession.Unranked ? "–" : "#" + rank, "k-cr-rank-big");
             var mvl = Kit.L(big, mv > 0 ? "▲" + mv : mv < 0 ? "▼" + (-mv) : "–", "k-cr-rank-move");
             mvl.AddToClassList(mv > 0 ? "k-up" : mv < 0 ? "k-down" : "k-same");
-            Kit.L(rw, rank == CareerSession.Unranked ? "UNRANKED  ·  " + s.Nat : Career.Pts(c.AverageOf(You)) + " POINTS  ·  " + c.EventsOf(You) + (c.EventsOf(You) == 1 ? " EVENT" : " EVENTS") + "  ·  " + s.Nat, "k-cr-rank-sub");
+            Kit.L(rw, rank == CareerSession.Unranked ? "NOT RANKED YET  ·  " + s.Nat : Career.Pts(c.AverageOf(You)) + " POINTS  ·  " + c.EventsOf(You) + (c.EventsOf(You) == 1 ? " EVENT" : " EVENTS") + "  ·  " + s.Nat, "k-cr-rank-sub");
             rw.Add(new RankTable(Career.Rows(c, Career.Around(c, You, 2))));
             Kit.L(rw, Career.ToNext(c), "k-cr-note");
 
@@ -525,7 +526,7 @@ namespace SquashGame.UI
                 Kit.L(item, k, "k-cr-news-k");
                 Kit.L(item, text, "k-cr-news-t");
             }
-            var season = Kit.Panel(bottom, "SEASON " + s.Season); season.AddToClassList("k-cr-season");
+            var season = Kit.Panel(bottom, "COMING UP  ·  MORE ★ = A BIGGER EVENT"); season.AddToClassList("k-cr-season");
             season.Add(new Timeline(Career.Months(c, s.Season)));
 
             // ---- CALENDAR ----
@@ -551,9 +552,9 @@ namespace SquashGame.UI
                 {
                     var ev = Kit.Box(cell, "k-cr-ev");
                     ev.Add(Career.Badge((int)Tier.Challenger3, 14));
-                    Kit.L(ev, "+ " + challengers + (challengers == 1 ? " Challenger" : " Challengers"), "k-cr-ev-name");
+                    Kit.L(ev, "+ " + challengers + (challengers == 1 ? " small event" : " small events"), "k-cr-ev-name");
                 }
-                if (week.Count == 0) Kit.L(cell, "Off-season", "k-cr-ev-name");
+                if (week.Count == 0) Kit.L(cell, "Holiday: no events", "k-cr-ev-name");
                 int slot = s.Season * Tour.SlotsPerSeason + m;
                 string mine = null; bool title = false;
                 foreach (var r in s.Results)
@@ -568,7 +569,7 @@ namespace SquashGame.UI
             AddTo(tp, new SelectorItem("Show", new[] { "Top 15", "Around me", "Rivals" }, () => _rankFilter, v => { _rankFilter = v; FillTable(); }));
             _table = Kit.Box(tp, "k-cr-tablebox");
             FillTable();
-            var ladder = Kit.Panel(rgrid, "THE TIERS"); ladder.AddToClassList("k-cr-ladder");
+            var ladder = Kit.Panel(rgrid, "THE EVENTS  ·  SMALL TO BIG"); ladder.AddToClassList("k-cr-ladder");
             for (int t = 0; t < Tour.Tiers.Length; t++)
             {
                 var info = Tour.Tiers[t];
@@ -580,8 +581,8 @@ namespace SquashGame.UI
                 lr.Add(Career.Badge(t, 26));
                 var txt = Kit.Box(lr, "k-cr-lad-text");
                 Kit.L(txt, info.Name.ToUpperInvariant(), "k-cr-lad-name");
-                Kit.L(txt, info.Draw + " players  ·  winner +" + info.Points[0].ToString("N0") + " pts  ·  " + Career.Money(info.Prize[0]) + "  ·  " + Career.CourtName(t), "k-cr-lad-line");
-                Kit.L(lr, open ? "IN" : (t == (int)Tier.WorldTourFinals ? "ROAD TOP 8" : "~#" + lastIn), "k-cr-lad-gate");
+                Kit.L(txt, "Win it: " + Career.Money(info.Prize[0]) + "  ·  " + info.Draw + " players", "k-cr-lad-line");
+                Kit.L(lr, open ? "YOU CAN PLAY" : (t == (int)Tier.WorldTourFinals ? "BEST 8 ONLY" : "RANK " + lastIn + " OR BETTER"), "k-cr-lad-gate");
             }
 
             // ---- PLAYER (2026-10-29: after EA FC's Clubs archetypes page - CareerPlayer.cs) ----
@@ -605,7 +606,7 @@ namespace SquashGame.UI
             foreach (var name in CareerSession.AttributeNames)
             {
                 var row = Kit.Box(stats, "fc-card-stat");
-                Kit.L(row, CareerSession.DisplayName(name).Substring(0, 3).ToUpperInvariant(), "fc-card-stat-k");
+                Kit.L(row, CareerSession.DisplayName(name).ToUpperInvariant(), "fc-card-stat-k");                // (the kid test: words, not "SPE POW ACC")
                 _cardStats[name] = Kit.L(row, "", "fc-card-stat-v");
             }
             var tot = Kit.Box(stats, "fc-card-stat fc-card-total");
@@ -697,22 +698,23 @@ namespace SquashGame.UI
             }
         }
 
+        /// <summary>2026-10-30 (the kid test): what the level means, in words ("Speed and reach -16%" read as a punishment).</summary>
         static string Effect(string n, double e)
         {
             double k = (e - SquashSim.AthleteAttributes.Neutral) / (SquashSim.AthleteAttributes.Max - SquashSim.AthleteAttributes.Neutral);   // -1 .. +1
+            int band = k < -0.5 ? 0 : k < 0 ? 1 : k < 0.5 ? 2 : 3;
             switch (n)
             {
-                case "Speed": return "Speed and reach " + Pct(0.2 * k);
-                case "Stamina": return "Tiring  x" + (1.0 - 0.4 * k).ToString("0.00");
-                case "Power": return "Drive and kill pace " + Pct(0.2 * k);
-                default: return "Shot spread  x" + (1.0 - 0.4 * k).ToString("0.00");
+                case "Speed": return "Now: " + new[] { "a bit slow", "OK speed", "fast", "super fast" }[band];
+                case "Stamina": return "Now: " + new[] { "gets tired quickly", "OK", "lasts a long time", "never gets tired" }[band];
+                case "Power": return "Now: " + new[] { "soft shots", "OK power", "hard shots", "huge shots" }[band];
+                default: return "Now: " + new[] { "shots go a bit wide", "OK aim", "good aim", "perfect aim" }[band];
             }
         }
 
         /// <summary>A stat as the card shows it, FC-style: 0 is 50, 10 is 99.</summary>
         static int Rating(double v) { return System.Math.Min(99, (int)System.Math.Round(50 + 4.9 * v)); }
 
-        static string Pct(double v) { int p = (int)System.Math.Round(v * 100); return (p >= 0 ? "+" : "") + p + "%"; }
 
         /// <summary>Show an attribute on the PLAYER page.</summary>
         void Pick(string attribute)
@@ -733,7 +735,7 @@ namespace SquashGame.UI
             _cardLevel.text = c.Level.ToString();
             double v = CareerSession.Get(s.Attributes, attribute), eff = CareerSession.Get(c.Effective, attribute);
             _attrName.text = CareerSession.DisplayName(attribute).ToUpperInvariant();
-            _points.text = "★ " + s.TrainingPoints + " available";
+            _points.text = "★ " + s.TrainingPoints + " to spend";
             _attrDesc.text = AttrLine(attribute);
             bool top = v >= SquashSim.AthleteAttributes.Max;
             _lvNow.text = v.ToString("0");
@@ -742,9 +744,9 @@ namespace SquashGame.UI
             _lvNow.parent.EnableInClassList("fc-level--can", c.CanRaise(attribute));
             int i = 0;
             foreach (var pip in _pips.Children()) { pip.EnableInClassList("fc-pip--on", i < v); pip.EnableInClassList("fc-pip--gear", i >= v && i < eff); i++; }
-            _effect.text = Effect(attribute, eff) + (eff != v ? "   (gear " + (eff > v ? "+" : "-") + System.Math.Abs(eff - v).ToString("0") + ")" : "");
-            _xp.text = "LEVEL " + c.Level + "  ·  " + s.Xp.ToString("N0") + " XP  ·  " + (CareerSession.XpFor(c.Level + 1) - s.Xp).ToString("N0") + " to the next point";
-            _upgrade.text = top ? CareerSession.DisplayName(attribute) + " is at the top" : c.CanRaise(attribute) ? "Enter on the icon: upgrade (★ " + CareerSession.CostToRaise(v) + ")" : "Play for XP: ★ every level";
+            _effect.text = Effect(attribute, eff) + (eff != v ? "   (your gear " + (eff > v ? "helps" : "slows it") + ")" : "");
+            _xp.text = "LEVEL " + c.Level + "  ·  play more matches to win your next ★";
+            _upgrade.text = top ? CareerSession.DisplayName(attribute) + " is at the top" : c.CanRaise(attribute) ? "Press Enter on the picture to make it better (★ " + CareerSession.CostToRaise(v) + ")" : "Play matches to earn ★ - then make your player better";
         }
 
         void Raise(string attribute)
@@ -897,23 +899,23 @@ namespace SquashGame.UI
             var ev = Kit.Box(mid, "k-cr-pv-event");
             ev.Add(Career.Badge(s.Current.Tier, 28));
             Kit.L(ev, Career.TierName(s.Current.Tier).ToUpperInvariant() + "  ·  " + Tour.RoundName(c.PlayersLeft).ToUpperInvariant(), "k-cr-pv-round");
-            var tape = Kit.Panel(mid, "TALE OF THE TAPE");
+            var tape = Kit.Panel(mid, "YOU AND THEM");
             int ra = c.RankOf(You), rb = c.RankOf(_opp);
             Row(tape, "WORLD RANK", Career.Rank(ra).ToUpperInvariant(), Career.Rank(rb).ToUpperInvariant(), ra < rb ? 0 : rb < ra ? 1 : -1);
             double pa = c.AverageOf(You), pb = c.AverageOf(_opp);
             Row(tape, "POINTS", Career.Pts(pa), Career.Pts(pb), pa > pb ? 0 : pb > pa ? 1 : -1);
             int ta = Career.Titles(c, You), tb = Career.Titles(c, _opp);
-            Row(tape, "TITLES (2 YRS)", ta.ToString(), tb.ToString(), ta > tb ? 0 : tb > ta ? 1 : -1);
+            Row(tape, "TITLES WON", ta.ToString(), tb.ToString(), ta > tb ? 0 : tb > ta ? 1 : -1);
             Row(tape, "NATION", s.Nat, p.Nat, -1);
             Row(tape, "AGE", "–", p.Age.ToString(), -1);
             var form = Kit.Box(tape, "k-cr-tape-row");
             Career.FormChips(Kit.Box(form, "k-cr-tape-a"), c.Form(You));
-            Kit.L(form, "FORM", "k-cr-tape-n");
+            Kit.L(form, "LAST MATCHES", "k-cr-tape-n");
             Career.FormChips(Kit.Box(form, "k-cr-tape-b"), c.Form(_opp));
             c.HeadToHead(_opp, out int w, out int l);
-            Row(tape, "HEAD TO HEAD", w.ToString(), l.ToString(), w > l ? 0 : l > w ? 1 : -1);
+            Row(tape, "WINS AGAINST EACH OTHER", w.ToString(), l.ToString(), w > l ? 0 : l > w ? 1 : -1);
             var acts = Kit.Box(mid, "k-cr-pv-acts");
-            var sim = AddTo(acts, new ActionItem("Simulate", Simulate, PromptBar.Btn.X));
+            var sim = AddTo(acts, new ActionItem("Skip: just see who wins", Simulate, PromptBar.Btn.X));
             sim.Enabled = () => !Finals;
             AddTo(acts, new ActionItem("The draw", () => Fe.Push(new DrawScreen(s.Current)), PromptBar.Btn.Y));
             if (Finals) Kit.L(mid, "The World Tour Finals can't be simulated: play them.", "k-cr-note");
@@ -946,7 +948,7 @@ namespace SquashGame.UI
         protected override void SetPrompts()
         {
             if (Finals) Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.Y, "The draw"), (PromptBar.Btn.B, "Back"));
-            else Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.X, "Simulate"), (PromptBar.Btn.Y, "The draw"), (PromptBar.Btn.B, "Back"));
+            else Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.X, "Skip"), (PromptBar.Btn.Y, "The draw"), (PromptBar.Btn.B, "Back"));
         }
 
         public override void OnActionX() { if (!Finals) Simulate(); }
@@ -1284,7 +1286,7 @@ namespace SquashGame.UI
     {
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { return "SEASON " + Career.S.Season + "  ·  SPONSORS"; } }
-        protected override string Title { get { return "Two offers on the table"; } }
+        protected override string Title { get { var n = Career.S.Offers.Count; return n == 0 ? "No sponsors yet" : n == 1 ? "A company wants to pay you!" : "Two companies want to pay you!"; } }
 
         protected override void Compose()
         {
@@ -1299,14 +1301,15 @@ namespace SquashGame.UI
                 var item = Cosmetics.Find(d.ItemId);
                 var card = AddTo(row, new CardItem(d.Brand, i == 0 ? "THE SAFE DEAL" : "THE BIG DEAL", () => Sign(k), CardSize.Hero)
                     .Drawn("stripes", item != null ? item.A * 0.35f + new Color(0, 0, 0, 0.65f) : new Color32(20, 20, 26, 255), item != null ? item.B : Color.white)
-                    .Line(Career.Money(d.Retainer) + " a season (paid at its end)  ·  " + Career.Money(d.TitleBonus) + " a title\n"
-                          + "Clause: stay inside the top " + d.Clause + " (you are " + Career.Rank(rank) + ")\n"
-                          + "Kit: " + (item != null ? item.Name + " " + Cosmetics.SlotNames[(int)item.Slot].ToLowerInvariant() : "-"))
+                    // 2026-10-30 (the kid test): no "clause" or "retainer" - what you get and what you must do
+                    .Line("You get " + Career.Money(d.Retainer) + " at the end of the season, and " + Career.Money(d.TitleBonus) + " for every title\n"
+                          + "You must: stay in the top " + d.Clause + " (you are " + Career.Rank(rank) + ")\n"
+                          + "Free kit: " + (item != null ? item.Name + " " + Cosmetics.SlotNames[(int)item.Slot].ToLowerInvariant() : "-"))
                     .Badge(() => Career.Money(d.Retainer), true));
                 card.Root.AddToClassList("k-card--sponsor");
             }
             AddTo(Root, new PrimaryItem("No thanks", () => Sign(-1)));
-            Kit.L(Content, "Miss the clause at the season's end and the deal is off - with no retainer. Titles pay the bonus straight away.", "k-cr-note");
+            Kit.L(Content, s.Offers.Count == 0 ? "Get a world ranking and companies will want to pay you." : "Not in the top places at the end of the season? Then you don't get the money. Title money comes straight away.", "k-cr-note");
         }
 
         void Sign(int i)
@@ -1335,8 +1338,8 @@ namespace SquashGame.UI
             var s = Career.S;
             var p = Kit.Panel(Content, "CAREER MATCHES"); p.AddToClassList("k-cr-settings");
             AddTo(p, new SelectorItem("Match", Career.LengthLabels, () => System.Math.Max(0, System.Math.Min(2, s.GamesToWin - 1)), v => s.GamesToWin = v + 1));
-            AddTo(p, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => s.English ? 1 : 0, v => s.English = v == 1));
-            Kit.L(p, "For every career match from now on. Your opponents' strength comes from their ranking.", "k-cr-step-hint");
+            AddTo(p, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => s.English ? 1 : 0, v => s.English = v == 1));
+            Kit.L(p, "For every career match from now on. Better-ranked players are harder to beat.", "k-cr-step-hint");
             AddTo(Root, new PrimaryItem("Done", () => Fe.Pop()));
         }
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }

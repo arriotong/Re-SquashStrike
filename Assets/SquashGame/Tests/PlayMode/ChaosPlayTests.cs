@@ -66,7 +66,7 @@ namespace SquashGame.Tests
             Progression.GearDrops.Wallet.Coins = SquashSim.Modes.GauntletCards.TenCost + 100;
             fe.Push(new GauntletScreen());
             yield return null; yield return null;
-            var packs = fe.Top.Reachable().Find(i => i.Name == "Card Packs");
+            var packs = fe.Top.Reachable().Find(i => i.Name == "Get more cards");
             Assert.That(packs, Is.Not.Null, "the Gauntlet points to the store");
             packs.Submit();
             yield return null; yield return null;

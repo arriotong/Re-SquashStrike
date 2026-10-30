@@ -298,7 +298,8 @@ namespace SquashGame.UI
             _title.text = (t != null ? t.Name : "Rookie").ToUpperInvariant() + (on != null && on.Games > 0 ? "  ·  " + on.Rating : "");
             _name.text = PlayerName.Shown();
             int next = Rewards.NextUnlock(p.Xp, out var items, out int toGo);
-            _next.text = next > 0 ? "NEXT  " + items.ToUpperInvariant() + "  ·  " + toGo.ToString("N0") + " XP" : "";
+            // 2026-10-30 (the kid test): "NEXT 210 COINS · 200 XP" read as nonsense - now it says what the ring fills up to
+            _next.text = next > 0 ? "NEXT LEVEL:  " + items.ToUpperInvariant() : "";
             _next.style.display = next > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             var banner = Cosmetics.Find(p.Loadout.Banner);
             if (banner != null) style.borderLeftColor = banner.B;

@@ -126,7 +126,7 @@ namespace SquashGame.UI
                 if (Top == null || Music.Want < 0.5f) return;
                 if (_announced.TryGetValue(s.File, out float at) && Time.unscaledTime - at < 60f) return;
                 _announced[s.File] = Time.unscaledTime;
-                Toast(NowPlaying, s.Title + "   ·   " + s.Artist);
+                MusicNote(s.Title + "   ·   " + s.Artist);
             };
             // UI redesign: live 3D pictures for cards
             var vig = gameObject.AddComponent<Vignettes>();
@@ -220,7 +220,7 @@ namespace SquashGame.UI
             var box = new VisualElement(); box.AddToClassList("toast"); box.AddToClassList("toast--in"); box.pickingMode = PickingMode.Ignore;
             if (tier >= 0)
             {
-                var medal = new Label(tier == 2 ? "III" : tier == 1 ? "II" : "I"); medal.AddToClassList("toast-medal");
+                var medal = new Label(tier == 2 ? "★★★" : tier == 1 ? "★★" : "★");     // (the kid test: stars, not "III") medal.AddToClassList("toast-medal");
                 medal.style.backgroundColor = MedalItem.TierColours[Mathf.Clamp(tier, 0, 2)];
                 box.Add(medal);
             }
@@ -234,8 +234,28 @@ namespace SquashGame.UI
             _toasts.Add((box, 0f));
         }
 
+        // 2026-10-30 (the kid test): the song's name is one small line at the bottom middle - it used to be a toast top
+        // right that covered the screens' right-hand panels, and stacked two deep when the song changed
+        Label _note;
+        float _noteAge = 99f;
+
+        public void MusicNote(string text)
+        {
+            ToastLog.Add(text);
+            if (_note == null) { _note = new Label(); _note.AddToClassList("music-note"); _note.pickingMode = PickingMode.Ignore; _root.Add(_note); }
+            _note.text = "♪  " + text;                                     // (a new song replaces the old line)
+            _note.style.display = DisplayStyle.Flex;
+            _noteAge = 0f;
+        }
+
         void TickToasts(float dt)
         {
+            if (_note != null && _noteAge < 99f)
+            {
+                _noteAge += dt;
+                _note.style.opacity = Mathf.Clamp01(Mathf.Min(_noteAge / 0.4f, (5f - _noteAge) / 0.8f));
+                if (_noteAge > 5f) { _note.style.display = DisplayStyle.None; _noteAge = 99f; }
+            }
             for (int i = _toasts.Count - 1; i >= 0; i--)
             {
                 var (l, age) = _toasts[i];
@@ -324,6 +344,7 @@ namespace SquashGame.UI
         {
             Clear();
             ClearToasts(NowPlaying);                                              // batch 6: the menus' "now playing" doesn't follow you on court
+            if (_note != null) _note.style.display = DisplayStyle.None;
             Stats.Reset();
             Match.BeginMatch(s);
             ClearEdges();

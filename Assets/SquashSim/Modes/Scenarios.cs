@@ -66,44 +66,44 @@ namespace SquashSim.Modes
                 return s;
             }
             // ---- Pressure ----
-            S(0, "closeout", "Close it out", "10-7 up. Three game balls. Don't let them back in.", "retriever", 0.30, 0, 10, 7,
+            S(0, "closeout", "Close it out", "You need one more point to win the game. Get it!", "retriever", 0.30, 0, 10, 7,
               "Without losing a rally", r => r.PointsLost == 0, "Win it with a winner", r => r.Winners >= 1);
-            S(0, "gameball", "Game ball down", "9-10. One rally and it's gone. Hold your nerve.", "grinder", 0.35, 3, 9, 10,
-              "No tins", r => r.Tins == 0, "Two winners", r => r.Winners >= 2);
-            var hand = S(0, "handout", "Hand-out at 8-all", "English scoring, 8-8, and they're serving. Win it back - then win the game.", "shotmaker", 0.35, 3, 8, 8,
-              "One error at most", r => r.Errors <= 1, "Hit a nick", r => r.Nicks >= 1);
+            S(0, "gameball", "Game ball down", "One more point and they win. Don't let them!", "grinder", 0.35, 3, 9, 10,
+              "Never hit the tin", r => r.Tins == 0, "Two winners", r => r.Winners >= 2);
+            var hand = S(0, "handout", "Hand-out at 8-all", "Old rules: only the server can score. Win the serve back, then win!", "shotmaker", 0.35, 3, 8, 8,
+              "One error at most", r => r.Errors <= 1, "Hit a nick into the corner", r => r.Nicks >= 1);
             hand.Scoring = "english"; hand.StartServer = 1;
-            var dec = S(0, "decider", "The decider", "One game all. Everything on this one.", "attacker", 0.45, 5, 0, 0,
-              "Win by 4 or more", r => r.Margin >= 4, "No tins", r => r.Tins == 0);
+            var dec = S(0, "decider", "The decider", "One game each. Whoever wins this one wins it all!", "attacker", 0.45, 5, 0, 0,
+              "Win by 4 or more", r => r.Margin >= 4, "Never hit the tin", r => r.Tins == 0);
             dec.GamesToWin = 2; dec.StartGames0 = 1; dec.StartGames1 = 1;
-            S(0, "longhaul", "The long haul", "A full game against an attacker. Make it physical.", "attacker", 0.40, 5, 0, 0,
+            S(0, "longhaul", "The long haul", "A whole game against a big hitter. Keep running!", "attacker", 0.40, 5, 0, 0,
               "Play a 15-shot rally", r => r.LongestRally >= 15, "5 great hits", r => r.GreatHits >= 5);
             // ---- Comebacks ----
-            S(1, "sixten", "Down 6-10", "Four game balls against you. Save them all.", "retriever", 0.45, 5, 6, 10,
-              "No tins", r => r.Tins == 0, "Inside 9 rallies", r => r.Rallies <= 9);
-            var twodown = S(1, "twodown", "Two games down", "Best of five, 0-2 down. Win three in a row.", "grinder", 0.45, 7, 0, 0,
-              "10 winners", r => r.Winners >= 10, "No tins", r => r.Tins == 0);
+            S(1, "sixten", "Down 6-10", "They need one point. You need five. Don't give up!", "retriever", 0.45, 5, 6, 10,
+              "Never hit the tin", r => r.Tins == 0, "Inside 9 rallies", r => r.Rallies <= 9);
+            var twodown = S(1, "twodown", "Two games down", "They won the first two games. Win the next three!", "grinder", 0.45, 7, 0, 0,
+              "10 winners", r => r.Winners >= 10, "Never hit the tin", r => r.Tins == 0);
             twodown.GamesToWin = 3; twodown.StartGames1 = 2;
-            S(1, "twonine", "Down 2-9", "They need two points. You need nine.", "shotmaker", 0.50, 7, 2, 9,
-              "Two errors at most", r => r.Errors <= 2, "Hit a nick", r => r.Nicks >= 1);
-            var eng = S(1, "english", "Old school", "English scoring, 3-8 down and receiving. Only the server scores.", "attacker", 0.50, 7, 3, 8,
-              "No tins", r => r.Tins == 0, "4 great hits", r => r.GreatHits >= 4);
+            S(1, "twonine", "Down 2-9", "They need two points. You need nine!", "shotmaker", 0.50, 7, 2, 9,
+              "Two errors at most", r => r.Errors <= 2, "Hit a nick into the corner", r => r.Nicks >= 1);
+            var eng = S(1, "english", "Old school", "Old rules: only the server can score. You're losing 3-8!", "attacker", 0.50, 7, 3, 8,
+              "Never hit the tin", r => r.Tins == 0, "4 great hits", r => r.GreatHits >= 4);
             eng.Scoring = "english"; eng.StartServer = 1;
-            var mb = S(1, "matchball", "Match ball down", "One game all, 9-10 in the decider.", "attacker", 0.55, 9, 9, 10,
-              "Three winners", r => r.Winners >= 3, "No tins", r => r.Tins == 0);
+            var mb = S(1, "matchball", "Match ball down", "Last game. One more point and they win!", "attacker", 0.55, 9, 9, 10,
+              "Three winners", r => r.Winners >= 3, "Never hit the tin", r => r.Tins == 0);
             mb.GamesToWin = 2; mb.StartGames0 = 1; mb.StartGames1 = 1;
             // ---- Legends ----
-            var wf = S(2, "worldfinal", "World final", "Best of five, two games all, the arena on its feet.", "grinder", 0.62, 12, 0, 0,
-              "No tins", r => r.Tins == 0, "Win by 3 or more", r => r.Margin >= 3);
+            var wf = S(2, "worldfinal", "World final", "The biggest match in the world. Two games each!", "grinder", 0.62, 12, 0, 0,
+              "Never hit the tin", r => r.Tins == 0, "Win by 3 or more", r => r.Margin >= 3);
             wf.GamesToWin = 3; wf.StartGames0 = 2; wf.StartGames1 = 2;
-            S(2, "marathon", "Marathon", "A grinder who never misses. Outlast them.", "grinder", 0.70, 10, 0, 0,
+            S(2, "marathon", "Marathon", "They never miss. Can you keep going longer?", "grinder", 0.70, 10, 0, 0,
               "A 20-shot rally", r => r.LongestRally >= 20, "Two errors at most", r => r.Errors <= 2);
-            S(2, "sixballs", "Six match balls", "4-10. Six match balls to save.", "attacker", 0.70, 10, 4, 10,
-              "No tins", r => r.Tins == 0, "Hit a nick", r => r.Nicks >= 1);
-            S(2, "nickhunter", "Nick hunter", "A shot-maker at their best. Beat them at their own game.", "shotmaker", 0.70, 9, 0, 0,
+            S(2, "sixballs", "Six match balls", "They need one point. You need seven!", "attacker", 0.70, 10, 4, 10,
+              "Never hit the tin", r => r.Tins == 0, "Hit a nick into the corner", r => r.Nicks >= 1);
+            S(2, "nickhunter", "Nick hunter", "They hit amazing shots. Hit even better ones!", "shotmaker", 0.70, 9, 0, 0,
               "Three nicks", r => r.Nicks >= 3, "8 kills", r => r.Kills >= 8);
-            var last = S(2, "lastdance", "The last dance", "Best of five, 0-2 and 3-10 down. The greatest comeback.", "retriever", 0.80, 12, 3, 10,
-              "No tins", r => r.Tins == 0, "Lose 3 rallies at most", r => r.PointsLost <= 3);
+            var last = S(2, "lastdance", "The last dance", "Losing by miles. Can you make the greatest comeback ever?", "retriever", 0.80, 12, 3, 10,
+              "Never hit the tin", r => r.Tins == 0, "Lose 3 rallies at most", r => r.PointsLost <= 3);
             last.GamesToWin = 3; last.StartGames1 = 2;
             return _all;
         }

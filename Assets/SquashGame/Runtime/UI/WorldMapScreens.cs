@@ -116,7 +116,7 @@ namespace SquashGame.UI
             var legend = Kit.Box(left, "k-wm-legend");
             Kit.L(legend, Tour.WeekLabel(s.Week).ToUpperInvariant() + "  ·  " + (Tour.Week(s.Slot).Count == 0 ? (s.Week >= Tour.OffSeasonFrom ? "THE OFF-SEASON" : "A QUIET WEEK") : Tour.Week(s.Slot).Count + (Tour.Week(s.Slot).Count == 1 ? " EVENT" : " EVENTS")) +
                           "  ·  YOU'RE IN " + s.City.ToUpperInvariant() + "  ·  " + Career.Money(s.Cash), "k-wm-legend-t");
-            Kit.L(legend, "◯ you   ▢ home   · faint: the next three weeks", "k-wm-legend-n");
+            Kit.L(legend, "◯ where you are   ▢ your home   · faint dots: later weeks", "k-wm-legend-n");
             _detail = Kit.Panel(page, "EVENT");
             _detail.AddToClassList("k-wm-detail");
 
@@ -137,7 +137,7 @@ namespace SquashGame.UI
                     var txt = Kit.Box(row, "k-wm-row-text");
                     Kit.L(txt, e.Name, "k-wm-row-name");
                     var info = Tour.Info(e.Tier);
-                    Kit.L(txt, info.Short + "  ·  " + e.City + "  ·  trip ~" + Career.Money(c.TripCost(e.City, e.Tier)) + "  ·  " + Chance(c, e, w == 0), "k-wm-row-n");
+                    Kit.L(txt, Career.Stars((int)e.Tier) + "  ·  " + e.City + "  ·  travel about " + Career.Money(c.TripCost(e.City, e.Tier)) + "  ·  " + Chance(c, e, w == 0), "k-wm-row-n");
                 }
             }
         }
@@ -150,23 +150,24 @@ namespace SquashGame.UI
                 for (int i = 0; i < Tour.Week(c.S.Slot).Count; i++)
                     if (Tour.EventAt(c.S.Slot, i) == e) return Route(c.OptionAt(i));
             }
-            if (e.Tier == Tier.WorldTourFinals) return "the Road's top 8";
+            if (e.Tier == Tier.WorldTourFinals) return "only the best 8 of the year";
             int rank = c.RankOf(You), lastIn = Tour.TypicalLastIn(e.Tier);
             var city = World.CityOf(e.City);
-            if (rank <= lastIn) return "likely in (usually ~#" + lastIn + ")";
-            if (city != null && city.Country == c.S.Nat && c.WildcardsLeft > 0) return "home: a wildcard chance";
-            if (Tour.QualifyingField(e.Tier) > 0 && rank <= lastIn + Tour.QualifyingField(e.Tier)) return "qualifying";
-            return "usually needs ~#" + lastIn;
+            // 2026-10-30 (the kid test): "usually needs ~#134" as words
+            if (rank <= lastIn) return "you can probably play";
+            if (city != null && city.Country == c.S.Nat && c.WildcardsLeft > 0) return "in your country: maybe a free pass";
+            if (Tour.QualifyingField(e.Tier) > 0 && rank <= lastIn + Tour.QualifyingField(e.Tier)) return "win a match first to get in";
+            return "for players ranked " + lastIn + " or better";
         }
 
         static string Route(CareerSession.Option o)
         {
-            if (o.Home) return "your club - always open";
+            if (o.Home) return "your home club: you can always play";
             switch (o.Via)
             {
-                case CareerSession.Via.Direct: return o.LastIn == int.MaxValue ? "in: the field isn't full" : "in (last in #" + o.LastIn + ")";
-                case CareerSession.Via.Wildcard: return "in on a wildcard";
-                case CareerSession.Via.Qualifying: return "qualifying (last in #" + o.LastIn + ")";
+                case CareerSession.Via.Direct: return "you can play";
+                case CareerSession.Via.Wildcard: return "you can play (a free pass)";
+                case CareerSession.Via.Qualifying: return "win a match first to get in";
                 default: return o.Why ?? "closed";
             }
         }
@@ -313,8 +314,8 @@ namespace SquashGame.UI
             Kit.L(ht, o.Name, "k-wm-dt-name");
             Kit.L(ht, o.City + (country != null ? ", " + country.Name + "  ·  " + World.RegionName(country.Region) : ""), "k-wm-dt-meta");
 
-            Row("PRIZE", "Winner " + Career.Money(info.Prize[0]) + "  ·  +" + info.Points[0].ToString("N0") + " pts  ·  purse " + Career.Money(info.Purse));
-            Row("DRAW", info.Field + " players" + (info.Draw > info.Field ? " in a " + info.Draw + "-draw (top " + (info.Draw - info.Field) + " seeds: byes)" : ""));
+            Row("WIN IT", Career.Money(info.Prize[0]) + " and " + info.Points[0].ToString("N0") + " ranking points");
+            Row("PLAYERS", info.Field + " players");
             if (!o.Home)
             {
                 var field = c.FieldOf(o.Index);
@@ -322,15 +323,14 @@ namespace SquashGame.UI
                 {
                     var top = new List<string>();
                     for (int i = 0; i < field.Count && i < 3; i++) top.Add(c.NameOf(field[i]) + " (" + Career.Rank(c.RankOf(field[i])) + ")");
-                    Row("TOP SEEDS", string.Join(", ", top));
+                    Row("BEST PLAYERS THERE", string.Join(", ", top));
                 }
             }
             string entry = Route(o);
-            if (o.Via == CareerSession.Via.Direct && o.LastIn != int.MaxValue) entry = "In: you're " + Career.Rank(c.RankOf(You)) + ", the last in is #" + o.LastIn;
-            if (o.Via == CareerSession.Via.Wildcard) entry = "A wildcard: a home event (" + c.WildcardsLeft + " of 2 left this year)";
-            if (o.Via == CareerSession.Via.Qualifying) entry = "Qualifying: win " + (Tour.QualifyingDraw(o.Tier) == 16 ? 4 : 3) + " matches for a main-draw place";
-            if (o.Via == CareerSession.Via.None) entry = "Closed: " + o.Why;
-            var er = Row("ENTRY", entry);
+            if (o.Via == CareerSession.Via.Wildcard) entry = "You can play: a free pass in your country (" + c.WildcardsLeft + " of 2 left this year)";
+            if (o.Via == CareerSession.Via.Qualifying) entry = "Win " + (Tour.QualifyingDraw(o.Tier) == 16 ? 4 : 3) + " matches first to get in";
+            if (o.Via == CareerSession.Via.None) entry = "You can't play: " + o.Why;
+            var er = Row("CAN I PLAY?", entry);
             er.EnableInClassList("k-wm-dt-row--bad", !o.Open);
 
             int flight = World.Flight(c.S.City, o.City);
@@ -343,10 +343,10 @@ namespace SquashGame.UI
                 trip = (flight == 0 ? "No flight" : "Flight from " + c.S.City + " " + Career.Money(flight)) +
                        (stay > 0 ? "  +  hotel " + nights + " nights × " + Career.Money(city != null ? city.Hotel : 0) : "  ·  home: no hotel");
             }
-            Row("TRIP", trip);
-            var cash = Row("CASH", Career.Money(c.S.Cash) + "  →  " + Career.Money(c.S.Cash - o.Cost) + " after the trip");
+            Row("TRAVEL", trip);
+            var cash = Row("YOUR MONEY", Career.Money(c.S.Cash) + "  →  " + Career.Money(c.S.Cash - o.Cost) + " after the trip");
             cash.EnableInClassList("k-wm-dt-row--bad", c.S.Cash - o.Cost < 0);
-            Kit.L(_detail, o.Open ? "A: travel and enter" : "", "k-wm-dt-go");
+            Kit.L(_detail, o.Open ? "Press Enter to go and play!" : "", "k-wm-dt-go");
         }
 
         VisualElement Row(string k, string v)

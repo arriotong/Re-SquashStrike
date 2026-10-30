@@ -22,8 +22,8 @@ namespace SquashGame.UI
     public sealed class DeckScreen : GameScreen
     {
         protected override bool ShowCoins { get { return true; } }
-        protected override string Kicker { get { return "THE GAUNTLET"; } }
-        protected override string Title { get { return "Your deck  ·  " + GauntletFlow.Cards.Deck.Count + " / " + GauntletCards.DeckSize; } }
+        protected override string Kicker { get { return "THE GAUNTLET  ·  USING " + GauntletFlow.Cards.Deck.Count + " OF " + GauntletCards.DeckSize; } }
+        protected override string Title { get { return "Your cards"; } }
         protected override bool ShowChip { get { return false; } }
 
         readonly string _focus;
@@ -57,7 +57,7 @@ namespace SquashGame.UI
             foreach (var a in cards)
             {
                 var card = a;
-                var item = AddTo(_scroll, new ActionItem(Line(a), () => Toggle(card), C.Deck.Contains(a.Id) ? "■" : "□"));
+                var item = AddTo(_scroll, new ActionItem(Line(a), () => Toggle(card), C.Deck.Contains(a.Id) ? "✓" : ""));
                 item.Enabled = () => GauntletCards.Find(C, card.Id) != null;
                 _rows.Add((item, a));
             }
@@ -66,8 +66,9 @@ namespace SquashGame.UI
         static string Line(Ability a)
         {
             var r = GauntletCards.Find(C, a.Id);
-            string state = r == null ? "not yet yours" : r.Evolved ? "EVOLVED" : "LV " + GauntletCards.LevelFor(r.Copies);
-            return a.Name + "   ·   " + GauntletAbilities.RarityNames[(int)a.Rarity] + "   ·   " + state;
+            // 2026-10-30 (the kid test): "Early Bird · Rare · LV 1 ■" - now the name and its level, in plain words
+            if (r == null) return a.Name + "   ·   not found yet";
+            return a.Name + "   ·   " + (r.Evolved ? "powered up!" : "level " + GauntletCards.LevelFor(r.Copies));
         }
 
         void Toggle(Ability a)
@@ -103,7 +104,7 @@ namespace SquashGame.UI
 
         protected override void SetPrompts()
         {
-            Prompts.Set((PromptBar.Btn.A, "In / out"), (PromptBar.Btn.Y, "Best " + GauntletCards.DeckSize), (PromptBar.Btn.X, "Evolve"), (PromptBar.Btn.B, "Back"));
+            Prompts.Set((PromptBar.Btn.A, "Use / stop using"), (PromptBar.Btn.Y, "Pick for me"), (PromptBar.Btn.X, "Power up"), (PromptBar.Btn.B, "Back"));
         }
 
         public override void Tick(float dt)
@@ -121,23 +122,26 @@ namespace SquashGame.UI
             var r = GauntletCards.Find(C, a.Id);
             var t = Kit.L(_detail, (a.Family != Family.None ? a.FamilyName.ToUpperInvariant() + "  ·  " : "") + a.KindName.ToUpperInvariant() + "  ·  " + GauntletAbilities.RarityNames[(int)a.Rarity].ToUpperInvariant(), "k-panel-title");
             t.style.color = GauntletFlow.RarityColour(a.Rarity);
+            var pic = new CardArt(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), GauntletFlow.RarityColour(a.Rarity));   // (the kid test: a picture)
+            pic.AddToClassList("k-deck-pic");
+            _detail.Add(pic);
             Kit.L(_detail, a.Name, "k-tro-big");
             Kit.L(_detail, a.Blurb, "gt-text");
             int dl = r != null ? GauntletCards.DeckLevel(r) : 1;
             Kit.L(_detail, (r == null ? "At level 1: " : r.Evolved ? "Evolved: " : "Now: ") + a.Level(GauntletCards.PlayLevel(a, dl)), "gt-text");
-            if (r == null) { Kit.L(_detail, "Find it in Card Packs (the store, " + GauntletCards.CardCost + " coins a card).", "k-tro-line"); return; }
+            if (r == null) { Kit.L(_detail, "Not found yet. Get it from a Card Pack in the Store.", "k-tro-line"); return; }
             if (!r.Evolved)
             {
                 int lv = GauntletCards.LevelFor(r.Copies);
-                if (lv < GauntletCards.MaxLevel) Kit.L(_detail, "Copies " + r.Copies + "  ·  " + GauntletCards.ToNext(r.Copies) + " more for level " + (lv + 1), "k-tro-line");
+                if (lv < GauntletCards.MaxLevel) Kit.L(_detail, "Find " + GauntletCards.ToNext(r.Copies) + " more of this card to make it level " + (lv + 1), "k-tro-line");
                 else
                 {
                     int cost = GauntletCards.EvolveCostOf(a.Id);
-                    Kit.L(_detail, "Level 3  ·  evolve for " + cost.ToString("N0") + " coins (X)" + (GearDrops.Wallet.Coins < cost ? "  ·  you have " + GearDrops.Wallet.Coins.ToString("N0") : ""), "k-tro-line");
-                    Kit.L(_detail, "Evolved: " + a.Level(a.MaxLevel), "gt-text");
+                    Kit.L(_detail, "Top level! Power it up for " + cost.ToString("N0") + " coins (X)" + (GearDrops.Wallet.Coins < cost ? "  ·  you have " + GearDrops.Wallet.Coins.ToString("N0") : ""), "k-tro-line");
+                    Kit.L(_detail, "Powered up: " + a.Level(a.MaxLevel), "gt-text");
                 }
             }
-            Kit.L(_detail, C.Deck.Contains(a.Id) ? "In your deck" : "Not in your deck", "k-tro-line");
+            Kit.L(_detail, C.Deck.Contains(a.Id) ? "✓  You're using this card" : "You're not using this card. Press Enter to use it.", "k-tro-line");
         }
     }
 
@@ -177,7 +181,7 @@ namespace SquashGame.UI
             }
             AddTo(Root, new PrimaryItem("Back to the store", () => Fe.Pop()));
             var more = Kit.Box(Content, "gt-more");
-            AddTo(more, new ActionItem("Your deck", () => Fe.Replace(new DeckScreen()), "▶"));
+            AddTo(more, new ActionItem("Your cards", () => Fe.Replace(new DeckScreen()), "▶"));
         }
 
         protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }

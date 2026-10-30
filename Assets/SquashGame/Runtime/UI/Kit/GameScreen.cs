@@ -162,7 +162,7 @@ namespace SquashGame.UI
             var left = Kit.Panel(controls, "MATCH SETUP");
             Difficulty = AddTo(left, new SelectorItem("Difficulty", new[] { "Easy", "Medium", "Hard" }, () => _diff, v => _diff = v, true));
             AddTo(left, new SelectorItem("Match", new[] { "1 game", "Best of 3", "Best of 5" }, () => _len, v => _len = v));
-            AddTo(left, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => _score, v => _score = v));
+            AddTo(left, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => _score, v => _score = v));
             var right = Kit.Panel(controls, "TIERS");
             var tiers = Kit.Box(right, "k-tierrow");
             string[] names = { "CLUB", "REGIONAL", "CHALLENGER", "TOUR", "MAJOR", "WORLD FINALS" };

@@ -35,15 +35,15 @@ namespace SquashSim.Modes
             if (_all != null) return _all;
             _all = new List<Talent>();
             void T(string id, string name, string text, params int[] costs) { _all.Add(new Talent { Id = id, Name = name, Text = text, Costs = costs }); }
-            T("hearty", "Hearty", "+1 starting heart", 60, 160);
-            T("reroll", "Reroll", "+1 reroll each run", 40, 100, 180);
-            T("wider", "Wider View", "4 cards at every pick", 260);
-            T("banish", "Banish", "+1 banish each run: strike a card out of the run", 60, 130, 220);
-            T("kit", "Kit Bag", "Start each run with a random common ability", 80, 200);
-            T("revive", "Revive", "Once a run, losing your last heart gives one back", 320);
-            T("treasure", "Treasure", "+10% coins", 50, 110, 200);
+            T("hearty", "Extra Heart", "Start with one more heart", 60, 160);             // (2026-10-30, the kid test: plain words)
+            T("reroll", "New Cards", "Don't like the cards? Swap them for new ones (once more a run)", 40, 100, 180);
+            T("wider", "Wider View", "Pick from 4 cards, not 3", 260);
+            T("banish", "Throw Away", "Throw away a card you never want to see (once more a run)", 60, 130, 220);
+            T("kit", "Kit Bag", "Start every run with a free power", 80, 200);
+            T("revive", "Second Chance", "Lost your last heart? Get one back (once a run)", 320);
+            T("treasure", "Treasure", "Get more coins from every floor", 50, 110, 200);
             foreach (var a in GauntletAbilities.All())
-                if (a.Locked && !a.Retired) _all.Add(new Talent { Id = "unlock_" + a.Id, Name = a.Name, Text = "Adds " + a.Name + " to the cards: " + a.Blurb, Costs = new[] { UnlockCost(a) }, Unlocks = a.Id });
+                if (a.Locked && !a.Retired) _all.Add(new Talent { Id = "unlock_" + a.Id, Name = a.Name, Text = "A new card: " + a.Blurb, Costs = new[] { UnlockCost(a) }, Unlocks = a.Id });
             return _all;
         }
 

@@ -198,7 +198,7 @@ namespace SquashGame
                 if (_lastGames >= 0 && games > _lastGames) { _games.AddToClassList("sb-games--flash"); _games.schedule.Execute(() => _games.RemoveFromClassList("sb-games--flash")).StartingIn(900); }
                 _lastGames = games;
             }
-            _system.text = s.System == ScoringSystem.Par ? "PAR " + PhysicsConfig.Current.Match.ParPoints : "ENGLISH " + s.GameTarget;
+            _system.text = s.System == ScoringSystem.Par ? "TO " + PhysicsConfig.Current.Match.ParPoints : "TO " + s.GameTarget;
             _games.text = "GAMES " + s.Games[0] + "-" + s.Games[1];
             _games.style.display = s.GamesToWin > 1 ? DisplayStyle.Flex : DisplayStyle.None;
             string server = !twoPlayer && s.Server == r.HumanIndex ? "You serve" : names[s.Server] + " serves";
@@ -366,7 +366,7 @@ namespace SquashGame
             if (intro)
             {
                 _introNames.text = names[0] + "   v   " + names[1];
-                string system = s.System == ScoringSystem.Par ? "PAR " + PhysicsConfig.Current.Match.ParPoints : "ENGLISH " + s.GameTarget;
+                string system = s.System == ScoringSystem.Par ? "TO " + PhysicsConfig.Current.Match.ParPoints : "TO " + s.GameTarget;
                 _introSub.text = (s.GamesToWin > 1 ? "BEST OF " + (s.GamesToWin * 2 - 1) : "ONE GAME") + "   ·   " + system + "   ·   GLASS COURT";
             }
             _intro.style.display = intro ? DisplayStyle.Flex : DisplayStyle.None;

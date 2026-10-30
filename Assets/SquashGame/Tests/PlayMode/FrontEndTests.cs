@@ -66,7 +66,7 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<SettingsScreen>());
             yield return null; yield return null;
             Assert.That(((SettingsScreen)fe.Top).Tabs.Current, Is.EqualTo("CONTROLS"));
-            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Control mode"));
+            Assert.That(fe.Top.Focused.Name, Is.EqualTo("Aim help"));
             bool before = IntentSource.Assisted;
             yield return Tap(kb.rightArrowKey);
             Assert.That(IntentSource.Assisted, Is.EqualTo(!before), "the control mode changes at once");

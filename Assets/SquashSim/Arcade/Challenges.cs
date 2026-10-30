@@ -46,12 +46,13 @@ namespace SquashSim.Arcade
         public static readonly string[] ModeNames = { "Time Attack", "Precision", "Shot Menu", "Streak", "Serve Targets", "Wall Rally" };
         public static readonly string[] ModeBlurbs =
         {
-            "60 seconds. Hit as many targets as you can - keep the combo going.",
-            "20 balls, one target each. Closer to the centre scores more.",
-            "20 balls. Play the shot it calls, into its zone.",
-            "Targets until the first miss. They get smaller.",
-            "10 serves. Lob or hard - land them deep in the back corner.",
-            "Just you and the front wall. Hit the targets, keep it going.",
+            // 2026-10-30 (the kid test): one short line each
+            "Hit as many targets as you can in 60 seconds!",
+            "Hit the middle of the target for the most points.",
+            "Play the shot it asks for.",
+            "Keep hitting targets. One miss and it's over!",
+            "Serve the ball into the back corner.",
+            "Keep hitting the wall. Don't miss!",
         };
 
         static Challenge Make(ArcadeMode mode, int level)
@@ -124,11 +125,11 @@ namespace SquashSim.Arcade
             if (_all != null) return _all;
             _all = new List<Challenge>();
             for (int m = 0; m < 6; m++) for (int l = 0; l < 3; l++) _all.Add(Make((ArcadeMode)m, l));
-            _all.Add(Drill(DrillKind.Length, "Length", "Drive it deep: the first bounce behind the service box.", 20, 0, new[] { 7, 12, 15 }));
-            _all.Add(Drill(DrillKind.Drop, "Drop", "Soft and short: the first bounce in front of the short line (aim low, no charge).", 20, 0, new[] { 7, 10, 13 }));
-            _all.Add(Drill(DrillKind.BoastDrive, "Boast-Drive", "Boast, then drive, then boast... as the feeder alternates.", 20, 0, new[] { 8, 13, 16 }));
-            _all.Add(Drill(DrillKind.Ghosting, "Ghosting", "No ball: touch the lit spots and come back to the T. 45 seconds.", 0, 45, new[] { 16, 22, 26 }));          // 2026-10-25: 24 was below the bot's median
-            _all.Add(Drill(DrillKind.NickHunt, "Nick Hunt", "Kill it into the join of the wall and the floor.", 20, 0, new[] { 1, 3, 4 }));          // with near-nicks (ArcadeSession.NearNick)
+            _all.Add(Drill(DrillKind.Length, "Length", "Hit it hard and deep: make it bounce at the back.", 20, 0, new[] { 7, 12, 15 }));
+            _all.Add(Drill(DrillKind.Drop, "Drop", "Hit it soft: make it bounce at the front. Aim low!", 20, 0, new[] { 7, 10, 13 }));
+            _all.Add(Drill(DrillKind.BoastDrive, "Boast and Drive", "Off the side wall, then straight. Keep swapping!", 20, 0, new[] { 8, 13, 16 }));
+            _all.Add(Drill(DrillKind.Ghosting, "Run to the Spots", "No ball! Run to each light, then back to the middle.", 0, 45, new[] { 16, 22, 26 }));          // 2026-10-25: 24 was below the bot's median
+            _all.Add(Drill(DrillKind.NickHunt, "Nick Hunt", "Hit it low into the corner where the wall meets the floor.", 20, 0, new[] { 1, 3, 4 }));          // with near-nicks (ArcadeSession.NearNick)
             return _all;
         }
 

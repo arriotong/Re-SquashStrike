@@ -108,12 +108,12 @@ namespace SquashGame.Progression
                 _all.Add(new ChallengeDef { Id = id, Group = group, Text = text, Target = target, Count = count, Weekly = weekly });
             }
             // ---- daily: three to play ----
-            D(Quiz, "quiz", "Rules quiz: make " + QuizSize + " calls, get " + SquashSim.Academy.QuizMaker.PassMark(QuizSize) + " right", 1, e => e.QuizPassed && e.QuizCount == QuizSize ? 1 : 0);
+            D(Quiz, "quiz", "Rules quiz: get " + SquashSim.Academy.QuizMaker.PassMark(QuizSize) + " of " + QuizSize + " right", 1, e => e.QuizPassed && e.QuizCount == QuizSize ? 1 : 0);
             D(Puzzle, "puzzle", "Shot puzzle: find the best shot", 1, e => e.PuzzleSolved ? 1 : 0);
             D(Skill, "skill", "Skill test: today's Target Arcade level", 1, e => SkillDone(e) ? 1 : 0);
             // ---- weekly ----
-            D(Rush, "puzzle", "Puzzle rush: solve {0} shot puzzles this week", 5, e => e.PuzzleSolved ? 1 : 0, true);
-            D(Exam, "quiz", "Rules exam: " + ExamSize + " calls, " + SquashSim.Academy.QuizMaker.PassMark(ExamSize) + " right", 1, e => e.QuizPassed && e.QuizCount == ExamSize ? 1 : 0, true);
+            D(Rush, "puzzle", "Puzzle rush: solve {0} shot puzzles", 5, e => e.PuzzleSolved ? 1 : 0, true);
+            D(Exam, "quiz", "Rules exam: get " + SquashSim.Academy.QuizMaker.PassMark(ExamSize) + " of " + ExamSize + " right", 1, e => e.QuizPassed && e.QuizCount == ExamSize ? 1 : 0, true);
             return _all;
         }
 
@@ -179,7 +179,7 @@ namespace SquashGame.Progression
         {
             var c = Today(Skill);
             var l = c != null ? SquashSim.Arcade.Challenges.Find(c.Ref) : null;
-            return l == null ? "" : SquashSim.Arcade.Challenges.ModeNames[(int)l.Mode] + "  ·  " + l.LevelName + "  ·  " + c.Need + " stars";
+            return l == null ? "" : "Hit the targets and get " + c.Need + " stars";                                  // (the kid test: plain words)
         }
 
         public static ChallengeDef Find(string id) { foreach (var d in All()) if (d.Id == id) return d; return null; }

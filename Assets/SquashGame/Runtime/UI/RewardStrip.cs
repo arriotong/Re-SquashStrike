@@ -33,20 +33,20 @@ namespace SquashGame.UI
             _fill.AddToClassList("rw-fill");
             bar.Add(_fill);
             Add(bar);
-            var plain = r.Lines.FindAll(x => !x.StartsWith("Achievement:"));             // the achievements get their own line
-            var lines = new Label(string.Join("    ·    ", plain)); lines.AddToClassList("rw-lines"); Add(lines);
+            // 2026-10-30 (the kid test): no line of XP sums ("11 rallies +22 · 11 rallies won +33 ..."); the achievements as
+            // a count and the first two names, not a row of nine
             if (r.Achieved.Count > 0)
             {
                 var names = new System.Collections.Generic.List<string>();
-                int xp = 0;
-                foreach (var a in r.Achieved) { names.Add(a.Name); xp += a.Xp; }
-                var l = new Label("ACHIEVEMENTS  +" + xp + "   " + string.Join("  ·  ", names)); l.AddToClassList("rw-ach"); Add(l);
+                foreach (var a in r.Achieved) if (names.Count < 2) names.Add(a.Name);
+                string more = r.Achieved.Count > 2 ? "  and " + (r.Achieved.Count - 2) + " more" : "";
+                var l = new Label((r.Achieved.Count == 1 ? "NEW ACHIEVEMENT:  " : r.Achieved.Count + " NEW ACHIEVEMENTS:  ") + string.Join(",  ", names) + more); l.AddToClassList("rw-ach"); Add(l);
             }
             if (r.Unlocked.Count > 0)
             {
                 // P3-R1: each new item as a swatch card, not just a name
                 var row = new VisualElement(); row.AddToClassList("rw-unlocks");
-                var k = new Label("UNLOCKED"); k.AddToClassList("rw-unlock"); row.Add(k);
+                var k = new Label("NEW STUFF"); k.AddToClassList("rw-unlock"); row.Add(k);
                 foreach (var it in r.Unlocked) row.Add(Swatch(it));
                 Add(row);
             }
@@ -55,18 +55,17 @@ namespace SquashGame.UI
             {
                 // 2026-10-29: as the coin icon and amounts - "+ (coin) 120   ·   (coin) 3,350 in all"
                 var c = new VisualElement(); c.AddToClassList("rw-coins");
-                var plus = new Label("+"); plus.AddToClassList("rw-tickets"); c.Add(plus);
+                var plus = new Label("YOU WON"); plus.AddToClassList("rw-tickets"); c.Add(plus);
                 var got = new CoinCount(() => r.Coins, 18f); got.AddToClassList("k-coins--inline"); c.Add(got);
-                var mid = new Label("·"); mid.AddToClassList("rw-tickets"); c.Add(mid);
+                var mid = new Label("·   NOW YOU HAVE"); mid.AddToClassList("rw-tickets"); c.Add(mid);
                 var all = new CoinCount(() => GearDrops.Wallet.Coins, 18f); all.AddToClassList("k-coins--inline"); c.Add(all);
-                var rest = new Label("in all  ·  " + (GearDrops.Wallet.Coins / GearDrops.PullCost) + " pulls"); rest.AddToClassList("rw-tickets"); c.Add(rest);
                 Add(c);
             }
             // P3-R1: what the next level brings - always something to play for
             int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);
             if (next > 0)
             {
-                var nl = new Label("NEXT LEVEL   " + next + "  ·  " + coming + "  ·  " + toGo.ToString("N0") + " XP to go");
+                var nl = new Label("LEVEL " + next + " GIVES YOU:  " + coming);
                 nl.AddToClassList("rw-next"); Add(nl);
             }
             schedule.Execute(Tick).Every(16);

@@ -24,7 +24,7 @@ namespace SquashGame.UI
     {
         public static string Wallet()
         {
-            return "A PULL " + GearDrops.PullCost + "   ·   ×10 " + GearDrops.TenPullCost.ToString("N0");          // (the coins: top right)
+            return "OPEN 1: " + GearDrops.PullCost + "   ·   OPEN 10: " + GearDrops.TenPullCost.ToString("N0");          // (the coins: top right)
         }
 
         /// <summary>An item for cards: its shape (a shirt, a shoe, a racket...) in its own colour, on a backing that contrasts with it
@@ -123,7 +123,7 @@ namespace SquashGame.UI
     public sealed class GoldPlateScreen : GameScreen
     {
         protected override string Kicker { get { return "PRO SHOP  ·  " + GearUi.Wallet(); } }
-        protected override string Title { get { return "Gold-plating"; } }
+        protected override string Title { get { return "Make it gold"; } }
         protected override bool ShowChip { get { return false; } }
 
         protected override void Compose()
@@ -131,7 +131,7 @@ namespace SquashGame.UI
             var list = new List<Item>();
             foreach (var b in GearDrops.Banners()) foreach (var it in b.Items) if (GearDrops.PlateCost(it) > 0) list.Add(it);
             list.Sort((a, c) => c.Rarity != a.Rarity ? c.Rarity.CompareTo(a.Rarity) : string.CompareOrdinal(a.Name, c.Name));
-            if (list.Count == 0) { Kit.L(Content, "Nothing to plate yet: pull some gear first.", "k-cr-empty"); return; }
+            if (list.Count == 0) { Kit.L(Content, "Nothing to make gold yet. Open some mystery packs first!", "k-cr-empty"); return; }
             var row = Kit.Box(Content, "k-row");
             foreach (var it in list.GetRange(0, Mathf.Min(6, list.Count)))
             {
@@ -152,6 +152,6 @@ namespace SquashGame.UI
             Fe.Replace(new GoldPlateScreen());
         }
 
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Gold-plate"), (PromptBar.Btn.B, "Back")); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Make it gold"), (PromptBar.Btn.B, "Back")); }
     }
 }

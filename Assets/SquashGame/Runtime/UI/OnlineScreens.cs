@@ -124,8 +124,8 @@ namespace SquashGame.UI
             _time = Kit.L(p, "", "on-time");
             _line = Kit.L(p, "", "k-cr-note");
             Kit.L(p, _kind == QueueKind.Ranked
-                ? "Best of 3, PAR-11, on the show court. Paired with someone near your rating; the longer you wait, the wider the search. Wins and losses move your rating."
-                : "Best of 3, PAR-11, on the show court, against the next player looking. It does not change your rating.", "k-cr-note");
+                ? "Best of 3, to 11, on the show court. Paired with someone near your rating; the longer you wait, the wider the search. Wins and losses move your rating."
+                : "Best of 3, to 11, on the show court, against the next player looking. It does not change your rating.", "k-cr-note");
             AddTo(Root, new PrimaryItem("Cancel", Back));
             OnlineService.Connect();
         }
@@ -172,7 +172,7 @@ namespace SquashGame.UI
             var grid = Kit.Box(Content, "on-grid");
             var host = Kit.Panel(grid, "HOST A ROOM"); host.AddToClassList("on-panel");
             AddTo(host, new SelectorItem("Match", Lengths, () => _length, v => _length = v));
-            AddTo(host, new SelectorItem("Scoring", new[] { "PAR-11", "English" }, () => _scoring, v => _scoring = v));
+            AddTo(host, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => _scoring, v => _scoring = v));
             AddTo(host, new CarouselItem("Court", Courts.Names, () => _court, v => { _court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
             AddTo(host, new ActionItem("Make the room", MakeRoom, "▶"));
             _codeBig = Kit.L(host, "", "on-code");
@@ -243,7 +243,7 @@ namespace SquashGame.UI
             _note = Kit.L(p, "", "k-cr-note");
             var me = Kit.Panel(grid, "YOU"); me.AddToClassList("on-panel");
             _you = Kit.L(me, "", "on-state");
-            Kit.L(me, "Ranked wins and losses move your rating (Elo, from 1000). A pull's worth of coins with every ranked win.", "k-cr-note");
+            Kit.L(me, "Win and your score goes up; lose and it goes down. Everyone starts at 1000. You win coins for every win.", "k-cr-note");
             AddTo(Root, new PrimaryItem("Refresh", () => OnlineService.FetchBoard()));
             OnlineService.FetchBoard();
         }

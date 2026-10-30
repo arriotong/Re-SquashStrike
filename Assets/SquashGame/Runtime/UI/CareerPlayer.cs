@@ -145,7 +145,7 @@ namespace SquashGame.UI
             }
             int best = CareerSession.Unranked;
             foreach (var sr in s.Seasons) best = Mathf.Min(best, sr.Rank);
-            Kit.L(cs, "Best season finish " + (s.Seasons.Count == 0 ? "– (first season)" : Career.Rank(best)) + "   ·   rating " + s.Rating.ToString("0.00"), "k-cr-note");
+            Kit.L(cs, "Best season finish " + (s.Seasons.Count == 0 ? "– (first season)" : Career.Rank(best)), "k-cr-note");
             var rv = Kit.Box(cs, "k-cr-privals");
             Kit.L(rv, "RIVALS", "k-cr-attr-line");
             var rivals = c.Rivals();

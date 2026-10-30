@@ -76,7 +76,7 @@ namespace SquashGame.UI
                 var list = ReplayLibrary.Entries.FindAll(e => t == 0 || (t == 1 ? e.Pinned : e.Mode == "career"));
                 if (list.Count == 0)
                     Kit.L(page, t == 0 ? "No replays yet. Every match you play is kept here - the last 20, and the ones you pin."
-                               : t == 1 ? "Nothing pinned. X on a replay keeps it for good." : "No career matches yet.", "k-cr-empty");
+                               : t == 1 ? "Nothing kept yet. Press F on a replay to keep it for good." : "No career matches yet.", "k-cr-empty");
                 foreach (var e in list)
                 {
                     var ee = e;

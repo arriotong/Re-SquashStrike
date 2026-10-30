@@ -458,7 +458,7 @@ namespace SquashGame.UI
             {
                 var p = Kit.Panel(col, "WHICH DO YOU WANT TO PLAY WITH?  YOU CAN CHANGE IT ANY TIME IN SETTINGS");
                 p.AddToClassList("k-ac-modepick");
-                AddTo(p, new SelectorItem("Control mode", new[] { "Non-assisted", "Assisted" }, () => S.Assisted ? 1 : 0,
+                AddTo(p, new SelectorItem(MatchChoices.ControlName, MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0,
                     v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); ProfileStore.Save(); }));
             }
             if (Reward.Any) { col.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }

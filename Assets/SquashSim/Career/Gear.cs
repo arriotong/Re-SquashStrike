@@ -32,15 +32,15 @@ namespace SquashSim.Career
         public int Price;                                   // US$ (0: the starter you own)
         public int Speed, Power, Accuracy, Stamina, Stability;
 
-        /// <summary>"+2 POW  -1 ACC  -1 SPD" (nothing: "NEUTRAL").</summary>
+        /// <summary>"+2 power  -1 aim  -1 speed" (nothing: "no change"; 2026-10-30, the kid test: words, not "POW ACC SPD").</summary>
         public string Line
         {
             get
             {
                 var parts = new List<string>();
                 void P(int v, string k) { if (v != 0) parts.Add((v > 0 ? "+" : "−") + Math.Abs(v) + " " + k); }
-                P(Speed, "SPD"); P(Power, "POW"); P(Accuracy, "ACC"); P(Stamina, "STA"); P(Stability, "STB");
-                return parts.Count == 0 ? "NEUTRAL" : string.Join("  ", parts);
+                P(Speed, "speed"); P(Power, "power"); P(Accuracy, "aim"); P(Stamina, "stamina"); P(Stability, "balance");
+                return parts.Count == 0 ? "no change" : string.Join("  ", parts);
             }
         }
     }

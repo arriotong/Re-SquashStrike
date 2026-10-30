@@ -34,7 +34,7 @@ namespace SquashGame.UI
         {
             var c = Challenges.Today(id);
             if (c == null) return "";
-            return c.Done ? "✓  DONE TODAY" : "+" + DailyXp() + " XP  ·  " + (Rewards.DailyPulls * GearDrops.PullCost) + " COINS";
+            return c.Done ? "✓  DONE TODAY" : "WIN " + (Rewards.DailyPulls * GearDrops.PullCost) + " COINS";             // (the kid test: no "XP")
         }
 
         public static int DailyXp()
@@ -93,8 +93,8 @@ namespace SquashGame.UI
 
     public sealed class ChallengesScreen : GameScreen
     {
-        protected override string Kicker { get { return "CHALLENGES  ·  " + Challenges.LeftToday() + " LEFT TODAY"; } }
-        protected override string Title { get { return "Today's three"; } }
+        protected override string Kicker { get { return "CHALLENGES  ·  NEW ONES IN " + Challenges.LeftToday(); } }
+        protected override string Title { get { return "Today's games"; } }
         protected override bool ShowChip { get { return false; } }
 
         protected override void Compose()
@@ -105,31 +105,32 @@ namespace SquashGame.UI
             Kit.L(head, streak.ToString(), "ch-streak-n");
             var words = Kit.Box(head, "ch-head-words");
             Kit.L(words, (streak == 1 ? "DAY" : "DAYS") + " IN A ROW", "ch-item-k");
-            Kit.L(words, "Best " + s.BestStreak + "  ·  daily XP +" + (int)(100 * Challenges.StreakBonus(System.Math.Max(1, streak))) + "%  ·  one done a day keeps it going", "ch-head-line");
+            // 2026-10-30 (the kid test): no "daily XP +0%" - just what keeps the streak going
+            Kit.L(words, "Play one every day to keep it going!", "ch-head-line");
             for (int i = 0; i < Challenges.StreakRewards.Length; i++)
             {
                 if (s.BestStreak >= Challenges.StreakRewards[i]) continue;
                 var it = Cosmetics.Find(Challenges.StreakItems[i]);
-                if (it != null) Kit.L(words, "At " + Challenges.StreakRewards[i] + " days: " + it.Name + "  ·  " + Cosmetics.SlotNames[(int)it.Slot], "ch-head-line");
+                if (it != null) Kit.L(words, Challenges.StreakRewards[i] + " days in a row wins: " + it.Name + " (" + Cosmetics.SlotNames[(int)it.Slot].ToLowerInvariant() + ")", "ch-head-line");
                 break;
             }
 
             var row = Kit.Box(Content, "k-row");
-            Card(row, Challenges.Puzzle, "SHOT PUZZLE", "A rally freezes. Your shot?", "trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255), () => ChallengePlay.Puzzle(Fe), CardSize.Hero);
-            Card(row, Challenges.Quiz, "RULES QUIZ", "5 calls  ·  4 right to pass", "rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255), () => ChallengePlay.Quiz(false));
+            Card(row, Challenges.Puzzle, "SHOT PUZZLE", "Pick the shot that wins the point!", "trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255), () => ChallengePlay.Puzzle(Fe), CardSize.Hero);
+            Card(row, Challenges.Quiz, "RULES QUIZ", "Be the referee: 5 questions", "rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255), () => ChallengePlay.Quiz(false));
             Card(row, Challenges.Skill, "SKILL TEST", Challenges.SkillWords(), "chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255), ChallengePlay.Skill);
             var w = s.Weekly;
             var wd = w != null ? Challenges.Find(w.Id) : null;
             var prize = Cosmetics.Find(Challenges.WeeklyItems[s.WeekliesDone % Challenges.WeeklyItems.Length]);
             AddTo(row, new CardItem(w != null && w.Id == Challenges.Exam ? "RULES EXAM" : "PUZZLE RUSH", "THIS WEEK  ·  " + Challenges.WeekLeft().ToUpperInvariant(), () => ChallengePlay.Weekly(Fe))
                 .Drawn("clock", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
-                .Line(() => (wd != null ? wd.Describe() + (w.Done || wd.Single ? "" : "  ·  " + w.Progress + " / " + wd.Target) : "") + (prize != null ? "\nPrize: " + prize.Name : ""))
-                .Badge(() => w != null && w.Done ? "✓  DONE" : "+" + Challenges.WeeklyXp + " XP", w != null && w.Done));
+                .Line(() => (wd != null ? wd.Describe() + (w.Done || wd.Single ? "" : "  ·  " + w.Progress + " / " + wd.Target) : ""))
+                .Badge(() => w != null && w.Done ? "✓  DONE" : prize != null ? "WIN: " + prize.Name.ToUpperInvariant() : "BIG PRIZE", w != null && w.Done));
         }
 
         void Card(VisualElement row, string id, string title, string line, string art, Color a, Color b, System.Action run, CardSize size = CardSize.M)
         {
-            AddTo(row, new CardItem(title, "DAILY", run, size).Drawn(art, a, b)
+            AddTo(row, new CardItem(title, "TODAY", run, size).Drawn(art, a, b)
                 .Line(line).Badge(() => ChallengeText.Status(id), Challenges.Today(id) != null && Challenges.Today(id).Done));
         }
 

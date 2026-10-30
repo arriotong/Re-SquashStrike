@@ -466,7 +466,7 @@ namespace SquashGame.UI
             Career.Tile(tiles, "MATCHES WON", s.MatchesWon.ToString());
             Career.Tile(tiles, "RALLIES WON", s.Rallies == 0 ? "–" : (100f * s.RalliesWon / s.Rallies).ToString("0") + "%");
             Career.Tile(tiles, "LONGEST RALLY", s.LongestRally.ToString());
-            Career.Tile(tiles, "TIME ON THE T", (100 * s.TShare).ToString("0") + "%");
+            Career.Tile(tiles, "TIME IN THE MIDDLE (THE T)", (100 * s.TShare).ToString("0") + "%");
 
             // ---- SHOTS ----
             var sh = Kit.Box(Page("SHOTS"), "k-st-grid");
@@ -498,11 +498,11 @@ namespace SquashGame.UI
             var we = Kit.Panel(e, "WINNERS AND ERRORS"); we.AddToClassList("k-st-wide");
             we.Add(new StatBars().Row("WINNERS  ·  ERRORS", s.Winners, s.Errors));
             int max = Mathf.Max(1, Mathf.Max(Mathf.Max(s.Tins, s.Outs), Mathf.Max(s.NotUps, s.Faults)));
-            Count(we, "Down (tin)", s.Tins, max); Count(we, "Out", s.Outs, max); Count(we, "Not up", s.NotUps, max); Count(we, "Faults", s.Faults, max);
+            Count(we, "Too low (the tin)", s.Tins, max); Count(we, "Out", s.Outs, max); Count(we, "Two bounces", s.NotUps, max); Count(we, "Bad serves", s.Faults, max);
             // P2-M7: the referee's calls, for you and against you
-            we.Add(new StatBars().Row("LETS  ·  YOU / THEM", s.Lets, s.LetsAgainst));
-            we.Add(new StatBars().Row("STROKES  ·  YOU / THEM", s.Strokes, s.StrokesAgainst));
-            we.Add(new StatBars().Row("NO LETS  ·  YOU / THEM", s.NoLets, s.NoLetsAgainst));
+            we.Add(new StatBars().Row("POINT PLAYED AGAIN  ·  YOU / THEM", s.Lets, s.LetsAgainst));
+            we.Add(new StatBars().Row("POINT GIVEN FOR BLOCKING  ·  YOU / THEM", s.Strokes, s.StrokesAgainst));
+            we.Add(new StatBars().Row("ASKED, BUT NO  ·  YOU / THEM", s.NoLets, s.NoLetsAgainst));
             var t3 = Kit.Box(e, "k-st-tiles");
             int stars = 0; foreach (var r in ProfileStore.Current.Arcade) stars += r.Stars;
             Career.Tile(t3, "ARCADE STARS", stars + " / 54");
@@ -555,7 +555,7 @@ namespace SquashGame.UI
             disc.style.borderTopColor = disc.style.borderBottomColor = disc.style.borderLeftColor = disc.style.borderRightColor = col;
             if (st.Done) { disc.AddToClassList("k-medal-disc--done"); disc.style.backgroundColor = col; }
             else if (a.Target > 1 && st.Progress > 0) { var ring = new Ring { Fill = col, Width = 5f }; ring.Value = (float)st.Progress / a.Target; disc.Add(ring); }
-            Kit.L(disc, st.Done ? "✓" : hidden ? "?" : a.Tier == AchTier.Gold ? "III" : a.Tier == AchTier.Silver ? "II" : "I", "k-medal-mark");
+            Kit.L(disc, st.Done ? "✓" : hidden ? "?" : a.Tier == AchTier.Gold ? "★★★" : a.Tier == AchTier.Silver ? "★★" : "★", "k-medal-mark");
             Kit.L(Root, hidden ? "???" : a.Name, "k-medal-name");
         }
     }

@@ -123,7 +123,7 @@ namespace SquashSim.Modes
             A("heavy", "Heavy Hitter", AbilityKind.Stat, Rarity.Common, "Harder drives and kills.", l => "Power +" + l, inSim: false);
             A("steady", "Steady Hands", AbilityKind.Stat, Rarity.Common, "Tighter at a stretch.", l => "Control +" + l, inSim: false);
             A("reach", "Long Arms", AbilityKind.Stat, Rarity.Rare, "The ball is in reach from further away.", l => "Reach " + Pct(l, 0.03));
-            A("grace", "Early Bird", AbilityKind.Stat, Rarity.Rare, "Swing early and still connect.", l => "Timing window " + Pct(l, 0.12));
+            A("grace", "Early Bird", AbilityKind.Stat, Rarity.Rare, "Swing early and still connect.", l => "More time to hit the ball: " + Pct(l, 0.12));
 
             // ---- run perks ----
             A("head", "Head Start", AbilityKind.Perk, Rarity.Rare, "Start every game ahead.", l => "Every game starts " + l + "-0 up", max: 3, inSim: false);
@@ -160,13 +160,13 @@ namespace SquashSim.Modes
               l => "After your drive or kill their reach is " + (4 * l) + "% shorter", fam: Family.Power);
             // ---- TRICK ----
             A("curve", "Curveball", S, Rarity.Rare, "Your drives bend after the front wall.",
-              l => "Drives and kills curve away: " + (1.2 + 0.6 * l).ToString("0.0") + " m/s² sideways for 0.6 s", fam: Family.Trick);
+              l => "Drives and kills swerve sideways after the front wall" + (l == 1 ? " (a little)" : l <= 3 ? " (a lot)" : " (a huge amount)"), fam: Family.Trick);
             A("deaddrop", "Dead Drop", S, Rarity.Rare, "Drops and boasts that just die.",
               l => "Your drops' and boasts' first bounce keeps only " + (100 - 15 * l) + "% of its height", fam: Family.Trick);
             A("ricochet", "Ricochet", S, Rarity.Epic, "The walls make it faster.",
               l => "Every side wall your shot hits adds " + (5 * l) + "% pace", fam: Family.Trick);
             A("knuckle", "Knuckleball", S, Rarity.Common, "Impossible to time.",
-              l => "Their timing window on your shots " + (8 * l) + "% shorter", fam: Family.Trick);
+              l => "They get " + (8 * l) + "% less time to hit your shots", fam: Family.Trick);
             // ---- JACKPOT ----
             A("jackpot", "Jackpot", U, Rarity.Epic, "ULTIMATE. Hit the jackpot.",
               l => "A winner off your ultimate scores +" + (1 + l) + " more", max: 3, fam: Family.Jackpot);
@@ -182,7 +182,7 @@ namespace SquashSim.Modes
             A("magnet", "Magnet Racket", P, Rarity.Rare, "The ball comes to you.",
               l => "Reach +" + (6 * l) + "%", fam: Family.Guard);
             A("shield", "Shield", P, Rarity.Rare, "Your mistakes don't count.",
-              l => "Your first " + (l == 1 ? "tin or out" : l + " tins or outs") + " each game " + (l == 1 ? "is a let" : "are lets"), max: 3, fam: Family.Guard);
+              l => "Your first " + (l == 1 ? "tin or out" : l + " tins or outs") + " each game " + (l == 1 ? "is played again" : "are played again"), max: 3, fam: Family.Guard);
             // ---- the legendary evolutions ----
             A("world", "The World", AbilityKind.Evolved, Rarity.Legendary, "Time Stop + Slow Field: time is yours.",
               l => "Time Stop lasts twice as long, and every game starts with a full POWER meter", max: 1, recipe: new[] { "freeze", "slowfield" }, fam: Family.Time);
@@ -193,7 +193,7 @@ namespace SquashSim.Modes
             A("allin", "All In", AbilityKind.Evolved, Rarity.Legendary, "Jackpot + Combo: let it ride.",
               l => "The jackpot is +4, times your combo (up to x4)", max: 1, recipe: new[] { "jackpot", "combo" }, fam: Family.Jackpot);
             A("fortress", "Fortress", AbilityKind.Evolved, Rarity.Legendary, "Magnet Racket + Shield: nothing gets through.",
-              l => "Your tins and outs are always lets", max: 1, recipe: new[] { "magnet", "shield" }, fam: Family.Guard);
+              l => "Your too-low and out shots are always played again", max: 1, recipe: new[] { "magnet", "shield" }, fam: Family.Guard);
 
             // the kept cards in their builds; the old small-number cards out of the pool
             F("focus", Family.Time); F("quick", Family.Time);

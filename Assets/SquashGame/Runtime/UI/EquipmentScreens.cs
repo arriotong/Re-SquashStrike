@@ -72,7 +72,7 @@ namespace SquashGame.UI
                     rows.Add((val, fill, ghost));
                 }
                 var note = Kit.L(panel, "", "k-cr-note");
-                Kit.L(panel, "Your levels and your gear. Gear moves a stat by 2 at most, and never past 0 or 10. Stability is the gear's own: steadier when stretched, fewer mishits.", "k-cr-note");
+                Kit.L(panel, "Green: your player gets better. Red: a bit worse. Balance: fewer bad hits when you stretch.", "k-cr-note");
                 _panels.Add((panel, rows, note));
             }
         }
@@ -101,7 +101,7 @@ namespace SquashGame.UI
                 val.text = a == b ? a.ToString("0") : a.ToString("0") + "  →  " + b.ToString("0");
                 val.EnableInClassList("k-eq-up", b > a); val.EnableInClassList("k-eq-down", b < a);
             }
-            note.text = c.Equipped(item.Slot) == item ? "On now: " + item.Name + "." : (c.Owns(item.Id) ? "Yours: A puts it on." : c.CantBuy(item.Id) == null ? "A: buy it for " + Career.Money(item.Price) + "." : "Not enough cash yet: " + Career.Money(item.Price) + ".");
+            note.text = c.Equipped(item.Slot) == item ? "You're using it." : (c.Owns(item.Id) ? "It's yours: press Enter to use it." : c.CantBuy(item.Id) == null ? "Press Enter to buy it for " + Career.Money(item.Price) + "." : "Not enough money yet: it costs " + Career.Money(item.Price) + ".");
         }
 
         void Pick(GearItem item)
