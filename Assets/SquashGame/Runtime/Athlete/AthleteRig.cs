@@ -26,7 +26,7 @@ namespace SquashGame.Athlete
         readonly Dictionary<string, Vector3> _restLocal = new Dictionary<string, Vector3>();
         readonly List<(Transform bone, GameObject blend)> _blends = new List<(Transform, GameObject)>();
         // The slim build (2026-10-24): each form's mesh, made per body (male / female) once a session.
-        readonly List<(MeshFilter mf, FormPart part)> _forms = new List<(MeshFilter, FormPart)>();
+        readonly List<(SkinnedMeshRenderer smr, FormPart part)> _forms = new List<(SkinnedMeshRenderer, FormPart)>();
         readonly List<(MeshFilter mf, JointBlend blend)> _blendForms = new List<(MeshFilter, JointBlend)>();
         static readonly Dictionary<string, Mesh> _bodyMeshes = new Dictionary<string, Mesh>();
         public bool Female { get; private set; }
@@ -104,14 +104,18 @@ namespace SquashGame.Athlete
         {
             if (_bodyBuilt && female == Female) return;
             Female = female; _bodyBuilt = true;
-            foreach (var (mf, f) in _forms)
+            foreach (var (smr, f) in _forms)
             {
                 string key = f.Name + (female ? "_f" : "_m");
                 if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
-                    _bodyMeshes[key] = mesh = MannequinForms.Slimmed(f.Mesh, MannequinForms.Slim(f.Name, female)).ToUnity(key);
-                mf.sharedMesh = mesh;
+                {
+                    var data = MannequinForms.Slimmed(f.Mesh, MannequinForms.Slim(f.Name, female));
+                    _bodyMeshes[key] = mesh = data.ToUnity(key);
+                    Skin(mesh, data, f, smr);
+                }
+                smr.sharedMesh = mesh;
             }
-            foreach (var (mf, jb) in _blendForms)
+            foreach (var (mf, jb) in _blendForms)                               // (none since the skinning)
             {
                 string key = "blend_" + jb.Bone + (female ? "_f" : "_m");
                 if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
@@ -169,22 +173,23 @@ namespace SquashGame.Athlete
                 var go = new GameObject(f.Name);
                 go.transform.SetParent(Bones[f.Bone], false);
                 go.transform.localPosition = ToUnity(f.Pivot - rigPos[f.Bone]);
-                var mf = go.AddComponent<MeshFilter>();
-                _forms.Add((mf, f));
-                var r = go.AddComponent<MeshRenderer>();
-                r.sharedMaterial = _region[(int)RegionOf(f.Name)];
+                // 2026-10-30 (the players, step 4): each form is SKINNED - near a joint it bends with the next bone, like
+                // skin, so elbows and knees no longer show as a mannequin's balls and seams (the joint blends are gone)
+                var smr = go.AddComponent<SkinnedMeshRenderer>();
+                var chain = ChainOf(f.Name, f.Bone);
+                var bones = new Transform[chain.Length];
+                var bind = new Matrix4x4[chain.Length];
+                for (int k = 0; k < chain.Length; k++) { bones[k] = Bones[chain[k].bone]; bind[k] = bones[k].worldToLocalMatrix * go.transform.localToWorldMatrix; }
+                smr.bones = bones;
+                smr.rootBone = Bones[f.Bone];
+                smr.updateWhenOffscreen = true;
+                smr.quality = SkinQuality.Bone4;
+                var split = SplitOf(f.Name);
+                smr.sharedMaterials = split.HasValue ? new[] { _region[(int)split.Value.above], _region[(int)split.Value.below] }
+                                                     : new[] { _region[(int)RegionOf(f.Name)] };
+                _bind[f.Name] = bind;
+                _forms.Add((smr, f));
                 FormCount++;
-            }
-
-            // ---- joint blends: shown only when the joint is bent ----
-            foreach (JointBlend jb in MannequinForms.Blends())
-            {
-                var go = new GameObject("blend_" + jb.Bone);
-                go.transform.SetParent(Bones[jb.Bone], false);
-                _blendForms.Add((go.AddComponent<MeshFilter>(), jb));
-                go.AddComponent<MeshRenderer>().sharedMaterial = _region[(int)RegionOf("blend_" + jb.Bone)];
-                go.SetActive(false);
-                _blends.Add((Bones[jb.Bone], go));
             }
 
             SetBody(false);
@@ -288,14 +293,113 @@ namespace SquashGame.Athlete
 
         public Vector3 RestLocal(string bone) { return _restLocal[bone]; }
 
-        public void UpdateBlends()
+        // ---------------- the skinning (2026-10-30) ----------------
+
+        readonly Dictionary<string, Matrix4x4[]> _bind = new Dictionary<string, Matrix4x4[]>();
+
+        /// <summary>A bone of a form's chain: the joint with the bone before it at this height (rig y), blended over +-band.</summary>
+        public struct ChainBone { public string bone; public float joint, band; }
+
+        static ChainBone B(string bone, float joint, float band) { return new ChainBone { bone = bone, joint = joint, band = band }; }
+
+        /// <summary>The bones a form bends with, in order along it (rising for the torso, falling down an arm or a leg).
+        /// The head, hands and feet keep to their own bone.</summary>
+        public static ChainBone[] ChainOf(string form, string bone)
         {
-            foreach (var (bone, blend) in _blends)
+            string n = form.ToLowerInvariant();
+            string side = form.EndsWith("R") ? "R" : "L";
+            if (n.Contains("pelvis") || n.Contains("abdomen") || n.Contains("chest") || n.Contains("neck"))
+                return new[] { B("Pelvis", 0f, 0f), B("Spine_01", RigContract.Spine01Y, 0.04f), B("Spine_02", RigContract.Spine02Y, 0.05f),
+                               B("Chest", RigContract.ChestY, 0.06f), B("Neck", GateA.NeckBase, 0.025f), B("Head", RigContract.HeadY, 0.02f) };
+            if (n.Contains("upperarm") || n.Contains("forearm"))
+                return new[] { B("Clavicle_" + side, 0f, 0f), B("UpperArm_" + side, GateA.Shoulder, 0.03f), B("Forearm_" + side, RigContract.ElbowY, 0.05f),
+                               B("Hand_" + side, RigContract.WristY, 0.03f) };
+            if (n.Contains("thigh") || n.Contains("shin"))
+                return new[] { B("Pelvis", 0f, 0f), B("Thigh_" + side, GateA.Hip, 0.05f), B("Shin_" + side, GateA.Knee, 0.08f), B("Foot_" + side, GateA.Ankle, 0.03f) };
+            return new[] { B(bone, 0f, 0f) };
+        }
+
+        /// <summary>A vertex's weights along a chain by its height: its own segment's bone, shared with the next bone over the
+        /// joint's band (half and half on the joint line). The torso's chain rises; a limb's falls.</summary>
+        public static void ChainWeights(ChainBone[] chain, float y, float[] w)
+        {
+            for (int i = 0; i < w.Length; i++) w[i] = 0f;
+            if (chain.Length == 1) { w[0] = 1f; return; }
+            bool down = chain[chain.Length - 1].joint < chain[1].joint;          // a limb: the joints fall
+            float u = down ? -y : y;
+            int k = 0;                                                         // the segment's bone: the last joint passed
+            for (int i = 1; i < chain.Length; i++) if (u >= (down ? -chain[i].joint : chain[i].joint)) k = i;
+            w[k] = 1f;
+            if (k > 0)                                                         // the joint below (towards the chain's start)
             {
-                float angle = Quaternion.Angle(Quaternion.identity, bone.localRotation);
-                bool show = angle > BlendThresholdDeg;
-                if (blend.activeSelf != show) blend.SetActive(show);
+                float j = down ? -chain[k].joint : chain[k].joint, b = chain[k].band;
+                float share = 0.5f * (1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - j) / Mathf.Max(1e-4f, b))));
+                w[k - 1] += share; w[k] -= share;
+            }
+            if (k + 1 < chain.Length)                                          // the joint above
+            {
+                float j = down ? -chain[k + 1].joint : chain[k + 1].joint, b = chain[k + 1].band;
+                float share = 0.5f * (1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((j - u) / Mathf.Max(1e-4f, b))));
+                w[k + 1] += share; w[k] -= share;
             }
         }
+
+        /// <summary>Kit that stops part-way down a limb (2026-10-30: a whole limb in one colour read as a mannequin's - or
+        /// tights): short sleeves, shorts to mid-thigh, ankle socks, skin between. Rig height, and the region above / below.</summary>
+        public static (float y, Region above, Region below)? SplitOf(string form)
+        {
+            string n = form.ToLowerInvariant();
+            if (n.Contains("upperarm")) return (GateA.Shoulder - 0.14f, Region.ShirtSleeves, Region.Skin);
+            if (n.Contains("thigh")) return (0.66f, Region.Shorts, Region.Skin);
+            if (n.Contains("shin")) return (0.24f, Region.Skin, Region.Socks);
+            return null;
+        }
+
+        /// <summary>A form's mesh skinned to its chain: each vertex's weights by its rig height, the bind poses of its renderer.</summary>
+        void Skin(Mesh mesh, MeshData data, FormPart f, SkinnedMeshRenderer smr)
+        {
+            var chain = ChainOf(f.Name, f.Bone);
+            var weights = new BoneWeight[data.V.Count];
+            var w = new float[chain.Length];
+            for (int v = 0; v < data.V.Count; v++)
+            {
+                ChainWeights(chain, data.V[v].y + f.Pivot.y, w);
+                // the four largest (a chain's vertex never has more than three)
+                var bw = new BoneWeight();
+                int[] idx = { -1, -1, -1, -1 }; float[] val = { 0, 0, 0, 0 };
+                for (int i = 0; i < w.Length; i++)
+                    for (int s2 = 0; s2 < 4; s2++)
+                        if (w[i] > val[s2]) { for (int t = 3; t > s2; t--) { val[t] = val[t - 1]; idx[t] = idx[t - 1]; } val[s2] = w[i]; idx[s2] = i; break; }
+                float sum = val[0] + val[1] + val[2] + val[3];
+                if (sum <= 0f) { val[0] = 1f; idx[0] = 0; sum = 1f; }
+                bw.boneIndex0 = Mathf.Max(0, idx[0]); bw.weight0 = val[0] / sum;
+                bw.boneIndex1 = Mathf.Max(0, idx[1]); bw.weight1 = val[1] / sum;
+                bw.boneIndex2 = Mathf.Max(0, idx[2]); bw.weight2 = val[2] / sum;
+                bw.boneIndex3 = Mathf.Max(0, idx[3]); bw.weight3 = val[3] / sum;
+                weights[v] = bw;
+            }
+            mesh.boneWeights = weights;
+            mesh.bindposes = _bind[f.Name];
+            // the kit's hem: the triangles above and below it in two submeshes (two materials)
+            var split = SplitOf(f.Name);
+            if (split.HasValue)
+            {
+                var top = new List<int>(); var bottom = new List<int>();
+                for (int t = 0; t + 2 < data.T.Count; t += 3)
+                {
+                    // by the triangle's top corner: both triangles of a strip go the same way (a straight hem, not a zigzag)
+                    float cy = Mathf.Max(data.V[data.T[t]].y, Mathf.Max(data.V[data.T[t + 1]].y, data.V[data.T[t + 2]].y)) + f.Pivot.y;
+                    var into = cy >= split.Value.y ? top : bottom;
+                    into.Add(data.T[t]); into.Add(data.T[t + 1]); into.Add(data.T[t + 2]);
+                }
+                mesh.subMeshCount = 2;
+                mesh.SetTriangles(top, 0);
+                mesh.SetTriangles(bottom, 1);
+            }
+            mesh.RecalculateBounds();
+        }
+
+        /// <summary>(The joint blends are gone: the forms are skinned - 2026-10-30.)</summary>
+        public void UpdateBlends() { }
     }
 }

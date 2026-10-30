@@ -203,7 +203,7 @@ namespace SquashGame.Athlete
                 R.Make(y(0.615f), 0.138f, 0.080f, 0.070f, 2.25f),
                 R.Make(y(0.550f), 0.121f, 0.070f, 0.061f, 2.20f),
                 R.Make(y(GateA.Knee), 0.114f, 0.066f, 0.058f, 2.20f),
-                R.Make(y(GateA.Knee - 0.026f), 0.104f, 0.060f, 0.052f, 2.15f)
+                R.Make(y(GateA.Knee - 0.026f), 0.094f, 0.050f, 0.044f, 2.15f)    // 2026-10-30: tucked inside the shin (skinned, it showed as a disc)
             });
         }
 
@@ -211,7 +211,7 @@ namespace SquashGame.Athlete
         {
             return Loft.Make(new List<R>
             {
-                R.Make(0.030f, 0.112f, 0.058f, 0.064f, 2.20f),
+                R.Make(0.030f, 0.100f, 0.050f, 0.050f, 2.20f),                       // 2026-10-30: tucked inside the thigh
                 R.Make(0.000f, 0.115f, 0.060f, 0.065f, 2.20f),
                 R.Make(-0.060f, 0.114f, 0.052f, 0.074f, 2.22f),
                 R.Make(-0.135f, 0.124f, 0.048f, 0.090f, 2.25f),
