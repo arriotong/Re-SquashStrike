@@ -85,7 +85,7 @@ namespace SquashGame.Tests
         {
             LocalMatchTests.FreshProfile();
             CareerStore.Delete();
-            if (Directory.Exists(Dir)) Directory.Delete(Dir, true);
+            if (Directory.Exists(Dir)) foreach (var old in Directory.GetFiles(Dir)) File.Delete(old);     // the files, not the folder (a viewer may hold it open)
             FrontEnd.StartAtTitle = true;
             InputSystem.AddDevice<Keyboard>();
             InputSystem.AddDevice<Mouse>();

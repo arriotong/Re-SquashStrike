@@ -127,9 +127,9 @@ namespace SquashGame.Athlete
             });
         }
 
-        static MeshData UpperArm()
+        static List<R> UpperArmRings()
         {
-            return Loft.Make(new List<R>
+            return new List<R>
             {
                 R.D(0.048f, 0.100f, 0.104f, 2.30f),
                 R.D(0.018f, 0.116f, 0.118f, 2.30f),
@@ -139,12 +139,12 @@ namespace SquashGame.Athlete
                 R.D(-0.260f, 0.084f, 0.088f, 2.15f),
                 R.D(-GateA.UpperArm, 0.080f, 0.084f, 2.10f),
                 R.D(-GateA.UpperArm - 0.026f, 0.068f, 0.072f, 2.05f)
-            });
+            };
         }
 
-        static MeshData Forearm()
+        static List<R> ForearmRings()
         {
-            return Loft.Make(new List<R>
+            return new List<R>
             {
                 R.D(0.034f, 0.072f, 0.076f, 2.10f),
                 R.D(0.004f, 0.081f, 0.085f, 2.15f),
@@ -154,7 +154,26 @@ namespace SquashGame.Athlete
                 R.D(-0.222f, 0.064f, 0.052f, 2.10f),
                 R.D(-GateA.Forearm, 0.062f, 0.048f, 2.10f),
                 R.D(-GateA.Forearm - 0.022f, 0.052f, 0.040f, 2.05f)
-            });
+            };
+        }
+
+        // 2026-10-30 (the kid test: "why are they wooden dolls?"): an arm and a leg are ONE loft each, shoulder to wrist
+        // and hip to ankle, skinned along their chain - two tubes overlapping at the elbow and the knee showed their flat
+        // ends as discs whenever the joint bent. The hand and the foot stay their own forms (their caps sit inside).
+
+        /// <summary>Two limb segments' rings as one: the first down to its joint, then the second (shifted to the first's
+        /// frame by drop) from just past the joint, so the rings keep falling and the surface never doubles back.</summary>
+        static List<R> Join(List<R> a, float joint, List<R> b, float drop, float gap)
+        {
+            var o = new List<R>();
+            foreach (var r in a) if (r.Y >= joint - 1e-4f) o.Add(r);
+            foreach (var r in b) { var s = r; s.Y += drop; if (s.Y < joint - gap) o.Add(s); }
+            return o;
+        }
+
+        static MeshData Arm()
+        {
+            return Loft.Make(Join(UpperArmRings(), -GateA.UpperArm, ForearmRings(), -GateA.UpperArm, 0.03f));
         }
 
         static MeshData Hand()
@@ -188,10 +207,10 @@ namespace SquashGame.Athlete
             return g.Transformed(Matrix4x4.Rotate(Quaternion.Euler(0, 90f, 0)));
         }
 
-        static MeshData Thigh()
+        static List<R> ThighRings()
         {
             System.Func<float, float> y = w => w - GateA.Hip;
-            return Loft.Make(new List<R>
+            return new List<R>
             {
                 R.Make(y(1.000f), 0.116f, 0.070f, 0.068f, 2.28f),
                 R.Make(y(0.965f), 0.140f, 0.086f, 0.080f, 2.30f),
@@ -203,13 +222,13 @@ namespace SquashGame.Athlete
                 R.Make(y(0.615f), 0.138f, 0.080f, 0.070f, 2.25f),
                 R.Make(y(0.550f), 0.121f, 0.070f, 0.061f, 2.20f),
                 R.Make(y(GateA.Knee), 0.114f, 0.066f, 0.058f, 2.20f),
-                R.Make(y(GateA.Knee - 0.026f), 0.094f, 0.050f, 0.044f, 2.15f)    // 2026-10-30: tucked inside the shin (skinned, it showed as a disc)
-            });
+                R.Make(y(GateA.Knee - 0.026f), 0.094f, 0.050f, 0.044f, 2.15f)
+            };
         }
 
-        static MeshData Shin()
+        static List<R> ShinRings()
         {
-            return Loft.Make(new List<R>
+            return new List<R>
             {
                 R.Make(0.030f, 0.100f, 0.050f, 0.050f, 2.20f),                       // 2026-10-30: tucked inside the thigh
                 R.Make(0.000f, 0.115f, 0.060f, 0.065f, 2.20f),
@@ -220,7 +239,13 @@ namespace SquashGame.Athlete
                 R.Make(-0.390f, 0.076f, 0.036f, 0.048f, 2.10f),
                 R.Make(-GateA.Shin, 0.074f, 0.036f, 0.046f, 2.10f),
                 R.Make(-GateA.Shin - 0.028f, 0.064f, 0.032f, 0.040f, 2.05f)
-            });
+            };
+        }
+
+        static MeshData Leg()
+        {
+            float knee = GateA.Knee - GateA.Hip;
+            return Loft.Make(Join(ThighRings(), knee, ShinRings(), knee, 0.04f), 5);
         }
 
         static MeshData Foot()
@@ -253,20 +278,18 @@ namespace SquashGame.Athlete
                 new FormPart { Name = "form_head", Bone = "Head", Pivot = new Vector3(0, 1.560f, 0.002f), Mesh = Head() }
             };
 
-            var upper = UpperArm(); var fore = Forearm(); var hand = Hand(); var thumb = ThumbForm();
-            var thigh = Thigh(); var shin = Shin(); var foot = Foot();
+            var arm = Arm(); var hand = Hand(); var thumb = ThumbForm();
+            var leg = Leg(); var foot = Foot();
             foreach (string side in new[] { "R", "L" })
             {
                 float s = side == "R" ? 1f : -1f;
                 bool mirror = side == "L";
                 System.Func<MeshData, MeshData> m = g => mirror ? g.MirroredX() : g;
                 float sx = s * RigContract.ShoulderX, hx = s * RigContract.HipX;
-                parts.Add(new FormPart { Name = "form_upperArm" + side, Bone = "UpperArm_" + side, Pivot = new Vector3(sx, GateA.Shoulder, 0), Mesh = m(upper) });
-                parts.Add(new FormPart { Name = "form_forearm" + side, Bone = "Forearm_" + side, Pivot = new Vector3(sx, RigContract.ElbowY, 0), Mesh = m(fore) });
+                parts.Add(new FormPart { Name = "form_arm" + side, Bone = "UpperArm_" + side, Pivot = new Vector3(sx, GateA.Shoulder, 0), Mesh = m(arm) });
                 parts.Add(new FormPart { Name = "form_hand" + side, Bone = "Hand_" + side, Pivot = new Vector3(sx, RigContract.WristY, 0), Mesh = m(hand) });
                 parts.Add(new FormPart { Name = "form_thumb" + side, Bone = "Hand_" + side, Pivot = new Vector3(sx, RigContract.WristY, 0), Mesh = m(thumb) });
-                parts.Add(new FormPart { Name = "form_thigh" + side, Bone = "Thigh_" + side, Pivot = new Vector3(hx, GateA.Hip, 0), Mesh = m(thigh) });
-                parts.Add(new FormPart { Name = "form_shin" + side, Bone = "Shin_" + side, Pivot = new Vector3(hx, GateA.Knee, 0), Mesh = m(shin) });
+                parts.Add(new FormPart { Name = "form_leg" + side, Bone = "Thigh_" + side, Pivot = new Vector3(hx, GateA.Hip, 0), Mesh = m(leg) });
                 parts.Add(new FormPart { Name = "form_foot" + side, Bone = "Foot_" + side, Pivot = new Vector3(hx, GateA.Ankle, 0), Mesh = m(foot) });
             }
             return parts;
@@ -299,11 +322,35 @@ namespace SquashGame.Athlete
         /// <summary>A form narrowed by <see cref="Slim"/> about its centreline (normals kept true to the new surface).</summary>
         public static MeshData Slimmed(MeshData m, Vector2 s)
         {
+            return Slimmed(m, y => s);
+        }
+
+        /// <summary>A form narrowed by a factor that changes down it (a whole arm or leg: upper to lower over the joint).</summary>
+        public static MeshData Slimmed(MeshData m, System.Func<float, Vector2> at)
+        {
             var o = new MeshData();
-            foreach (var v in m.V) o.V.Add(new Vector3(v.x * s.x, v.y, v.z * s.y));
-            foreach (var nrm in m.N) o.N.Add(new Vector3(nrm.x / s.x, nrm.y, nrm.z / s.y).normalized);
+            for (int i = 0; i < m.V.Count; i++)
+            {
+                var v = m.V[i]; var s = at(v.y); var nrm = m.N[i];
+                o.V.Add(new Vector3(v.x * s.x, v.y, v.z * s.y));
+                o.N.Add(new Vector3(nrm.x / s.x, nrm.y, nrm.z / s.y).normalized);
+            }
             o.T.AddRange(m.T);
             return o;
+        }
+
+        /// <summary>A body form narrowed for its build; a whole limb blends its upper and lower factors over the joint.</summary>
+        public static MeshData SlimmedForm(FormPart f, bool female)
+        {
+            string n = f.Name.ToLowerInvariant();
+            if (n.StartsWith("form_arm") || n.StartsWith("form_leg"))
+            {
+                bool arm = n.StartsWith("form_arm");
+                Vector2 up = Slim(arm ? "upperarm" : "thigh", female), low = Slim(arm ? "forearm" : "shin", female);
+                float joint = arm ? -GateA.UpperArm : GateA.Knee - GateA.Hip;
+                return Slimmed(f.Mesh, y => Vector2.Lerp(up, low, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(joint + 0.05f, joint - 0.05f, y))));
+            }
+            return Slimmed(f.Mesh, Slim(f.Name, female));
         }
 
         /// <summary>Blend spheres at joints that bend (shown only when bent, as in the lab).</summary>

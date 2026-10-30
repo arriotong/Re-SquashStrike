@@ -178,6 +178,12 @@
 .k-sb-bar--a { justify-content: flex-end; }
 .k-sb-fill { height: 8px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.35); }
 .k-sb-fill--win { background-color: rgb(200, 255, 61); }
+.k-statbars--big { flex-grow: 1; justify-content: space-around; padding: 8px 0; }
+.k-statbars--big .k-sb-row { height: 56px; }
+.k-statbars--big .k-sb-val { width: 64px; font-size: 30px; }
+.k-statbars--big .k-sb-bar { height: 14px; border-radius: 7px; }
+.k-statbars--big .k-sb-fill { height: 14px; border-radius: 7px; }
+.k-statbars--big .k-sb-name { width: 160px; font-size: 15px; }
 .k-sb-name { width: 130px; font-size: 11px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.65); -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 /* ---------- ranked table ---------- */

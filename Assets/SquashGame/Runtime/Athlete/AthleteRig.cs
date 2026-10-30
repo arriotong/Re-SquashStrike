@@ -112,7 +112,7 @@ namespace SquashGame.Athlete
                 string key = f.Name + (female ? "_f" : "_m");
                 if (!_bodyMeshes.TryGetValue(key, out var mesh) || mesh == null)
                 {
-                    var data = MannequinForms.Slimmed(f.Mesh, MannequinForms.Slim(f.Name, female));
+                    var data = MannequinForms.SlimmedForm(f, female);
                     _bodyMeshes[key] = mesh = data.ToUnity(key);
                     Skin(mesh, data, f, smr);
                 }
@@ -195,9 +195,9 @@ namespace SquashGame.Athlete
                 smr.rootBone = Bones[f.Bone];
                 smr.updateWhenOffscreen = true;
                 smr.quality = SkinQuality.Bone4;
-                var split = SplitOf(f.Name);
-                smr.sharedMaterials = split.HasValue ? new[] { _region[(int)split.Value.above], _region[(int)split.Value.below] }
-                                                     : new[] { _region[(int)RegionOf(f.Name)] };
+                var hems = HemsOf(f.Name);
+                if (hems != null) { var mats = new Material[hems.Value.regions.Length]; for (int k = 0; k < mats.Length; k++) mats[k] = _region[(int)hems.Value.regions[k]]; smr.sharedMaterials = mats; }
+                else smr.sharedMaterials = new[] { _region[(int)RegionOf(f.Name)] };
                 _bind[f.Name] = bind;
                 _forms.Add((smr, f));
                 FormCount++;
@@ -324,10 +324,10 @@ namespace SquashGame.Athlete
             if (n.Contains("pelvis") || n.Contains("abdomen") || n.Contains("chest") || n.Contains("neck"))
                 return new[] { B("Pelvis", 0f, 0f), B("Spine_01", RigContract.Spine01Y, 0.04f), B("Spine_02", RigContract.Spine02Y, 0.05f),
                                B("Chest", RigContract.ChestY, 0.06f), B("Neck", GateA.NeckBase, 0.025f), B("Head", RigContract.HeadY, 0.02f) };
-            if (n.Contains("upperarm") || n.Contains("forearm") || n.Contains("hand") || n.Contains("thumb"))     // (the hand: a soft wrist)
+            if (n.Contains("arm") || n.Contains("hand") || n.Contains("thumb"))     // (the hand: a soft wrist)
                 return new[] { B("Clavicle_" + side, 0f, 0f), B("UpperArm_" + side, GateA.Shoulder, 0.03f), B("Forearm_" + side, RigContract.ElbowY, 0.05f),
                                B("Hand_" + side, RigContract.WristY, 0.03f) };
-            if (n.Contains("thigh") || n.Contains("shin"))
+            if (n.Contains("leg") || n.Contains("thigh") || n.Contains("shin"))
                 return new[] { B("Pelvis", 0f, 0f), B("Thigh_" + side, GateA.Hip, 0.05f), B("Shin_" + side, GateA.Knee, 0.08f), B("Foot_" + side, GateA.Ankle, 0.03f) };
             return new[] { B(bone, 0f, 0f) };
         }
@@ -358,13 +358,13 @@ namespace SquashGame.Athlete
         }
 
         /// <summary>Kit that stops part-way down a limb (2026-10-30: a whole limb in one colour read as a mannequin's - or
-        /// tights): short sleeves, shorts to mid-thigh, ankle socks, skin between. Rig height, and the region above / below.</summary>
-        public static (float y, Region above, Region below)? SplitOf(string form)
+        /// tights): short sleeves, shorts to mid-thigh, ankle socks, skin between. The hems' rig heights falling, and the
+        /// region of each band between them (one more than the hems).</summary>
+        public static (float[] ys, Region[] regions)? HemsOf(string form)
         {
             string n = form.ToLowerInvariant();
-            if (n.Contains("upperarm")) return (GateA.Shoulder - 0.14f, Region.ShirtSleeves, Region.Skin);
-            if (n.Contains("thigh")) return (0.66f, Region.Shorts, Region.Skin);
-            if (n.Contains("shin")) return (0.24f, Region.Skin, Region.Socks);
+            if (n.StartsWith("form_arm")) return (new[] { GateA.Shoulder - 0.14f }, new[] { Region.ShirtSleeves, Region.Skin });
+            if (n.StartsWith("form_leg")) return (new[] { 0.66f, 0.24f }, new[] { Region.Shorts, Region.Skin, Region.Socks });
             return null;
         }
 
@@ -393,21 +393,22 @@ namespace SquashGame.Athlete
             }
             mesh.boneWeights = weights;
             mesh.bindposes = _bind[f.Name];
-            // the kit's hem: the triangles above and below it in two submeshes (two materials)
-            var split = SplitOf(f.Name);
-            if (split.HasValue)
+            // the kit's hems: the triangles of each band between them in its own submesh (a material each)
+            var hems = HemsOf(f.Name);
+            if (hems.HasValue)
             {
-                var top = new List<int>(); var bottom = new List<int>();
+                var ys = hems.Value.ys;
+                var bands = new List<int>[ys.Length + 1];
+                for (int k = 0; k < bands.Length; k++) bands[k] = new List<int>();
                 for (int t = 0; t + 2 < data.T.Count; t += 3)
                 {
                     // by the triangle's top corner: both triangles of a strip go the same way (a straight hem, not a zigzag)
                     float cy = Mathf.Max(data.V[data.T[t]].y, Mathf.Max(data.V[data.T[t + 1]].y, data.V[data.T[t + 2]].y)) + f.Pivot.y;
-                    var into = cy >= split.Value.y ? top : bottom;
-                    into.Add(data.T[t]); into.Add(data.T[t + 1]); into.Add(data.T[t + 2]);
+                    int band = 0; while (band < ys.Length && cy < ys[band]) band++;
+                    bands[band].Add(data.T[t]); bands[band].Add(data.T[t + 1]); bands[band].Add(data.T[t + 2]);
                 }
-                mesh.subMeshCount = 2;
-                mesh.SetTriangles(top, 0);
-                mesh.SetTriangles(bottom, 1);
+                mesh.subMeshCount = bands.Length;
+                for (int k = 0; k < bands.Length; k++) mesh.SetTriangles(bands[k], k);
             }
             mesh.RecalculateBounds();
         }

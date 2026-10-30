@@ -578,7 +578,8 @@ namespace SquashGame.UI
             // 2026-10-30 (the kid test): the four numbers anyone gets (it was ten, with "Time on the T" and "Boasts")
             var tape = Kit.Panel(cols, "THE MATCH");
             var a = st.Players[0]; var b = st.Players[1];
-            tape.Add(new StatBars()
+            var bars = new StatBars(); bars.AddToClassList("k-statbars--big");      // four rows, big enough to fill the panel
+            tape.Add(bars
                 .Row("Points won", a.Rallies, b.Rallies)
                 .Row("Winning shots", a.Winners, b.Winners)
                 .Row("Mistakes", a.Errors, b.Errors, null, null, true)

@@ -34,7 +34,7 @@ namespace SquashGame.Tests
             LabSimRunner r = court.Runner;
             AthleteFigure fig = GameObject.Find("Athlete0").GetComponent<AthleteFigure>();
             Assert.That(fig.Rig.Bones.Count, Is.EqualTo(74));
-            Assert.That(fig.Rig.FormCount, Is.GreaterThanOrEqualTo(19));
+            Assert.That(fig.Rig.FormCount, Is.GreaterThanOrEqualTo(15));     // (2026-10-30: an arm and a leg are one form each)
 
             var racketErr = new List<float>();
             var gripAtContact = new List<float>();
