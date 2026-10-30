@@ -149,6 +149,7 @@ namespace SquashGame.Progression
         public static void Coin(RewardResult r, int coins, string why)
         {
             if (coins <= 0) return;
+            Playtest.Log("coins", ("earned", coins), ("why", why));
             GearDrops.Wallet.Coins += coins;
             r.Coins += coins;
             r.CoinWhy.Add(why);

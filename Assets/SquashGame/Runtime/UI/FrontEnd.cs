@@ -88,6 +88,8 @@ namespace SquashGame.UI
                 _root.Add(Hud);
                 Stats = new MatchStats();
                 Stats.Attach(Match);
+                PlaytestRec = new PlaytestMatch();                            // 2026-10-30: the playtest recorder (local files)
+                PlaytestRec.Attach(Match);
             }
             if (Arcade != null)
             {
@@ -165,6 +167,7 @@ namespace SquashGame.UI
         {
             if (_input != null) _input.Dispose();
             if (Stats != null) Stats.Detach();
+            if (PlaytestRec != null) PlaytestRec.Detach();
             MenuOpen = false; BlocksGamePause = false;
         }
 
@@ -244,8 +247,12 @@ namespace SquashGame.UI
             while (_toasts.Count < MaxToasts && _toastQueue.Count > 0) { var (k, t, tier) = _toastQueue.Dequeue(); ShowToast(k, t, tier); }
         }
 
+        /// <summary>2026-10-30: the playtest recorder's match half (Profile/Playtest.cs).</summary>
+        public PlaytestMatch PlaytestRec { get; private set; }
+
         public void Push(MenuScreen s)
         {
+            Playtest.Screen(s);
             if (Top != null) { Top.OnHide(); if (!s.Overlay) Top.Root.style.display = DisplayStyle.None; }
             s.Create(this);
             _menus.Add(s.Root);
@@ -461,6 +468,13 @@ namespace SquashGame.UI
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             _input.Sample(dt);
+            // 2026-10-30: the playtest's "that felt wrong" - F8, or a pad's right stick click (View replays the point)
+            var kb8 = UnityEngine.InputSystem.Keyboard.current; var gp8 = UnityEngine.InputSystem.Gamepad.current;
+            if ((kb8 != null && kb8.f8Key.wasPressedThisFrame) || (gp8 != null && gp8.rightStickButton.wasPressedThisFrame))
+            {
+                if (PlaytestRec != null) PlaytestRec.FeltBad(); else Playtest.Log("felt_bad", ("where", Playtest.LastScreen));
+                Toast("PLAYTEST", "Marked - thanks! Tell us what felt wrong.");
+            }
             // P2-M8: the online link; a match the server started begins here
             Online.OnlineService.Pump();
             if (Online.OnlineService.Pending != null)

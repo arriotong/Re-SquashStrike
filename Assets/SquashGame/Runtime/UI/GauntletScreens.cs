@@ -60,6 +60,7 @@ namespace SquashGame.UI
             int cost = GauntletCards.Cost(n);
             if (w.Coins < cost) return new List<string>();
             w.Coins -= cost;
+            Playtest.Log("coins", ("spent", cost), ("on", "cards x" + n));
             var got = GauntletCards.Draw(Cards, n);
             ProfileStore.Save();
             return got;
@@ -71,6 +72,7 @@ namespace SquashGame.UI
             int cost = GauntletCards.EvolveCostOf(id);
             if (!GauntletCards.CanEvolve(Cards, id) || GearDrops.Wallet.Coins < cost) return false;
             GearDrops.Wallet.Coins -= cost;
+            Playtest.Log("coins", ("spent", cost), ("on", "evolve " + id));
             GauntletCards.Evolve(Cards, id);
             ProfileStore.Save();
             return true;
@@ -178,7 +180,8 @@ namespace SquashGame.UI
                     Gauntlet.Lost(run);
                     LastReward = null;
                 }
-                if (run.Over) Finish(run);
+                Playtest.Log("gauntlet", ("floor", won ? run.FloorsWon : run.Floor), ("won", won), ("lives", run.Lives), ("deck", run.HasDeck ? run.Deck.Count : 0), ("active", run.Abilities.Count));
+                if (run.Over) { Playtest.Log("gauntlet_over", ("floors", run.FloorsWon), ("score", run.Score), ("bosses", run.BossesBeaten)); Finish(run); }
                 else G.BestFloor = Mathf.Max(G.BestFloor, run.FloorsWon);
                 ProfileStore.Save();
             }

@@ -269,6 +269,7 @@ namespace SquashGame.Progression
             var drops = new List<Drop>();
             if (b == null || (n != 1 && n != TenPull) || !CanPull(n)) return drops;
             Wallet.Coins -= Cost(n);
+            Playtest.Log("coins", ("spent", Cost(n)), ("on", "pull x" + n + " " + bannerId));
             for (int i = 0; i < n; i++)
             {
                 int pull = State.Pulls++;
@@ -311,6 +312,7 @@ namespace SquashGame.Progression
         {
             if (!InStore(it) || Owns(it) || Wallet.Coins < StorePrice(it)) return false;
             Wallet.Coins -= StorePrice(it);
+            Playtest.Log("coins", ("spent", StorePrice(it)), ("on", "kit store " + it.Id));
             P.Owned.Add(it.Id);
             ProfileStore.Save();
             return true;
@@ -330,6 +332,7 @@ namespace SquashGame.Progression
             int cost = PlateCost(it);
             if (cost <= 0 || Wallet.Coins < cost) return false;
             Wallet.Coins -= cost;
+            Playtest.Log("coins", ("spent", cost), ("on", "gold-plate " + it.Id));
             P.Owned.Add(it.Id + "_gold");
             ProfileStore.Save();
             return true;
