@@ -58,6 +58,7 @@ namespace SquashGame
             athlete.transform.SetParent(transform, false);
             athlete.Build(Base, 0, Palette, Greybox.Hex(0x7d93ab));
             athlete.KitSource = Progression.KitDirector.You;                 // P2-M5: your Locker Room kit
+            Athlete.AthleteBody.Attach(athlete, Palette.Lit);                // 2026-11-01: the real players
 
             // P2-M7: the Academy's staged moments (lets & strokes) have an opponent; hidden the rest of the time.
             if (Academy != null)
@@ -65,6 +66,7 @@ namespace SquashGame
                 var opp = new GameObject("Athlete1").AddComponent<Athlete.AthleteFigure>();
                 opp.transform.SetParent(transform, false);
                 opp.Build(Base, 1, Palette, Greybox.Hex(0xab7d7d));
+                Athlete.AthleteBody.Attach(opp, Palette.Lit);
             }
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();

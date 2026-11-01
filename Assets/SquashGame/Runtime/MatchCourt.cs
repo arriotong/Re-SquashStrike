@@ -51,6 +51,7 @@ namespace SquashGame
                 int who = i;
                 athlete.KitSource = () => Progression.KitDirector.For(Runner, who);          // online you may be athlete 1
                 athlete.MomentSource = () => Progression.KitDirector.Moment(Runner, who);   // the celebration
+                Athlete.AthleteBody.Attach(athlete, Palette.Lit);                           // 2026-11-01: the real players
             }
 
             var overlay = new GameObject("DebugOverlay").AddComponent<DebugOverlay>();

@@ -141,6 +141,8 @@ namespace SquashGame.Athlete
         /// <summary>P2-M5: what this athlete wears (polled each frame; re-dressed when it changes). Null = plain.</summary>
         public System.Func<SquashGame.Progression.Loadout> KitSource;
         string _kitKey;
+        /// <summary>2026-11-01: told when a kit is put on (the real body dresses in it too).</summary>
+        public System.Action<SquashGame.Progression.Kit> Dressed;
         /// <summary>The loadout last applied (tests).</summary>
         public SquashGame.Progression.Loadout Worn { get; private set; }
 
@@ -154,6 +156,7 @@ namespace SquashGame.Athlete
             Worn = l.Clone();
             var kit = SquashGame.Progression.Cosmetics.KitOf(l);
             Rig.ApplyKit(kit);
+            Dressed?.Invoke(kit);
 
         }
 

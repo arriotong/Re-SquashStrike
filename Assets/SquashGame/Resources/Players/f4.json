@@ -1,0 +1,93 @@
+{
+ "meshes": [
+  {
+   "name": "Human",
+   "kind": "skin",
+   "style": "",
+   "albedo": "young_lightskinned_female_diffuse"
+  },
+  {
+   "name": "Human.bob02",
+   "kind": "hair",
+   "style": "short",
+   "albedo": "bob02_diffuse"
+  },
+  {
+   "name": "Human.elvs_braid_bun",
+   "kind": "hair",
+   "style": "bun",
+   "albedo": "bunstex12",
+   "rough": "specsbun",
+   "normal": "normalsbuns"
+  },
+  {
+   "name": "Human.elvs_short_side_do",
+   "kind": "hair",
+   "style": "crop",
+   "albedo": "darkmaggiehair"
+  },
+  {
+   "name": "Human.eyebrow010",
+   "kind": "eyebrows",
+   "style": "",
+   "albedo": "eyebrow010"
+  },
+  {
+   "name": "Human.eyelashes01",
+   "kind": "eyelashes",
+   "style": "",
+   "albedo": "eyelashes01"
+  },
+  {
+   "name": "Human.joepal_crude_low_socks",
+   "kind": "socks",
+   "style": "",
+   "albedo": "CrudeLowSocksDiffuse"
+  },
+  {
+   "name": "Human.joepal_crude_t-shirt_female",
+   "kind": "shirt",
+   "style": "",
+   "albedo": "CrudeFemaleTshirtDiffuse"
+  },
+  {
+   "name": "Human.low-poly",
+   "kind": "eyes",
+   "style": "",
+   "albedo": "brown_eye"
+  },
+  {
+   "name": "Human.mindfront_male_swimming_trunks_01",
+   "kind": "shorts",
+   "style": "",
+   "albedo": "M_Swimming_trunks_01_NRM"
+  },
+  {
+   "name": "Human.ponytail01",
+   "kind": "hair",
+   "style": "ponytail",
+   "albedo": "ponytail01_diffuse"
+  },
+  {
+   "name": "Human.punkduck_alpha7_curly",
+   "kind": "hair",
+   "style": "curls",
+   "albedo": "curly"
+  },
+  {
+   "name": "Human.punkduck_running_shoes_01",
+   "kind": "shoes",
+   "style": "",
+   "albedo": "runningshoes"
+  },
+  {
+   "name": "Human.short04",
+   "kind": "hair",
+   "style": "mohawk",
+   "albedo": "short04_diffuse"
+  }
+ ],
+ "female": true,
+ "skin": "young_caucasian_female.mhmat",
+ "hair": ""
+}

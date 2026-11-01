@@ -110,9 +110,9 @@ namespace SquashGame.UI
             switch (e.Shot)
             {
                 case "you":
-                    pos = you + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.25f, -2.2f); look = you + new Vector3(0, 0.85f, 0); fov = 40; break;
+                    pos = you + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.3f, -2.7f); look = you + new Vector3(0, 0.95f, 0); fov = 42; break;     // 2026-11-01: head to toe (the real players)
                 case "them":
-                    pos = them + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.25f, -2.2f); look = them + new Vector3(0, 0.85f, 0); fov = 40; break;
+                    pos = them + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.3f, -2.7f); look = them + new Vector3(0, 0.95f, 0); fov = 42; break;
                 case "racket":
                     pos = you + new Vector3(0.7f, 1.15f, -1.0f); look = you + new Vector3(-0.3f, 1.0f, 0); fov = 36; break;
                 case "front":

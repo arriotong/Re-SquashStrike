@@ -35,3 +35,15 @@ Tools/**/obj/
 Tools/**/node_modules/
 Tools/SimParity/Reports/
 /Captures/
+
+# Mixamo characters and animations (Adobe: free to use in the game, not to share as files) - kept on this PC only;
+# without them the game draws the Classic players. See Tools/PlayerArt/README.md.
+Assets/SquashGame/Resources/Players/ch42.*
+Assets/SquashGame/Resources/Players/remy.*
+Assets/SquashGame/Resources/Players/Textures/ch42_*
+Assets/SquashGame/Resources/Players/Textures/remy_*
+Assets/SquashGame/Resources/Players/Anim/Dive_*
+Assets/SquashGame/Resources/Players/Anim/Idle_Breathing_Loop.*
+Assets/SquashGame/Resources/Players/Anim/Jog_Back_Loop.*
+Assets/SquashGame/Resources/Players/Anim/Strafe_*
+Assets/SquashGame/Resources/Players/Anim/Swing_*

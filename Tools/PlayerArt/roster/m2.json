@@ -1,0 +1,35 @@
+{
+ "phenotype": {
+  "gender": 1.0,
+  "age": 0.46,
+  "muscle": 0.72,
+  "weight": 0.39,
+  "proportions": 0.88,
+  "height": 0.6,
+  "cupsize": 0.4,
+  "firmness": 0.65,
+  "race": {
+   "caucasian": 0.6,
+   "asian": 0.35,
+   "african": 0.05
+  }
+ },
+ "skin": "young_caucasian_male.mhmat",
+ "hair": "",
+ "hairs": {
+  "crop": "short01.mhclo",
+  "short": "short02.mhclo",
+  "curls": "elvs_micky_afro.mhclo",
+  "bun": "elvs_braid_bun.mhclo",
+  "ponytail": "ponytail01.mhclo",
+  "mohawk": "short04.mhclo"
+ },
+ "eyebrows": "eyebrow001.mhclo",
+ "clothes": [
+  "elvs_crude_t-shirt_male.mhclo",
+  "mindfront_male_swimming_trunks_01.mhclo",
+  "joepal_crude_low_socks.mhclo",
+  "punkduck_tennis_shoes.mhclo"
+ ],
+ "fbx": "Assets/SquashGame/Resources/Players/m2.fbx"
+}

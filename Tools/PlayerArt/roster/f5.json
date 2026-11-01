@@ -1,0 +1,35 @@
+{
+ "phenotype": {
+  "gender": 0.0,
+  "age": 0.45,
+  "muscle": 0.64,
+  "weight": 0.38,
+  "proportions": 0.88,
+  "height": 0.55,
+  "cupsize": 0.4,
+  "firmness": 0.65,
+  "race": {
+   "caucasian": 0.15,
+   "asian": 0.05,
+   "african": 0.8
+  }
+ },
+ "skin": "young_caucasian_female.mhmat",
+ "hair": "",
+ "hairs": {
+  "crop": "elvs_short_side_do.mhclo",
+  "short": "bob02.mhclo",
+  "curls": "punkduck_alpha7_curly.mhclo",
+  "bun": "elvs_braid_bun.mhclo",
+  "ponytail": "ponytail01.mhclo",
+  "mohawk": "short04.mhclo"
+ },
+ "eyebrows": "eyebrow010.mhclo",
+ "clothes": [
+  "joepal_crude_t-shirt_female.mhclo",
+  "mindfront_male_swimming_trunks_01.mhclo",
+  "joepal_crude_low_socks.mhclo",
+  "punkduck_running_shoes_01.mhclo"
+ ],
+ "fbx": "Assets/SquashGame/Resources/Players/f5.fbx"
+}

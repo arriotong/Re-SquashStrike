@@ -34,6 +34,7 @@ namespace SquashGame.Profile
         public int Quality = -1;                 // (before batch 1: a QualitySettings level - read once, from an older save)
         public int Venue = 2;                    // (before batch 1: the arena 0 off, 1 low, 2 high - read once)
         public int Graphics = 0;                 // batch 1: GraphicsTier.Names - 0 Auto, 1 High, 2 Medium, 3 Low, 4 Battery saver
+        public bool ClassicPlayers;              // 2026-11-01: the code-built figures instead of the real players (AthleteBody)
         // ---- audio ----
         public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f, CrowdVolume = 0.8f;
         // ---- accessibility ----
