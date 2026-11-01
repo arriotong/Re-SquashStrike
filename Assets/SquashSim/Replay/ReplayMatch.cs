@@ -58,7 +58,10 @@ namespace SquashSim.Replays
             ApplyMods(sim, 0, s.Mods0); ApplyMods(sim, 1, s.Mods1);
             sim.Bots[1] = s.TwoPlayer ? null : Opponent(s);
             if (!string.IsNullOrEmpty(s.Opponent0))
-                sim.Bots[0] = new OpponentBrain(AiProfile.ByName(s.Opponent0).WithDifficulty(s.Difficulty0), s.BotSeed ^ 0x9E3779B9u);
+            {
+                var p0 = AiProfile.ByName(s.Opponent0).WithDifficulty(s.Difficulty0); p0.Book = s.Book;
+                sim.Bots[0] = new OpponentBrain(p0, s.BotSeed ^ 0x9E3779B9u);
+            }
             bool p2Arcade = s.TwoPlayer || sim.Bots[1] is OpponentBrain;
             sim.Players[0].WallAimEnabled = true;
             sim.Players[1].WallAimEnabled = p2Arcade;
@@ -80,7 +83,9 @@ namespace SquashSim.Replays
         public static IAthleteBrain Opponent(ReplaySetup s)
         {
             if (s.Opponent == "wallbot") return new WallBot(s.BotSeed);
-            return new OpponentBrain(AiProfile.For(s.Opponent, s.Difficulty), s.BotSeed);           // P6: a star, a club player, or a style
+            var p = AiProfile.For(s.Opponent, s.Difficulty);              // P6: a star, a club player, or a style
+            p.Book = s.Book;                                              // the rules it played by when it was recorded
+            return new OpponentBrain(p, s.BotSeed);
         }
 
         /// <summary>The athletes a person plays (recorded): athlete 0, and athlete 1 when two play.</summary>

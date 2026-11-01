@@ -49,6 +49,16 @@ namespace SquashSim
         public double AppealTendency;     // 0..1: asks for a let when obstructed and it expects one
         public double Misjudge = 0.1;     // 0..1: how often it misreads whether it would get the decision
 
+        // ---- squash sense (2026-11-01: the user's visual book of 12 rules - SquashBook) ----
+        /// <summary>Which book the brain plays by: 0 = before the rules (old replays rebuild their AI with this), 1 = the 12 rules.</summary>
+        public int Book = CurrentBook;
+        public const int CurrentBook = 1;
+        public double Sense = 0.5;        // 0..1: how strictly it follows the book (rises with rating)
+        public double BookSafe = 1, BookAttack = 1, BookPatience = 1, BookVolley = 1;   // its style's leaning on each kind of rule
+
+        /// <summary>Squash sense from a rating: a 58 club player breaks the rules often, the No. 1 (99) almost never.</summary>
+        public static double SenseForRating(int rating) { return Clamp01((rating - 50) / 49.0); }
+
         public AiProfile Clone() { return (AiProfile)MemberwiseClone(); }
 
         /// <summary>Execution quality from 0 (beginner) to 1 (strong club player).</summary>
@@ -71,6 +81,7 @@ namespace SquashSim
             p.AimNoise = DiffNoise0 - DiffNoiseSpan * d;
             p.MoveSpeed = DiffMove0 + (1 - DiffMove0) * d;
             p.Skill = d;
+            p.Sense = 0.25 + 0.75 * d;                 // (a star or club player: from its rating - For)
             p.Pace = DiffPace0 + DiffPaceSpan * d;
             p.TriggerJitter = 0.06 - 0.045 * d;
             p.SplitStepError = 0.15 - 0.11 * d;
@@ -98,6 +109,7 @@ namespace SquashSim
             var p = Base("Retriever");
             p.RiskAppetite = 0.2; p.WPressure = 1.0; p.WLength = 1.0; p.WWidth = 0.6; p.WLow = 0.1; p.WShort = 0.0;
             p.TouchPreference = 0.1; p.DeceptionChance = 0.05; p.Discipline = 0.95; p.AppealTendency = 0.7;
+            p.BookSafe = 1.3; p.BookPatience = 1.2;
             return p;
         }
 
@@ -107,6 +119,7 @@ namespace SquashSim
             var p = Base("Attacker");
             p.RiskAppetite = 0.7; p.WPressure = 1.6; p.WLength = 0.3; p.WWidth = 0.4; p.WLow = 1.0; p.WShort = 0.2;
             p.TouchPreference = 0.2; p.DeceptionChance = 0.15; p.PreparedPreference = 0.8; p.AppealTendency = 0.6;
+            p.BookAttack = 1.2; p.BookPatience = 0.7;          // goes short a little early
             return p;
         }
 
@@ -116,6 +129,7 @@ namespace SquashSim
             var p = Base("Shot-maker");
             p.RiskAppetite = 0.6; p.WPressure = 1.3; p.WLength = 0.3; p.WWidth = 0.4; p.WLow = 0.4; p.WShort = 0.9;
             p.TouchPreference = 0.8; p.DeceptionChance = 0.35; p.AppealTendency = 0.8;
+            p.BookAttack = 1.3; p.BookPatience = 0.8;
             return p;
         }
 
@@ -125,6 +139,7 @@ namespace SquashSim
             var p = Base("Grinder");
             p.RiskAppetite = 0.3; p.WPressure = 0.8; p.WLength = 1.2; p.WWidth = 1.0; p.WLow = 0.2; p.WShort = 0.0;
             p.TouchPreference = 0.0; p.DeceptionChance = 0.1; p.Discipline = 1.0; p.AppealTendency = 0.95;   // asks for everything it is due
+            p.BookSafe = 1.5; p.BookPatience = 1.3; p.BookAttack = 0.8;   // lives by rules 2, 3, 6 and 11
             return p;
         }
 
@@ -136,6 +151,7 @@ namespace SquashSim
             var p = Base("Powerhouse");
             p.RiskAppetite = 0.55; p.WPressure = 1.5; p.WLength = 0.9; p.WWidth = 0.5; p.WLow = 0.6; p.WShort = 0.1;
             p.TouchPreference = 0.1; p.DeceptionChance = 0.1; p.PreparedPreference = 0.95; p.Discipline = 0.9; p.AppealTendency = 0.7;
+            p.BookSafe = 1.1; p.BookVolley = 1.2;
             return p;
         }
 
@@ -145,6 +161,7 @@ namespace SquashSim
             var p = Base("Counter-puncher");
             p.RiskAppetite = 0.4; p.WPressure = 1.1; p.WLength = 0.8; p.WWidth = 0.8; p.WLow = 0.5; p.WShort = 0.6;
             p.TouchPreference = 0.5; p.DeceptionChance = 0.2; p.Discipline = 1.0; p.AppealTendency = 0.8;
+            p.BookAttack = 1.4; p.BookPatience = 1.2;          // waits, then pounces on your boast (rule 12)
             return p;
         }
 
@@ -154,6 +171,7 @@ namespace SquashSim
             var p = Base("Magician");
             p.RiskAppetite = 0.5; p.WPressure = 1.2; p.WLength = 0.6; p.WWidth = 0.4; p.WLow = 0.5; p.WShort = 0.7;
             p.TouchPreference = 0.75; p.DeceptionChance = 0.6; p.PreparedPreference = 0.9; p.AppealTendency = 0.75;
+            p.BookAttack = 1.2; p.BookPatience = 0.4;          // breaks rule 7 on purpose: the surprise drop from the back
             return p;
         }
 
@@ -163,6 +181,7 @@ namespace SquashSim
             var p = Base("Volleyer");
             p.RiskAppetite = 0.55; p.WPressure = 1.4; p.WLength = 0.7; p.WWidth = 0.6; p.WLow = 0.8; p.WShort = 0.3;
             p.TouchPreference = 0.3; p.DeceptionChance = 0.2; p.Discipline = 1.0; p.AppealTendency = 0.8;
+            p.BookVolley = 1.6;                                // rule 8, all day
             return p;
         }
 
@@ -195,12 +214,14 @@ namespace SquashSim
                 if (star.Discipline > 0) p.Discipline = star.Discipline;
                 p = p.WithDifficulty(difficulty);
                 p.Name = Career.Stars.FullName(star);
+                p.Sense = SenseForRating(star.Rating);
                 return p;
             }
             if (Career.Stars.ParseClub(opponentId, out string style, out int rating))
             {
                 var p = ByName(style).WithDifficulty(difficulty);
                 p.Name = "Club " + Career.Roster.StyleName(style);
+                p.Sense = SenseForRating(rating);
                 return p;
             }
             return ByName(opponentId).WithDifficulty(difficulty);
@@ -263,6 +284,19 @@ namespace SquashSim
         int _oppLandCount;
 
         readonly BallReader _read = new BallReader();
+        // the book (2026-11-01): what the ball has done since the last contact, and rule 8's volley read
+        readonly BallReader _volley = new BallReader { MinHeight = 0.55, MaxHeight = 1.45, MinZ = 2.8 };
+        int _seenImpacts;
+        bool _flightFront, _flightBoast, _flightBack;
+        double _oppHitZ = -1;
+        int _volleyChoice;                     // 0 undecided this turn, 1 going for the volley, -1 not
+        public const double VolleySetTime = 0.3, VolleyKeen = 0.8, BoastReadSpeedUp = 0.5;
+        /// <summary>The picture of the last shot it chose (the bench, the coach's tests).</summary>
+        public ShotPicture LastPicture { get; private set; }
+        /// <summary>Shots chosen so far (the bench).</summary>
+        public int Choices { get; private set; }
+        /// <summary>Turns it went for the volley by rule 8 (the bench).</summary>
+        public int BookVolleys { get; private set; }
         readonly BallState _scratch = new BallState();
         readonly List<SimEvent> _events = new List<SimEvent>();
         readonly AimState _aim = new AimState();
@@ -360,16 +394,20 @@ namespace SquashSim
                 if (m.TurnShots > 0 && m.TurnLastHitter == opp)
                 {
                     _oppContactTime = t;
+                    _oppHitZ = m.Players[opp].Player.Pos.Z;                 // the book: where they played it from (rule 12)
                     if (Profile.SplitStepError > 0) _splitAt = t + System.Math.Abs(Gauss()) * Profile.SplitStepError;
                 }
                 if (m.TurnShots > 0 && m.TurnLastHitter == me)
                 {
                     // Just played: decide where to recover to.
+                    _oppHitZ = -1;
                     RecoveryTarget(m, p);
                 }
                 _lastShots = m.TurnShots;
                 ResetTurn();
             }
+
+            if (Profile.Book >= 1) WatchFlight(m);
 
             // Turn queries come from the match, so the same brain knocks up in the warm-up.
             bool live = m.BallLive;
@@ -385,12 +423,17 @@ namespace SquashSim
             bool move = live;
             if (myTurn && m.TurnShots > 0)
             {
-                if (t - _oppContactTime < Profile.ReactionTime) { tx = _tgtX; tz = _tgtZ; }   // still reacting
+                if (t - _oppContactTime < ReactionNow(m, opp)) { tx = _tgtX; tz = _tgtZ; }   // still reacting
                 else if (canStrike && ctrl.Prediction.Valid && ctrl.Prediction.Distance <= PhysicsConfig.Current.Reach.Normal)
                 {
                     // Already within normal reach of the contact: plant and let the ball come. Chasing it
                     // makes "closest approach" recede with the athlete and the ball is never met.
                     tx = p.Pos.X; tz = p.Pos.Z;
+                }
+                else if (Profile.Book >= 1 && canStrike && WantsVolley(m, p))
+                {
+                    tx = _volley.X - PhysicsConfig.Current.MovementAssist.PreferredSpacing;     // rule 8: cut it off before it bounces
+                    tz = _volley.Z + 0.15;
                 }
                 else if (canStrike && ctrl.Assist.HasIdealSpot) { tx = ctrl.Assist.IdealSpot.X; tz = ctrl.Assist.IdealSpot.Z; }
                 else if (_read.Read(m.Ball, m.Surfaces, p))
@@ -686,6 +729,15 @@ namespace SquashSim
                 double step = System.Math.Min(ld - c.Reach * 0.6, c.LungeMax);
                 if (step > 0 && ld > 1e-6) { sx += ldx / ld * step; sz += ldz / ld * step; }
             }
+            // the book (2026-11-01): the 12 rules' say on each shot, by its squash sense and style
+            bool book = Profile.Book >= 1;
+            var pic = new ShotPicture
+            {
+                BallX = bx, BallZ = bz, MeX = sx, MeZ = sz, OppX = opp.X, OppZ = opp.Z,
+                Late = ctrl.Assist.ReachState == ReachStates.DeepLunge || ctrl.Assist.ReachState == ReachStates.Stretch || ctrl.Assist.ReachState == ReachStates.Unreachable,
+                OffBackWall = _flightBack, OppBoasted = _flightBoast
+            };
+            LastPicture = pic; Choices++;                  // (observational: the bench and the coach's tests)
             for (int i = 0; i < o.Length; i++)
             {
                 double gap = System.Math.Sqrt((o[i].zx - opp.X) * (o[i].zx - opp.X) + (o[i].zz - opp.Z) * (o[i].zz - opp.Z));
@@ -701,6 +753,7 @@ namespace SquashSim
                 }
                 double clear = OwnPathClearance(bx, bz, tx, sx, sz);
                 if (clear < OwnPathMargin) score[i] -= (late ? 4 : 1) * OwnPathPenalty * (0.3 + 0.7 * Profile.Skill) * (1 - clear / OwnPathMargin);
+                if (book) score[i] += SquashBook.Bonus(Profile, pic, SquashBook.ShotIndex(o[i].n), o[i].zx);
                 if (score[i] > max) max = score[i];
             }
             double temp = 0.3 + ArcadeChoiceNoise * (1 - Profile.Skill), sum = 0;     // and picks less at random
@@ -735,10 +788,56 @@ namespace SquashSim
         }
         public const double OwnPathMargin = 0.35, OwnPathPenalty = 6.0;
 
+        // ---------------- the book: what the ball did, rules 8 and 12 (2026-11-01) ----------------
+
+        /// <summary>Since the last contact: off the front wall yet, a side wall first from the back of the court (their boast:
+        /// rule 12), the back wall after the front.</summary>
+        void WatchFlight(MatchSimulation m)
+        {
+            var b = m.Ball;
+            if (b.TotalImpacts == _seenImpacts) return;
+            _seenImpacts = b.TotalImpacts;
+            switch (b.LastCollisionClass)
+            {
+                case "frontWall": _flightFront = true; break;
+                case "sideWall": if (!_flightFront && _oppHitZ > SquashBook.BackOfCourt) _flightBoast = true; break;
+                case "backWall": if (_flightFront) _flightBack = true; break;
+            }
+        }
+
+        /// <summary>Rule 12: their boast from the back reads early - a player with squash sense is already moving in.</summary>
+        double ReactionNow(MatchSimulation m, int opp)
+        {
+            if (Profile.Book < 1 || !_flightBoast) return Profile.ReactionTime;
+            double k = Clamp(BoastReadSpeedUp * Profile.Sense * Profile.BookAttack, 0, 0.8);
+            return Profile.ReactionTime * (1 - k);
+        }
+
+        /// <summary>Rule 8: a ball off the front wall going past to the back, reachable before it bounces with time to set -
+        /// decided once a turn (by its squash sense and style), then followed while it stays a volley.</summary>
+        bool WantsVolley(MatchSimulation m, TestPlayer p)
+        {
+            if (_volleyChoice < 0) return false;
+            var b = m.Ball;
+            if (!_flightFront || b.FloorSinceFrontWall > 0) { if (_volleyChoice > 0) _volleyChoice = -1; return false; }
+            bool ok = _volley.Read(b, m.Surfaces, p) && _volley.IsVolley && _volley.ShortBy <= 0 && _volley.Z < 7.6;
+            if (_volleyChoice == 0)
+            {
+                if (!ok || b.Vel.Z <= 0 || _volley.Time < VolleySetTime) return false;          // not yet (or not one to take)
+                // "balanced": a volley needs the hands for it too - a weaker hitter takes fewer (MatchBench --book: they cost it rallies)
+                if (Uniform() < Profile.Sense * Profile.BookVolley * VolleyKeen * (0.25 + 0.75 * Profile.Skill)) { _volleyChoice = 1; BookVolleys++; }
+                else _volleyChoice = -1;
+                return _volleyChoice > 0;
+            }
+            if (!ok) _volleyChoice = -1;
+            return _volleyChoice > 0;
+        }
+
         void ResetTurn()
         {
             _decided = false; _pressed = false; _appealed = false; _useDecoy = false; _swungThisTurn = false; _forcedTurn = false;
             _aHolding = false; _aReleaseAt = -1; _boastTapped = false;
+            _flightFront = false; _flightBoast = false; _flightBack = false; _volleyChoice = 0; _volley.Invalidate();
             _obstructedFor = 0;
             _notedLanding = false;
             _serveAimSet = false;

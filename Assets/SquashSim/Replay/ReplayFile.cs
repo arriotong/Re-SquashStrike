@@ -51,6 +51,8 @@ namespace SquashSim.Replays
         public int ParPoints;
         public AthleteAttributes Attr1;
         public List<RunMod> Mods0, Mods1;
+        /// <summary>The AI's book (format 7, 2026-11-01): the rules it plays by. Older files: 0, the AI from before the rules.</summary>
+        public int Book = AiProfile.CurrentBook;
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -114,7 +116,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 6;      // 4: P3-C1 attributes and start score; 5: P5 game length, opponent attributes, run abilities; 6: P7 Stability
+        public const int FormatVersion = 7;      // 4: P3-C1 attributes and start score; 5: P5 game length, opponent attributes, run abilities; 6: P7 Stability; 7: the AI's book
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -154,6 +156,7 @@ namespace SquashSim.Replays
                 if (s.Attr1 != null) { w.Write(s.Attr1.Speed); w.Write(s.Attr1.Stamina); w.Write(s.Attr1.Power); w.Write(s.Attr1.Control); }
                 WriteMods(w, s.Mods0); WriteMods(w, s.Mods1);
                 w.Write(a.Stability); w.Write(s.Attr1 != null ? s.Attr1.Stability : AthleteAttributes.Neutral);   // 6
+                w.Write(s.Book);                                                                                    // 7
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -258,6 +261,7 @@ namespace SquashSim.Replays
                     if (s.Attr0 != null) s.Attr0.Stability = st0;
                     if (s.Attr1 != null) s.Attr1.Stability = st1;
                 }
+                s.Book = version >= 7 ? r.ReadInt32() : 0;                     // older files: the AI from before the book
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)
                 {

@@ -69,6 +69,7 @@ public static class Program
         if (Array.IndexOf(args, "--knockup") >= 0) { MatchBall = Array.IndexOf(args, "--lab-ball") < 0; KnockUpReport(); return 0; }
         if (Arg(args, "--levels") != null) PressAudit.Levels = Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse);
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
+        if (Array.IndexOf(args, "--book") >= 0) { BookBench.Run(Arg(args, "--games") != null ? games : 8); return 0; }
         if (Array.IndexOf(args, "--stars") >= 0) { StarBench.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--only")); return 0; }
         { int ib = Array.IndexOf(args, "--puzzle-bank"); if (ib >= 0) { PuzzleBench.Bank(int.Parse(args[ib + 1]), uint.Parse(args[ib + 2]), args[ib + 3]); return 0; } }
         if (Array.IndexOf(args, "--puzzle") >= 0) { PuzzleBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }

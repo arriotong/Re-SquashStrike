@@ -24,6 +24,7 @@ static class StarBench
     public static readonly double[] Dist = new double[2], Fast = new double[2], RallyTime = new double[2];
     public static bool NoSig = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--no-sig") >= 0;
     public static bool Geo = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--geo") >= 0;
+    public static bool Book0 = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--book0") >= 0;
     public static bool NoAttr = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--no-attr") >= 0;
 
     public static void Run(int games, string only)
@@ -67,11 +68,13 @@ static class StarBench
     public static (int, int, int) Play(string id, uint seed)
     {
         var s = new ReplaySetup { Opponent = id, Difficulty = 0.15f, GamesToWin = 1, Scoring = "par", BotSeed = seed, Lets = true };
+        if (Book0) s.Book = 0;                                     // --book0: the AI from before the visual book (2026-11-01)
         ReplayMatch.DressStar(s);
         if (NoAttr) s.Attr1 = null;
         if (NoSig) s.Mods1 = null;
         ReplayMatch.Configure(s);
         var m = ReplayMatch.Build(s);
+        BookBench.ApplyArgs(); if (m.Bots[1] is OpponentBrain aiBrain) BookBench.ApplyLean(aiBrain);
         m.Bots[0] = new HumanStyle(seed * 2654435761u + 3) { Arcade = true };
         m.Players[0].WallAimEnabled = true; m.Players[0].ArcadeHitEnabled = true;
         Program.ArcadeAi(m);

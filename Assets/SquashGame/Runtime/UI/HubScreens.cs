@@ -161,6 +161,9 @@ namespace SquashGame.UI
                     .Line(() => "Next lesson: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
                 AddTo(academy, new CardItem("ALL LESSONS", "LEARN", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))
                     .Line("How to play  ·  The rules"));
+                // 2026-11-01: the visual book - where to hit the ball, the same 12 rules the computer players use
+                AddTo(academy, new CardItem("HOW TO WIN", "12 RULES", () => Fe.Push(new RulesBookScreen())).Drawn("corner", new Color32(18, 34, 22, 255), new Color32(120, 230, 90, 255))
+                    .Line("Where to hit the ball, and why"));
             }
 
             // ---- STORE (2026-10-29): the three gachas - card packs, cosmetics, the pro shop ----
@@ -578,12 +581,15 @@ namespace SquashGame.UI
             // 2026-10-30 (the kid test): the four numbers anyone gets (it was ten, with "Time on the T" and "Boasts")
             var tape = Kit.Panel(cols, "THE MATCH");
             var a = st.Players[0]; var b = st.Players[1];
+            var left = Kit.Box(cols, "k-ft-left");
+            tape.RemoveFromHierarchy(); left.Add(tape);
             var bars = new StatBars(); bars.AddToClassList("k-statbars--big");      // four rows, big enough to fill the panel
             tape.Add(bars
                 .Row("Points won", a.Rallies, b.Rallies)
                 .Row("Winning shots", a.Winners, b.Winners)
                 .Row("Mistakes", a.Errors, b.Errors, null, null, true)
                 .Row("Great hits", a.GreatHits, b.GreatHits));
+            if (!m.Settings.TwoPlayer) CoachTip(left, st);
             var right = Kit.Box(cols, "k-ft-right");
             var hi = Kit.Panel(right, "HIGHLIGHTS");
             var hrow = Kit.Box(hi, "k-ft-highs");
@@ -664,6 +670,22 @@ namespace SquashGame.UI
         }
 
         public override void Tick(float dt) { UpdateOnline(); }
+
+        /// <summary>2026-11-01: the coach - the visual-book rule you broke most this match (or kept most), with its picture.</summary>
+        static void CoachTip(VisualElement parent, MatchStats st)
+        {
+            string tip = st.Coach.Tip(out int rule);
+            if (tip == null) return;
+            var r = SquashSim.SquashBook.Get(rule);
+            var panel = Kit.Panel(parent, "COACH'S TIP");
+            var row = Kit.Box(panel, "k-coach-row");
+            var pic = Kit.Box(row, "k-coach-pic");
+            pic.Add(new RuleDiagram(rule));
+            var text = Kit.Box(row, "k-coach-text");
+            Kit.L(text, "RULE " + r.N + "  ·  ALL 12 IN TRAINING > HOW TO WIN", "k-coach-num");
+            Kit.L(text, r.Title, "k-coach-head");
+            Kit.L(text, tip, "k-coach-line");
+        }
 
         static void High(VisualElement parent, string value, string name)
         {

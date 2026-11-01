@@ -81,7 +81,8 @@ namespace SquashSim.Modes
         public static ReplaySetup SetupFor(ShotPuzzle p)
         {
             return new ReplaySetup { Opponent0 = p.You, Difficulty0 = p.YouLevel, Opponent = p.Them, Difficulty = p.ThemLevel, GamesToWin = 1, Scoring = "par",
-                                     WarmUp = false, Lets = false, BotSeed = p.Seed };
+                                     WarmUp = false, Lets = false, BotSeed = p.Seed,
+                                     Book = 0 };      // the bank was made with the AI from before the book (2026-11-01); a new bank can move on
         }
 
         /// <summary>The random streams the AIs play a trial with, from the freeze on.</summary>

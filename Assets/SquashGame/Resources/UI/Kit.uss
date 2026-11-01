@@ -317,6 +317,27 @@
 .k-ft-cols { flex-direction: row; justify-content: center; }
 .k-ft-cols > .k-panel { width: 760px; }
 .k-ft-right { width: 760px; }
+.k-ft-left { width: 760px; margin-right: 20px; }
+.k-ft-left > .k-panel { margin-right: 0; }
+.k-ft-left > .k-panel:first-child { flex-grow: 1; }
+/* 2026-11-01: the coach's tip after a match, and the 12 rules (How to win) */
+.k-coach-row { flex-direction: row; align-items: center; }
+.k-coach-pic { width: 96px; height: 140px; margin-right: 18px; flex-shrink: 0; }
+.k-coach-text { flex-shrink: 1; flex-grow: 1; }
+.k-coach-num { font-size: 12px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-coach-head { font-size: 22px; color: rgb(255, 255, 255); white-space: normal; margin: 2px 0 6px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-coach-line { font-size: 15px; color: rgba(255, 255, 255, 0.82); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-rule-row { flex-direction: row; flex-grow: 1; align-items: center; justify-content: center; }
+.k-rule-picbox { width: 330px; height: 500px; margin-right: 56px; padding: 14px; border-radius: 14px; background-color: rgba(10, 12, 14, 0.75); }
+.k-rule-pic { flex-grow: 1; }
+.k-rule-text { width: 640px; }
+.k-rule-num { font-size: 16px; letter-spacing: 2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-rule-head { font-size: 46px; color: rgb(255, 255, 255); white-space: normal; margin: 8px 0 14px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-rule-words { font-size: 22px; color: rgba(255, 255, 255, 0.86); white-space: normal; margin-bottom: 18px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-rule-key { flex-direction: row; flex-wrap: wrap; margin-bottom: 4px; }
+.k-rule-keyitem { flex-direction: row; align-items: center; margin: 0 18px 6px 0; }
+.k-rule-keydot { width: 14px; height: 14px; border-radius: 7px; margin-right: 7px; }
+.k-rule-keytext { font-size: 14px; color: rgba(255, 255, 255, 0.72); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .k-ft-highs { flex-direction: row; justify-content: space-around; }
 .k-ft-high { align-items: center; }
 .k-ft-high-v { font-size: 52px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }

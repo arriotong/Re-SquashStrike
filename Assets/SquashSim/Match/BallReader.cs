@@ -28,6 +28,8 @@ namespace SquashSim
         public double Z { get; private set; }
         /// <summary>Seconds from the read until the ball is there.</summary>
         public double Time { get; private set; }
+        /// <summary>The point read is before the ball's first bounce off the front wall (2026-11-01: rule 8's volley).</summary>
+        public bool IsVolley { get; private set; }
         /// <summary>With a player: seconds the player is short of the intercept (0 = they can make it).</summary>
         public double ShortBy { get; private set; }
 
@@ -86,7 +88,7 @@ namespace SquashSim
                 double t = i * Step;
                 if (player == null)
                 {
-                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true;
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; IsVolley = bounces == 0;
                     break;
                 }
                 double dx = _scratch.Pos.X - player.Pos.X, dz = _scratch.Pos.Z - player.Pos.Z;
@@ -94,13 +96,13 @@ namespace SquashSim
                 double shortBy = need - t;
                 if (shortBy <= 0)
                 {
-                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = 0;
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = 0; IsVolley = bounces == 0;
                     break;                                    // first point we can be at in time
                 }
                 if (shortBy < bestShort)
                 {
                     bestShort = shortBy;
-                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = shortBy;
+                    X = _scratch.Pos.X; Y = _scratch.Pos.Y; Z = _scratch.Pos.Z; Time = t; Valid = true; ShortBy = shortBy; IsVolley = bounces == 0;
                 }
             }
             return Valid;

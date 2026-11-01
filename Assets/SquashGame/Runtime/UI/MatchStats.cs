@@ -30,6 +30,8 @@ namespace SquashGame.UI
         }
 
         public readonly Side[] Players = { new Side(), new Side() };
+        /// <summary>2026-11-01: the visual book's coach - your shots against the 12 rules (the post-match tip).</summary>
+        public readonly SquashCoach Coach = new SquashCoach();
         public int Rallies, LongestRally;
         public double PlaySeconds;
         int _lastStriker = -1, _server = -1;
@@ -61,6 +63,7 @@ namespace SquashGame.UI
             Rallies = 0; LongestRally = 0; PlaySeconds = 0;
             Games.Clear();
             _lastStriker = -1; _server = -1; _lastTech = null; _down05 = false; _afterLet = false;
+            Coach.Reset();
         }
 
         void Watch(MatchSimulation sim)
@@ -77,6 +80,7 @@ namespace SquashGame.UI
         {
             Watch(_runner.Sim);
             if (!Counting || _sim == null) return;
+            Coach.Observe(_sim, events, _runner.HumanIndex);
             for (int i = 0; i < events.Count; i++)
             {
                 var e = events[i];

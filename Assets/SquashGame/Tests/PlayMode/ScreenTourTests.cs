@@ -112,7 +112,7 @@ namespace SquashGame.Tests
                 ("Achievements", () => new AchievementsScreen()), ("Codex", () => new CodexScreen()), ("Gallery", () => new GalleryScreen()),
                 ("Replays", () => new ReplayLibraryScreen()), ("Leaderboard", () => new LeaderboardScreen()),
                 ("Online name", () => new OnlineNameScreen(() => new HomeScreen())), ("Private room", () => new PrivateRoomScreen()),
-                ("Settings", () => new SettingsScreen()), ("Controls", () => new ControlsHelpScreen()), ("Rebind", () => new RebindScreen()),
+                ("Settings", () => new SettingsScreen()), ("Controls", () => new ControlsHelpScreen()), ("How to win", () => new RulesBookScreen(11)), ("Rebind", () => new RebindScreen()),
                 ("Create player", () => new CreatePlayerScreen()), ("Player editor", () => new PlayerEditorScreen()),
                 ("Confirm", () => new ConfirmScreen("Quit the game?", () => { })),
                 ("Pick list", () => new PickListScreen("Court", new[] { "Club", "Glass", "Pyramid" }, 0, i => { })),
@@ -154,6 +154,8 @@ namespace SquashGame.Tests
             while (Time.realtimeSinceStartup - t0 < 150f && !(fe.Top is PostMatchScreen)) yield return null;
             r.SetTimeScale(SimRunnerBase.GameSpeed);
             if (fe.Top is PostMatchScreen) yield return Shot(fe, "Post match");
+            Assert.That(fe.Stats.Coach.Shots, Is.GreaterThan(0), "the coach watched your shots (2026-11-01)");
+            Assert.That(fe.Top is PostMatchScreen && fe.Top.Root.Q(className: "k-coach-row") != null, Is.True, "the coach's tip after the match");
 
             File.WriteAllLines(Path.Combine(Dir, "index.txt"), _index);
             Debug.Log("[Tour] " + _n + " pictures; " + string.Join(" | ", _index.FindAll(l => l.StartsWith("!!"))));
