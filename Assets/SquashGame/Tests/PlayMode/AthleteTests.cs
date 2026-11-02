@@ -84,8 +84,17 @@ namespace SquashGame.Tests
                     Vector3 drawnNormal = racket.right;
                     Assert.That(Mathf.Abs(Vector3.Dot(drawnNormal, v.RacketFaceNormal.normalized)), Is.GreaterThan(0.999f), "string normal");
                 }
-                // M7: the racket lives in the hand - the butt must sit in the grip socket, always.
-                gripAll.Add(Vector3.Distance(fig.Rig.Racket.position, fig.Rig.Bones["Hand_R"].TransformPoint(fig.Rig.GripLocalPos)));
+                // M7: the racket lives in the hand - the butt must sit in the grip socket, always. (2026-11-02 with the real body
+                // drawn, the racket is in the body's hand: its palm on the handle, GripUp from the butt)
+                var body = fig.GetComponent<AthleteBody>();
+                if (body != null && body.Showing)
+                {
+                    var hand = body.Anim.GetBoneTransform(HumanBodyBones.RightHand);
+                    Vector3 handle = fig.Rig.Racket.position - fig.Rig.Racket.up * AthleteBody.GripUp;
+                    Vector3 mid = body.Anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal).position;
+                    gripAll.Add(Mathf.Max(0f, Vector3.Distance(handle, Vector3.Lerp(hand.position, mid, 0.55f)) - 0.06f));
+                }
+                else gripAll.Add(Vector3.Distance(fig.Rig.Racket.position, fig.Rig.Bones["Hand_R"].TransformPoint(fig.Rig.GripLocalPos)));
 
                 // Animation feel: facing turn rate, planted feet that stay planted.
                 // The figure reports its own per-pose turn rate (frame timing in batch mode is too uneven to difference).

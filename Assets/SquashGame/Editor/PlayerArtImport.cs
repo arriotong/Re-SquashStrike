@@ -18,7 +18,7 @@ namespace SquashGame.Editor
     public sealed class PlayerArtImport : AssetPostprocessor
     {
         /// <summary>Bumped when the settings change, so Unity imports the art again.</summary>
-        public override uint GetVersion() { return 2; }
+        public override uint GetVersion() { return 3; }
 
         static string P(string path) { return path.Replace("\\", "/"); }
         static bool IsAnim(string path) { return P(path).Contains("/Resources/Players/Anim/") && path.ToLowerInvariant().EndsWith(".fbx"); }
@@ -46,6 +46,8 @@ namespace SquashGame.Editor
             var clips = imp.defaultClipAnimations;
             // a Mixamo file has one take, always called "mixamo.com": the clip takes the file's name (Dive_Left, Slash_A...)
             if (clips.Length == 1) clips[0].name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            // 2026-11-02 our own squash motion capture (Rokoko Vision from real footage): its first frame is Rokoko's T-pose
+            bool mocap = System.IO.Path.GetFileName(assetPath).StartsWith("Mocap_");
             foreach (var c in clips)
             {
                 c.loopTime = c.name.Contains("Loop") || c.name.Contains("Idle") || c.name.Contains("Run") || c.name.Contains("Walk");
@@ -54,6 +56,7 @@ namespace SquashGame.Editor
                 // the travel across the floor is NOT baked into the pose: it is root motion, which the athlete never applies -
                 // the sim moves them (a goalkeeper dive went 2.6 m sideways out of its own body otherwise)
                 c.lockRootPositionXZ = false; c.keepOriginalPositionXZ = false;
+                if (mocap && c.firstFrame < 1f) c.firstFrame = 1f;
             }
             imp.clipAnimations = clips;
         }

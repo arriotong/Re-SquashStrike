@@ -152,6 +152,8 @@ namespace SquashGame.Athlete
             _rigPelvis = rig.Bones["Pelvis"];
             _hipsOffset = root.InverseTransformPoint(_bodyHips.position) - root.InverseTransformPoint(_rigPelvis.position);
 
+            BuildGrip();
+            FindBands();
             BuildGraph();
             Show(Wanted);                                        // the figure's own body is no longer drawn - its racket is
             return true;
@@ -180,22 +182,245 @@ namespace SquashGame.Athlete
             return c != null ? (c.position - bt.position).normalized : bt.up;
         }
 
+        // ---- 2026-11-02 the squash grip, on the body's own hand ----
+        /// <summary>The racket hand's turn, relative to the racket (a handshake grip: the handle across the palm from the
+        /// heel to the index knuckle, the strings facing where the palm does); the palm's middle, in the hand's turn.</summary>
+        Quaternion _gripRot = Quaternion.identity;
+        Vector3 _palmOffset;
+        bool _grip;
+        /// <summary>Where along the handle the palm holds it, metres up from the butt (the hand high, its heel at the cap).</summary>
+        public const float GripUp = 0.065f;
+        /// <summary>Each finger joint's turn in its parent, closed round the handle (racket hand) or loosely curled (free hand).</summary>
+        readonly List<(Transform bone, Quaternion local)> _fist = new List<(Transform, Quaternion)>(), _relaxed = new List<(Transform, Quaternion)>();
+        /// <summary>How far the racket is drawn from where the sim has it (the body's arm couldn't reach it), metres (tests).</summary>
+        public float GripGap { get; private set; }
+        /// <summary>How far the chest leant toward an out-of-reach racket, degrees.</summary>
+        public const float MaxLean = 30f;
+        /// <summary>How far the body may be moved toward a racket still out of reach after the lean, metres; how far it was now.</summary>
+        public const float MaxBodyShift = 0.5f;
+        public float BodyShift { get; private set; }
+
+        /// <summary>The hand's frame from its bones: along the fingers, across the knuckles (little finger to index), the palm's normal.</summary>
+        bool HandFrame(bool right, out Vector3 along, out Vector3 across, out Vector3 palm, out float len)
+        {
+            along = across = palm = Vector3.zero; len = 0f;
+            var hand = Anim.GetBoneTransform(right ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand);
+            var mid = Anim.GetBoneTransform(right ? HumanBodyBones.RightMiddleProximal : HumanBodyBones.LeftMiddleProximal);
+            var idx = Anim.GetBoneTransform(right ? HumanBodyBones.RightIndexProximal : HumanBodyBones.LeftIndexProximal);
+            var lit = Anim.GetBoneTransform(right ? HumanBodyBones.RightLittleProximal : HumanBodyBones.LeftLittleProximal);
+            if (hand == null || mid == null || idx == null || lit == null) return false;
+            len = Vector3.Distance(hand.position, mid.position);
+            along = (mid.position - hand.position).normalized;
+            across = Vector3.ProjectOnPlane(idx.position - lit.position, along).normalized;
+            palm = Vector3.Cross(along, across);                 // a right hand palm-down, fingers +X, thumb +Z: palm -Y
+            if (!right) palm = -palm;
+            return true;
+        }
+
+        /// <summary>The grip, measured once at the body's bind pose: the hand turned onto the racket, the fingers closed.</summary>
+        void BuildGrip()
+        {
+            var racket = Figure.Rig.Racket;
+            var hand = Anim.GetBoneTransform(HumanBodyBones.RightHand);
+            if (racket == null || hand == null || !HandFrame(true, out var along, out var across, out var palm, out float len)) return;
+            // the handle runs diagonally across the palm: from the heel (little-finger side) to the index knuckle
+            Vector3 handle = (across + 0.8f * along).normalized;
+            Quaternion handFrame = Quaternion.LookRotation(handle, palm);
+            Quaternion racketFrame = Quaternion.LookRotation(-racket.up, racket.right);      // the shaft to the tip; the strings (+X) face the palm's way
+            Quaternion turn = racketFrame * Quaternion.Inverse(handFrame);
+            _gripRot = Quaternion.Inverse(racket.rotation) * (turn * hand.rotation);
+            // the handle's middle sits in the palm, a little in from the bones
+            Vector3 palmMid = hand.position + along * (0.55f * len) + palm * (0.33f * len);
+            _palmOffset = Quaternion.Inverse(hand.rotation) * (palmMid - hand.position);
+
+            // the fingers closed round it, the index looser (a trigger); the free hand loosely curled
+            Curl(true, new[] { 30f, 40f, 30f }, new[] { 55f, 70f, 40f }, new[] { 75f, 95f, 55f }, new[] { 80f, 95f, 55f }, new[] { 85f, 95f, 55f }, _fist);
+            Curl(false, new[] { 10f, 15f, 10f }, new[] { 20f, 25f, 15f }, new[] { 25f, 30f, 18f }, new[] { 28f, 32f, 20f }, new[] { 32f, 35f, 22f }, _relaxed);
+            _grip = true;
+        }
+
+        /// <summary>Each finger joint bent toward the palm by these degrees (thumb, index, middle, ring, little; base to tip),
+        /// kept as its turn in its parent; the hand is put back as it was.</summary>
+        void Curl(bool right, float[] thumb, float[] index, float[] middle, float[] ring, float[] little, List<(Transform, Quaternion)> into)
+        {
+            if (!HandFrame(right, out var along, out var across, out var palm, out _)) return;
+            HumanBodyBones first = right ? HumanBodyBones.RightThumbProximal : HumanBodyBones.LeftThumbProximal;
+            float[][] deg = { thumb, index, middle, ring, little };
+            var saved = new List<(Transform, Quaternion)>();
+            for (int f = 0; f < 5; f++)
+                for (int k = 0; k < 3; k++)
+                {
+                    var b = Anim.GetBoneTransform((HumanBodyBones)((int)first + f * 3 + k));
+                    if (b == null) continue;
+                    saved.Add((b, b.localRotation));
+                    Vector3 dir = b.childCount > 0 ? (b.GetChild(0).position - b.position).normalized : along;
+                    Vector3 axis = Vector3.Cross(dir, palm);                       // turns the bone's tip toward the palm
+                    if (axis.sqrMagnitude < 1e-6f) continue;
+                    b.rotation = Quaternion.AngleAxis(deg[f][k], axis.normalized) * b.rotation;
+                }
+            foreach (var (b, _) in saved) into.Add((b, b.localRotation));
+            foreach (var (b, q) in saved) b.localRotation = q;
+        }
+
+        /// <summary>Each frame, after the pose: the racket hand turned and placed so the handle lies in its palm (the arm reaching
+        /// there, its elbow toward the figure's), the forearm taking half the hand's roll, the fingers closed.</summary>
+        void Grip()
+        {
+            var racket = Figure.Rig.Racket;
+            var ta = Anim.GetBoneTransform(HumanBodyBones.RightUpperArm); var tb = Anim.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            var tc = Anim.GetBoneTransform(HumanBodyBones.RightHand);
+            if (racket == null || ta == null || tb == null || tc == null) return;
+            // where the sim has the racket (last frame it was drawn in the body's hand: back in the figure's first)
+            if (Figure.Rig.RacketInHand) { racket.localPosition = Figure.Rig.GripLocalPos; racket.localRotation = Figure.Rig.GripLocalRot; }
+            Quaternion handRot = racket.rotation * _gripRot;
+            Vector3 simAt = racket.position;
+            Vector3 onHandle = racket.position - racket.up * GripUp;
+            Vector3 wrist = onHandle - handRot * _palmOffset;
+
+            // out of the arm's reach: the chest leans toward it (up to MaxLean), as a player stretches for the ball
+            float arm = Vector3.Distance(ta.position, tb.position) + Vector3.Distance(tb.position, tc.position);
+            var chest = Anim.GetBoneTransform(HumanBodyBones.Chest) ?? Anim.GetBoneTransform(HumanBodyBones.Spine);
+            float over = Vector3.Distance(ta.position, wrist) - arm * 0.97f;
+            if (chest != null && over > 0f)
+            {
+                Vector3 from = ta.position - chest.position, to = wrist - chest.position;
+                Quaternion lean = Quaternion.FromToRotation(from, to);
+                lean.ToAngleAxis(out float ang, out Vector3 ax);
+                if (ang > 180f) ang -= 360f;
+                float want = Mathf.Clamp(ang, -MaxLean, MaxLean) * Mathf.Clamp01(over / 0.15f);
+                chest.rotation = Quaternion.AngleAxis(want, ax) * chest.rotation;
+            }
+            // still out of reach: the body goes to it (the hips moved by the shortfall, as the figure's pelvis is), the feet kept
+            // where they were planted (the knees bend for it)
+            over = Vector3.Distance(ta.position, wrist) - arm * 0.98f;
+            if (over > 0f)
+            {
+                Vector3 shift = Vector3.ClampMagnitude((wrist - ta.position).normalized * over, MaxBodyShift);
+                var fl = Anim.GetBoneTransform(HumanBodyBones.LeftFoot); var fr = Anim.GetBoneTransform(HumanBodyBones.RightFoot);
+                Vector3 pl = fl.position, pr = fr.position; Quaternion ql = fl.rotation, qr = fr.rotation;
+                _bodyHips.position += shift;
+                Vector3 ahead = Flat(Figure.DrawnForward) * 0.4f;
+                var kl = Anim.GetBoneTransform(HumanBodyBones.LeftLowerLeg); var kr = Anim.GetBoneTransform(HumanBodyBones.RightLowerLeg);
+                TwoBoneIK.Solve(Anim.GetBoneTransform(HumanBodyBones.LeftUpperLeg), kl, fl, pl, kl.position + ahead);
+                TwoBoneIK.Solve(Anim.GetBoneTransform(HumanBodyBones.RightUpperLeg), kr, fr, pr, kr.position + ahead);
+                fl.rotation = ql; fr.rotation = qr;
+                BodyShift = shift.magnitude;
+            }
+            else BodyShift = 0f;
+            var mid = Figure.Rig.Bones["Forearm_R"]; var end = Figure.Rig.Bones["Hand_R"];
+            TwoBoneIK.Solve(ta, tb, tc, wrist, mid.position + (mid.position - end.position) * 0.2f);
+            // the forearm rolls with the hand (pronation / supination) - half of it, as the radius does - so the wrist doesn't wring
+            Vector3 axis = (tc.position - tb.position).normalized;
+            Quaternion rel = handRot * Quaternion.Inverse(tc.rotation);
+            Vector3 p = axis * Vector3.Dot(new Vector3(rel.x, rel.y, rel.z), axis);
+            var twist = new Quaternion(p.x, p.y, p.z, rel.w);
+            float m = Mathf.Sqrt(twist.x * twist.x + twist.y * twist.y + twist.z * twist.z + twist.w * twist.w);
+            if (m > 1e-5f)
+            {
+                twist = new Quaternion(twist.x / m, twist.y / m, twist.z / m, twist.w / m);
+                tb.rotation = Quaternion.Slerp(Quaternion.identity, twist, 0.5f) * tb.rotation;
+            }
+            tc.rotation = handRot;
+            foreach (var (b, q) in _fist) b.localRotation = q;
+            foreach (var (b, q) in _relaxed) b.localRotation = q;
+            // the racket drawn in the body's hand, wherever the arm got to
+            racket.rotation = handRot * Quaternion.Inverse(_gripRot);
+            racket.position = tc.position + handRot * _palmOffset + racket.up * GripUp;
+            GripGap = Vector3.Distance(racket.position, simAt);
+        }
+
+        // ---- the kit's bands on the body: the wristband on its racket wrist, the headband round its head ----
+        Transform _wristband, _headband;
+        Vector3 _wbPos, _hbPos; Quaternion _wbRot, _hbRot;
+
+        void FindBands()
+        {
+            foreach (var t in Figure.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "wristband") { _wristband = t; _wbPos = t.localPosition; _wbRot = t.localRotation; }
+                else if (t.name == "headband") { _headband = t; _hbPos = t.localPosition; _hbRot = t.localRotation; }
+            }
+        }
+
+        /// <summary>Back on the figure's bones (where they ride when the classic figure is drawn).</summary>
+        void BandsHome()
+        {
+            if (_wristband != null) { _wristband.localPosition = _wbPos; _wristband.localRotation = _wbRot; }
+            if (_headband != null) { _headband.localPosition = _hbPos; _headband.localRotation = _hbRot; }
+        }
+
+        /// <summary>Each frame: each band turned from the figure's limb onto the body's (its ring round the forearm just above
+        /// the wrist; round the head, above the brow).</summary>
+        void Bands()
+        {
+            BandsHome();
+            var rig = Figure.Rig.Bones;
+            if (_wristband != null && _wristband.gameObject.activeInHierarchy)
+            {
+                var fa = Anim.GetBoneTransform(HumanBodyBones.RightLowerArm); var hd = Anim.GetBoneTransform(HumanBodyBones.RightHand);
+                Vector3 figAxis = rig["Hand_R"].position - rig["Forearm_R"].position, bodyAxis = hd.position - fa.position;
+                _wristband.rotation = Quaternion.FromToRotation(figAxis, bodyAxis) * _wristband.rotation;
+                _wristband.position = hd.position - bodyAxis.normalized * 0.04f;
+            }
+            if (_headband != null && _headband.gameObject.activeInHierarchy)
+            {
+                var head = Anim.GetBoneTransform(HumanBodyBones.Head);
+                Transform top = head.childCount > 0 ? head.GetChild(0) : null;
+                foreach (Transform c in head) if (c.name.Contains("HeadTop")) top = c;
+                if (top != null)
+                {
+                    Vector3 up = (top.position - head.position).normalized;
+                    _headband.rotation = Quaternion.FromToRotation(Figure.Rig.Bones["Head"].rotation * Vector3.up, up) * _headband.rotation;
+                    _headband.position = Vector3.Lerp(head.position, top.position, 0.55f) + head.rotation * Vector3.forward * 0.005f;
+                }
+            }
+        }
+
         static Vector3 Flat(Vector3 v) { v.y = 0; return v.sqrMagnitude > 1e-8f ? v.normalized : Vector3.zero; }
 
-        // ---- 2026-11-01 the user's Mixamo clips: every direction, the goalkeeper dive, the swings ----
+        // ---- 2026-11-01 the user's Mixamo clips: every direction, the goalkeeper dive ----
         AnimationLayerMixerPlayable _layers;
-        AnimationMixerPlayable _dir, _dive, _swing;
-        AnimationClipPlayable _back, _left, _right, _diveL, _diveR, _fh, _bh, _oh;
-        /// <summary>Each clip's moment that matters, in seconds (MakeHuman-free: measured in Blender, 2026-11-01): the dive's
-        /// launch, landing and rise; the swings' contact (the hand at its fastest).</summary>
+        AnimationMixerPlayable _base, _dir, _dive, _drive, _lunge;
+        AnimationClipPlayable _back, _left, _right, _diveL, _diveR, _ready, _low, _fhDrive, _bhDrive, _fhLunge, _bhLunge;
+        /// <summary>The dive's launch, landing and rise, in seconds (measured in Blender, 2026-11-01).</summary>
         public const float DiveLaunch = 1.0f, DiveLandL = 1.6f, DiveRiseL = 2.4f, DiveEndL = 3.33f, DiveLandR = 1.47f, DiveRiseR = 2.2f, DiveEndR = 3.2f;
-        public const float FhContact = 19f / 30f, BhContact = 26f / 30f, OhContact = 28f / 30f;
         public const float StrafeSpeed = 4.0f, BackSpeed = 2.2f;
+
+        /// <summary>2026-11-02 a move cut from our squash motion capture (Rokoko Vision from real footage: a model's ghosted
+        /// forehands, an elite junior rally): its clip and its moments in seconds - where it starts (the racket back / the
+        /// step in), the ball, the follow-through's end, and back toward the ready.</summary>
+        public readonly struct Move
+        {
+            public readonly string Clip; public readonly float Start, Contact, End, Recover;
+            public Move(string clip, float start, float contact, float end, float recover) { Clip = clip; Start = start; Contact = contact; End = end; Recover = recover; }
+            /// <summary>The clip's time for the sim's swing: the start held while preparing, the ball at SwingT 0.5.</summary>
+            public float At(int phase, float swingT, float recoverClock)
+            {
+                if (phase == SwingPhase.Swinging)
+                    return swingT < 0.5f ? Mathf.Lerp(Start, Contact, swingT / 0.5f) : Mathf.Lerp(Contact, End, (swingT - 0.5f) / 0.5f);
+                if (phase == SwingPhase.Recovering || phase == SwingPhase.Idle) return Mathf.Min(End + recoverClock, Recover);
+                return Start;
+            }
+        }
+        // the hand's path read in the body's frame (Blender, 2026-11-02): a forehand takes it from the right across to the
+        // left shoulder, a backhand from the left shoulder out to the right
+        public static readonly Move FhDrive = new Move("Mocap_Swings", 0.40f, 0.74f, 1.35f, 1.9f);
+        public static readonly Move BhDrive = new Move("Mocap_EliteRally", 7.33f, 7.62f, 7.9f, 7.95f);
+        public static readonly Move FhLunge = new Move("Mocap_EliteRally", 0.0f, 0.55f, 0.8f, 1.2f);
+        public static readonly Move BhLunge = new Move("Mocap_EliteRally", 5.9f, 6.33f, 6.75f, 7.1f);
+        /// <summary>Between shots: the junior's ready on the T, swaying between these two moments; the split step lands in the
+        /// low stance's moment.</summary>
+        public const float ReadyA = 4.10f, ReadyB = 4.45f, SplitLow = 0.6f;
+        /// <summary>Our motion capture is in (else the figure's pose is the body's when standing, as before).</summary>
+        public bool HasMoves { get; private set; }
         /// <summary>The dive and the swing shown now, 0..1 (tests).</summary>
         public float DiveShown { get; private set; }
         public float SwingShown { get; private set; }
-        float _diveW, _swingW, _diveClock;
-        bool _diving, _diveRight;
+        /// <summary>The move playing now and its clip time (tests).</summary>
+        public string MoveShown { get; private set; } = "";
+        public float MoveTime { get; private set; }
+        float _diveW, _driveW, _lungeW, _diveClock, _readyClock, _recoverClock, _splitW;
+        bool _diving, _diveRight, _fore = true;
 
         AnimationClipPlayable Clip(Dictionary<string, AnimationClip> clips, string name, bool timed)
         {
@@ -244,20 +469,30 @@ namespace SquashGame.Athlete
             _graph.Connect(_loco, 0, _dir, 0); _dir.SetInputWeight(0, 1f);
             _back = Clip(clips, "Jog_Back_Loop", false); _left = Clip(clips, "Strafe_Left_Loop", false); _right = Clip(clips, "Strafe_Right_Loop", false);
             Connect(_dir, 1, _back, 0f); Connect(_dir, 2, _left, 0f); Connect(_dir, 3, _right, 0f);
-            // the dive, left or right
+            // the base: the ready on the T, the split step's low landing, moving
+            _base = AnimationMixerPlayable.Create(_graph, 3);
+            _ready = Clip(clips, "Mocap_EliteRally", true); _low = Clip(clips, "Mocap_LowStance", true);
+            HasMoves = _ready.IsValid() && _low.IsValid();
+            Connect(_base, 0, _ready, 1f); Connect(_base, 1, _low, 0f);
+            _graph.Connect(_dir, 0, _base, 2); _base.SetInputWeight(2, HasMoves ? 0f : 1f);
+            // the strokes: a drive (upper body, over the base) and a lunge (whole body), forehand and backhand
+            _drive = AnimationMixerPlayable.Create(_graph, 2);
+            _fhDrive = Clip(clips, FhDrive.Clip, true); _bhDrive = Clip(clips, BhDrive.Clip, true);
+            Connect(_drive, 0, _fhDrive, 1f); Connect(_drive, 1, _bhDrive, 0f);
+            _lunge = AnimationMixerPlayable.Create(_graph, 2);
+            _fhLunge = Clip(clips, FhLunge.Clip, true); _bhLunge = Clip(clips, BhLunge.Clip, true);
+            Connect(_lunge, 0, _fhLunge, 1f); Connect(_lunge, 1, _bhLunge, 0f);
+            // the dive, left or right (over everything)
             _dive = AnimationMixerPlayable.Create(_graph, 2);
             _diveL = Clip(clips, "Dive_Left", true); _diveR = Clip(clips, "Dive_Right", true);
             Connect(_dive, 0, _diveL, 1f); Connect(_dive, 1, _diveR, 0f);
-            // the swings
-            _swing = AnimationMixerPlayable.Create(_graph, 3);
-            _fh = Clip(clips, "Swing_Forehand", true); _bh = Clip(clips, "Swing_Backhand", true); _oh = Clip(clips, "Swing_Overhead", true);
-            Connect(_swing, 0, _fh, 1f); Connect(_swing, 1, _bh, 0f); Connect(_swing, 2, _oh, 0f);
 
-            _layers = AnimationLayerMixerPlayable.Create(_graph, 3);
-            _graph.Connect(_dir, 0, _layers, 0); _layers.SetInputWeight(0, 1f);
-            _graph.Connect(_dive, 0, _layers, 1); _layers.SetInputWeight(1, 0f);
-            _graph.Connect(_swing, 0, _layers, 2); _layers.SetInputWeight(2, 0f);
-            _layers.SetLayerMaskFromAvatarMask(2, UpperBody());
+            _layers = AnimationLayerMixerPlayable.Create(_graph, 4);
+            _graph.Connect(_base, 0, _layers, 0); _layers.SetInputWeight(0, 1f);
+            _graph.Connect(_drive, 0, _layers, 1); _layers.SetInputWeight(1, 0f);
+            _layers.SetLayerMaskFromAvatarMask(1, UpperBody());
+            _graph.Connect(_lunge, 0, _layers, 2); _layers.SetInputWeight(2, 0f);
+            _graph.Connect(_dive, 0, _layers, 3); _layers.SetInputWeight(3, 0f);
             var output = AnimationPlayableOutput.Create(_graph, "body", Anim);
             output.SetSourcePlayable(_layers);
             _graph.Play();
@@ -287,33 +522,52 @@ namespace SquashGame.Athlete
                 if (clip.IsValid()) clip.SetTime(t);
                 _dive.SetInputWeight(0, _diveRight ? 0f : 1f); _dive.SetInputWeight(1, _diveRight ? 1f : 0f);
             }
-            _layers.SetInputWeight(1, _diveW);
+            _layers.SetInputWeight(3, _diveW);
             DiveShown = _diveW;
 
-            // ---- the swing (upper body): forehand, backhand, or overhead (the serve, a ball above the head) ----
-            float want = v.Swing == SwingPhase.Idle ? 0f : v.Swing == SwingPhase.Armed ? 0.35f : 0.85f;
-            if (diving) want = 0f;
-            _swingW = Mathf.MoveTowards(_swingW, want, dt * (want > _swingW ? 6f : 3f));
-            if (_swingW > 0.001f)
+            // ---- the base: the ready (a slow sway through the junior's moment on the T), the split step's low landing ----
+            _readyClock += dt;
+            if (_ready.IsValid()) _ready.SetTime(ReadyA + (ReadyB - ReadyA) * 0.5f * (1f - Mathf.Cos(_readyClock * Mathf.PI * 2f / 1.8f)));
+            if (_low.IsValid()) _low.SetTime(SplitLow);
+            float split = Figure.SplitT >= 0f ? Mathf.Sin(Mathf.PI * Mathf.Clamp01(Figure.SplitT)) * 0.7f : 0f;
+            _splitW = Mathf.MoveTowards(_splitW, split, dt * 6f);
+            if (HasMoves)
             {
-                bool over = Figure.Clip == "overhead" || (v.HasPred && v.PredContact.y > 1.9f);
-                int which = over ? 2 : v.SwingSide > 0 ? 0 : 1;
-                var clip = which == 0 ? _fh : which == 1 ? _bh : _oh;
-                float contact = which == 0 ? FhContact : which == 1 ? BhContact : OhContact;
-                if (clip.IsValid())
-                {
-                    float len = (float)clip.GetAnimationClip().length;
-                    float t;
-                    if (v.Swing == SwingPhase.Swinging)
-                        t = v.SwingT < 0.5f ? Mathf.Lerp(contact * 0.6f, contact, v.SwingT / 0.5f) : Mathf.Lerp(contact, len * 0.92f, (v.SwingT - 0.5f) / 0.5f);
-                    else if (v.Swing == SwingPhase.Recovering) t = len * 0.92f;
-                    else t = contact * 0.6f;                               // the backswing, held until the swing goes
-                    clip.SetTime(t);
-                }
-                for (int i = 0; i < 3; i++) _swing.SetInputWeight(i, i == which ? 1f : 0f);
+                float move = _mocapW, low = Mathf.Min(_splitW, 1f - move);
+                _base.SetInputWeight(0, 1f - move - low); _base.SetInputWeight(1, low); _base.SetInputWeight(2, move);
             }
-            _layers.SetInputWeight(2, _swingW);
-            SwingShown = _swingW;
+
+            // ---- the stroke: the real forehand / backhand, its ball on the sim's (SwingT 0.5); a lunge when the sim reaches ----
+            if (v.Swing == SwingPhase.Armed || v.Swing == SwingPhase.Preparing || v.Swing == SwingPhase.Scheduled ||
+                (v.Swing == SwingPhase.Swinging && v.SwingT < 0.25f)) _fore = v.SwingSide > 0;
+            bool lunge = Figure.Clip != null && Figure.Clip.StartsWith("lunge");
+            bool committed = v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Swinging || v.Swing == SwingPhase.Recovering;
+            bool going = v.Swing == SwingPhase.Swinging || v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Armed || v.Swing == SwingPhase.Preparing;
+            _recoverClock = going ? 0f : _recoverClock + dt;
+            float wantLunge = HasMoves && !diving && lunge && committed ? 1f : 0f;
+            float wantDrive = HasMoves && !diving && v.Swing != SwingPhase.Idle && wantLunge == 0f ? 1f : 0f;
+            _lungeW = Mathf.MoveTowards(_lungeW, wantLunge, dt * (wantLunge > _lungeW ? 7f : 2.5f));
+            _driveW = Mathf.MoveTowards(_driveW, wantDrive, dt * (wantDrive > _driveW ? 7f : 2.5f));
+            Move dm = _fore ? FhDrive : BhDrive, lm = _fore ? FhLunge : BhLunge;
+            float swingT = Mathf.Clamp01(v.SwingT);
+            if (_driveW > 0.001f)
+            {
+                var c = _fore ? _fhDrive : _bhDrive;
+                if (c.IsValid()) c.SetTime(dm.At(v.Swing, swingT, _recoverClock));
+                _drive.SetInputWeight(0, _fore ? 1f : 0f); _drive.SetInputWeight(1, _fore ? 0f : 1f);
+            }
+            if (_lungeW > 0.001f)
+            {
+                var c = _fore ? _fhLunge : _bhLunge;
+                if (c.IsValid()) c.SetTime(lm.At(v.Swing, swingT, _recoverClock));
+                _lunge.SetInputWeight(0, _fore ? 1f : 0f); _lunge.SetInputWeight(1, _fore ? 0f : 1f);
+            }
+            _layers.SetInputWeight(1, _driveW);
+            _layers.SetInputWeight(2, _lungeW);
+            SwingShown = Mathf.Max(_driveW, _lungeW);
+            bool lungeOn = _lungeW >= _driveW;
+            MoveShown = SwingShown < 0.01f ? "" : (lungeOn ? (_fore ? "fh_lunge" : "bh_lunge") : (_fore ? "fh_drive" : "bh_drive"));
+            MoveTime = SwingShown < 0.01f ? 0f : (lungeOn ? lm : dm).At(v.Swing, swingT, _recoverClock);
         }
 
         void OnDestroy() { if (_graph.IsValid()) _graph.Destroy(); if (Figure != null) Figure.Dressed -= OnDressed; }
@@ -325,7 +579,7 @@ namespace SquashGame.Athlete
             if (want != ModelId && Resources.Load<TextAsset>(PlayerModels.Folder + want) != null)
             {
                 if (_graph.IsValid()) _graph.Destroy();
-                Destroy(_model); _model = null; Parts.Clear(); _pairs.Clear(); _keys.Clear();
+                Destroy(_model); _model = null; Parts.Clear(); _pairs.Clear(); _keys.Clear(); _fist.Clear(); _relaxed.Clear(); _grip = false;
                 if (!Build(Figure, want, _lit)) { enabled = false; return; }
             }
             PlayerModels.Dress(Parts, k.ShirtBody, k.Shorts, k.Socks, k.Shoes, k.Hair, k.HairStyle, k.Skin);
@@ -350,6 +604,8 @@ namespace SquashGame.Athlete
                 r.forceRenderingOff = real;
             }
             if (_graph.IsValid()) { if (real) _graph.Play(); else _graph.Stop(); }
+            if (!real) BandsHome();
+            if (!real && Figure.Rig.RacketInHand && Figure.Rig.Racket != null) { Figure.Rig.Racket.localPosition = Figure.Rig.GripLocalPos; Figure.Rig.Racket.localRotation = Figure.Rig.GripLocalRot; }
         }
 
         void LateUpdate()
@@ -370,24 +626,41 @@ namespace SquashGame.Athlete
             foreach (var p in _pairs) _anim[Key(p)] = rootInv * p.Body.rotation;
             Vector3 animHips = root.InverseTransformPoint(_bodyHips.position);
 
-            // 1 + 2: the figure's pose on the body, the motion capture blended in by part
-            // the legs: moving or diving; the arms and back: the swing, the dive, or swinging free when running
-            float wLegs = Mathf.Max(_mocapW, _diveW);
-            float wArms = Mathf.Max(_diveW, InStroke(v) ? _swingW : _mocapW * 0.85f);
-            float wSpine = Mathf.Max(_diveW, Mathf.Max(_swingW * 0.8f, _mocapW * 0.6f));
+            // the capture's hips face where the figure's do: the real player turned all over the court, the game turns the
+            // athlete itself (their twist above the hips, and every limb, stays the capture's) - not in the dive, which rolls
+            if (HasMoves)
+            {
+                Vector3 animRight = root.InverseTransformDirection(Anim.GetBoneTransform(HumanBodyBones.RightUpperLeg).position - Anim.GetBoneTransform(HumanBodyBones.LeftUpperLeg).position);
+                Vector3 figRight = root.InverseTransformDirection(Figure.Rig.Bones["Thigh_R"].position - Figure.Rig.Bones["Thigh_L"].position);
+                animRight.y = 0; figRight.y = 0;
+                float yaw = Vector3.SignedAngle(animRight, figRight, Vector3.up) * (1f - _diveW);
+                if (animRight.sqrMagnitude > 1e-6f && figRight.sqrMagnitude > 1e-6f && Mathf.Abs(yaw) > 0.01f)
+                {
+                    Quaternion fix = Quaternion.AngleAxis(yaw, Vector3.up);
+                    foreach (var p in _pairs) { var k = Key(p); _anim[k] = fix * _anim[k]; }
+                }
+            }
+
+            // 1 + 2: the figure's pose on the body, the motion capture blended in by part. With our squash capture the body
+            // is the capture's throughout (the figure only steers it: its racket hand, its facing, its hips over the floor);
+            // without, the legs are the capture's moving or diving, the arms the dive's or swinging free when running
+            float wLegs = HasMoves ? 1f : Mathf.Max(_mocapW, _diveW);
+            float wArms = HasMoves ? 1f : Mathf.Max(_diveW, _mocapW * 0.85f);
+            float wSpine = HasMoves ? 1f : Mathf.Max(_diveW, _mocapW * 0.6f);
             foreach (var p in _pairs)
             {
                 Quaternion fig = rootInv * p.Rig.rotation;
                 Quaternion turned = fig * Quaternion.Inverse(p.RigRest) * p.BodyRestAdj;
-                float w = p.Legs ? wLegs : p.Arm ? wArms : p.Spine ? wSpine : Mathf.Max(_diveW, _mocapW * 0.3f);
+                float w = p.Legs ? wLegs : p.Arm ? wArms : p.Spine ? wSpine : HasMoves ? 1f : Mathf.Max(_diveW, _mocapW * 0.3f);
                 Quaternion q = w > 0.001f ? Quaternion.Slerp(turned, _anim[Key(p)], w) : turned;
                 p.Body.rotation = root.rotation * q;
             }
             Vector3 figHips = root.InverseTransformPoint(_rigPelvis.position) + _hipsOffset;
             _bodyHips.position = root.TransformPoint(Vector3.Lerp(figHips, new Vector3(figHips.x, Mathf.Lerp(figHips.y, animHips.y, wLegs), figHips.z), 1f));
 
-            // 3: IK - the racket hand exactly where the figure's is (the racket rides that hand), the free hand, the feet
-            Reach(HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand, "Hand_R", "Forearm_R", 1f);
+            // 3: IK - the racket in the body's hand (the squash grip; before it, the hand where the figure's is), the free hand, the feet
+            if (_grip) Grip();
+            else Reach(HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand, "Hand_R", "Forearm_R", 1f);
             Reach(HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand, "Hand_L", "Forearm_L", 1f - wArms);
             for (int s = 0; s < 2; s++)
             {
@@ -395,6 +668,7 @@ namespace SquashGame.Athlete
                 Reach(s == 0 ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperLeg, s == 0 ? HumanBodyBones.LeftLowerLeg : HumanBodyBones.RightLowerLeg,
                       s == 0 ? HumanBodyBones.LeftFoot : HumanBodyBones.RightFoot, "Foot_" + side, "Shin_" + side, 1f - wLegs);
             }
+            Bands();
         }
 
         HumanBodyBones Key(Pair p) { return _keys.TryGetValue(p.Body, out var k) ? k : Cache(p); }
@@ -416,7 +690,8 @@ namespace SquashGame.Athlete
             if (fwd == Vector3.zero) fwd = Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, fwd);
             float f = Vector3.Dot(_vel, fwd), r = Vector3.Dot(_vel, right);
-            bool busy = InStroke(v) && v.Swing >= SwingPhase.Scheduled || Figure.SplitT >= 0f;
+            // (with our capture the feet keep moving into a shot: the ready and the lunge take over as the athlete stops)
+            bool busy = !HasMoves && (InStroke(v) && v.Swing >= SwingPhase.Scheduled || Figure.SplitT >= 0f);
             float want = busy ? 0f : Mathf.Clamp01((speed - 0.6f) / 1.0f);
             _mocapW = Mathf.MoveTowards(_mocapW, want, dt * (want > _mocapW ? 4f : 6f));
             MocapWeight = _mocapW;

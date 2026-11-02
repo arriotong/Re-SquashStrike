@@ -76,6 +76,150 @@ namespace SquashGame.Tests
             foreach (var gr in graphs) gr.Destroy();
         }
 
+        /// <summary>2026-11-02 our squash motion capture (Rokoko Vision from real rally footage) played straight through on the
+        /// player, from behind and the side: Captures/players/mocap_&lt;clip&gt;.png.</summary>
+        [UnityTest]
+        public IEnumerator OurSquashMocapOnThePlayer()
+        {
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            var court = Object.FindFirstObjectByType<MatchCourt>();
+            var a0 = GameObject.Find("Athlete0").GetComponent<Athlete.AthleteFigure>();
+            Vector3 spot = a0.transform.position, fwd = a0.transform.forward; fwd.y = 0; fwd.Normalize();
+            foreach (var f in Object.FindObjectsByType<Athlete.AthleteFigure>(FindObjectsSortMode.None)) f.gameObject.SetActive(false);
+            var parts = new List<Athlete.PlayerModels.Part>();
+            var go = Athlete.PlayerModels.Spawn(Athlete.PlayerModels.You, null, court.Palette.Lit, parts);
+            Athlete.PlayerModels.Dress(parts, new Color(0.78f, 1f, 0.24f), Color.white, Color.white, Color.white, new Color(0.2f, 0.14f, 0.1f), 2, Athlete.PlayerModels.Tones[1]);
+            go.transform.position = new Vector3(spot.x, 0, spot.z); go.transform.rotation = Quaternion.LookRotation(fwd);
+            var anim = go.GetComponent<Animator>(); anim.applyRootMotion = false;
+            var clips = Athlete.PlayerModels.Clips();
+            var cam = Camera.main; var rigCam = cam.GetComponent<GameplayCameraRig>(); if (rigCam != null) rigCam.enabled = false;
+            Directory.CreateDirectory(Path.Combine("Captures", "players"));
+            foreach (var name in new[] { "Mocap_EliteRally", "Mocap_LowStance", "Mocap_Swings" })
+            {
+                Assert.That(clips.ContainsKey(name), Is.True, name);
+                var c = clips[name];
+                const int CELL = 300, N = 12;
+                var sheet = new Texture2D(N * CELL, 2 * CELL, TextureFormat.RGB24, false);
+                var rt = new RenderTexture(CELL, CELL, 24);
+                for (int i = 0; i < N; i++)
+                {
+                    var g = PlayableGraph.Create("mocap");
+                    var cp = AnimationClipPlayable.Create(g, c);
+                    AnimationPlayableOutput.Create(g, "out", anim).SetSourcePlayable(cp);
+                    cp.SetTime(c.length * i / N); g.Evaluate(0);
+                    yield return null;
+                    for (int row = 0; row < 2; row++)
+                    {
+                        Vector3 p = go.transform.position;
+                        cam.fieldOfView = 42f;
+                        cam.transform.position = row == 0 ? p - fwd * 3.6f + Vector3.up * 1.5f : p + Vector3.Cross(Vector3.up, fwd) * 3.6f + Vector3.up * 1.2f;
+                        cam.transform.LookAt(p + Vector3.up * 0.8f);
+                        cam.targetTexture = rt; cam.Render(); RenderTexture.active = rt;
+                        var cell = new Texture2D(CELL, CELL, TextureFormat.RGB24, false);
+                        cell.ReadPixels(new Rect(0, 0, CELL, CELL), 0, 0); cell.Apply();
+                        sheet.SetPixels(i * CELL, (1 - row) * CELL, CELL, CELL, cell.GetPixels());
+                        RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
+                    }
+                    g.Destroy();
+                }
+                sheet.Apply();
+                File.WriteAllBytes(Path.Combine("Captures", "players", "mocap_" + name + ".png"), sheet.EncodeToPNG());
+            }
+        }
+
+        /// <summary>2026-11-02 a real rally (both athletes on autopilot) with our squash capture as the players' animation: each
+        /// stroke photographed at the ball and in its follow-through from beside the striker (Captures/players/rally.png), the
+        /// racket hand close up (grip.png); the racket is drawn in the body's hand near where the sim has it, both wings played.</summary>
+        [UnityTest]
+        public IEnumerator ARallyWithOurSquashMoves()
+        {
+            LocalMatchTests.FreshProfile();
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            Object.FindFirstObjectByType<UI.FrontEnd>().StartMatch(MatchSettings.QuickGame());
+            var r = Object.FindFirstObjectByType<MatchCourt>().Runner;
+            r.SetAutopilot(new SquashSim.OpponentBrain(SquashSim.AiProfile.ByName("retriever").WithDifficulty(0.9), 11));
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 4f) yield return null;          // past the walk-on
+            var bodies = Object.FindObjectsByType<Athlete.AthleteBody>(FindObjectsSortMode.None);
+            Assert.That(bodies.Length, Is.EqualTo(2));
+            foreach (var b in bodies) Assert.That(b.HasMoves, Is.True, "our squash capture is in");
+
+            var camGo = new GameObject("RallyCam"); var cam = camGo.AddComponent<Camera>(); cam.enabled = false; cam.fieldOfView = 40f;
+            const int CELL = 320, COLS = 8, ROWS = 3;
+            var sheet = new Texture2D(COLS * CELL, ROWS * CELL, TextureFormat.RGB24, false);
+            var grip = new Texture2D(COLS * CELL, 2 * CELL, TextureFormat.RGB24, false);
+            var rt = new RenderTexture(CELL, CELL, 24);
+            System.Action<Texture2D, int, int> shoot = (into, x, y) =>
+            {
+                cam.targetTexture = rt; cam.Render(); RenderTexture.active = rt;
+                var cell = new Texture2D(CELL, CELL, TextureFormat.RGB24, false);
+                cell.ReadPixels(new Rect(0, 0, CELL, CELL), 0, 0); cell.Apply();
+                into.SetPixels(x * CELL, y * CELL, CELL, CELL, cell.GetPixels());
+                RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
+            };
+            var seen = new HashSet<string>(); var counts = new Dictionary<string, int>();
+            int shots = 0, grips = 0; var gaps = new List<float>();
+            var last = new Dictionary<Athlete.AthleteBody, string>();
+            t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 50f && shots < COLS * ROWS)
+            {
+                yield return null;                                  // (the transforms hold last frame's drawn pose: the grip, the racket in the hand)
+                foreach (var b in bodies)
+                {
+                    if (!b.Showing) continue;
+                    gaps.Add(b.GripGap);
+                    var v = b.Figure.Posed;
+                    string phase = b.MoveShown == "" ? "" : v.Swing == SwingPhase.Swinging && v.SwingT >= 0.45f && v.SwingT < 0.75f ? "ball" :
+                                   v.Swing == SwingPhase.Recovering || (v.Swing == SwingPhase.Swinging && v.SwingT >= 0.9f) ? "follow" : "";
+                    string key = phase == "" ? "" : b.MoveShown + "/" + phase;
+                    last.TryGetValue(b, out var was);
+                    if (key == "" || key == was) { last[b] = key; continue; }
+                    last[b] = key;
+                    counts.TryGetValue(b.MoveShown, out int k); counts[b.MoveShown] = k + (phase == "ball" ? 1 : 0);
+                    if (phase == "ball") seen.Add(b.MoveShown);
+                    // from beside the striker (their right), a little behind, at chest height
+                    Vector3 p = b.Figure.transform.position, f = b.Figure.DrawnForward; f.y = 0; f.Normalize();
+                    Vector3 side = Vector3.Cross(Vector3.up, f);
+                    cam.transform.position = p + side * 3.0f - f * 1.6f + Vector3.up * 1.35f;
+                    cam.transform.LookAt(p + Vector3.up * 0.85f);
+                    shoot(sheet, shots % COLS, ROWS - 1 - shots / COLS);
+                    shots++;
+                    if (phase == "ball" && grips < COLS)
+                    {
+                        // the palm side and the back of the hand
+                        var hand = b.Anim.GetBoneTransform(HumanBodyBones.RightHand);
+                        Vector3 mid = b.Anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal).position;
+                        Vector3 knuckles = (b.Anim.GetBoneTransform(HumanBodyBones.RightIndexProximal).position - b.Anim.GetBoneTransform(HumanBodyBones.RightLittleProximal).position).normalized;
+                        Vector3 palm = Vector3.Cross((mid - hand.position).normalized, knuckles).normalized;
+                        Vector3 c = Vector3.Lerp(hand.position, mid, 0.5f);
+                        for (int view = 0; view < 2; view++)
+                        {
+                            cam.transform.position = c + (view == 0 ? palm : -palm) * 0.45f + knuckles * 0.12f;
+                            cam.transform.LookAt(c);
+                            shoot(grip, grips, 1 - view);
+                        }
+                        grips++;
+                    }
+                }
+            }
+            sheet.Apply(); grip.Apply();
+            Directory.CreateDirectory(Path.Combine("Captures", "players"));
+            File.WriteAllBytes(Path.Combine("Captures", "players", "rally.png"), sheet.EncodeToPNG());
+            File.WriteAllBytes(Path.Combine("Captures", "players", "grip.png"), grip.EncodeToPNG());
+            var tally = new List<string>(); foreach (var kv in counts) tally.Add(kv.Key + " x" + kv.Value);
+            gaps.Sort();
+            float g50 = gaps[gaps.Count / 2], g90 = gaps[(int)(gaps.Count * 0.9f)], gMax = gaps[gaps.Count - 1];
+            Debug.Log("[Rally] strokes at the ball: " + string.Join(", ", tally) + "; the racket drawn off the sim's by " + g50.ToString("0.000") +
+                      " m (median), " + g90.ToString("0.000") + " (90%), " + gMax.ToString("0.000") + " (worst)");
+            Assert.That(seen.Contains("fh_drive") || seen.Contains("fh_lunge"), Is.True, "a forehand");
+            Assert.That(seen.Contains("bh_drive") || seen.Contains("bh_lunge"), Is.True, "a backhand");
+            Assert.That(g90, Is.LessThan(0.01f), "the body's arm takes the racket where the sim has it");
+            Assert.That(gMax, Is.LessThan(0.05f), "never far off it");
+            Object.Destroy(camGo);
+        }
+
         [UnityTest]
         public IEnumerator ABodyLoadsDressesAndPlaysTheMotionCapture()
         {
@@ -106,11 +250,16 @@ namespace SquashGame.Tests
             var shots = new List<(string clip, float t)> { (null, 0) };
             foreach (var want in new[] { "Jog_Fwd_Loop", "Sprint_Loop", "Strafe_Left_Loop", "Jog_Back_Loop" })
                 if (clips.ContainsKey(want)) { shots.Add((want, 0.25f)); shots.Add((want, 0.75f)); }
-            // the user's Mixamo clips at their moments: the dive (launch, landing, on the floor, rising), the swings at contact
-            foreach (var (want, sec) in new[] { ("Dive_Left", 1.2f), ("Dive_Left", 1.6f), ("Dive_Left", 2.6f), ("Swing_Forehand", Athlete.AthleteBody.FhContact),
-                                                ("Swing_Backhand", Athlete.AthleteBody.BhContact), ("Swing_Overhead", Athlete.AthleteBody.OhContact) })
+            // the user's Mixamo dive (launch, landing, on the floor, rising); our squash capture's moves at the ball
+            foreach (var (want, sec) in new[] { ("Dive_Left", 1.2f), ("Dive_Left", 1.6f), ("Dive_Left", 2.6f) })
                 if (clips.ContainsKey(want)) shots.Add((want, sec / clips[want].length));
-            Assert.That(clips.ContainsKey("Dive_Left") && clips.ContainsKey("Swing_Forehand") && clips.ContainsKey("Strafe_Right_Loop"), Is.True, "the Mixamo clips are in");
+            foreach (var m in new[] { Athlete.AthleteBody.FhDrive, Athlete.AthleteBody.BhDrive, Athlete.AthleteBody.FhLunge, Athlete.AthleteBody.BhLunge })
+            {
+                Assert.That(clips.ContainsKey(m.Clip), Is.True, m.Clip);
+                Assert.That(m.Start < m.Contact && m.Contact < m.End && m.End <= m.Recover && m.Recover <= clips[m.Clip].length + 0.02f, Is.True, m.Clip + " moments in order, inside the clip");
+                shots.Add((m.Clip, m.Contact / clips[m.Clip].length));
+            }
+            Assert.That(clips.ContainsKey("Dive_Left") && clips.ContainsKey("Strafe_Right_Loop"), Is.True, "the Mixamo clips are in");
 
             const int CELL = 360;
             int cols = shots.Count;
