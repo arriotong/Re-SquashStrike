@@ -160,7 +160,7 @@ namespace SquashGame.Tests
                 RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
             };
             var seen = new List<string>(); var counts = new Dictionary<string, int>();
-            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>();
+            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>(); var atBall = new List<float>(); float feet = 0f;
             var locked = new Dictionary<Athlete.AthleteBody, string>(); int changed = 0;
             var last = new Dictionary<Athlete.AthleteBody, string>();
             t0 = Time.realtimeSinceStartup;
@@ -171,6 +171,13 @@ namespace SquashGame.Tests
                 {
                     if (!b.Showing) continue;
                     gaps.Add(b.GripGap);
+                    if (b.MoveLocked && b.SwingShown > 0.9f) feet = Mathf.Max(feet, b.FootGap);
+                    if (b.Figure.Posed.Swing == SwingPhase.Swinging && b.Figure.RacketLock >= 1f)
+                    {
+                        Vector3 up0 = b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position - b.Anim.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
+                        Vector3 low0 = b.Anim.GetBoneTransform(HumanBodyBones.RightHand).position - b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position;
+                        atBall.Add(Vector3.Angle(up0, low0));
+                    }
                     if (b.FollowShown > 0.99f)
                     {
                         Vector3 up = b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position - b.Anim.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
@@ -183,6 +190,7 @@ namespace SquashGame.Tests
                     var v = b.Figure.Posed;
                     string phase = b.MoveShown == "" ? "" : v.Swing == SwingPhase.Swinging && v.SwingT >= 0.45f && v.SwingT < 0.75f ? "ball" :
                                    v.Swing == SwingPhase.Recovering || (v.Swing == SwingPhase.Swinging && v.SwingT >= 0.9f) ? "follow" : "";
+                    if (phase == "follow" && b.FollowShown < 0.98f) phase = "";          // (the finish reached, not on the way there)
                     string key = phase == "" ? "" : b.MoveShown + "/" + phase;
                     last.TryGetValue(b, out var was);
                     if (key == "" || key == was) { last[b] = key; continue; }
@@ -224,6 +232,9 @@ namespace SquashGame.Tests
             Debug.Log("[Rally] strokes at the ball: " + string.Join(", ", tally) + "; the racket drawn off the sim's by " + g50.ToString("0.000") +
                       " m (median), " + g90.ToString("0.000") + " (90%), " + gMax.ToString("0.000") + " (worst)");
             Assert.That(elbows.Count, Is.GreaterThan(0), "follow-throughs were seen");
+            atBall.Sort();
+            Debug.Log("[Rally] the elbow's bend at the ball: " + (atBall.Count > 0 ? atBall[atBall.Count / 2].ToString("0") : "-") + " deg (median); the lower foot at most " + feet.ToString("0.000") + " m off the floor");
+            Assert.That(feet, Is.LessThan(0.02f), "no one floats in a stroke");
             elbows.Sort();
             Debug.Log("[Rally] the elbow's bend in the finish: " + elbows[elbows.Count / 2].ToString("0") + " deg (median), " + elbows[elbows.Count - 1].ToString("0") + " (worst)");
             Assert.That(elbows[elbows.Count / 2], Is.LessThan(20f), "the arm finishes straight out");
