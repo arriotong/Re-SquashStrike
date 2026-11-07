@@ -159,8 +159,9 @@ namespace SquashGame.Tests
                 into.SetPixels(x * CELL, y * CELL, CELL, CELL, cell.GetPixels());
                 RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
             };
-            var seen = new HashSet<string>(); var counts = new Dictionary<string, int>();
+            var seen = new List<string>(); var counts = new Dictionary<string, int>();
             int shots = 0, grips = 0; var gaps = new List<float>();
+            var locked = new Dictionary<Athlete.AthleteBody, string>(); int changed = 0;
             var last = new Dictionary<Athlete.AthleteBody, string>();
             t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < 50f && shots < COLS * ROWS)
@@ -170,6 +171,9 @@ namespace SquashGame.Tests
                 {
                     if (!b.Showing) continue;
                     gaps.Add(b.GripGap);
+                    locked.TryGetValue(b, out var held);
+                    if (!b.MoveLocked) locked[b] = "";
+                    else if (b.MoveShown != "") { if (held != "" && held != null && held != b.MoveShown) changed++; locked[b] = b.MoveShown; }
                     var v = b.Figure.Posed;
                     string phase = b.MoveShown == "" ? "" : v.Swing == SwingPhase.Swinging && v.SwingT >= 0.45f && v.SwingT < 0.75f ? "ball" :
                                    v.Swing == SwingPhase.Recovering || (v.Swing == SwingPhase.Swinging && v.SwingT >= 0.9f) ? "follow" : "";
@@ -178,7 +182,7 @@ namespace SquashGame.Tests
                     if (key == "" || key == was) { last[b] = key; continue; }
                     last[b] = key;
                     counts.TryGetValue(b.MoveShown, out int k); counts[b.MoveShown] = k + (phase == "ball" ? 1 : 0);
-                    if (phase == "ball") seen.Add(b.MoveShown);
+                    if (phase == "ball" && !seen.Contains(b.MoveShown)) seen.Add(b.MoveShown);
                     // from beside the striker (their right), a little behind, at chest height
                     Vector3 p = b.Figure.transform.position, f = b.Figure.DrawnForward; f.y = 0; f.Normalize();
                     Vector3 side = Vector3.Cross(Vector3.up, f);
@@ -213,11 +217,30 @@ namespace SquashGame.Tests
             float g50 = gaps[gaps.Count / 2], g90 = gaps[(int)(gaps.Count * 0.9f)], gMax = gaps[gaps.Count - 1];
             Debug.Log("[Rally] strokes at the ball: " + string.Join(", ", tally) + "; the racket drawn off the sim's by " + g50.ToString("0.000") +
                       " m (median), " + g90.ToString("0.000") + " (90%), " + gMax.ToString("0.000") + " (worst)");
-            Assert.That(seen.Contains("fh_drive") || seen.Contains("fh_lunge"), Is.True, "a forehand");
-            Assert.That(seen.Contains("bh_drive") || seen.Contains("bh_lunge"), Is.True, "a backhand");
+            Assert.That(seen.Exists(m => m.StartsWith("fh_")), Is.True, "a forehand");
+            Assert.That(seen.Exists(m => m.StartsWith("bh_")), Is.True, "a backhand");
+            Assert.That(changed, Is.EqualTo(0), "a stroke's move never changes once it has committed");
             Assert.That(g90, Is.LessThan(0.01f), "the body's arm takes the racket where the sim has it");
             Assert.That(gMax, Is.LessThan(0.05f), "never far off it");
             Object.Destroy(camGo);
+        }
+
+        /// <summary>2026-11-07 one situation, one move: the same facts always give the same row, and each situation has its own.</summary>
+        [Test]
+        public void EachSituationHasItsOneMove()
+        {
+            int Pick(bool fore, int reach, float h, bool touch = false, bool serve = false) { return Athlete.MoveBook.Pick(fore, reach, h, touch, serve); }
+            Assert.That(Pick(true, 0, 1.0f), Is.EqualTo(Athlete.MoveBook.FhDrive));
+            Assert.That(Pick(false, 0, 1.0f), Is.EqualTo(Athlete.MoveBook.BhDrive));
+            Assert.That(Pick(true, 1, 1.0f), Is.EqualTo(Athlete.MoveBook.FhLunge), "a reach");
+            Assert.That(Pick(false, 3, 1.0f), Is.EqualTo(Athlete.MoveBook.BhLunge), "a stretch");
+            Assert.That(Pick(true, 0, 0.3f), Is.EqualTo(Athlete.MoveBook.FhLunge), "off the floor");
+            Assert.That(Pick(true, 0, 1.0f, touch: true), Is.EqualTo(Athlete.MoveBook.FhTouch));
+            Assert.That(Pick(false, 0, 1.0f, touch: true), Is.EqualTo(Athlete.MoveBook.BhTouch));
+            Assert.That(Pick(true, 0, 1.8f), Is.EqualTo(Athlete.MoveBook.FhHigh));
+            Assert.That(Pick(false, 0, 1.8f), Is.EqualTo(Athlete.MoveBook.BhHigh));
+            Assert.That(Pick(false, 2, 0.2f, true, true), Is.EqualTo(Athlete.MoveBook.Serve), "the serve first");
+            for (int i = 0; i < Athlete.MoveBook.All.Length; i++) Assert.That(Pick(true, 0, 1.0f), Is.EqualTo(Athlete.MoveBook.FhDrive), "nothing random");
         }
 
         [UnityTest]
@@ -253,7 +276,7 @@ namespace SquashGame.Tests
             // the user's Mixamo dive (launch, landing, on the floor, rising); our squash capture's moves at the ball
             foreach (var (want, sec) in new[] { ("Dive_Left", 1.2f), ("Dive_Left", 1.6f), ("Dive_Left", 2.6f) })
                 if (clips.ContainsKey(want)) shots.Add((want, sec / clips[want].length));
-            foreach (var m in new[] { Athlete.AthleteBody.FhDrive, Athlete.AthleteBody.BhDrive, Athlete.AthleteBody.FhLunge, Athlete.AthleteBody.BhLunge })
+            foreach (var m in Athlete.MoveBook.All)
             {
                 Assert.That(clips.ContainsKey(m.Clip), Is.True, m.Clip);
                 Assert.That(m.Start < m.Contact && m.Contact < m.End && m.End <= m.Recover && m.Recover <= clips[m.Clip].length + 0.02f, Is.True, m.Clip + " moments in order, inside the clip");

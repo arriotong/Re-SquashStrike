@@ -166,6 +166,8 @@ namespace SquashGame
         public abstract List<Surface> Surfaces { get; }
         /// <summary>Index of the athlete the local player controls (aim recentring, HUD).</summary>
         public virtual int HumanIndex { get { return 0; } }
+        /// <summary>This athlete is serving now (the views play the serve).</summary>
+        public virtual bool IsServing(int athlete) { return false; }
         /// <summary>Shot lines for the people here (off where the exact spot is the game: the Target Arcade).</summary>
         protected virtual bool ShotLines { get { return ShotLinesEnabled; } }
         /// <summary>Tests that check the exact aim switch shot lines off here.</summary>

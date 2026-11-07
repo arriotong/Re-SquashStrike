@@ -678,6 +678,7 @@ namespace SquashGame
         /// <summary>The online match playing (null: not online). This machine plays athlete OnlineMatch.Me.</summary>
         public LockstepSession OnlineMatch { get; private set; }
         public override int HumanIndex { get { return OnlineMatch != null ? OnlineMatch.Me : 0; } }
+        public override bool IsServing(int athlete) { return Sim != null && Sim.Referee.InServe && Sim.Referee.Server == athlete; }
         readonly InputIntent _still = new InputIntent();
         double _sinceTick;
         bool _onlinePublished;

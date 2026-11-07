@@ -380,34 +380,13 @@ namespace SquashGame.Athlete
 
         // ---- 2026-11-01 the user's Mixamo clips: every direction, the goalkeeper dive ----
         AnimationLayerMixerPlayable _layers;
-        AnimationMixerPlayable _base, _dir, _dive, _drive, _lunge;
-        AnimationClipPlayable _back, _left, _right, _diveL, _diveR, _ready, _low, _fhDrive, _bhDrive, _fhLunge, _bhLunge;
+        AnimationMixerPlayable _base, _dir, _dive, _prep, _stroke;
+        AnimationClipPlayable _back, _left, _right, _diveL, _diveR, _ready, _low;
+        readonly AnimationClipPlayable[] _prepClips = new AnimationClipPlayable[MoveBook.All.Length], _strokeClips = new AnimationClipPlayable[MoveBook.All.Length];
         /// <summary>The dive's launch, landing and rise, in seconds (measured in Blender, 2026-11-01).</summary>
         public const float DiveLaunch = 1.0f, DiveLandL = 1.6f, DiveRiseL = 2.4f, DiveEndL = 3.33f, DiveLandR = 1.47f, DiveRiseR = 2.2f, DiveEndR = 3.2f;
         public const float StrafeSpeed = 4.0f, BackSpeed = 2.2f;
 
-        /// <summary>2026-11-02 a move cut from our squash motion capture (Rokoko Vision from real footage: a model's ghosted
-        /// forehands, an elite junior rally): its clip and its moments in seconds - where it starts (the racket back / the
-        /// step in), the ball, the follow-through's end, and back toward the ready.</summary>
-        public readonly struct Move
-        {
-            public readonly string Clip; public readonly float Start, Contact, End, Recover;
-            public Move(string clip, float start, float contact, float end, float recover) { Clip = clip; Start = start; Contact = contact; End = end; Recover = recover; }
-            /// <summary>The clip's time for the sim's swing: the start held while preparing, the ball at SwingT 0.5.</summary>
-            public float At(int phase, float swingT, float recoverClock)
-            {
-                if (phase == SwingPhase.Swinging)
-                    return swingT < 0.5f ? Mathf.Lerp(Start, Contact, swingT / 0.5f) : Mathf.Lerp(Contact, End, (swingT - 0.5f) / 0.5f);
-                if (phase == SwingPhase.Recovering || phase == SwingPhase.Idle) return Mathf.Min(End + recoverClock, Recover);
-                return Start;
-            }
-        }
-        // the hand's path read in the body's frame (Blender, 2026-11-02): a forehand takes it from the right across to the
-        // left shoulder, a backhand from the left shoulder out to the right
-        public static readonly Move FhDrive = new Move("Mocap_Swings", 0.40f, 0.74f, 1.35f, 1.9f);
-        public static readonly Move BhDrive = new Move("Mocap_EliteRally", 7.33f, 7.62f, 7.9f, 7.95f);
-        public static readonly Move FhLunge = new Move("Mocap_EliteRally", 0.0f, 0.55f, 0.8f, 1.2f);
-        public static readonly Move BhLunge = new Move("Mocap_EliteRally", 5.9f, 6.33f, 6.75f, 7.1f);
         /// <summary>Between shots: the junior's ready on the T, swaying between these two moments; the split step lands in the
         /// low stance's moment.</summary>
         public const float ReadyA = 4.10f, ReadyB = 4.45f, SplitLow = 0.6f;
@@ -419,8 +398,11 @@ namespace SquashGame.Athlete
         /// <summary>The move playing now and its clip time (tests).</summary>
         public string MoveShown { get; private set; } = "";
         public float MoveTime { get; private set; }
-        float _diveW, _driveW, _lungeW, _diveClock, _readyClock, _recoverClock, _splitW;
-        bool _diving, _diveRight, _fore = true;
+        float _diveW, _prepW, _strokeW, _diveClock, _readyClock, _recoverClock, _splitW;
+        bool _diving, _diveRight, _locked;
+        int _pick = MoveBook.FhDrive;
+        /// <summary>The stroke's move is settled (it stays until the stroke is over) (tests).</summary>
+        public bool MoveLocked { get { return _locked; } }
 
         AnimationClipPlayable Clip(Dictionary<string, AnimationClip> clips, string name, bool timed)
         {
@@ -475,13 +457,15 @@ namespace SquashGame.Athlete
             HasMoves = _ready.IsValid() && _low.IsValid();
             Connect(_base, 0, _ready, 1f); Connect(_base, 1, _low, 0f);
             _graph.Connect(_dir, 0, _base, 2); _base.SetInputWeight(2, HasMoves ? 0f : 1f);
-            // the strokes: a drive (upper body, over the base) and a lunge (whole body), forehand and backhand
-            _drive = AnimationMixerPlayable.Create(_graph, 2);
-            _fhDrive = Clip(clips, FhDrive.Clip, true); _bhDrive = Clip(clips, BhDrive.Clip, true);
-            Connect(_drive, 0, _fhDrive, 1f); Connect(_drive, 1, _bhDrive, 0f);
-            _lunge = AnimationMixerPlayable.Create(_graph, 2);
-            _fhLunge = Clip(clips, FhLunge.Clip, true); _bhLunge = Clip(clips, BhLunge.Clip, true);
-            Connect(_lunge, 0, _fhLunge, 1f); Connect(_lunge, 1, _bhLunge, 0f);
+            // the strokes (MoveBook): getting ready is the upper body's, over the feet still moving; committed, it's the whole
+            // body's, the same every time
+            _prep = AnimationMixerPlayable.Create(_graph, MoveBook.All.Length);
+            _stroke = AnimationMixerPlayable.Create(_graph, MoveBook.All.Length);
+            for (int i = 0; i < MoveBook.All.Length; i++)
+            {
+                _prepClips[i] = Clip(clips, MoveBook.All[i].Clip, true); _strokeClips[i] = Clip(clips, MoveBook.All[i].Clip, true);
+                Connect(_prep, i, _prepClips[i], 0f); Connect(_stroke, i, _strokeClips[i], 0f);
+            }
             // the dive, left or right (over everything)
             _dive = AnimationMixerPlayable.Create(_graph, 2);
             _diveL = Clip(clips, "Dive_Left", true); _diveR = Clip(clips, "Dive_Right", true);
@@ -489,9 +473,9 @@ namespace SquashGame.Athlete
 
             _layers = AnimationLayerMixerPlayable.Create(_graph, 4);
             _graph.Connect(_base, 0, _layers, 0); _layers.SetInputWeight(0, 1f);
-            _graph.Connect(_drive, 0, _layers, 1); _layers.SetInputWeight(1, 0f);
+            _graph.Connect(_prep, 0, _layers, 1); _layers.SetInputWeight(1, 0f);
             _layers.SetLayerMaskFromAvatarMask(1, UpperBody());
-            _graph.Connect(_lunge, 0, _layers, 2); _layers.SetInputWeight(2, 0f);
+            _graph.Connect(_stroke, 0, _layers, 2); _layers.SetInputWeight(2, 0f);
             _graph.Connect(_dive, 0, _layers, 3); _layers.SetInputWeight(3, 0f);
             var output = AnimationPlayableOutput.Create(_graph, "body", Anim);
             output.SetSourcePlayable(_layers);
@@ -533,41 +517,38 @@ namespace SquashGame.Athlete
             _splitW = Mathf.MoveTowards(_splitW, split, dt * 6f);
             if (HasMoves)
             {
-                float move = _mocapW, low = Mathf.Min(_splitW, 1f - move);
-                _base.SetInputWeight(0, 1f - move - low); _base.SetInputWeight(1, low); _base.SetInputWeight(2, move);
+                float moving = _mocapW, low = Mathf.Min(_splitW, 1f - moving);
+                _base.SetInputWeight(0, 1f - moving - low); _base.SetInputWeight(1, low); _base.SetInputWeight(2, moving);
             }
 
-            // ---- the stroke: the real forehand / backhand, its ball on the sim's (SwingT 0.5); a lunge when the sim reaches ----
-            if (v.Swing == SwingPhase.Armed || v.Swing == SwingPhase.Preparing || v.Swing == SwingPhase.Scheduled ||
-                (v.Swing == SwingPhase.Swinging && v.SwingT < 0.25f)) _fore = v.SwingSide > 0;
-            bool lunge = Figure.Clip != null && Figure.Clip.StartsWith("lunge");
+            // ---- the stroke: one situation, one move (MoveBook), its ball on the sim's (SwingT 0.5). The move is read while the
+            // stroke is being set up and locked as it commits: it never changes half way through ----
             bool committed = v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Swinging || v.Swing == SwingPhase.Recovering;
-            bool going = v.Swing == SwingPhase.Swinging || v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Armed || v.Swing == SwingPhase.Preparing;
+            if (v.Swing == SwingPhase.Idle) _locked = false;
+            else if (!_locked) _pick = MoveBook.Pick(v.SwingSide > 0, v.Reach, v.HasPred ? v.PredContact.y : v.RacketHead.y, v.Touch, Figure.Runner != null && Figure.Runner.IsServing(Figure.Index));
+            if (committed) _locked = true;
+            var move = MoveBook.All[_pick];
+            bool going = v.Swing != SwingPhase.Idle && v.Swing != SwingPhase.Recovering;
             _recoverClock = going ? 0f : _recoverClock + dt;
-            float wantLunge = HasMoves && !diving && lunge && committed ? 1f : 0f;
-            float wantDrive = HasMoves && !diving && v.Swing != SwingPhase.Idle && wantLunge == 0f ? 1f : 0f;
-            _lungeW = Mathf.MoveTowards(_lungeW, wantLunge, dt * (wantLunge > _lungeW ? 7f : 2.5f));
-            _driveW = Mathf.MoveTowards(_driveW, wantDrive, dt * (wantDrive > _driveW ? 7f : 2.5f));
-            Move dm = _fore ? FhDrive : BhDrive, lm = _fore ? FhLunge : BhLunge;
-            float swingT = Mathf.Clamp01(v.SwingT);
-            if (_driveW > 0.001f)
+            // the follow-through ends; away early if the athlete is already moving off
+            bool done = v.Swing == SwingPhase.Recovering && (_vel.magnitude > 1.2f || _recoverClock >= move.Recover - move.End);
+            float wantStroke = HasMoves && !diving && committed && !done ? 1f : 0f;
+            float wantPrep = HasMoves && !diving && !committed && v.Swing != SwingPhase.Idle ? 1f : 0f;
+            _strokeW = Mathf.MoveTowards(_strokeW, wantStroke, dt * (wantStroke > _strokeW ? 9f : 3f));
+            _prepW = Mathf.MoveTowards(_prepW, wantPrep, dt * (wantPrep > _prepW ? 7f : 5f));
+            float swingT = Mathf.Clamp01(v.SwingT), at = move.At(v.Swing, swingT, _recoverClock);
+            for (int i = 0; i < MoveBook.All.Length; i++)
             {
-                var c = _fore ? _fhDrive : _bhDrive;
-                if (c.IsValid()) c.SetTime(dm.At(v.Swing, swingT, _recoverClock));
-                _drive.SetInputWeight(0, _fore ? 1f : 0f); _drive.SetInputWeight(1, _fore ? 0f : 1f);
+                if (!_strokeClips[i].IsValid()) continue;
+                _prep.SetInputWeight(i, i == _pick ? 1f : 0f); _stroke.SetInputWeight(i, i == _pick ? 1f : 0f);
             }
-            if (_lungeW > 0.001f)
-            {
-                var c = _fore ? _fhLunge : _bhLunge;
-                if (c.IsValid()) c.SetTime(lm.At(v.Swing, swingT, _recoverClock));
-                _lunge.SetInputWeight(0, _fore ? 1f : 0f); _lunge.SetInputWeight(1, _fore ? 0f : 1f);
-            }
-            _layers.SetInputWeight(1, _driveW);
-            _layers.SetInputWeight(2, _lungeW);
-            SwingShown = Mathf.Max(_driveW, _lungeW);
-            bool lungeOn = _lungeW >= _driveW;
-            MoveShown = SwingShown < 0.01f ? "" : (lungeOn ? (_fore ? "fh_lunge" : "bh_lunge") : (_fore ? "fh_drive" : "bh_drive"));
-            MoveTime = SwingShown < 0.01f ? 0f : (lungeOn ? lm : dm).At(v.Swing, swingT, _recoverClock);
+            if (_prepClips[_pick].IsValid()) _prepClips[_pick].SetTime(at);
+            if (_strokeClips[_pick].IsValid()) _strokeClips[_pick].SetTime(at);
+            _layers.SetInputWeight(1, _prepW);
+            _layers.SetInputWeight(2, _strokeW);
+            SwingShown = Mathf.Max(_prepW, _strokeW);
+            MoveShown = SwingShown < 0.01f ? "" : move.Name;
+            MoveTime = SwingShown < 0.01f ? 0f : at;
         }
 
         void OnDestroy() { if (_graph.IsValid()) _graph.Destroy(); if (Figure != null) Figure.Dressed -= OnDressed; }
