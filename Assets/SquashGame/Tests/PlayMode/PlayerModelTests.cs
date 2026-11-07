@@ -160,7 +160,7 @@ namespace SquashGame.Tests
                 RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
             };
             var seen = new List<string>(); var counts = new Dictionary<string, int>();
-            int shots = 0, grips = 0; var gaps = new List<float>();
+            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>();
             var locked = new Dictionary<Athlete.AthleteBody, string>(); int changed = 0;
             var last = new Dictionary<Athlete.AthleteBody, string>();
             t0 = Time.realtimeSinceStartup;
@@ -171,6 +171,12 @@ namespace SquashGame.Tests
                 {
                     if (!b.Showing) continue;
                     gaps.Add(b.GripGap);
+                    if (b.FollowShown > 0.99f)
+                    {
+                        Vector3 up = b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position - b.Anim.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
+                        Vector3 low = b.Anim.GetBoneTransform(HumanBodyBones.RightHand).position - b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position;
+                        elbows.Add(Vector3.Angle(up, low));
+                    }
                     locked.TryGetValue(b, out var held);
                     if (!b.MoveLocked) locked[b] = "";
                     else if (b.MoveShown != "") { if (held != "" && held != null && held != b.MoveShown) changed++; locked[b] = b.MoveShown; }
@@ -217,6 +223,10 @@ namespace SquashGame.Tests
             float g50 = gaps[gaps.Count / 2], g90 = gaps[(int)(gaps.Count * 0.9f)], gMax = gaps[gaps.Count - 1];
             Debug.Log("[Rally] strokes at the ball: " + string.Join(", ", tally) + "; the racket drawn off the sim's by " + g50.ToString("0.000") +
                       " m (median), " + g90.ToString("0.000") + " (90%), " + gMax.ToString("0.000") + " (worst)");
+            Assert.That(elbows.Count, Is.GreaterThan(0), "follow-throughs were seen");
+            elbows.Sort();
+            Debug.Log("[Rally] the elbow's bend in the finish: " + elbows[elbows.Count / 2].ToString("0") + " deg (median), " + elbows[elbows.Count - 1].ToString("0") + " (worst)");
+            Assert.That(elbows[elbows.Count / 2], Is.LessThan(20f), "the arm finishes straight out");
             Assert.That(seen.Exists(m => m.StartsWith("fh_")), Is.True, "a forehand");
             Assert.That(seen.Exists(m => m.StartsWith("bh_")), Is.True, "a backhand");
             Assert.That(changed, Is.EqualTo(0), "a stroke's move never changes once it has committed");

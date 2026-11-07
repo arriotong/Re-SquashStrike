@@ -196,6 +196,8 @@ namespace SquashGame.Athlete
         public float GripGap { get; private set; }
         /// <summary>How far the chest leant toward an out-of-reach racket, degrees.</summary>
         public const float MaxLean = 30f;
+        /// <summary>Past this SwingT the ball has gone (0.5) and the arm may finish on its own.</summary>
+        public const float FollowFrom = 0.56f;
         /// <summary>How far the body may be moved toward a racket still out of reach after the lean, metres; how far it was now.</summary>
         public const float MaxBodyShift = 0.5f;
         public float BodyShift { get; private set; }
@@ -272,16 +274,32 @@ namespace SquashGame.Athlete
             if (racket == null || ta == null || tb == null || tc == null) return;
             // where the sim has the racket (last frame it was drawn in the body's hand: back in the figure's first)
             if (Figure.Rig.RacketInHand) { racket.localPosition = Figure.Rig.GripLocalPos; racket.localRotation = Figure.Rig.GripLocalRot; }
-            Quaternion handRot = racket.rotation * _gripRot;
             Vector3 simAt = racket.position;
-            Vector3 onHandle = racket.position - racket.up * GripUp;
+            float arm = Vector3.Distance(ta.position, tb.position) + Vector3.Distance(tb.position, tc.position);
+            // 2026-11-07 the ball gone, the arm finishes straight out through the swing (the user: it was folding back toward
+            // the body, following the figure's racket): in front on the forehand, out to the right on the backhand, the racket
+            // head up above the line of the arm
+            Quaternion held = racket.rotation;
+            Vector3 straight = Vector3.zero;
+            if (_followW > 0.001f)
+            {
+                Vector3 side = Flat(ta.position - Anim.GetBoneTransform(HumanBodyBones.LeftUpperArm).position);
+                Vector3 ahead = Vector3.Cross(side, Vector3.up);
+                bool fore = _pick % 2 == 0;
+                Vector3 dir = (ahead + side * (fore ? -0.15f : 0.7f) + Vector3.up * (fore ? 0.25f : 0.3f)).normalized;
+                Vector3 shaft = (dir + Vector3.up * 0.6f).normalized;
+                held = Quaternion.Slerp(held, Quaternion.FromToRotation(-racket.up, shaft) * held, _followW);
+                straight = ta.position + dir * arm * 0.995f;
+            }
+            Quaternion handRot = held * _gripRot;
+            Vector3 onHandle = racket.position - held * Vector3.up * GripUp;
             Vector3 wrist = onHandle - handRot * _palmOffset;
+            if (_followW > 0.001f) wrist = Vector3.Lerp(wrist, straight, _followW);
 
             // out of the arm's reach: the chest leans toward it (up to MaxLean), as a player stretches for the ball
-            float arm = Vector3.Distance(ta.position, tb.position) + Vector3.Distance(tb.position, tc.position);
             var chest = Anim.GetBoneTransform(HumanBodyBones.Chest) ?? Anim.GetBoneTransform(HumanBodyBones.Spine);
             float over = Vector3.Distance(ta.position, wrist) - arm * 0.97f;
-            if (chest != null && over > 0f)
+            if (chest != null && over > 0f && _followW < 0.001f)
             {
                 Vector3 from = ta.position - chest.position, to = wrist - chest.position;
                 Quaternion lean = Quaternion.FromToRotation(from, to);
@@ -293,7 +311,7 @@ namespace SquashGame.Athlete
             // still out of reach: the body goes to it (the hips moved by the shortfall, as the figure's pelvis is), the feet kept
             // where they were planted (the knees bend for it)
             over = Vector3.Distance(ta.position, wrist) - arm * 0.98f;
-            if (over > 0f)
+            if (over > 0f && _followW < 0.001f)
             {
                 Vector3 shift = Vector3.ClampMagnitude((wrist - ta.position).normalized * over, MaxBodyShift);
                 var fl = Anim.GetBoneTransform(HumanBodyBones.LeftFoot); var fr = Anim.GetBoneTransform(HumanBodyBones.RightFoot);
@@ -326,7 +344,7 @@ namespace SquashGame.Athlete
             // the racket drawn in the body's hand, wherever the arm got to
             racket.rotation = handRot * Quaternion.Inverse(_gripRot);
             racket.position = tc.position + handRot * _palmOffset + racket.up * GripUp;
-            GripGap = Vector3.Distance(racket.position, simAt);
+            GripGap = _followW > 0.001f ? 0f : Vector3.Distance(racket.position, simAt);
         }
 
         // ---- the kit's bands on the body: the wristband on its racket wrist, the headband round its head ----
@@ -398,9 +416,11 @@ namespace SquashGame.Athlete
         /// <summary>The move playing now and its clip time (tests).</summary>
         public string MoveShown { get; private set; } = "";
         public float MoveTime { get; private set; }
-        float _diveW, _prepW, _strokeW, _diveClock, _readyClock, _recoverClock, _splitW;
+        float _followW, _diveW, _prepW, _strokeW, _diveClock, _readyClock, _recoverClock, _splitW;
         bool _diving, _diveRight, _locked;
         int _pick = MoveBook.FhDrive;
+        /// <summary>The arm's straight finish shown now, 0..1 (tests).</summary>
+        public float FollowShown { get { return _followW; } }
         /// <summary>The stroke's move is settled (it stays until the stroke is over) (tests).</summary>
         public bool MoveLocked { get { return _locked; } }
 
@@ -537,6 +557,9 @@ namespace SquashGame.Athlete
             _strokeW = Mathf.MoveTowards(_strokeW, wantStroke, dt * (wantStroke > _strokeW ? 9f : 3f));
             _prepW = Mathf.MoveTowards(_prepW, wantPrep, dt * (wantPrep > _prepW ? 7f : 5f));
             float swingT = Mathf.Clamp01(v.SwingT), at = move.At(v.Swing, swingT, _recoverClock);
+            // (never while the racket is on the ball)
+            bool finishing = wantStroke > 0f && Figure.RacketLock < 1f && (v.Swing == SwingPhase.Recovering || (v.Swing == SwingPhase.Swinging && swingT >= FollowFrom));
+            _followW = Figure.RacketLock >= 1f ? 0f : Mathf.MoveTowards(_followW, finishing ? 1f : 0f, dt * (finishing ? 12f : 4f));
             for (int i = 0; i < MoveBook.All.Length; i++)
             {
                 if (!_strokeClips[i].IsValid()) continue;
