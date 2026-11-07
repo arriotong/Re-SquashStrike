@@ -162,7 +162,7 @@ namespace SquashGame.Tests
                 RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
             };
             var seen = new List<string>(); var counts = new Dictionary<string, int>();
-            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>(); var atBall = new List<float>(); float feet = 0f; var wrists = new List<float>(); float wristHit = 0f, wristFinish = 0f; var strides = new List<float>();
+            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>(); var atBall = new List<float>(); float feet = 0f; float leanMax = 0f, twistMax = 0f; var wrists = new List<float>(); float wristHit = 0f, wristFinish = 0f; var strides = new List<float>();
             var locked = new Dictionary<Athlete.AthleteBody, string>(); int changed = 0;
             var last = new Dictionary<Athlete.AthleteBody, string>();
             t0 = Time.realtimeSinceStartup;
@@ -174,6 +174,14 @@ namespace SquashGame.Tests
                     if (!b.Showing) continue;
                     if (b.Figure.RacketLock >= 1f) gaps.Add(b.GripGap);
                     if (b.MoveLocked && b.SwingShown > 0.9f) feet = Mathf.Max(feet, b.FootGap);
+                    if (b.StanceShown > 0.99f)
+                    {
+                        Vector3 torso = b.Anim.GetBoneTransform(HumanBodyBones.Neck).position - b.Anim.GetBoneTransform(HumanBodyBones.Spine).position;
+                        Vector3 hipLine = b.Anim.GetBoneTransform(HumanBodyBones.RightUpperLeg).position - b.Anim.GetBoneTransform(HumanBodyBones.LeftUpperLeg).position; hipLine.y = 0;
+                        Vector3 chestLine = b.Anim.GetBoneTransform(HumanBodyBones.RightUpperArm).position - b.Anim.GetBoneTransform(HumanBodyBones.LeftUpperArm).position; chestLine.y = 0;
+                        leanMax = Mathf.Max(leanMax, Vector3.Angle(torso, Vector3.up));
+                        twistMax = Mathf.Max(twistMax, Vector3.Angle(hipLine, chestLine));
+                    }
                     if (b.MoveLocked && b.SwingShown > 0.9f)
                     {
                         Vector3 fore = b.Anim.GetBoneTransform(HumanBodyBones.RightHand).position - b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position;
@@ -254,7 +262,10 @@ namespace SquashGame.Tests
             Debug.Log("[Rally] the elbow's bend at the ball: " + (atBall.Count > 0 ? atBall[atBall.Count / 2].ToString("0") : "-") + " deg (median); the lower foot at most " + feet.ToString("0.000") + " m off the floor");
             wrists.Sort(); strides.Sort();
             Debug.Log("[Rally] the wrist's bend in a stroke: " + wrists[wrists.Count / 2].ToString("0") + " deg (median), " + wrists[(int)(wrists.Count * 0.9f)].ToString("0") + " (90%); the stance " + strides[strides.Count / 2].ToString("0.00") + " m (median), " + strides[strides.Count - 1].ToString("0.00") + " (widest); wrist worst at the ball " + wristHit.ToString("0") + ", in the finish " + wristFinish.ToString("0"));
+            Debug.Log("[Rally] in the stance: lean at most " + leanMax.ToString("0") + " deg, waist turn at most " + twistMax.ToString("0"));
             Assert.That(feet, Is.LessThan(0.04f), "no one floats in a stroke");
+            Assert.That(leanMax, Is.LessThan(50f), "no one falls over");
+            Assert.That(twistMax, Is.LessThan(40f), "the waist isn't wrung");
             elbows.Sort();
             Debug.Log("[Rally] the elbow's bend in the finish: " + elbows[elbows.Count / 2].ToString("0") + " deg (median), " + elbows[elbows.Count - 1].ToString("0") + " (worst)");
             Assert.That(elbows[elbows.Count / 2], Is.LessThan(20f), "the arm finishes straight out");
