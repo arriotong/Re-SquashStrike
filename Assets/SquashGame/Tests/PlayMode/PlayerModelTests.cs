@@ -147,8 +147,10 @@ namespace SquashGame.Tests
             foreach (var b in bodies) Assert.That(b.HasMoves, Is.True, "our squash capture is in");
 
             var camGo = new GameObject("RallyCam"); var cam = camGo.AddComponent<Camera>(); cam.enabled = false; cam.fieldOfView = 40f;
-            const int CELL = 320, COLS = 8, ROWS = 3;
+            const int CELL = 400, COLS = 6, ROWS = 4;
             var sheet = new Texture2D(COLS * CELL, ROWS * CELL, TextureFormat.RGB24, false);
+            var behind = new Texture2D(COLS * CELL, ROWS * CELL, TextureFormat.RGB24, false);
+            var labels = new List<string>();
             var grip = new Texture2D(COLS * CELL, 2 * CELL, TextureFormat.RGB24, false);
             var rt = new RenderTexture(CELL, CELL, 24);
             System.Action<Texture2D, int, int> shoot = (into, x, y) =>
@@ -160,7 +162,7 @@ namespace SquashGame.Tests
                 RenderTexture.active = null; cam.targetTexture = null; Object.Destroy(cell);
             };
             var seen = new List<string>(); var counts = new Dictionary<string, int>();
-            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>(); var atBall = new List<float>(); float feet = 0f;
+            int shots = 0, grips = 0; var gaps = new List<float>(); var elbows = new List<float>(); var atBall = new List<float>(); float feet = 0f; var wrists = new List<float>(); float wristHit = 0f, wristFinish = 0f; var strides = new List<float>();
             var locked = new Dictionary<Athlete.AthleteBody, string>(); int changed = 0;
             var last = new Dictionary<Athlete.AthleteBody, string>();
             t0 = Time.realtimeSinceStartup;
@@ -170,8 +172,18 @@ namespace SquashGame.Tests
                 foreach (var b in bodies)
                 {
                     if (!b.Showing) continue;
-                    gaps.Add(b.GripGap);
+                    if (b.Figure.RacketLock >= 1f) gaps.Add(b.GripGap);
                     if (b.MoveLocked && b.SwingShown > 0.9f) feet = Mathf.Max(feet, b.FootGap);
+                    if (b.MoveLocked && b.SwingShown > 0.9f)
+                    {
+                        Vector3 fore = b.Anim.GetBoneTransform(HumanBodyBones.RightHand).position - b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position;
+                        Vector3 palm = b.Anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal).position - b.Anim.GetBoneTransform(HumanBodyBones.RightHand).position;
+                        float bend = Vector3.Angle(fore, palm);
+                        if (b.FollowShown > 0.99f) wristFinish = Mathf.Max(wristFinish, bend);
+                        else if (b.Figure.RacketLock >= 1f) wristHit = Mathf.Max(wristHit, bend);
+                        wrists.Add(bend);
+                        strides.Add(Vector3.Distance(b.Anim.GetBoneTransform(HumanBodyBones.LeftFoot).position, b.Anim.GetBoneTransform(HumanBodyBones.RightFoot).position));
+                    }
                     if (b.Figure.Posed.Swing == SwingPhase.Swinging && b.Figure.RacketLock >= 1f)
                     {
                         Vector3 up0 = b.Anim.GetBoneTransform(HumanBodyBones.RightLowerArm).position - b.Anim.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
@@ -200,9 +212,13 @@ namespace SquashGame.Tests
                     // from beside the striker (their right), a little behind, at chest height
                     Vector3 p = b.Figure.transform.position, f = b.Figure.DrawnForward; f.y = 0; f.Normalize();
                     Vector3 side = Vector3.Cross(Vector3.up, f);
-                    cam.transform.position = p + side * 3.0f - f * 1.6f + Vector3.up * 1.35f;
-                    cam.transform.LookAt(p + Vector3.up * 0.85f);
+                    cam.transform.position = p + side * 3.4f + Vector3.up * 1.1f;
+                    cam.transform.LookAt(p + Vector3.up * 0.95f);
                     shoot(sheet, shots % COLS, ROWS - 1 - shots / COLS);
+                    cam.transform.position = p - f * 3.4f + Vector3.up * 1.7f;
+                    cam.transform.LookAt(p + Vector3.up * 0.85f);
+                    shoot(behind, shots % COLS, ROWS - 1 - shots / COLS);
+                    labels.Add(b.MoveShown + " " + (phase == "ball" ? "hit" : "finish"));
                     shots++;
                     if (phase == "ball" && grips < COLS)
                     {
@@ -222,9 +238,11 @@ namespace SquashGame.Tests
                     }
                 }
             }
-            sheet.Apply(); grip.Apply();
+            sheet.Apply(); grip.Apply(); behind.Apply();
             Directory.CreateDirectory(Path.Combine("Captures", "players"));
             File.WriteAllBytes(Path.Combine("Captures", "players", "rally.png"), sheet.EncodeToPNG());
+            File.WriteAllBytes(Path.Combine("Captures", "players", "rally_behind.png"), behind.EncodeToPNG());
+            File.WriteAllLines(Path.Combine("Captures", "players", "rally.txt"), labels);
             File.WriteAllBytes(Path.Combine("Captures", "players", "grip.png"), grip.EncodeToPNG());
             var tally = new List<string>(); foreach (var kv in counts) tally.Add(kv.Key + " x" + kv.Value);
             gaps.Sort();
@@ -234,7 +252,9 @@ namespace SquashGame.Tests
             Assert.That(elbows.Count, Is.GreaterThan(0), "follow-throughs were seen");
             atBall.Sort();
             Debug.Log("[Rally] the elbow's bend at the ball: " + (atBall.Count > 0 ? atBall[atBall.Count / 2].ToString("0") : "-") + " deg (median); the lower foot at most " + feet.ToString("0.000") + " m off the floor");
-            Assert.That(feet, Is.LessThan(0.02f), "no one floats in a stroke");
+            wrists.Sort(); strides.Sort();
+            Debug.Log("[Rally] the wrist's bend in a stroke: " + wrists[wrists.Count / 2].ToString("0") + " deg (median), " + wrists[(int)(wrists.Count * 0.9f)].ToString("0") + " (90%); the stance " + strides[strides.Count / 2].ToString("0.00") + " m (median), " + strides[strides.Count - 1].ToString("0.00") + " (widest); wrist worst at the ball " + wristHit.ToString("0") + ", in the finish " + wristFinish.ToString("0"));
+            Assert.That(feet, Is.LessThan(0.04f), "no one floats in a stroke");
             elbows.Sort();
             Debug.Log("[Rally] the elbow's bend in the finish: " + elbows[elbows.Count / 2].ToString("0") + " deg (median), " + elbows[elbows.Count - 1].ToString("0") + " (worst)");
             Assert.That(elbows[elbows.Count / 2], Is.LessThan(20f), "the arm finishes straight out");

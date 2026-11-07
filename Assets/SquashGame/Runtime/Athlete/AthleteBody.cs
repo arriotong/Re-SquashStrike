@@ -154,6 +154,9 @@ namespace SquashGame.Athlete
 
             _footRest = root.InverseTransformPoint(Anim.GetBoneTransform(HumanBodyBones.LeftFoot).position).y;
             _toeRest = root.InverseTransformPoint(Anim.GetBoneTransform(HumanBodyBones.LeftToes).position).y;
+            _toesRest = Flat(root.InverseTransformDirection(Anim.GetBoneTransform(HumanBodyBones.LeftToes).position - Anim.GetBoneTransform(HumanBodyBones.LeftFoot).position));
+            _footRotL = Quaternion.Inverse(root.rotation) * Anim.GetBoneTransform(HumanBodyBones.LeftFoot).rotation;
+            _footRotR = Quaternion.Inverse(root.rotation) * Anim.GetBoneTransform(HumanBodyBones.RightFoot).rotation;
             BuildGrip();
             FindBands();
             BuildGraph();
@@ -192,12 +195,18 @@ namespace SquashGame.Athlete
         bool _grip;
         /// <summary>Where along the handle the palm holds it, metres up from the butt (the hand high, its heel at the cap).</summary>
         public const float GripUp = 0.065f;
+        /// <summary>How far the handle runs along the fingers against across them: the shaft's angle off the forearm, with the wrist straight.</summary>
+        public const float GripAlong = 1.5f;
         /// <summary>Each finger joint's turn in its parent, closed round the handle (racket hand) or loosely curled (free hand).</summary>
         readonly List<(Transform bone, Quaternion local)> _fist = new List<(Transform, Quaternion)>(), _relaxed = new List<(Transform, Quaternion)>();
         /// <summary>How far the racket is drawn from where the sim has it (the body's arm couldn't reach it), metres (tests).</summary>
         public float GripGap { get; private set; }
         /// <summary>How far the chest leant toward an out-of-reach racket, degrees.</summary>
         public const float MaxLean = 30f;
+        /// <summary>The hips never go lower than this, metres (a deep lunge, not the splits).</summary>
+        public const float LowestHips = 0.62f;
+        /// <summary>The ball this near its predicted contact (metres), the athlete sets for it.</summary>
+        public const float BallNear = 3.0f;
         /// <summary>Past this SwingT the ball has gone (0.5) and the arm may finish on its own.</summary>
         public const float FollowFrom = 0.56f;
         /// <summary>How straight the arm is at the ball (of its full length), and how far the body may back off for it, metres.</summary>
@@ -230,7 +239,7 @@ namespace SquashGame.Athlete
             var hand = Anim.GetBoneTransform(HumanBodyBones.RightHand);
             if (racket == null || hand == null || !HandFrame(true, out var along, out var across, out var palm, out float len)) return;
             // the handle runs diagonally across the palm: from the heel (little-finger side) to the index knuckle
-            Vector3 handle = (across + 0.8f * along).normalized;
+            Vector3 handle = (across + GripAlong * along).normalized;
             Quaternion handFrame = Quaternion.LookRotation(handle, palm);
             Quaternion racketFrame = Quaternion.LookRotation(-racket.up, racket.right);      // the shaft to the tip; the strings (+X) face the palm's way
             Quaternion turn = racketFrame * Quaternion.Inverse(handFrame);
@@ -278,8 +287,35 @@ namespace SquashGame.Athlete
             if (racket == null || ta == null || tb == null || tc == null) return;
             // where the sim has the racket (last frame it was drawn in the body's hand: back in the figure's first)
             if (Figure.Rig.RacketInHand) { racket.localPosition = Figure.Rig.GripLocalPos; racket.localRotation = Figure.Rig.GripLocalRot; }
-            Vector3 simAt = racket.position;
             float arm = Vector3.Distance(ta.position, tb.position) + Vector3.Distance(tb.position, tc.position);
+            // 2026-11-07 the wrist in line with the forearm (the user: the hand was bending inward). The sim fixes the sweet spot
+            // and which way the strings face; the racket can still turn about the sweet spot in the plane of the strings
+            float inLine = Mathf.Max(Mathf.Max(_strokeW, _prepW), _stanceW) * (1f - _followW);
+            if (inLine <= 0.001f) _faceChosen = false;
+            if (inLine > 0.001f)
+            {
+                Vector3 sweet = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
+                // the strings have two faces: held so the racket head rides above the arm, not with the hand rolled over.
+                // Settled once a stroke; rolling about the shaft leaves the strings where they are
+                if (!_faceChosen)
+                {
+                    Vector3 a0 = Vector3.ProjectOnPlane(sweet - ta.position, racket.right).normalized;
+                    _faceFlip = Vector3.Cross(racket.right, a0).y < 0f;
+                    _faceChosen = true;
+                }
+                if (_faceFlip) racket.rotation = Quaternion.AngleAxis(180f, racket.up) * racket.rotation;
+                Vector3 n = racket.right;
+                Vector3 a = Vector3.ProjectOnPlane(sweet - ta.position, n).normalized, shaft = -racket.up;
+                for (int i = 0; i < 3 && a != Vector3.zero; i++)
+                {
+                    shaft = (GripAlong * a + Vector3.Cross(n, a)).normalized;
+                    a = Vector3.ProjectOnPlane(sweet - shaft * (GateA.SweetSpotFromButt - GripUp) - a * 0.055f - ta.position, n).normalized;
+                }
+                Quaternion turn = Quaternion.AngleAxis(Vector3.SignedAngle(-racket.up, shaft, n) * inLine, n);
+                racket.rotation = turn * racket.rotation;
+                racket.position = sweet + turn * (racket.position - sweet);
+            }
+            Vector3 simAt = racket.position;
             // 2026-11-07 the ball gone, the arm finishes straight out through the swing (the user: it was folding back toward
             // the body, following the figure's racket): in front on the forehand, out to the right on the backhand, the racket
             // head up above the line of the arm
@@ -302,8 +338,11 @@ namespace SquashGame.Athlete
                 Vector3 ahead = Vector3.Cross(side, Vector3.up);
                 bool fore = _pick % 2 == 0;
                 Vector3 dir = (ahead + side * (fore ? -0.15f : 0.7f) + Vector3.up * (fore ? 0.25f : 0.3f)).normalized;
-                Vector3 shaft = (dir + Vector3.up * 0.6f).normalized;
-                held = Quaternion.Slerp(held, Quaternion.FromToRotation(-racket.up, shaft) * held, _followW);
+                // the racket head up over the arm, the wrist straight (the shaft at the grip's own angle to the arm)
+                Vector3 above = Vector3.ProjectOnPlane(Vector3.up, dir).normalized;
+                Vector3 shaft = (GripAlong * dir + above).normalized;
+                Quaternion finish = Quaternion.LookRotation(shaft, Vector3.Cross(dir, above)) * Quaternion.Inverse(Quaternion.LookRotation(Vector3.down, Vector3.right));
+                held = Quaternion.Slerp(held, finish, _followW);
                 straight = ta.position + dir * arm * 0.999f;
             }
             Quaternion handRot = held * _gripRot;
@@ -325,14 +364,15 @@ namespace SquashGame.Athlete
             }
             // still out of reach: the body goes to it (the hips moved by the shortfall, as the figure's pelvis is), the feet kept
             // where they were planted (the knees bend for it)
-            over = Vector3.Distance(ta.position, wrist) - arm * 0.98f;
-            if (over > 0f && _followW < 0.001f)
+            BodyShift = 0f;
+            for (int i = 0; i < 4 && _followW < 0.001f; i++)          // (the legs may drop the body again: until the arm gets there)
             {
+                over = Vector3.Distance(ta.position, wrist) - arm * 0.98f;
+                if (over <= 0.002f) break;
                 Vector3 shift = Vector3.ClampMagnitude((wrist - ta.position).normalized * over, MaxBodyShift);
-                MoveHips(shift);
-                BodyShift = shift.magnitude;
+                MoveHips(shift, false);                                // (the racket comes first: a foot drags sooner than the arm falls short)
+                BodyShift += shift.magnitude;
             }
-            else BodyShift = 0f;
             var mid = Figure.Rig.Bones["Forearm_R"]; var end = Figure.Rig.Bones["Hand_R"];
             TwoBoneIK.Solve(ta, tb, tc, wrist, mid.position + (mid.position - end.position) * 0.2f);
             // the forearm rolls with the hand (pronation / supination) - half of it, as the radius does - so the wrist doesn't wring
@@ -377,28 +417,72 @@ namespace SquashGame.Athlete
         void Ground()
         {
             if (!HasMoves) return;
-            float w = (1f - _diveW) * Mathf.Max(Mathf.Clamp01(_strokeW * 10f), 1f - _mocapW);
+            float w = (1f - _diveW) * Mathf.Max(Mathf.Max(_stanceW, Mathf.Clamp01(_strokeW * 10f)), 1f - _mocapW);
             _bodyHips.position -= Figure.transform.up * (Lowest() * w);
-            // in a stroke both feet are down: the capture's hop into a lunge leaves the back leg kicked up
-            if (_strokeW < 0.01f) return;
-            Vector3 ahead = Flat(Figure.DrawnForward) * 0.4f;
-            for (int i = 0; i < 2; i++)
+            Stance();
+        }
+
+        /// <summary>2026-11-07 the stroke's stance (the user's PSA photos): set as the stroke commits, along the line to the ball, and
+        /// held: the front foot out and pointing there, the back leg long, its heel up on the toes, the hips as low as that needs.</summary>
+        Vector3 _plantFront, _plantBack, _strideDir;
+        float _stanceW;
+        bool _faceChosen, _faceFlip;
+        bool _planted, _rightFront;
+        Vector3 _toesRest;                                      // the foot's toes direction at rest, root-local
+        Quaternion _footRotL, _footRotR;                        // the feet's turn at rest, root-local
+
+        void PlantStance(AthleteSnapshot v)
+        {
+            var root = Figure.transform;
+            Vector3 at = v.HasPred ? v.PredContact : v.RacketHead;
+            _strideDir = Flat(at - root.position);
+            if (_strideDir == Vector3.zero) _strideDir = Flat(Figure.DrawnForward);
+            Vector3 side = Vector3.Cross(Vector3.up, _strideDir);
+            float len = MoveBook.Stride(_pick);
+            _rightFront = MoveBook.RightFootFront(_pick);
+            float s = _rightFront ? 1f : -1f;
+            Vector3 floor = Vector3.up * _footRest;              // (held from the athlete: the sim may still be sliding them)
+            _plantFront = floor + _strideDir * (len * 0.45f) + side * (0.1f * s);
+            _plantBack = floor - _strideDir * (len * 0.55f) - side * (0.12f * s) + Vector3.up * 0.06f;
+            _planted = true;
+        }
+
+        void Stance()
+        {
+            if (!_planted || _stanceW < 0.01f) return;
+            float k = _stanceW * (1f - _diveW);
+            var root = Figure.transform;
+            var uf = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.RightUpperLeg : HumanBodyBones.LeftUpperLeg);
+            var kf = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg);
+            var ff = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.RightFoot : HumanBodyBones.LeftFoot);
+            var ub = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperLeg);
+            var kb = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.LeftLowerLeg : HumanBodyBones.RightLowerLeg);
+            var fb = Anim.GetBoneTransform(_rightFront ? HumanBodyBones.LeftFoot : HumanBodyBones.RightFoot);
+            Vector3 from = new Vector3(root.position.x, root.position.y, root.position.z);
+            Vector3 front = Vector3.Lerp(ff.position, from + _plantFront, k), back = Vector3.Lerp(fb.position, from + _plantBack, k);
+            float lenF = Vector3.Distance(uf.position, kf.position) + Vector3.Distance(kf.position, ff.position);
+            float lenB = Vector3.Distance(ub.position, kb.position) + Vector3.Distance(kb.position, fb.position);
+            for (int i = 0; i < 8; i++)
             {
-                var ul = Anim.GetBoneTransform(i == 0 ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperLeg);
-                var kn = Anim.GetBoneTransform(i == 0 ? HumanBodyBones.LeftLowerLeg : HumanBodyBones.RightLowerLeg);
-                var ft = Anim.GetBoneTransform(i == 0 ? HumanBodyBones.LeftFoot : HumanBodyBones.RightFoot);
-                float gap = Figure.transform.InverseTransformPoint(ft.position).y - _footRest;
-                if (gap < 0.02f) continue;
-                Quaternion q = ft.rotation;
-                float len = Vector3.Distance(ul.position, kn.position) + Vector3.Distance(kn.position, ft.position);
-                TwoBoneIK.Solve(ul, kn, ft, Within(ul.position, ft.position - Figure.transform.up * (gap * Mathf.Clamp01(_strokeW * 10f)), len), kn.position + ahead);
-                ft.rotation = q;
+                float excess = Mathf.Max(Vector3.Distance(uf.position, front) - lenF * 0.995f, Vector3.Distance(ub.position, back) - lenB * 0.995f);
+                float room = root.InverseTransformPoint(_bodyHips.position).y - LowestHips;
+                if (excess <= 0.001f || room <= 0f) break;
+                _bodyHips.position -= root.up * Mathf.Min(excess, room);
             }
+            TwoBoneIK.Solve(uf, kf, ff, Within(uf.position, front, lenF), kf.position + _strideDir * 0.5f);
+            TwoBoneIK.Solve(ub, kb, fb, Within(ub.position, back, lenB), kb.position - _strideDir * 0.1f + Vector3.down * 0.4f);
+            Quaternion bindF = root.rotation * (_rightFront ? _footRotR : _footRotL), bindB = root.rotation * (_rightFront ? _footRotL : _footRotR);
+            Vector3 toes = root.TransformDirection(_toesRest);
+            Vector3 backToes = (Quaternion.AngleAxis(_rightFront ? -40f : 40f, Vector3.up) * _strideDir).normalized;
+            Quaternion aimF = Quaternion.FromToRotation(toes, _strideDir) * bindF;
+            Quaternion aimB = Quaternion.AngleAxis(35f, Vector3.Cross(Vector3.up, backToes)) * Quaternion.FromToRotation(toes, backToes) * bindB;
+            ff.rotation = Quaternion.Slerp(ff.rotation, aimF, k);
+            fb.rotation = Quaternion.Slerp(fb.rotation, aimB, k);
         }
 
         /// <summary>The hips moved, the feet staying planted where they are: if the legs can't reach them from there the hips
         /// drop until they can (a lunge going lower, not feet leaving the floor).</summary>
-        void MoveHips(Vector3 shift)
+        void MoveHips(Vector3 shift, bool drop = true)
         {
             var fl = Anim.GetBoneTransform(HumanBodyBones.LeftFoot); var fr = Anim.GetBoneTransform(HumanBodyBones.RightFoot);
             var ul = Anim.GetBoneTransform(HumanBodyBones.LeftUpperLeg); var ur = Anim.GetBoneTransform(HumanBodyBones.RightUpperLeg);
@@ -407,7 +491,7 @@ namespace SquashGame.Athlete
             float lenL = Vector3.Distance(ul.position, kl.position) + Vector3.Distance(kl.position, fl.position);
             float lenR = Vector3.Distance(ur.position, kr.position) + Vector3.Distance(kr.position, fr.position);
             _bodyHips.position += shift;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 3 && drop; i++)
             {
                 float excess = Mathf.Max(Vector3.Distance(ul.position, pl) - lenL * 0.995f, Vector3.Distance(ur.position, pr) - lenR * 0.995f);
                 if (excess <= 0f) break;
@@ -627,8 +711,14 @@ namespace SquashGame.Athlete
             // ---- the stroke: one situation, one move (MoveBook), its ball on the sim's (SwingT 0.5). The move is read while the
             // stroke is being set up and locked as it commits: it never changes half way through ----
             bool committed = v.Swing == SwingPhase.Scheduled || v.Swing == SwingPhase.Swinging || v.Swing == SwingPhase.Recovering;
+            // the ball nearly here (the hit itself can start right at contact): the feet and the racket set themselves in time
+            bool coming = v.HasPred && Figure.Runner != null && Vector3.Distance(Figure.Runner.View.BallPos, v.PredContact) < BallNear;
             if (v.Swing == SwingPhase.Idle) _locked = false;
-            else if (!_locked) _pick = MoveBook.Pick(v.SwingSide > 0, v.Reach, v.HasPred ? v.PredContact.y : v.RacketHead.y, v.Touch, Figure.Runner != null && Figure.Runner.IsServing(Figure.Index));
+            if ((v.Swing != SwingPhase.Idle || coming) && !_locked)
+            {
+                _pick = MoveBook.Pick(v.SwingSide > 0, v.Reach, v.HasPred ? v.PredContact.y : v.RacketHead.y, v.Touch, Figure.Runner != null && Figure.Runner.IsServing(Figure.Index));
+                PlantStance(v);
+            }
             if (committed) _locked = true;
             var move = MoveBook.All[_pick];
             bool going = v.Swing != SwingPhase.Idle && v.Swing != SwingPhase.Recovering;
@@ -636,10 +726,13 @@ namespace SquashGame.Athlete
             // the follow-through ends; away early if the athlete is already moving off
             bool done = v.Swing == SwingPhase.Recovering && (_vel.magnitude > 1.2f || _recoverClock >= move.Recover - move.End);
             float wantStroke = HasMoves && !diving && committed && !done ? 1f : 0f;
-            float wantPrep = HasMoves && !diving && !committed && v.Swing != SwingPhase.Idle ? 1f : 0f;
+            float wantPrep = HasMoves && !diving && !committed && (v.Swing != SwingPhase.Idle || coming) ? 1f : 0f;
+            bool set = HasMoves && !diving && _planted && !done && (v.Swing != SwingPhase.Idle || coming);
+            _stanceW = Mathf.MoveTowards(_stanceW, set ? 1f : 0f, dt * (set ? 10f : 3f));
+            if (_stanceW <= 0f && !set) _planted = false;
             _strokeW = Mathf.MoveTowards(_strokeW, wantStroke, dt * (wantStroke > _strokeW ? 20f : 3f));
             _prepW = Mathf.MoveTowards(_prepW, wantPrep, dt * (wantPrep > _prepW ? 7f : 5f));
-            float swingT = Mathf.Clamp01(v.SwingT), at = move.At(v.Swing, swingT, _recoverClock);
+            float swingT = Mathf.Clamp01(v.SwingT), at = move.At(v.Swing == SwingPhase.Idle && coming ? SwingPhase.Armed : v.Swing, swingT, _recoverClock);
             // (never while the racket is on the ball)
             bool finishing = wantStroke > 0f && Figure.RacketLock < 1f && (v.Swing == SwingPhase.Recovering || (v.Swing == SwingPhase.Swinging && swingT >= FollowFrom));
             _followW = Figure.RacketLock >= 1f ? 0f : Mathf.MoveTowards(_followW, finishing ? 1f : 0f, dt * (finishing ? 25f : 4f));

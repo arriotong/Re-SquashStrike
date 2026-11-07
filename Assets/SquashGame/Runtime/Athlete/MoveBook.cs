@@ -50,6 +50,17 @@ namespace SquashGame.Athlete
             new Move("serve", "Mocap_ReadySwings", 2.4f, 3.0f, 3.6f, 4.2f),                    // a calm standing swing
         };
 
+        /// <summary>The stance's length, front foot to back foot, metres (the user's PSA photos: one foot out, the other leg long).</summary>
+        public static float Stride(int move)
+        {
+            if (move == FhLunge || move == BhLunge) return 1.3f;
+            if (move == Serve) return 0.65f;
+            return 0.9f;
+        }
+
+        /// <summary>The racket-side foot goes in front: on a lunge either wing and on a backhand; else the other foot.</summary>
+        public static bool RightFootFront(int move) { return move == FhLunge || move == BhLunge || (move != Serve && move % 2 == 1); }
+
         /// <summary>Below this the ball is dug out of the floor, above this it's taken high (metres at contact).</summary>
         public const float DigHeight = 0.45f, HighHeight = 1.6f;
 
