@@ -135,6 +135,7 @@ namespace SquashGame.Tests
         public IEnumerator ARallyWithOurSquashMoves()
         {
             LocalMatchTests.FreshProfile();
+            Profile.ProfileStore.Current.Settings.RealPlayers = true;          // (the classic figures are the default)
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             Object.FindFirstObjectByType<UI.FrontEnd>().StartMatch(MatchSettings.QuickGame());

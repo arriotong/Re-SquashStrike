@@ -173,8 +173,8 @@ namespace SquashGame.UI
             Row(v, new SelectorItem("Frame cap", new[] { "Off", "60", "120", "144", "240" }, () => Math.Max(0, Array.IndexOf(caps, S.FrameCap)), i => { S.FrameCap = caps[i]; Changed(true); }), "The most frames a second (with VSync off).");
             Row(v, new CarouselItem("Graphics", GraphicsTier.Names, () => Mathf.Clamp(S.Graphics, 0, GraphicsTier.Names.Length - 1), i => { S.Graphics = i; Changed(true); }),
                 "Auto suits this PC (now: " + GraphicsTier.Current + ") and switches to Battery saver when a laptop is unplugged. Low paints the crowd and draws fewer pixels; Battery saver also runs at 30 fps with no shadows - the longest battery life. The ball plays the same at every setting.");
-            Row(v, new SelectorItem("Players", new[] { "Real", "Classic" }, () => S.ClassicPlayers ? 1 : 0, i => { S.ClassicPlayers = i == 1; Changed(false); }),
-                "Real: the players with real bodies and motion capture. Classic: the simple players from before.");
+            Row(v, new SelectorItem("Players", new[] { "Classic", "Real" }, () => S.RealPlayers ? 1 : 0, i => { S.RealPlayers = i == 1; Changed(false); }),
+                "Classic: the game's own players. Real: the players with real bodies and motion capture (still in progress).");
 
 
             // ---- AUDIO ----

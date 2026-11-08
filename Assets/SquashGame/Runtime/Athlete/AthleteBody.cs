@@ -854,7 +854,7 @@ namespace SquashGame.Athlete
 
         /// <summary>Drawn now (Settings > Video > Players: Real); Classic shows the code-built figure again.</summary>
         public bool Showing { get; private set; } = true;
-        static bool Wanted { get { return Profile.ProfileStore.Current == null || !Profile.ProfileStore.Current.Settings.ClassicPlayers; } }
+        static bool Wanted { get { return Profile.ProfileStore.Current != null && Profile.ProfileStore.Current.Settings.RealPlayers; } }
 
         /// <summary>Show the real body or the classic figure (the figure's renderers on/off, the body's off/on).</summary>
         void Show(bool real)

@@ -24,7 +24,7 @@ namespace SquashGame.Tests
             for (int mode = 0; mode < 2; mode++)
             {
                 LocalMatchTests.FreshProfile();
-                Profile.ProfileStore.Current.Settings.ClassicPlayers = mode == 1;
+                Profile.ProfileStore.Current.Settings.RealPlayers = mode == 0;
                 SceneManager.LoadScene("Match");
                 yield return null; yield return null;
                 var fe = Object.FindFirstObjectByType<UI.FrontEnd>();
@@ -46,7 +46,7 @@ namespace SquashGame.Tests
             }
             Debug.Log("[Perf] real players " + ms[0].ToString("0.00") + " ms (95%: " + p95[0].ToString("0.00") + "), classic " + ms[1].ToString("0.00") + " ms (95%: " + p95[1].ToString("0.00") + ")");
             Assert.That(ms[0], Is.LessThan(ms[1] + 3f), "the real players add under 3 ms a frame");
-            Profile.ProfileStore.Current.Settings.ClassicPlayers = false;
+            Profile.ProfileStore.Current.Settings.RealPlayers = false;
         }
     }
 }
