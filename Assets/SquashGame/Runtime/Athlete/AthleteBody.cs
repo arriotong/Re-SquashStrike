@@ -195,6 +195,8 @@ namespace SquashGame.Athlete
         bool _grip;
         /// <summary>Where along the handle the palm holds it, metres up from the butt (the hand high, its heel at the cap).</summary>
         public const float GripUp = 0.065f;
+        public static bool DebugGrip;
+        float _dbgWant, _dbgFull;
         /// <summary>How far the handle runs along the fingers against across them: the shaft's angle off the forearm, with the wrist straight.</summary>
         public const float GripAlong = 1.5f;
         /// <summary>Each finger joint's turn in its parent, closed round the handle (racket hand) or loosely curled (free hand).</summary>
@@ -212,7 +214,7 @@ namespace SquashGame.Athlete
         /// <summary>Past this SwingT the ball has gone (0.5) and the arm may finish on its own.</summary>
         public const float FollowFrom = 0.56f;
         /// <summary>How straight the arm is at the ball (of its full length), and how far the body may back off for it, metres.</summary>
-        public const float ContactArm = 0.985f, MaxBackOff = 0.55f;
+        public const float ContactArm = 0.93f, MaxBackOff = 1.15f;
         /// <summary>How far the body may be moved toward a racket still out of reach after the lean, metres; how far it was now.</summary>
         public const float MaxBodyShift = 0.5f;
         public float BodyShift { get; private set; }
@@ -297,12 +299,14 @@ namespace SquashGame.Athlete
             if (inLine > 0.001f)
             {
                 Vector3 sweet = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
-                // the strings have two faces: held so the racket head rides above the arm, not with the hand rolled over.
+                // 2026-11-08 the strings have two faces: the palm meets the ball on a forehand, the back of the hand on a backhand
+                // (the user's PSA photos - the racket carries on from the forearm wherever the arm reaches, not held head-up).
                 // Settled once a stroke; rolling about the shaft leaves the strings where they are
                 if (!_faceChosen)
                 {
-                    Vector3 a0 = Vector3.ProjectOnPlane(sweet - ta.position, racket.right).normalized;
-                    _faceFlip = Vector3.Cross(racket.right, a0).y < 0f;
+                    Vector3 hit = Figure.Posed.RacketFaceNormal;
+                    bool fore = _pick % 2 == 0;
+                    _faceFlip = hit.sqrMagnitude > 1e-6f && (Vector3.Dot(racket.right, hit) > 0f) != fore;
                     _faceChosen = true;
                 }
                 if (_faceFlip) racket.rotation = Quaternion.AngleAxis(180f, racket.up) * racket.rotation;
@@ -331,11 +335,19 @@ namespace SquashGame.Athlete
                 Vector3 sw = racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0));
                 float l = GateA.SweetSpotFromButt - GripUp, cos = GripAlong / Mathf.Sqrt(GripAlong * GripAlong + 1f), rise = sw.y - ta.position.y;
                 float full = Mathf.Sqrt(arm * arm * ContactArm * ContactArm + l * l + 2f * arm * ContactArm * l * cos);
-                Vector3 flat = sw - (ta.position - _backOff); flat.y = 0;   // (measured from where the body would be without it)
-                float cramped = Mathf.Sqrt(Mathf.Max(0f, full * full - rise * rise)) - Vector3.Dot(flat, _strideDir);
-                if (cramped > 0f) back = -_strideDir * Mathf.Min(cramped, MaxBackOff) * setW;
+                // 2026-11-08 and side-on to it (the user's PSA photos): the shoulder in the plane the strings swing through, so the
+                // arm and the racket are one line, not the arm across the strings with the racket hanging off it
+                Vector3 s0 = ta.position - _backOff;                 // (where the shoulder would be without it)
+                Vector3 nf = Flat(racket.right);
+                Vector3 s1 = nf == Vector3.zero ? s0 : s0 - nf * Vector3.Dot(s0 - sw, nf);
+                Vector3 away = s1 - sw; away.y = 0;
+                if (away.sqrMagnitude < 1e-4f) away = -_strideDir;
+                Vector3 s2 = sw + away.normalized * Mathf.Sqrt(Mathf.Max(0f, full * full - rise * rise));
+                Vector3 move = s2 - s0; move.y = 0;
+                back = Vector3.ClampMagnitude(move, MaxBackOff) * setW;
+                _dbgWant = move.magnitude; _dbgFull = full;
             }
-            _backOff = Vector3.Lerp(_backOff, back, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 22f));
+            _backOff = Vector3.Lerp(_backOff, back, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 60f));
             Quaternion held = racket.rotation;
             Vector3 straight = Vector3.zero;
             if (_followW > 0.001f)
@@ -399,6 +411,15 @@ namespace SquashGame.Athlete
             racket.rotation = handRot * Quaternion.Inverse(_gripRot);
             racket.position = tc.position + handRot * _palmOffset + racket.up * GripUp;
             GripGap = _followW > 0.001f ? 0f : Vector3.Distance(racket.position, simAt);
+            if (DebugGrip && Figure.RacketLock >= 1f)
+            {
+                Vector3 fa = (tc.position - tb.position).normalized, pm = (Anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal).position - tc.position).normalized;
+                float bend = Vector3.Angle(fa, pm);
+                if (bend > 50f)
+                    Debug.Log("[GripDbg] " + MoveShown + " bend " + bend.ToString("0") + " inLine " + inLine.ToString("0.00") + " stance " + _stanceW.ToString("0.00") + " stroke " + _strokeW.ToString("0.00") +
+                              " | shaft " + (-racket.up).ToString("0.00") + " n " + racket.right.ToString("0.00") + " forearm " + fa.ToString("0.00") + " upper " + (tb.position - ta.position).normalized.ToString("0.00") +
+                              " | shoulder->sweet " + (racket.TransformPoint(new Vector3(0, -GateA.SweetSpotFromButt, 0)) - ta.position).ToString("0.00") + " reach " + Vector3.Distance(ta.position, tc.position).ToString("0.00") + "/" + arm.ToString("0.00") + " back " + _backOff.magnitude.ToString("0.00") + " want " + _dbgWant.ToString("0.00") + " shift " + BodyShift.ToString("0.00") + " full " + _dbgFull.ToString("0.00"));
+            }
             FootGap = Lowest();
         }
 
