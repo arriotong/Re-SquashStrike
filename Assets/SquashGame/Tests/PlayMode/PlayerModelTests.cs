@@ -265,6 +265,7 @@ namespace SquashGame.Tests
             Debug.Log("[Rally] in the stance: lean at most " + leanMax.ToString("0") + " deg, waist turn at most " + twistMax.ToString("0"));
             Assert.That(feet, Is.LessThan(0.04f), "no one floats in a stroke");
             Assert.That(leanMax, Is.LessThan(50f), "no one falls over");
+            Assert.That(wristHit, Is.LessThan(80f), "at the ball the elbow folds, not the wrist");
             Assert.That(twistMax, Is.LessThan(40f), "the waist isn't wrung");
             elbows.Sort();
             Debug.Log("[Rally] the elbow's bend in the finish: " + elbows[elbows.Count / 2].ToString("0") + " deg (median), " + elbows[elbows.Count - 1].ToString("0") + " (worst)");

@@ -310,12 +310,26 @@ namespace SquashGame.Athlete
                     _faceChosen = true;
                 }
                 if (_faceFlip) racket.rotation = Quaternion.AngleAxis(180f, racket.up) * racket.rotation;
-                Vector3 n = racket.right;
-                Vector3 a = Vector3.ProjectOnPlane(sweet - ta.position, n).normalized, shaft = -racket.up;
-                for (int i = 0; i < 3 && a != Vector3.zero; i++)
+                // 2026-11-08 the arm, wrist straight, from the shoulder to the sweet spot in the plane of the strings: upper arm,
+                // then the forearm and the racket as one stiff piece (the shaft at the grip's angle to the forearm). Where those two
+                // meet is the elbow - two circles crossing. A close ball folds the elbow, not the wrist (the user chose this)
+                Vector3 n = racket.right, shaft = -racket.up;
+                float l1 = Vector3.Distance(ta.position, tb.position), l2 = Vector3.Distance(tb.position, tc.position) + 0.055f;
+                float L = GateA.SweetSpotFromButt - GripUp, gam = Mathf.Atan2(1f, GripAlong);
+                float R = Mathf.Sqrt(l2 * l2 + L * L + 2f * l2 * L * Mathf.Cos(gam)), del = Mathf.Atan2(L * Mathf.Sin(gam), l2 + L * Mathf.Cos(gam));
+                Vector3 e = Vector3.ProjectOnPlane(ta.position - sweet, n);
+                float d = e.magnitude;
+                _elbowSet = d > 1e-3f;
+                if (_elbowSet)
                 {
-                    shaft = (GripAlong * a + Vector3.Cross(n, a)).normalized;
-                    a = Vector3.ProjectOnPlane(sweet - shaft * (GateA.SweetSpotFromButt - GripUp) - a * 0.055f - ta.position, n).normalized;
+                    e /= d;
+                    float dc = Mathf.Clamp(d, Mathf.Abs(R - l1) + 1e-3f, R + l1 - 1e-3f);
+                    float x = (R * R - l1 * l1 + dc * dc) / (2f * dc), h = Mathf.Sqrt(Mathf.Max(0f, R * R - x * x));
+                    Vector3 across = Vector3.Cross(n, e);
+                    Vector3 e1 = sweet + e * x + across * h, e2 = sweet + e * x - across * h;
+                    _elbowAim = e1.y < e2.y ? e1 : e2;                  // the elbow below the line, as players carry it
+                    Vector3 f = Quaternion.AngleAxis(-del * Mathf.Rad2Deg, n) * (sweet - _elbowAim).normalized;
+                    shaft = Quaternion.AngleAxis(gam * Mathf.Rad2Deg, n) * f;
                 }
                 Quaternion turn = Quaternion.AngleAxis(Vector3.SignedAngle(-racket.up, shaft, n) * inLine, n);
                 racket.rotation = turn * racket.rotation;
@@ -392,7 +406,9 @@ namespace SquashGame.Athlete
                 BodyShift += shift.magnitude;
             }
             var mid = Figure.Rig.Bones["Forearm_R"]; var end = Figure.Rig.Bones["Hand_R"];
-            TwoBoneIK.Solve(ta, tb, tc, wrist, mid.position + (mid.position - end.position) * 0.2f);
+            Vector3 pole = mid.position + (mid.position - end.position) * 0.2f;
+            if (_elbowSet && inLine > 0.001f && _followW < 0.001f) pole = Vector3.Lerp(pole, _elbowAim, inLine);
+            TwoBoneIK.Solve(ta, tb, tc, wrist, pole);
             // the forearm rolls with the hand (pronation / supination) - half of it, as the radius does - so the wrist doesn't wring
             Vector3 axis = (tc.position - tb.position).normalized;
             Quaternion rel = handRot * Quaternion.Inverse(tc.rotation);
@@ -453,6 +469,7 @@ namespace SquashGame.Athlete
         /// held: the front foot out and pointing there, the back leg long, its heel up on the toes, the hips as low as that needs.</summary>
         Vector3 _plantFront, _plantBack, _strideDir;
         float _stanceW;
+        Vector3 _elbowAim; bool _elbowSet;
         bool _faceChosen, _faceFlip;
         bool _planted, _rightFront;
         Vector3 _toesRest;                                      // the foot's toes direction at rest, root-local
