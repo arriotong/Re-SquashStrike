@@ -196,6 +196,8 @@ namespace SquashGame.Athlete
         /// <summary>Where along the handle the palm holds it, metres up from the butt (the hand high, its heel at the cap).</summary>
         public const float GripUp = 0.065f;
         public static bool DebugGrip;
+        /// <summary>The most the wrist folds from the forearm (deg): past it the hand and racket turn back with the arm.</summary>
+        public const float MaxWristBend = 70f;
         float _dbgWant, _dbgFull;
         /// <summary>How far the handle runs along the fingers against across them: the shaft's angle off the forearm, with the wrist straight.</summary>
         public const float GripAlong = 1.5f;
@@ -421,6 +423,20 @@ namespace SquashGame.Athlete
                 tb.rotation = Quaternion.Slerp(Quaternion.identity, twist, 0.5f) * tb.rotation;
             }
             tc.rotation = handRot;
+            // 2026-11-20 a ball jammed into the body (more of them with the faster drives) folded the wrist past 80 deg: the
+            // hand turns back toward the forearm to MaxWristBend - the racket goes with it, a few cm off the sim's contact
+            var knuckle = Anim.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+            if (knuckle != null)
+            {
+                Vector3 fa = (tc.position - tb.position).normalized, pm = (knuckle.position - tc.position).normalized;
+                float bend = Vector3.Angle(fa, pm);
+                if (bend > MaxWristBend)
+                {
+                    Vector3 to = Vector3.RotateTowards(pm, fa, (bend - MaxWristBend) * Mathf.Deg2Rad, 0f);
+                    handRot = Quaternion.FromToRotation(pm, to) * handRot;
+                    tc.rotation = handRot;
+                }
+            }
             foreach (var (b, q) in _fist) b.localRotation = q;
             foreach (var (b, q) in _relaxed) b.localRotation = q;
             // the racket drawn in the body's hand, wherever the arm got to

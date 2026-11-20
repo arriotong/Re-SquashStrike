@@ -56,6 +56,15 @@ namespace SquashGame.Tests
             Assert.That(aim.LineX, Is.GreaterThan(-0.25), "the cross line: the middle or the right half");
             yield return FrontEndTests.CaptureUI(fe, "Lines_Cross.png");
 
+            // Settings > Show shot line Off: the dot hidden (the ring still there), so the other player can't read the shot
+            AimTargetView.ShowShotLine = false;
+            yield return WaitReal(0.2f);
+            Assert.That(aim.LineShown, Is.False, "Show shot line Off: no dot");
+            Assert.That(aim.Shown, Is.True, "the ring still shows");
+            AimTargetView.ShowShotLine = true;
+            yield return WaitReal(0.2f);
+            Assert.That(aim.LineShown, Is.True, "back on");
+
             // from the front right: the cross point is on your own half - still a cross
             r.Sim.Player.Player.Pos.X = 2.0; r.Sim.Player.Player.Pos.Z = 4.0;
             float crossPoint = (float)SquashSim.ArcadeStroke.ShotLine(2.0, 4.0, "drive", -3.0);

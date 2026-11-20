@@ -180,6 +180,8 @@ namespace SquashGame.UI
             var c = Panel("CONTROLS");
             Row(c, new SelectorItem(MatchChoices.ControlName, MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, i => { S.Assisted = i == 1; Changed(false); }),
                 "Extra: the game helps your shots go where you meant. Normal: a little help - your aim matters more.");
+            Row(c, new SelectorItem("Show shot line", new[] { "On", "Off" }, () => S.ShowShotLine ? 0 : 1, i => { S.ShowShotLine = i == 0; Changed(false); }),
+                "The dot on the wall where your shot will really go. Off: hidden (the aim help still works) - the other player can't read your shot.");
             Row(c, new SelectorItem("Aim speed", new[] { "Slowest", "Slow", "Normal", "Fast", "Fastest" }, () => Nearest(IntentSource.SensitivitySteps, S.AimSpeed),
                 i => { S.AimSpeed = IntentSource.SensitivitySteps[i]; Changed(false); }, true), "How fast the ring moves with the mouse or the right stick.");
             Row(c, new SelectorItem("Invert mouse Y", new[] { "Off", "On" }, () => S.InvertMouseY ? 1 : 0, i => { S.InvertMouseY = i == 1; Changed(false); }), "Mouse up moves the ring down.");

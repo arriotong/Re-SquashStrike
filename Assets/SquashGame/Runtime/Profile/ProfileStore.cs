@@ -24,6 +24,9 @@ namespace SquashGame.Profile
         public bool Cutscenes = true;
         // ---- controls ----
         public bool Assisted;
+        /// <summary>2026-11-20 the shot line's dot on the wall (where the shot really goes): Off hides it - the aim help still
+        /// works - so a player sharing the screen can't read your shot (the user: it gives the shot away in multiplayer).</summary>
+        public bool ShowShotLine = true;
         public float AimSpeed = 1f;              // IntentSource.MouseSensitivityScale
         public bool InvertMouseY;
         // ---- video ----
@@ -327,6 +330,7 @@ namespace SquashGame.Profile
             IntentSource.MouseSensitivityScale = s.AimSpeed;
             IntentSource.InvertMouseY = s.InvertMouseY;
             IntentSource.Assisted = s.Assisted;
+            AimTargetView.ShowShotLine = s.ShowShotLine;
             ArcadePopups.Enabled = s.Popups;
             MatchRunner.Lets = s.Lets;
             GameplayCameraRig.Preset = s.Camera;

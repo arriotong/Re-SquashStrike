@@ -49,6 +49,8 @@ namespace SquashGame
         public static readonly Color Plain = new Color(1f, 1f, 1f, 0.85f);
         /// <summary>Accessibility setting: the ring's colour (0 white, 1 yellow, 2 cyan).</summary>
         public static int RingColourIndex;
+        /// <summary>Settings > Controls > Show shot line: Off hides the line's dot (the aim help still pulls the shot).</summary>
+        public static bool ShowShotLine = true;
         public static readonly Color[] RingColours = { new Color(1f, 1f, 1f, 0.85f), new Color(1f, 0.9f, 0.3f, 0.9f), new Color(0.4f, 0.95f, 1f, 0.9f) };
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }
@@ -269,7 +271,7 @@ namespace SquashGame
             _ring.localScale = new Vector3(_radius, _radius, 1f);
 
             // The shot line's dot: where this shot will really meet the front wall.
-            LineShown = DrawRing && wall == 0 && !Boasting && !Serving && ctrl.ArcadeHitEnabled && ctrl.Arcade.ShotLines;
+            LineShown = ShowShotLine && DrawRing && wall == 0 && !Boasting && !Serving && ctrl.ArcadeHitEnabled && ctrl.Arcade.ShotLines;
             if (LineShown)
             {
                 var from = ctrl.Prediction.Valid ? ctrl.Prediction.Point : ctrl.Player.Pos;
