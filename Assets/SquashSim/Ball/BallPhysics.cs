@@ -175,6 +175,16 @@ namespace SquashSim
                 var hit = PhysicsConfig.Current.ArcadeHit;
                 if (hit != null && hit.FrontWallRiseKeep < 1) DipOff(ball, hit.FrontWallRiseKeep);
             }
+            // ---- game profile, 2026-11-20: hit hard, it comes back softer (the whole velocity: the angle off the wall is kept) ----
+            if (surf.SurfaceClass == "frontWall" && PhysicsConfig.Current.ArcadeHit != null)
+            {
+                double from = GameTuning.Ball.FrontWallPaceFrom;
+                if (impactSpeed > from)
+                {
+                    double keep = (from + GameTuning.Ball.FrontWallPaceKeep * (impactSpeed - from)) / impactSpeed;
+                    ball.Vel.X *= keep; ball.Vel.Y *= keep; ball.Vel.Z *= keep;
+                }
+            }
 
             // ---- separate cleanly ----
             double distNow = CourtSurfaces.SignedDistance(surf, ball.Pos);

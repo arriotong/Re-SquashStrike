@@ -84,6 +84,8 @@ namespace SquashSim
         double _setTime;
         /// <summary>0..1: how early the athlete was set for the last stroke (1 = in position EarlyFull seconds ahead).</summary>
         public double LastEarliness { get; private set; }
+        /// <summary>The last stroke's set-up pace multiplier (1 = no change; up to 1.2 set early, down to ~0.76 stretched).</summary>
+        public double LastSetUpPace { get; private set; } = 1.0;
         /// <summary>Seconds in position for the ball now coming (presentation and tests).</summary>
         public double SetTime { get { return _setTime; } }
         uint _rng;
@@ -340,6 +342,7 @@ namespace SquashSim
             double missRatio = Clamp((dist - c.SweetSpot) / (c.Reach * ReachScale * AttrReach(player) - c.SweetSpot), 0, 1);
             double early = ctrl.ServeStroke ? 1 : Clamp(_setTime / c.EarlyFull, 0, 1);
             LastEarliness = early;
+            double setPace = ctrl.ServeStroke ? 0 : Clamp(_setTime / GameTuning.Hit.SetPaceFull, 0, 1);   // time in position: pace
             double bad = ctrl.ServeStroke ? 0 : Badness(dist, _setTime, c);
             LastBadness = bad;
             _setTime = 0;
@@ -445,6 +448,8 @@ namespace SquashSim
                 else ty += (Rnd() < 0.5 ? 1 : -1) * (GameTuning.Hit.GrossMissOff + missRatio * GameTuning.Hit.GrossMissOffSpan);  // well off
             }
             speed = MissPace(speed, shot, missRatio, Assisted);
+            if (!touch && (shot == "drive" || shot == "kill" || shot == "drop")) { LastSetUpPace = SetUpPace(setPace, missRatio); speed *= LastSetUpPace; }
+            else LastSetUpPace = 1.0;
             // The AI's difficulty (1 for a human): how hard its drives and kills are. Drops, boasts, lobs and serves
             // set their own pace (a softer drop just dies in the tin).
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
@@ -718,6 +723,12 @@ namespace SquashSim
         /// <summary>Where a shot aimed at tx really goes with this line: part of the way from the aim to the line - most of
         /// it with Assisted, a little without (LineSnapAssisted / LineSnapNonAssisted). The ring's dot uses it too.</summary>
         /// <summary>A stretched contact's lost pace (MissPaceLoss at a full miss).</summary>
+        /// <summary>Time buys pace: waiting, set, up to +SetPaceBonus; stretched / diving, down by RushPaceLoss (on top of MissPace).</summary>
+        public static double SetUpPace(double setPace, double missRatio)
+        {
+            return (1.0 + GameTuning.Hit.SetPaceBonus * Clamp(setPace, 0, 1)) * (1.0 - GameTuning.Hit.RushPaceLoss * Clamp(missRatio, 0, 1));
+        }
+
         public static double MissPace(double speed, string shot, double missRatio, bool assisted)
         {
             if (assisted && (shot == "drop" || shot == "lob")) return speed;          // assisted: a soft shot keeps its pace (2026-10-27)

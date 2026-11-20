@@ -237,6 +237,17 @@ namespace SquashSim.Tests
             Assert.That(clipOn, Is.LessThan(clipOff));
         }
 
+        /// <summary>2026-11-20 time buys pace: waiting set = up to +20%; just in time = as aimed; stretched = about -35%.</summary>
+        [Test] public void TimeInPositionBuysPaceAndAScrambleLosesIt()
+        {
+            Assert.That(ArcadeStroke.SetUpPace(1, 0), Is.EqualTo(1.2).Within(1e-9), "set and waiting: +20%");
+            Assert.That(ArcadeStroke.SetUpPace(0, 0), Is.EqualTo(1.0).Within(1e-9), "just in time: as aimed");
+            Assert.That(ArcadeStroke.SetUpPace(0.5, 0), Is.GreaterThan(1.0).And.LessThan(1.2));
+            double scramble = ArcadeStroke.MissPace(1.0, "drive", 1, false) * ArcadeStroke.SetUpPace(0, 1);
+            Assert.That(scramble, Is.EqualTo(0.65).Within(0.02), "stretched / diving: about -35%");
+            Assert.That(GameTuning.Shots.DriveSpeed, Is.GreaterThan(GameTuning.Shots.LobSpeed * 2), "drives leave the racket hard");
+        }
+
         [Test] public void ABadContactMayLoseTheAssistAGoodOneNever()
         {
             var c = PhysicsConfig.Current.ArcadeHit;

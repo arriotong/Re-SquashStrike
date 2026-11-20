@@ -320,7 +320,10 @@ namespace SquashSim.Tests
         {
             var s = LetSurvey.Run(12);
             UnityEngine.Debug.Log("[P2M7] " + s);
-            Assert.That(s.FlaggedShare, Is.LessThanOrEqualTo(0.10), "flagged turns (target 8% on the full survey)");
+            // 2026-11-20 0.10 -> 0.13: time buys pace (GameTuning.Hit.SetPace*) - a rushed shot is weak and sits up mid-court
+            // near its striker, so the traffic (and the referee's watching) grows: 6.6% before, ~11.5% after. The calls
+            // themselves stay rare (CallShare below).
+            Assert.That(s.FlaggedShare, Is.LessThanOrEqualTo(0.13), "flagged turns (about 11% on the full survey)");
             Assert.That(s.Rallies, Is.GreaterThan(100));
             // the AI never asks when it was not trying; a misjudged appeal (Profile.Misjudge) may cost it once a game, never twice
             int notTrying = 0;

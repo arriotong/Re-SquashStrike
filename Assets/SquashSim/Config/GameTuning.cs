@@ -31,6 +31,12 @@ namespace SquashSim
             public const double NeutralHeadSpeed = 24.0, AttackHeadSpeed = 37.0;   // m/s at the racket head, before the scales
             public const double LiftHeadSpeed = 12.0, LiftScale = 1.25;            // lobs / serves of the physical swing
             public const double FrontWallRestitution = 0.50;       // playtest 2026-10-18: 0.62 still sent drives onto the back wall (lab 0.74)
+            /// <summary>2026-11-20 "explosive then fades": a ball that hits the front wall faster than FrontWallPaceFrom m/s
+            /// comes back as if it had hit at FrontWallPaceFrom + FrontWallPaceKeep x the excess - the faster launch shows on
+            /// the way in, off the wall a drive plays much as before (a set, full-pace one a little livelier). The whole
+            /// velocity is scaled, so the angle off the wall is kept (a deader restitution alone sent straight drives into
+            /// the side wall).</summary>
+            public const double FrontWallPaceFrom = 26.0, FrontWallPaceKeep = 0.45;
             /// <summary>Drives, kills and boasts keep this much of their rise off the front wall (playtest 2026-10-18: they
             /// popped up into slow volleys). 0.2: 2.2 -> 1.3 m high at the short line, first bounce 8.1 -> 7.2 m.</summary>
             public const double FrontWallRiseKeep = 0.2;
@@ -105,6 +111,11 @@ namespace SquashSim
             public const double FullChargeSpreadCut = 0.6;         // above FullChargeAt, a committed swing: tighter
             public const double FullChargeAt = 0.8;
             public const double MissPaceLoss = 0.15;               // a stretched contact loses up to 15% pace
+            /// <summary>2026-11-20 time buys pace (the user, after watching PSA: "when you have more time just standing there
+            /// waiting for the ball your shot can be faster ... when you don't get time your shot is slower"): set in position
+            /// SetPaceFull seconds before the ball comes, a drive / kill / drop / boast is up to SetPaceBonus faster; stretched or
+            /// diving it loses up to RushPaceLoss more (with MissPaceLoss: about -35%). Lobs, serves and touch shots keep their pace.</summary>
+            public const double SetPaceFull = 0.8, SetPaceBonus = 0.20, RushPaceLoss = 0.24;
             // playtest 2026-10-27 (assisted): a touch lob flew at touch pace and landed short; a cross from the front could be
             // aimed almost sideways and pinball off both side walls
             public const bool TouchLobSolved = true;               // a touch lob takes the lob's own arc (true) or touch pace
@@ -122,7 +133,10 @@ namespace SquashSim
         /// <summary>Each shot type: the aim height picks it (the original SquashStrike), the charge adds pace.</summary>
         public static class Shots
         {
-            public const double DriveSpeed = 28.0;
+            /// <summary>2026-11-20 "explosive then fades" (the user: the ball needs to fly off the racket, then slow off the
+            /// wall): drives leave at 36 m/s (130 km/h; charged ~200), the real air drag fades them on the way in, and the
+            /// hard front-wall hit (Ball.FrontWallPaceKeep) sends them back a touch softer than before. Was 28.</summary>
+            public const double DriveSpeed = 36.0;
             public const double TouchSpeed = 11.0;
             public const double LowHeight = 1.15, LobHeight = 3.0; // under: a drop (a kill if charged), over: a lob
             public const double KillCharge = 0.25, KillHeightAboveTin = 0.10;
@@ -144,7 +158,7 @@ namespace SquashSim
         {
             // the straight drive that would clip its side wall: aimed in 0.1 m at a time, at most 0.3 m (2026-10-20: was
             // 1.2 m - a safety now, not the perfect line)
-            public const double StraightStep = 0.1, StraightMinSide = 0.6, StraightInner = 0.5, StraightMaxShift = 0.3;
+            public const double StraightStep = 0.1, StraightMinSide = 0.6, StraightInner = 0.5, StraightMaxShift = 0.45;   // 0.3 until 2026-11-20 (the faster drives)
             // a bad contact (playtest 2026-10-18): jammed / stretched past 0.25 m (fully bad 0.35 m further), set less than
             // 0.3 s, or diving - a 25% (just bad) to 70% (fully bad) chance to lose the clean line, then 0.6-1.2 m off the aim
             public const double BadDistance = 0.25, BadSpan = 0.35, BadSetTime = 0.3;
