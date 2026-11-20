@@ -1427,3 +1427,38 @@
     margin: 14px 0 6px 6px; font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61);
     -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
 }
+
+/* ---------- 2026-11-20: the Locker Room remade - slots | every item as a grid of tiles | you and the item ---------- */
+.k-lk-rail { width: 300px; margin-right: 20px; }
+.k-grid { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: 20px; }
+.k-grid-head { margin: 0 0 10px 4px; font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-grid-scroll { flex-grow: 1; }
+.k-grid-wrap { flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+.k-tile {
+    width: 150px; height: 186px; margin: 0 12px 12px 0; padding: 8px; border-radius: 12px;
+    background-color: rgb(24, 26, 32); border-width: 3px; border-color: rgba(255, 255, 255, 0.14);
+}
+.k-tile--on { background-color: rgb(34, 42, 22); scale: 1.04 1.04; }
+.k-tile--on > .k-tile-art { border-color: rgb(200, 255, 61); }
+.k-tile--locked > .k-tile-art { opacity: 0.4; }
+.k-tile--locked > .k-tile-name { color: rgba(255, 255, 255, 0.55); }
+.k-tile-art { height: 104px; border-radius: 8px; overflow: hidden; border-width: 3px; border-color: rgba(0, 0, 0, 0); justify-content: center; }
+.k-tile-art-b { position: absolute; left: 0; right: 0; bottom: 0; height: 32%; }
+.k-tile-art--text { background-color: rgb(14, 15, 19); }
+.k-tile-art-name { font-size: 16px; white-space: normal; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-tile-name { margin-top: 6px; font-size: 15px; white-space: nowrap; overflow: hidden; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-tile-sub { font-size: 10px; white-space: normal; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-tile-sub--locked { color: rgb(255, 184, 59); }
+.k-tile-lock { position: absolute; top: 50px; left: 0; right: 0; font-size: 14px; letter-spacing: 3px; -unity-text-align: middle-center; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-tile-worn {
+    position: absolute; top: 4px; left: 4px; padding: 2px 6px; border-radius: 6px; font-size: 9px; letter-spacing: 1px;
+    color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-tile-new {
+    position: absolute; top: 4px; right: 4px; padding: 2px 6px; border-radius: 6px; font-size: 9px; letter-spacing: 1px;
+    color: rgb(255, 255, 255); background-color: rgb(255, 74, 64); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-lk-side { width: 400px; }
+.k-lk-side > .k-lk-pic { width: 400px; height: 440px; margin-bottom: 14px; }
+.k-lk-side > .k-lk-info { width: 400px; flex-grow: 1; }
+.lk-card--side { width: 400px; margin-bottom: 14px; }

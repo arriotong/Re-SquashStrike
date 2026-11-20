@@ -113,38 +113,29 @@ namespace SquashGame.Tests
             Assert.That(you.Rig.RegionMaterial(Athlete.AthleteRig.Region.ShirtBody).color, Is.EqualTo(Cosmetics.Find("shirt_white").A));
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "batch 2: yours is worn as you browse");
 
-            // batch 2: only your own things until you ask - then the locked ones, after yours
-            foreach (var it in row.Items) Assert.That(Rewards.Owns(it.Id), Is.True, "only owned items: " + it.Id);
-            Assert.That(row.OwnedCount, Is.LessThan(row.TotalCount));
-            yield return Tap(kb.rKey);                                                 // Y: show locked
+            // 2026-11-20 the grid: every item listed - yours first, the locked ones after (tried on, never worn)
             Assert.That(LockerRow.ShowLocked, Is.True);
-            Assert.That(row.Items.Count, Is.EqualTo(row.TotalCount));
-            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"), "still on the same shirt");
+            Assert.That(row.Items.Count, Is.EqualTo(row.TotalCount), "everything shown");
+            Assert.That(row.OwnedCount, Is.LessThan(row.TotalCount));
+            Assert.That(locker.Grid, Is.Not.Null, "the slot's items as a grid");
+            Assert.That(locker.Grid.Count, Is.EqualTo(row.TotalCount), "a tile for each");
             int firstLocked = row.Items.FindIndex(it => !Rewards.Owns(it.Id));
             Assert.That(firstLocked, Is.EqualTo(row.OwnedCount), "the locked ones come after yours");
-            row.BrowseTo(firstLocked);                                               // (a click on its swatch)
+            row.BrowseTo(firstLocked);                                               // (a click on its tile)
             Assert.That(row.Owned, Is.False);
             yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_1_LockerRoom.png");
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "a locked item is only tried on");
-            yield return Tap(kb.rKey);                                                 // back to only mine
-            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"), "back on what is worn");
+            row.Select("shirt_white");
+            Assert.That(row.Browsing.Id, Is.EqualTo("shirt_white"));
 
-            // 2026-10-28 ("too many clicks", "hard to find my items"): confirm opens the slot's list; a pick is worn
-            yield return Tap(kb.enterKey);
-            Assert.That(fe.Top, Is.InstanceOf<PickListScreen>(), "the shirts as a list");
-            Assert.That(((PickListScreen)fe.Top).Count, Is.EqualTo(row.Items.Count));
-            yield return Wait(0.5f, () => false);
-            yield return CaptureUI(fe, "UI_Locker_List.png");
-            string pick = row.Items[0].Id;
-            ((PickListScreen)fe.Top).Pick(row.Labels()[0]);
-            yield return null; yield return null;
-            Assert.That(fe.Top, Is.SameAs(locker), "back to the locker");
-            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo(pick), "worn in one pick");
-            yield return Tap(kb.enterKey);                                           // and back to white
-            ((PickListScreen)fe.Top).Pick(row.Labels()[row.Items.FindIndex(i => i.Id == "shirt_white")]);
-            yield return null; yield return null;
-            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"));
+            // Randomise (Y): an outfit from what you own
+            yield return Tap(kb.rKey);
+            var l = ProfileStore.Current.Progress.Loadout;
+            foreach (var slot in new[] { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes })
+                Assert.That(Rewards.Owns(l.Get(slot)), Is.True, "randomised from your own: " + slot);
+            row.Select("shirt_white");
+            Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "picked again");
 
             // LOOK: a celebration plays on the athlete as you browse
             yield return Tap(kb.eKey);

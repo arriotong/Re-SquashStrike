@@ -36,8 +36,9 @@ namespace SquashGame.UI
         readonly List<Item> _all;
         List<Item> _items;
         int _browse;
-        /// <summary>Show the locked items too (Y on the Locker Room; off: only what you own).</summary>
-        public static bool ShowLocked;
+        /// <summary>Show the locked items too. 2026-11-20 (the user: "list out everything" - locked ones greyed with how to get
+        /// them): always, yours first.</summary>
+        public static bool ShowLocked = true;
         readonly Label _value = new Label(), _dot = new Label();
         static Progress P { get { return ProfileStore.Current.Progress; } }
         public override bool WantsSlant { get { return false; } }
@@ -121,7 +122,7 @@ namespace SquashGame.UI
         public override void Submit()
         {
             bool buying = !Owned && GearDrops.InStore(Browsing);
-            if (!buying && ListOpener != null && _items.Count > 1) { ListOpener(this); return; }
+            if (!buying && ListOpener != null && _items.Count > 1) { ListOpener(this); return; }     // (2026-11-20: the Locker Room's grid sets none)
             if (!Owned && GearDrops.BuyFromStore(Browsing)) Sounds.Play("stamp");
             if (!Owned) { Sounds.Play("back"); return; }
             P.Loadout.Set(Slot, Browsing.Id);
@@ -130,6 +131,9 @@ namespace SquashGame.UI
             Refresh();
             OnBrowse?.Invoke(this);
         }
+
+        /// <summary>Browse to this item (the grid's tiles, the Randomise button).</summary>
+        public void Select(string id) { int k = _items.FindIndex(i => i.Id == id); if (k >= 0) BrowseTo(k); }
 
         /// <summary>Back to what is worn.</summary>
         public void Revert() { _browse = Mathf.Max(0, _items.FindIndex(i => i.Id == P.Loadout.Get(Slot))); Refresh(); }
@@ -233,6 +237,77 @@ namespace SquashGame.UI
         }
     }
 
+    /// <summary>2026-11-20 (the user: "the cosmetic UI is kinda bad, hard to choose") a slot's items, every one, as tiles in a
+    /// scrolling grid: its colours (or its name), the rarity on its edge, ✓ on what you wear, NEW on what you haven't looked
+    /// at; locked ones dimmed with how to get them. Click (or ← →) to try one on.</summary>
+    public sealed class ItemGrid : VisualElement
+    {
+        readonly ScrollView _scroll = new ScrollView(ScrollViewMode.Vertical);
+        readonly VisualElement _wrap = new VisualElement();
+        readonly Label _head;
+        readonly List<VisualElement> _tiles = new List<VisualElement>();
+        /// <summary>The tiles shown (tests).</summary>
+        public int Count { get { return _tiles.Count; } }
+
+        public ItemGrid()
+        {
+            AddToClassList("k-grid");
+            _head = Kit.L(this, "", "k-grid-head");
+            _scroll.AddToClassList("k-grid-scroll");
+            _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            _wrap.AddToClassList("k-grid-wrap");
+            _scroll.Add(_wrap);
+            Add(_scroll);
+        }
+
+        public void Show(LockerRow row)
+        {
+            var p = ProfileStore.Current.Progress;
+            string worn = p.Loadout.Get(row.Slot);
+            _head.text = Cosmetics.SlotNames[(int)row.Slot].ToUpperInvariant() + "   ·   " + row.OwnedCount + " / " + row.TotalCount + " OWNED";
+            _wrap.Clear(); _tiles.Clear();
+            bool text = row.Slot == Slot.Celebration || row.Slot == Slot.Title;
+            var items = row.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                bool own = Rewards.Owns(it.Id);
+                var tile = Kit.Box(_wrap, "k-tile");
+                if (it.Rarity >= 0) tile.style.borderBottomColor = tile.style.borderTopColor = tile.style.borderLeftColor = tile.style.borderRightColor = it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[it.Rarity];
+                var art = Kit.Box(tile, "k-tile-art");
+                if (text || it.None) { art.AddToClassList("k-tile-art--text"); Kit.L(art, it.None ? "NONE" : it.Name, "k-tile-art-name"); }
+                else
+                {
+                    art.style.backgroundColor = it.A;
+                    if (it.B != it.A) { var b = Kit.Box(art, "k-tile-art-b"); b.style.backgroundColor = it.B; }
+                }
+                Kit.L(tile, it.Name + (it.Gold ? "  ★" : ""), "k-tile-name");
+                string sub = own ? (it.Rarity >= 0 ? GearDrops.RarityNames[it.Rarity] : "Yours")
+                           : GearDrops.InStore(it) ? GearDrops.StorePrice(it) + " coins"
+                           : it.Unlock == UnlockKind.Gacha ? "From a mystery pack"
+                           : it.HowToUnlock;
+                var subL = Kit.L(tile, sub, "k-tile-sub");
+                if (!own) { tile.AddToClassList("k-tile--locked"); Kit.L(tile, "LOCKED", "k-tile-lock"); subL.AddToClassList("k-tile-sub--locked"); }
+                if (it.Id == worn) Kit.L(tile, "✓ WEARING", "k-tile-worn");
+                else if (own && it.Unlock != UnlockKind.Free && !p.Seen.Contains(it.Id)) Kit.L(tile, "NEW", "k-tile-new");
+                if (i == row.BrowseIndex) tile.AddToClassList("k-tile--on");
+                int at = i;
+                tile.RegisterCallback<ClickEvent>(e =>
+                {
+                    if (row.BrowseIndex == at && !Rewards.Owns(it.Id) && GearDrops.InStore(it)) row.Submit();      // a second click buys it
+                    else row.BrowseTo(at);
+                    e.StopPropagation();
+                });
+                _tiles.Add(tile);
+            }
+            if (row.BrowseIndex >= 0 && row.BrowseIndex < _tiles.Count)
+            {
+                var on = _tiles[row.BrowseIndex];
+                schedule.Execute(() => { if (on.panel != null) _scroll.ScrollTo(on); });
+            }
+        }
+    }
+
     /// <summary>The player card: banner, name, title, level and XP, headline stats.</summary>
     public sealed class PlayerCard : VisualElement
     {
@@ -290,73 +365,70 @@ namespace SquashGame.UI
         protected override string Title { get { return "Your kit"; } }
         protected override bool ShowChip { get { return false; } }
 
-        sealed class Tab { public SwatchStrip Strip; public VisualElement Info; }
+        sealed class Tab { public ItemGrid Grid; public VisualElement Info; public List<LockerRow> Rows = new List<LockerRow>(); }
         readonly Dictionary<LockerRow, Tab> _tabOf = new Dictionary<LockerRow, Tab>();
+        readonly Dictionary<string, Tab> _tabs = new Dictionary<string, Tab>();
         PlayerCard _card;
         MenuItem _shown;
+        /// <summary>The grid on show (tests).</summary>
+        public ItemGrid Grid { get { return Focused is LockerRow r && _tabOf.TryGetValue(r, out var t) ? t.Grid : null; } }
 
         protected override void Compose()
         {
-            // ---- the kit, in three tabs of a few slots each; your athlete (or racket) live in the middle ----
+            // ---- 2026-11-20 each tab: the slots down the left, the slot's items as a grid in the middle, you (or your racket, or
+            // your card) on the right with what the item is ----
             Wardrobe("CLOTHES", new[] { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Headband, Slot.Wristband }, "you");
             Wardrobe("LOOK", new[] { Slot.Body, Slot.Skin, Slot.Hair, Slot.HairColour, Slot.Celebration }, "you");
             Wardrobe("RACKET", new[] { Slot.Frame, Slot.Grip, Slot.Strings, Slot.Trail }, "racket");
-
-            // ---- CARD ----
-            var card = Kit.Box(Page("CARD"), "k-lk");
-            var t2 = Build(card, new[] { Slot.Banner, Slot.Title });
-            var cstage = Kit.Box(null, "k-lk-stage");
-            card.Insert(1, cstage);
-            _card = new PlayerCard(); _card.AddToClassList("lk-card--big");
-            cstage.Add(_card);
-            cstage.Add(t2.Strip);
+            Wardrobe("CARD", new[] { Slot.Banner, Slot.Title }, null);
         }
 
         void Wardrobe(string name, Slot[] slots, string shot)
         {
             var page = Kit.Box(Page(name), "k-lk");
-            var t = Build(page, slots);
-            var stage = Kit.Box(null, "k-lk-stage");
-            page.Insert(1, stage);
-            Vignettes.Attach(Kit.Box(stage, "k-lk-pic"), shot, 720, 900);
-            stage.Add(t.Strip);
-        }
-
-        /// <summary>A tab: the rail of slots, then (the caller inserts the stage) the info panel; returns its strip and panel.</summary>
-        Tab Build(VisualElement page, Slot[] slots)
-        {
             var rail = Kit.Box(page, "k-lk-rail");
-            var tab = new Tab { Strip = new SwatchStrip() };
-            foreach (var s in slots)
+            var tab = new Tab { Grid = new ItemGrid() };
+            _tabs[name] = tab;
+            foreach (var sl in slots)
             {
-                var row = AddTo(rail, new LockerRow(s));
+                var row = AddTo(rail, new LockerRow(sl));
                 row.OnBrowse = r => Show(r, true);
-                _tabOf[row] = tab;
+                _tabOf[row] = tab; tab.Rows.Add(row);
             }
-            tab.Info = Kit.Panel(page, "THE ITEM");
+            page.Add(tab.Grid);
+            var side = Kit.Box(page, "k-lk-side");
+            if (shot != null) Vignettes.Attach(Kit.Box(side, "k-lk-pic"), shot, 640, 720);
+            else { _card = new PlayerCard(); _card.AddToClassList("lk-card--side"); side.Add(_card); }
+            tab.Info = Kit.Panel(side, "THE ITEM");
             tab.Info.AddToClassList("k-lk-info");
-            return tab;
         }
 
         protected override void SetPrompts()
         {
-            Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.Y, LockerRow.ShowLocked ? "Only mine" : "Show locked"), (PromptBar.Btn.B, "Done"), (PromptBar.Btn.Tabs, "Tabs"));
+            Prompts.Set((PromptBar.Btn.Move, "Browse"), (PromptBar.Btn.A, "Wear / buy"), (PromptBar.Btn.Y, "Randomise"), (PromptBar.Btn.B, "Done"), (PromptBar.Btn.Tabs, "Tabs"));
         }
 
-        /// <summary>Y: show the locked items too, or only yours.</summary>
+        /// <summary>Y (2026-11-20): Randomise - an outfit from what you own, on this tab's slots (your body and skin tone stay).</summary>
         public override void OnActionY()
         {
-            LockerRow.ShowLocked = !LockerRow.ShowLocked;
-            foreach (var i in Items) if (i is LockerRow row) { row.Filter(); row.Refresh(); }
+            if (!(Focused is LockerRow f) || !_tabOf.TryGetValue(f, out var tab)) return;
+            var rng = new System.Random();
+            foreach (var row in tab.Rows)
+            {
+                if (row.Slot == Slot.Body || row.Slot == Slot.Skin) continue;
+                var mine = row.Items.FindAll(i => Rewards.Owns(i.Id));
+                if (mine.Count > 0) row.Select(mine[rng.Next(mine.Count)].Id);
+            }
+            ProfileStore.Save();
+            Sounds.Play("stamp");
             _shown = null;
-            SetPrompts();
-            Sounds.Play("tick");
+            Show(f, true);
         }
 
         void Show(LockerRow r, bool browsed)
         {
             var tab = _tabOf[r];
-            tab.Strip.Show(r);
+            tab.Grid.Show(r);
             var it = r.Browsing;
             tab.Info.Clear();
             Kit.L(tab.Info, Cosmetics.SlotNames[(int)r.Slot].ToUpperInvariant(), "k-panel-title");
@@ -369,7 +441,7 @@ namespace SquashGame.UI
             if (store) Kit.L(tab.Info, GearDrops.Wallet.Coins >= GearDrops.StorePrice(it) ? "Enter to buy it  ·  you have " + GearDrops.Wallet.Coins.ToString("N0") + " coins" : "You have " + GearDrops.Wallet.Coins.ToString("N0") + " coins - play to earn more", "k-lk-how");
             else if (!r.Owned) Kit.L(tab.Info, "Unlock: " + it.HowToUnlock, "k-lk-how");
             if (it.Pose != null) Kit.L(tab.Info, "Plays when you win a match.", "k-lk-how");
-            Kit.L(tab.Info, r.OwnedCount + " / " + r.TotalCount + " owned  ·  " + (LockerRow.ShowLocked ? "showing everything" : "showing yours"), "k-lk-count");
+            Kit.L(tab.Info, r.OwnedCount + " / " + r.TotalCount + " owned", "k-lk-count");
 
             // what the athlete (and the card) wear: everything browsed
             var l = ProfileStore.Current.Progress.Loadout.Clone();
@@ -391,7 +463,7 @@ namespace SquashGame.UI
         public override void OnShow()
         {
             base.OnShow();
-            LockerRow.ListOpener = r => { _listing = true; Fe.Push(new PickListScreen(Cosmetics.SlotNames[(int)r.Slot], r.Labels(), r.BrowseIndex, r.BrowseTo)); };
+            LockerRow.ListOpener = null;                                      // 2026-11-20: the grid shows them all; confirm wears or buys
             _listing = false;
             MatchRunner.Showcase = true;                                     // 2026-10-29: stand still, so the kit can be seen
             MatchRunner.Studio = true; KitStudio.Show(true);                 // 2026-11-20: in the photo studio, off the court
@@ -411,7 +483,6 @@ namespace SquashGame.UI
             KitDirector.Preview = null;
             KitDirector.PreviewPose = null;
             foreach (var i in Items) if (i is LockerRow r) r.Revert();         // a locked item tried on comes off
-            LockerRow.ShowLocked = false;
             ProfileStore.Save();
         }
     }
