@@ -97,6 +97,7 @@ namespace SquashGame
                 case "station": Station(c); break;
                 case "rooftop": Rooftop(c); break;
                 case "arena": Arena(c); break;
+                case var legacy when Legacy(c, legacy): break;                  // 2026-11-20 the new legacy courts (VenueView.Legacy.cs)
                 default:
                     var v = Courts.Current.Id.StartsWith(Courts.VenuePrefix) ? ClubVenues.Find(Courts.Current.Id.Substring(Courts.VenuePrefix.Length)) : null;
                     var t = Courts.Current.Id.StartsWith(Courts.TourPrefix) ? TourVenues.Find(Courts.Current.Id.Substring(Courts.TourPrefix.Length)) : null;
@@ -141,6 +142,11 @@ namespace SquashGame
                 case "desert": n = new Night { Spill = new Color(0.55f, 0.62f, 0.9f), SpillI = 0.21f, Wash = new Color(0.2f, 0.45f, 1.4f, 0.22f), Beams = true, AmbientK = 0.7f }; break;
                 case "arena": n = new Night { Spill = new Color(0.62f, 0.55f, 0.95f), SpillI = 0.19f, Wash = new Color(1.1f, 0.3f, 1.4f, 0.22f), AmbientK = 0.65f }; break;
                 case "station": n = new Night { Spill = new Color(0.95f, 0.78f, 0.55f), SpillI = 0.23f, Wash = new Color(1.4f, 0.85f, 0.35f, 0.18f), AmbientK = 0.6f }; break;
+                case "beach": case "reef": case "temple": return false;                          // daylit (or sea-lit): bright and even
+                case "peak": n = new Night { Spill = new Color(0.5f, 0.9f, 0.8f), SpillI = 0.21f, Wash = new Color(0.3f, 1.2f, 0.8f, 0.18f), AmbientK = 0.7f }; break;
+                case "orbit": n = new Night { Spill = new Color(0.5f, 0.7f, 1f), SpillI = 0.22f, Wash = new Color(0.3f, 0.7f, 1.4f, 0.2f), AmbientK = 0.65f }; break;
+                case "neon": n = new Night { Spill = new Color(0.9f, 0.45f, 1f), SpillI = 0.22f, Wash = new Color(1.4f, 0.3f, 1.2f, 0.22f), Beams = true, AmbientK = 0.65f }; break;
+                case "volcano": n = new Night { Spill = new Color(1f, 0.5f, 0.3f), SpillI = 0.23f, Wash = new Color(1.4f, 0.4f, 0.1f, 0.22f), AmbientK = 0.7f }; break;
                 case "rooftop": n = new Night { Spill = new Color(0.6f, 0.58f, 0.9f), SpillI = 0.21f, Wash = new Color(0.4f, 0.5f, 1.4f, 0.2f), AmbientK = 0.75f }; break;
                 default: n = new Night { Spill = new Color(0.6f, 0.68f, 1f), SpillI = 0.19f, Wash = new Color(0.2f, 0.5f, 1.4f, 0.2f), AmbientK = 0.6f }; break;   // the show court
             }
@@ -669,6 +675,9 @@ namespace SquashGame
             var go = Greybox.MeshObject("Sky", c.Venue, SkyDome(radius, 48, 24), mat);
             go.transform.position = W(0, 0, L / 2);
         }
+
+        /// <summary>An inward-facing sphere (a sky, a backdrop).</summary>
+        public static Mesh Dome(float r, int lon, int lat) { return SkyDome(r, lon, lat); }
 
         static Mesh SkyDome(float r, int lon, int lat)
         {

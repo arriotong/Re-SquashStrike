@@ -73,6 +73,9 @@ namespace SquashGame
             },
         };
 
+        /// <summary>The broadcast view (squash TV's main camera): centred behind the back wall, above the glass.</summary>
+        static readonly Shot TvView = new Shot(0f, 4.4f, 14.2f,  0f, 1.4f, 4.2f,  44, 0f,  0f, 0f, 0f);
+
         static int _scene = -1, _shot;
         static float _age;
         static Vector3 _action;
@@ -91,7 +94,8 @@ namespace SquashGame
         static void Orbit(Camera cam, SimRunnerBase runner, float dt, bool racket)
         {
             var a = runner != null ? runner.Athletes : null;
-            Vector3 p = MatchRunner.Showcase ? MatchRunner.ShowcaseSim                 // 2026-10-29: standing still for the Locker Room
+            Vector3 p = MatchRunner.Studio ? KitStudio.Sim                                // 2026-11-20: in the photo studio
+                      : MatchRunner.Showcase ? MatchRunner.ShowcaseSim                 // 2026-10-29: standing still for the Locker Room
                       : a != null && a.Length > 0 ? new Vector3((float)a[0].Player.Pos.X, 0f, (float)a[0].Player.Pos.Z) : new Vector3(0, 0, 5);
             float k = 1f - Mathf.Exp(-3f * dt);
             if (!_haveAction) { _subject = p; _haveAction = true; } else _subject += (p - _subject) * k;
@@ -110,7 +114,7 @@ namespace SquashGame
                     if (d > 0.01f) pos += toCam / d * (OpponentClearance - d);       // and steps round them meanwhile
                 }
             }
-            pos.x = Mathf.Clamp(pos.x, -3.0f, 3.0f); pos.z = Mathf.Clamp(pos.z, 0.3f, 9.5f);
+            if (!MatchRunner.Studio) { pos.x = Mathf.Clamp(pos.x, -3.0f, 3.0f); pos.z = Mathf.Clamp(pos.z, 0.3f, 9.5f); }   // (the studio has no walls to keep in)
             // ...and by a side wall the clamp pulled the camera into your own athlete: hurry past those angles, and look
             // down from higher meanwhile
             float near = new Vector2(pos.x - _subject.x, pos.z - _subject.z).magnitude;
@@ -127,6 +131,15 @@ namespace SquashGame
         /// <summary>Film the demo rally with this camera (instead of the gameplay camera).</summary>
         public static void Apply(Camera cam, SimRunnerBase runner, float dt)
         {
+            // 2026-11-20 the title's empty courts: the TV view - high behind the back wall, the whole court, held still
+            if (MatchRunner.EmptyCourt)
+            {
+                _scene = -1;
+                cam.fieldOfView = TvView.Fov;
+                cam.transform.position = SimToWorld.Pos(TvView.Pos.x, TvView.Pos.y, TvView.Pos.z);
+                cam.transform.LookAt(SimToWorld.Pos(TvView.Look.x, TvView.Look.y, TvView.Look.z), Vector3.up);
+                return;
+            }
             if (Scene == LockerScene || Scene == RacketScene) { _scene = -1; Orbit(cam, runner, dt, Scene == RacketScene); return; }
             int scene = ((Scene % Scenes.Length) + Scenes.Length) % Scenes.Length;
             var set = Scenes[scene];

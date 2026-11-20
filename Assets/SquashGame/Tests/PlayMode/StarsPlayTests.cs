@@ -71,7 +71,7 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var qm = (QuickMatchScreen)fe.Top;
             var rows = qm.Reachable().FindAll(i => !(i is PrimaryItem));
-            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Opponent", "Match", "Court" }), "three rows, nothing else (2026-10-28: Abilities hidden for now)");
+            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Opponent", "Match", "Scoring", "Abilities", "Court" }), "who, how long, the scoring, abilities, where (2026-11-20)");
             Assert.That(ProfileStore.Current.Choices.OpponentId, Is.EqualTo(MatchChoices.Ladder[0]), "a new player starts at the bottom");
 
             var opp = (CarouselItem)rows[0];
@@ -93,21 +93,26 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
-        public IEnumerator QuickMatchHasNoAbilitiesForNow()
+        public IEnumerator QuickMatchAbilitiesAreOffUnlessTurnedOn()
         {
+            // 2026-11-20: the Abilities row is back (Off / On), Off unless the player turns it on
             InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
             FrontEnd fe = null;
             yield return Boot(f => fe = f);
-            ProfileStore.Current.Choices.Abilities = true;                       // saved "On" from before
+            Assert.That(ProfileStore.Current.Choices.Abilities, Is.False, "off for a new player");
             fe.Push(new QuickMatchScreen());
             yield return null; yield return null;
             var qm = (QuickMatchScreen)fe.Top;
-            Assert.That(qm.Reachable().Find(i => i.Name == "Abilities"), Is.Null, "no Abilities row");
+            var row = (SelectorItem)qm.Reachable().Find(i => i.Name == "Abilities");
+            Assert.That(row, Is.Not.Null, "an Abilities row");
+            Assert.That(row.Index, Is.EqualTo(0), "showing Off");
+            row.Change(1);
+            Assert.That(ProfileStore.Current.Choices.Abilities, Is.True, "turned on");
             qm.Reachable().Find(i => i is PrimaryItem).Submit();
             yield return Wait(2f, () => fe.Top == null);
             var r = fe.Match;
-            Assert.That(r.Settings.FocusCharges, Is.EqualTo(0), "no Focus");
-            Assert.That(r.Settings.OppMods == null || !r.Settings.OppMods.Exists(m => m.Id == "ace"), Is.True, "no double aces");
+            Assert.That(r.Settings.FocusCharges, Is.EqualTo(MatchChoices.AbilityFocus), "Focus to use");
+            Assert.That(r.Settings.Mods, Is.Not.Null.And.Not.Empty, "your abilities");
         }
 
         [UnityTest]

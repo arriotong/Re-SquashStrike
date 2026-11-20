@@ -99,7 +99,8 @@ namespace SquashGame.Tests
             Assert.That(locker.Coins, Is.Not.Null, "2026-10-29: the coins top right");
             Assert.That(locker.Coins.Text, Is.EqualTo(GearDrops.Wallet.Coins.ToString("N0")));
             var still = You().transform.position;
-            Assert.That(Vector3.Distance(still, MatchRunner.ShowcaseSpot), Is.LessThan(0.2f), "mid-court");
+            Assert.That(MatchRunner.Studio, Is.True, "2026-11-20: in the photo studio, off the court");
+            Assert.That(Vector3.Distance(still, KitStudio.World), Is.LessThan(0.2f), "on the studio's spot");
             yield return Wait(1.0f, () => false);
             Assert.That(Vector3.Distance(still, You().transform.position), Is.LessThan(0.02f), "not running about");
 

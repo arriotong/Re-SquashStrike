@@ -46,8 +46,35 @@ namespace SquashGame.UI
         /// <summary>What plays behind the logo now (tests).</summary>
         public Replays.TheatreSession Attract { get { return _attract; } }
 
-        public override void OnShow() { base.OnShow(); StartAttract(); }
-        public override void OnHide() { StopAttract(); }
+        // 2026-11-20 (the user): no one playing - the empty courts from the TV view, a different court every few seconds.
+        // (The highlights reel below is kept, not shown.)
+        public const float CourtSeconds = 5f;
+        string _courtWas;
+        float _courtFor;
+        /// <summary>The courts shown so far (tests).</summary>
+        public int CourtsShown { get; private set; }
+
+        public override void OnShow()
+        {
+            base.OnShow();
+            MatchRunner.EmptyCourt = true;
+            _courtWas = Courts.CurrentId; _courtFor = 0f; CourtsShown = 1;
+        }
+        public override void OnHide()
+        {
+            StopAttract();
+            MatchRunner.EmptyCourt = false;
+            if (_courtWas != null) Courts.CurrentId = _courtWas;
+        }
+
+        void NextCourt()
+        {
+            var all = Courts.Pickable;
+            if (all.Length < 2) return;
+            int at = System.Array.FindIndex(all, c => c.Id == Courts.CurrentId);
+            Courts.CurrentId = all[(at + 1 + all.Length) % all.Length].Id;
+            CourtsShown++;
+        }
 
         void StartAttract()
         {
@@ -77,6 +104,7 @@ namespace SquashGame.UI
 
         public override void Tick(float dt)
         {
+            if ((_courtFor += dt) >= CourtSeconds) { _courtFor = 0f; NextCourt(); }
             var a = _attract;
             if (a == null) return;
             a.Tick(dt);
@@ -114,7 +142,7 @@ namespace SquashGame.UI
         }
         /// <summary>Quick Match's Abilities row (batch 2). Off for now (2026-10-28: "remove special ability from quick play
         /// until we get them all figured out"): the row is hidden and a saved "On" is not played. True brings it back.</summary>
-        public const bool QuickMatchAbilities = false;
+        public const bool QuickMatchAbilities = true;            // 2026-11-20 back on Quick Match, Off by default (the user: "so it's easy for me to test it")
         public const string AbilityHint = "Abilities: Focus slow-mo twice a game, arcade shots, and aces and nicks score 2 - for them too.";
 
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
@@ -183,6 +211,8 @@ namespace SquashGame.UI
             Row(a, Volume("Sound effects", () => S.SfxVolume, x => S.SfxVolume = x), "The ball, the walls, the shoes, the menus.");
             Row(a, Volume("Referee", () => S.RefereeVolume, x => S.RefereeVolume = x), "The calls.");
             Row(a, Volume("Music", () => S.MusicVolume, x => S.MusicVolume = x), "The menus' music.");
+            Row(a, new SelectorItem("Menu music", new[] { "Original", "Songs" }, () => S.MusicSongs ? 1 : 0, i => { S.MusicSongs = i == 1; Changed(false); }),
+                "Original: the game's own tune. Songs: the credited songs, by mood.");
             Row(a, Volume("Crowd", () => S.CrowdVolume, x => S.CrowdVolume = x), "The people watching: quiet in a rally, applause after it.");
             if (Fe != null && Fe.Music != null) Kit.L(a, Audio.MusicLibrary.Credits(Fe.Music.Has), "k-set-hint");      // batch 6: CC BY - every song credited
 

@@ -29,6 +29,7 @@ namespace SquashGame.Tests
         public IEnumerator TheMenusPlaySongsByMood()
         {
             LocalMatchTests.FreshProfile();
+            ProfileStore.Current.Settings.MusicSongs = true;                       // (2026-11-20: the original tune is the default)
             CareerStore.Delete();
             FrontEnd.StartAtTitle = false;
             InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();

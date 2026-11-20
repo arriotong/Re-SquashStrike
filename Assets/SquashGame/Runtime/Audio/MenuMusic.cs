@@ -22,6 +22,9 @@ namespace SquashGame.Audio
     {
         /// <summary>Settings > Audio > Music.</summary>
         public static float Volume = 0.6f;
+        /// <summary>2026-11-20 (the user: "change the background music back to first version"): the menus play the game's own
+        /// made-up track; the songs only when Settings > Audio > Menu music is "Songs".</summary>
+        public static bool Songs;
         /// <summary>0 silent, 1 full - what the menus want now (FrontEnd sets it every frame).</summary>
         public float Want;
         /// <summary>Which songs the screen on show wants (FrontEnd sets it every frame).</summary>
@@ -57,7 +60,7 @@ namespace SquashGame.Audio
         void Awake()
         {
             _a = Source(); _b = Source();
-            if (!AnySongs()) _render = Task.Run(() => MenuMusicTrack.Render());
+            if (!Songs || !AnySongs()) _render = Task.Run(() => MenuMusicTrack.Render());
         }
 
         /// <summary>Is this song in the build (Resources/Music)?</summary>
@@ -102,9 +105,12 @@ namespace SquashGame.Audio
             _level = Mathf.MoveTowards(_level, Mathf.Clamp01(Want), Time.unscaledDeltaTime / (Want > _level ? 1.2f : 0.8f));
             float gain = _level * Volume * 0.8f;
 
-            // no songs: the made-up track, looped (as before)
-            if (_render != null || _madeUp != null)
+            // the made-up track, looped: the first version's music (and with no songs in the build)
+            bool songs = Songs && AnySongs();
+            if (!songs && _render == null && _madeUp == null) _render = Task.Run(() => MenuMusicTrack.Render());
+            if (!songs)
             {
+                if (Current != null) { _a.Stop(); _b.Stop(); _a.clip = _madeUp; _a.loop = true; Current = null; }
                 if (_madeUp == null && _render.IsCompleted)
                 {
                     if (_render.Status == TaskStatus.RanToCompletion)
@@ -132,7 +138,7 @@ namespace SquashGame.Audio
             if (_paused) { _paused = false; if (_a.clip != null) _a.UnPause(); }
             // a new mood, nothing yet, or the song over: the next
             bool over = _a.clip != null && !_a.isPlaying && !_paused;
-            if (_a.clip == null || over || (Mood != _playingMood && (Current == null || Current.Mood != Mood)))
+            if (_a.clip == null || _a.clip == _madeUp || over || (Mood != _playingMood && (Current == null || Current.Mood != Mood)))
             {
                 var next = Pick(Mood);
                 if (next != null) Begin(next); else _playingMood = Mood;

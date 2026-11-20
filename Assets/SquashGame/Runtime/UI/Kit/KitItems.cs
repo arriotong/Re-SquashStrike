@@ -184,7 +184,9 @@ namespace SquashGame.UI
             else Change(1);
         }
         public override void Change(int d) { if (!IsEnabled) return; _set(OptionItem.Step(_get(), d, _values.Length)); Refresh(); }
-        public override void Refresh() { base.Refresh(); _value.text = Value; _count.text = (_get() + 1) + " / " + _values.Length; }
+        /// <summary>2026-11-20 the list's parts (the courts: legacy / location), by index; null: one list.</summary>
+        public Func<int, string> Sections;
+        public override void Refresh() { base.Refresh(); _value.text = Value; _count.text = (Sections != null ? Sections(Index) + "  ·  " : "") + (_get() + 1) + " / " + _values.Length; }
     }
 
     /// <summary>A plain action as a wide row (pause, full time, confirm): a label, an optional glyph; lime when focused.</summary>

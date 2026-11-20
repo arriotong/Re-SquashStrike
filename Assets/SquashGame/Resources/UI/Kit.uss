@@ -1379,3 +1379,51 @@
 /* ---------- 2026-10-30: the hubs' sections back to the Q / E strip, in the top bar on the right ---------- */
 .k-screen--toptabs > .k-tabs--strip { left: auto; right: 520px; top: 66px; flex-wrap: nowrap; }
 .k-screen--toptabs > .k-content { top: 170px; }
+
+/* ---------- 2026-11-20: the match setup (Quick Match, Local Versus) remade - the choices on a solid board, each a block with its
+   name on top; the short choices as big tiles (the chosen one solid lime); the opponent's difficulty as a coloured bar ---------- */
+.k-vs-side { width: 420px; }
+.k-vs-pic { width: 420px; height: 500px; }
+.k-vs-board {
+    width: 860px; align-self: center; justify-content: flex-start; padding: 14px 24px 18px 24px; border-radius: 22px;
+    background-color: rgba(10, 11, 14, 0.94); border-width: 2px; border-color: rgba(255, 255, 255, 0.10); border-top-width: 5px; border-top-color: rgb(200, 255, 61);
+}
+.k-vs-board > .k-vs-vs { font-size: 60px; margin-bottom: 4px; text-shadow: 0 0 18px rgba(200, 255, 61, 0.5); }
+.k-vs-board .k-sel, .k-vs-board .k-carousel {
+    flex-direction: column; align-items: stretch; width: auto; height: auto; padding: 10px 14px 12px 14px; margin-bottom: 10px;
+    border-radius: 14px; background-color: rgb(24, 26, 32); border-width: 3px; border-color: rgba(255, 255, 255, 0.06);
+}
+.k-vs-board .k-sel.fe-item--focused, .k-vs-board .k-carousel.fe-item--focused { border-color: rgb(200, 255, 61); background-color: rgb(30, 37, 20); }
+.k-vs-board .k-sel-label {
+    width: auto; margin-bottom: 8px; font-size: 14px; letter-spacing: 3px; color: rgba(255, 255, 255, 0.7);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+.k-vs-board .fe-item--focused .k-sel-label { color: rgb(200, 255, 61); }
+.k-vs-board .k-sel-strip { flex-direction: row; align-items: stretch; }
+.k-vs-board .k-pill {
+    flex-grow: 1; flex-basis: 0; height: 86px; margin: 0 5px; padding: 4px 6px; border-radius: 12px; white-space: normal;
+    -unity-text-align: middle-center; font-size: 13px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.9);
+    background-color: rgb(42, 45, 54); border-width: 2px; border-color: rgba(255, 255, 255, 0.12);
+}
+.k-vs-board .k-pill.k-on { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); border-color: rgb(255, 255, 255); }
+.k-vs-board .k-car-strip { justify-content: space-between; }
+.k-vs-board .k-car-value { flex-grow: 1; width: auto; font-size: 40px; }
+.k-vs-board .k-car-arrow {
+    width: 54px; height: 54px; padding: 0; border-radius: 27px; font-size: 20px; -unity-text-align: middle-center;
+    color: rgb(200, 255, 61); background-color: rgb(42, 45, 54);
+}
+.k-vs-board .fe-item--focused .k-car-arrow { color: rgb(14, 15, 18); background-color: rgb(200, 255, 61); }
+.k-vs-board .k-car-count { position: absolute; top: 12px; right: 16px; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.k-car-hint { margin-top: 4px; font-size: 11px; letter-spacing: 2px; -unity-text-align: middle-center; color: rgba(255, 255, 255, 0.45); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-diff { flex-direction: row; align-items: center; margin-top: 10px; }
+.k-diff-seg { flex-grow: 1; height: 12px; margin-right: 4px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.1); }
+.k-diff-tier {
+    margin-left: 10px; padding: 4px 12px; border-radius: 9px; font-size: 14px; letter-spacing: 2px; color: rgb(14, 15, 18);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}
+
+/* 2026-11-20: the pick list's part headings (the courts: legacy, location) */
+.k-pick-head {
+    margin: 14px 0 6px 6px; font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61);
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold");
+}

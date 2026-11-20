@@ -117,7 +117,7 @@ namespace SquashGame.UI
             _menus.pickingMode = PickingMode.Ignore;
             _root.Add(_menus);
 
-            CarouselItem.ListOpener = c => Push(new PickListScreen(c.Name, c.Values, c.Index, c.Pick));
+            CarouselItem.ListOpener = c => Push(new PickListScreen(c.Name, c.Values, c.Index, c.Pick, c.Sections));
             _input = new MenuInput();
             Music = gameObject.AddComponent<Audio.MenuMusic>();
             Music.OnSong = s =>

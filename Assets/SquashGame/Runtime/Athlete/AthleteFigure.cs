@@ -362,14 +362,19 @@ namespace SquashGame.Athlete
             // ---------------- P2-M5: a match moment (a won match point: the celebration; lost: dejected) ----------------
             string moment = MomentSource != null ? MomentSource() : null;
             if (moment != null) { var mp = PoseLibrary.Active.Find(moment); if (mp != null) _moment = mp; }
-            _momentW = Mathf.MoveTowards(_momentW, moment != null && _moment != null ? 1f : 0f, 2.2f * dt);
+            _momentW = MatchRunner.Studio && moment != null && _moment != null ? 1f                                       // (in the studio: standing at once)
+                     : Mathf.MoveTowards(_momentW, moment != null && _moment != null ? 1f : 0f, (MatchRunner.Showcase ? 8f : 2.2f) * dt);
             if (_momentW > 0.001f && _moment != null) { _tmp.Set(_moment); _out.Blend(_tmp, Ease(_momentW)); }
             MomentShown = _momentW > 0.5f && _moment != null ? _moment.Name : null;
 
             // ---------------- body ----------------
             _out.ApplyBody(Rig);
             float tired = Mathf.Clamp01(1f - v.Stamina);
-            _breath += dt * Mathf.Lerp(1.6f, 4.2f, tired);
+            // 2026-11-20 held for the kit and the match setup (the user: "so annoying that they keep moving"): no breathing,
+            // no bounce, eyes ahead
+            bool still = MatchRunner.Showcase;
+            if (still) { _breath = 0f; _bounce = 0f; }
+            else _breath += dt * Mathf.Lerp(1.6f, 4.2f, tired);
             B("Chest").localRotation = B("Chest").localRotation * Quaternion.Euler(-12f * tired, 0, 0);
             B("Spine_02").localRotation = B("Spine_02").localRotation * Quaternion.Euler(-6f * tired, 0, 0);
             Transform pelvis = B("Pelvis");
@@ -398,7 +403,7 @@ namespace SquashGame.Athlete
             // lowest mid-stance, highest in the flight between steps (twice a cycle)
             float bob = -Mathf.Cos(2f * (gp - Mathf.PI * Duty(speed))) * 0.022f * gaitW;
             bool waiting = !inStroke && speed < 0.4f && _split < 0f && _diveW < 0.01f && _momentW < 0.01f;
-            _bounce += dt * 2.3f * Mathf.PI * 2f;
+            if (!still) _bounce += dt * 2.3f * Mathf.PI * 2f;
             float toes = waiting ? Mathf.Abs(Mathf.Sin(_bounce * 0.5f)) * 0.012f : 0f;
             pelvis.localPosition += Vector3.up * (bob + toes + splitLift - splitDip - _plant * 0.06f);
 
@@ -431,7 +436,8 @@ namespace SquashGame.Athlete
                 float over = gap.magnitude - ComfortReach;
                 Vector3 target = Vector3.zero;
                 if (over > 0) { target = gap.normalized * Mathf.Min(over, Mathf.Lerp(MaxBodyShift, MaxBodyShiftLocked, w)); target.y = Mathf.Min(target.y, 0f); }
-                _shift = w >= 1f ? target : Vector3.Lerp(_shift, target, 1f - Mathf.Exp(-14f * dt));
+                if (MatchRunner.Studio) target = Vector3.zero;                   // (posing in the studio, not reaching: a hanging racket doesn't bend the knees)
+                _shift = w >= 1f || MatchRunner.Studio ? target : Vector3.Lerp(_shift, target, 1f - Mathf.Exp(-14f * dt));
                 pelvis.position += _shift;
                 ReachShift = _shift.magnitude;
                 ShoulderGapAfter = (sweet - B("UpperArm_R").position).magnitude;
@@ -469,8 +475,10 @@ namespace SquashGame.Athlete
                 float lift = Mathf.Max(0f, local.y - GateA.Ankle) * VisualScale;   // pose units are life-size
                 target.y = Ankle;
                 if (!_hasFeet) Feet[side] = target;
-
-                if (gaitFeet)
+                // 2026-11-20 held still (the Locker Room's studio, the match setup): the feet straight under the pose - no planted
+                // wide stance left over from the rally, so the legs stand straight
+                if (MatchRunner.Showcase && _momentW > 0.5f) { Feet[side] = target; _stepT[side] = -1f; FootPlanted[side] = true; }
+                else if (gaitFeet)
                 {
                     // ---- running: the gait cycle drives the feet (right lands at 0, left at 0.5) ----
                     _stepT[side] = -1f;
@@ -549,6 +557,7 @@ namespace SquashGame.Athlete
                 Vector3 tbFlat = new Vector3(toBall.x, 0, toBall.z);
                 float yawWant = tbFlat.sqrMagnitude > 1e-4f ? Mathf.Clamp(Vector3.SignedAngle(cf, tbFlat, up), -45f, 45f) : 0f;
                 float pitchWant = Mathf.Clamp(Mathf.Atan2(toBall.y, Mathf.Max(0.2f, tbFlat.magnitude)) * Mathf.Rad2Deg, -25f, 25f);
+                if (MatchRunner.Showcase) { yawWant = 0f; pitchWant = 0f; }
                 float k = 1f - Mathf.Exp(-8f * dt);
                 _headYaw = Mathf.Lerp(_headYaw, yawWant, k);
                 _headPitch = Mathf.Lerp(_headPitch, pitchWant, k);

@@ -394,6 +394,7 @@ namespace SquashGame.UI
             LockerRow.ListOpener = r => { _listing = true; Fe.Push(new PickListScreen(Cosmetics.SlotNames[(int)r.Slot], r.Labels(), r.BrowseIndex, r.BrowseTo)); };
             _listing = false;
             MatchRunner.Showcase = true;                                     // 2026-10-29: stand still, so the kit can be seen
+            MatchRunner.Studio = true; KitStudio.Show(true);                 // 2026-11-20: in the photo studio, off the court
             MenuCinematics.Scene = MenuCinematics.LockerScene;
             _shown = null;
             if (_card != null) _card.Rebuild();
@@ -406,6 +407,7 @@ namespace SquashGame.UI
         {
             if (_listing) return;
             MatchRunner.Showcase = false;
+            MatchRunner.Studio = false; KitStudio.Show(false);
             KitDirector.Preview = null;
             KitDirector.PreviewPose = null;
             foreach (var i in Items) if (i is LockerRow r) r.Revert();         // a locked item tried on comes off

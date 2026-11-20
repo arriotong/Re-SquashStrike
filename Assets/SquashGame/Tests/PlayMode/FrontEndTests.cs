@@ -170,15 +170,17 @@ namespace SquashGame.Tests
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return Wait(0.5f, () => false);
-            // P2-M6: real rallies behind the logo (a bundled match: this profile has none of its own)
-            yield return Wait(3f, () => fe.Match.FramesActive);
+            // 2026-11-20: the empty courts behind the logo, from the TV view, a new court every few seconds
             var title = (TitleScreen)fe.Top;
-            Assert.That(title.Attract, Is.Not.Null, "highlights behind the title");
-            Assert.That(fe.Match.FramesActive, Is.True, "a replayed rally is showing");
-            yield return Wait(1.0f, () => false);
+            Assert.That(MatchRunner.EmptyCourt, Is.True, "no one playing behind the title");
+            string first = Courts.CurrentId;
+            yield return Wait(TitleScreen.CourtSeconds + 1.5f, () => false);
+            Assert.That(Courts.CurrentId, Is.Not.EqualTo(first), "the court changes");
+            Assert.That(title.CourtsShown, Is.GreaterThan(1));
             yield return CaptureUI(fe, "P2M1_UI_1_Title.png");
             yield return Tap(kb.enterKey);
-            Assert.That(Replays.TheatreSession.Active, Is.Null, "the title's highlights stop with it");
+            Assert.That(MatchRunner.EmptyCourt, Is.False, "the rally comes back for the menus");
+            Assert.That(Courts.CurrentId, Is.EqualTo(first), "and your court");
             Assert.That(fe.Match.Demo, Is.True);
             Assert.That(fe.Top, Is.InstanceOf<HomeScreen>());
             yield return Wait(0.4f, () => false);
@@ -201,7 +203,7 @@ namespace SquashGame.Tests
             Assert.That(((MainMenuScreen)fe.Top).Which, Is.EqualTo(MainMenuScreen.Hub.Play));
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
-            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" })
+            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" })
             {
                 yield return Tap(kb.eKey);
                 Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));

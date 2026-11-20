@@ -104,15 +104,18 @@ namespace SquashGame.UI
             Vector3 you = new Vector3(0, 0, 5f), them = new Vector3(0, 0, 6f);
             var a = Runner != null ? Runner.Athletes : null;
             if (a != null && a.Length > 0) you = new Vector3((float)a[0].Player.Pos.X, 0, (float)a[0].Player.Pos.Z);
-            if (MatchRunner.Showcase) you = MatchRunner.ShowcaseSim;                // 2026-10-29: the Locker Room's still athlete
+            if (MatchRunner.Showcase) you = MatchRunner.Studio ? KitStudio.Sim : MatchRunner.ShowcaseSim;   // the Locker Room's still athlete (2026-11-20: in the studio)
             if (a != null && a.Length > 1) them = new Vector3((float)a[1].Player.Pos.X, 0, (float)a[1].Player.Pos.Z);
+            if (MatchRunner.Showcase) them = MatchRunner.StudioPair ? KitStudio.ThemSim : MatchRunner.ShowcaseThemSim;   // (where they're drawn, not where the held rally left them)
             Vector3 pos, look; float fov;
+            // 2026-11-20 the close-ups hold still with the athletes (the Locker Room, the match setup): a fixed three-quarter view
+            float swing = MatchRunner.Showcase ? 0.55f : Mathf.Sin(e.Orbit);
             switch (e.Shot)
             {
                 case "you":
-                    pos = you + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.3f, -2.7f); look = you + new Vector3(0, 0.95f, 0); fov = 42; break;     // 2026-11-01: head to toe (the real players)
+                    pos = you + new Vector3(swing * 1.6f, 1.3f, -2.7f); look = you + new Vector3(0, 0.95f, 0); fov = 42; break;     // 2026-11-01: head to toe (the real players)
                 case "them":
-                    pos = them + new Vector3(Mathf.Sin(e.Orbit) * 1.6f, 1.3f, -2.7f); look = them + new Vector3(0, 0.95f, 0); fov = 42; break;
+                    pos = them + new Vector3(-swing * 1.6f, 1.3f, -2.7f); look = them + new Vector3(0, 0.95f, 0); fov = 42; break;
                 case "racket":
                     pos = you + new Vector3(0.7f, 1.15f, -1.0f); look = you + new Vector3(-0.3f, 1.0f, 0); fov = 36; break;
                 case "front":
@@ -122,7 +125,7 @@ namespace SquashGame.UI
                 default:                                                       // "court": from high behind the glass
                     pos = new Vector3(Mathf.Sin(e.Orbit * 0.5f) * 1.5f, 5.6f, 12.5f); look = new Vector3(0, 0, 4.5f); fov = 45; break;
             }
-            pos.x = Mathf.Clamp(pos.x, -3.1f, 3.1f); pos.z = Mathf.Max(pos.z, 0.25f);
+            if (!MatchRunner.Studio) { pos.x = Mathf.Clamp(pos.x, -3.1f, 3.1f); pos.z = Mathf.Max(pos.z, 0.25f); }
             e.Cam.fieldOfView = fov;
             e.Cam.transform.position = SimToWorld.Pos(pos.x, pos.y, pos.z);
             e.Cam.transform.LookAt(SimToWorld.Pos(look.x, look.y, look.z), Vector3.up);

@@ -37,6 +37,7 @@ namespace SquashGame.Profile
         public bool RealPlayers;                 // 2026-11-08: the real players (AthleteBody) - off: the user went back to the original
                                                  // code-built figures (a new field, so every save, old or new, starts on them)
         // ---- audio ----
+        public bool MusicSongs;                  // 2026-11-20: off - the first version's own menu music (a new field: every save starts on it)
         public float MasterVolume = 0.9f, SfxVolume = 1f, RefereeVolume = 1f, MusicVolume = 0.6f, CrowdVolume = 0.8f;
         // ---- accessibility ----
         public float BallScale = 1f;             // x the game's drawn ball (render only)
@@ -335,6 +336,7 @@ namespace SquashGame.Profile
             Audio.AudioDirector.SfxVolume = s.SfxVolume;
             Audio.AudioDirector.RefereeVolume = s.RefereeVolume;
             Audio.MenuMusic.Volume = Mathf.Clamp01(s.MusicVolume);
+            Audio.MenuMusic.Songs = s.MusicSongs;
             Audio.CrowdAudio.Volume = Mathf.Clamp01(s.CrowdVolume);
             AudioListener.volume = Mathf.Clamp01(s.MasterVolume);
             BallView.UserScale = Mathf.Clamp(s.BallScale, 0.75f, 1.6f);

@@ -120,6 +120,7 @@ namespace SquashGame.Tests
         public IEnumerator BallStaysVisibleAndBouncesAreMarked()
         {
             VenueView.Detail = 2;
+            UI.FrontEnd.StartAtTitle = false;                                  // (2026-11-20: the title's courts are empty - the rally is the menus')
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             var court = Object.FindFirstObjectByType<MatchCourt>();

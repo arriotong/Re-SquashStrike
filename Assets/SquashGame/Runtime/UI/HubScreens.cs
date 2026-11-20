@@ -55,10 +55,11 @@ namespace SquashGame.UI
         /// Academy), you (kit, drops, records) and the replays.
         /// 2026-10-29 ("instead of dumping everything in one singular ui ... split into 2 separate ui like things involve
         /// playing is PLAY and others are like OTHERS"): two hubs from the home screen - PlaySections and OtherSections.
-        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };
+        /// 2026-11-20 (the user couldn't find the pulls from the main page): PACKS, the store's mystery packs, on PLAY's strip too.
+        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" };
         public static readonly string[] OtherSections = { "STORE", "YOU", "REPLAYS" };
         /// <summary>Every section, both hubs (PLAY's first).</summary>
-        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "STORE", "YOU", "REPLAYS" };
+        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS", "STORE", "YOU", "REPLAYS" };
 
         public enum Hub { Play, Others }
         public readonly Hub Which;
@@ -167,17 +168,8 @@ namespace SquashGame.UI
             }
 
             // ---- STORE (2026-10-29): the three gachas - card packs, cosmetics, the pro shop ----
-            if (Has("STORE"))
-            {
-                var store = Kit.Box(Page("STORE"), "k-row");
-                AddTo(store, new CardItem("CARD PACKS", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), CardSize.Hero)
-                    .Drawn("trail", new Color32(70, 44, 190, 255), new Color32(255, 102, 170, 255))
-                    .Line(() => "Power cards for the Gauntlet  ·  " + SquashSim.Modes.GauntletCards.CardCost + " coins").Badge(() => "NEW CARDS", true));
-                AddTo(store, new CardItem("CLOTHES", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.CosmeticsTab))).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
-                    .Line(() => "Shirts, colours and cool looks  ·  " + GearDrops.PullCost + " coins").Badge(() => "YOU CAN OPEN " + GearDrops.Wallet.Coins / GearDrops.PullCost, GearDrops.CanPull(1)));
-                AddTo(store, new CardItem("PRO SHOP", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.ShopTab))).Drawn("chevrons", new Color32(60, 36, 10, 255), new Color32(255, 184, 59, 255))
-                    .Line("Rackets, shoes and kit"));
-            }
+            if (Has("STORE")) Packs(Kit.Box(Page("STORE"), "k-row"));
+            if (Has("PACKS")) Packs(Kit.Box(Page("PACKS"), "k-row"));
 
             // ---- YOU (was LOCKER): your kit, the drops, your records ----
             if (Has("YOU"))
@@ -242,6 +234,18 @@ namespace SquashGame.UI
         public int CardsInView { get { int n = 0; foreach (var i in Reachable()) if (i is CardItem) n++; return n; } }
 
         /// <summary>The rail's live lines and dots: where you are, what waits.</summary>
+        /// <summary>The mystery packs - card packs, clothes, the pro shop (OTHERS' store, and PLAY's PACKS).</summary>
+        void Packs(VisualElement row)
+        {
+            AddTo(row, new CardItem("CARD PACKS", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), CardSize.Hero)
+                .Drawn("trail", new Color32(70, 44, 190, 255), new Color32(255, 102, 170, 255))
+                .Line(() => "Power cards for the Gauntlet  ·  " + SquashSim.Modes.GauntletCards.CardCost + " coins").Badge(() => "NEW CARDS", true));
+            AddTo(row, new CardItem("CLOTHES", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.CosmeticsTab))).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
+                .Line(() => "Shirts, colours and cool looks  ·  " + GearDrops.PullCost + " coins").Badge(() => "YOU CAN OPEN " + GearDrops.Wallet.Coins / GearDrops.PullCost, GearDrops.CanPull(1)));
+            AddTo(row, new CardItem("PRO SHOP", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.ShopTab))).Drawn("chevrons", new Color32(60, 36, 10, 255), new Color32(255, 184, 59, 255))
+                .Line("Rackets, shoes and kit"));
+        }
+
         void RefreshRail()
         {
             if (Tabs == null) return;
@@ -259,6 +263,7 @@ namespace SquashGame.UI
                 { "TRAINING", AcademyScreen.Summary() },
                 { "YOU", GearDrops.Wallet.Coins.ToString("N0") + " coins  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp) },
                 { "STORE", GearDrops.Wallet.Coins / GearDrops.PullCost + " pulls of coins" },
+                { "PACKS", GearDrops.Wallet.Coins / GearDrops.PullCost + " pulls of coins" },
                 { "REPLAYS", Replays.ReplayLibrary.Entries.Count + " replays" },
             };
             var mine = MySections;
@@ -266,6 +271,7 @@ namespace SquashGame.UI
             Tabs.SetDot(System.Array.IndexOf(mine, "CHALLENGES"), today < Challenges.DailyCount);
             Tabs.SetDot(System.Array.IndexOf(mine, "YOU"), AnyNew());
             Tabs.SetDot(System.Array.IndexOf(mine, "STORE"), GearDrops.CanPull(1));
+            Tabs.SetDot(System.Array.IndexOf(mine, "PACKS"), GearDrops.CanPull(1));
         }
         float _railAge;
 
@@ -334,7 +340,8 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         protected static MenuChoices C { get { return ProfileStore.Current.Choices; } }
         protected static GameSettings S { get { return ProfileStore.Current.Settings; } }
-        Label _oppName, _oppStyle, _oppLines, _youName, _youMeta, _abilityHint;
+        Label _oppName, _oppStyle, _oppLines, _youName, _youMeta, _abilityHint, _tier;
+        readonly List<VisualElement> _segs = new List<VisualElement>();
 
         protected override void Compose()
         {
@@ -345,32 +352,40 @@ namespace SquashGame.UI
             Kit.L(you, TwoPlayer ? "PLAYER 1" : "YOU", "k-vs-kicker");
             _youName = Kit.L(you, "", "k-vs-name");
             _youMeta = Kit.L(you, "", "k-vs-meta");
-            // the options
+            // the options. 2026-11-20 remade (the user: keep the options more visible and easier to spot): a solid board over the
+            // court, each choice a block with its name on top, big tiles for the short choices, the opponent's difficulty as a
+            // coloured bar, the row you're on lit lime
             var mid = Kit.Box(stage, "k-vs-mid");
+            mid.AddToClassList("k-vs-board");
             Kit.L(mid, "VS", "k-vs-vs");
             if (!TwoPlayer)
             {
-                // P6: three rows - who (easiest to the world No. 1: the rating is the difficulty), how long, where.
-                // Scoring is in Settings > Gameplay, Controls in Settings > Controls.
+                // P6: who (easiest to the world No. 1: the rating is the difficulty), how long, the scoring, where.
+                // Controls are in Settings > Controls.
                 var ladder = System.Array.ConvertAll(MatchChoices.Ladder, MatchChoices.Label);
-                AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
-                AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.Length, v => C.Length = v));
+                var opp = AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
+                Meter(opp.Root);
+                AddTo(mid, new SelectorItem("Match", LengthTiles, () => C.Length, v => C.Length = v));
+                AddTo(mid, new SelectorItem("Scoring", ScoringTiles, () => Mathf.Clamp(C.Scoring, 0, 1), v => C.Scoring = v));
                 // batch 2: the arcade abilities, off unless asked for
                 if (MatchChoices.QuickMatchAbilities)
                 {
-                    AddTo(mid, new SelectorItem("Abilities", new[] { "Off", "On" }, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
+                    AddTo(mid, new SelectorItem("Abilities", AbilityTiles, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
                     _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
                 }
                 // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
-                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
+                var court = AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
+                court.Sections = Courts.SectionOf;
+                Kit.L(court.Root, CourtHint, "k-car-hint");
             }
             else
             {
-                AddTo(mid, new SelectorItem("Match", Short(MatchChoices.LengthLabels), () => C.VsLength, v => C.VsLength = v));
-                AddTo(mid, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => C.VsScoring, v => C.VsScoring = v));
-                Kit.L(mid, ScoringHint, "k-vs-hint");
-                AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
-                AddTo(mid, new SelectorItem(MatchChoices.ControlName, MatchChoices.ControlLabels, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
+                AddTo(mid, new SelectorItem("Match", LengthTiles, () => C.VsLength, v => C.VsLength = v));
+                AddTo(mid, new SelectorItem("Scoring", ScoringTiles, () => C.VsScoring, v => C.VsScoring = v));
+                var court = AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
+                court.Sections = Courts.SectionOf;
+                Kit.L(court.Root, CourtHint, "k-car-hint");
+                AddTo(mid, new SelectorItem(MatchChoices.ControlName, AimTiles, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
             // them
             var them = Kit.Box(stage, "k-vs-side");
@@ -385,7 +400,43 @@ namespace SquashGame.UI
             UpdateOpponent();
         }
 
-        static string[] Short(string[] l) { return new[] { "1 game", "Best of 3", "Best of 5" }; }
+        // 2026-11-20 the tiles: a big number or word, what it means in plain words under it
+        static string Tile(string big, string small) { return "<size=40>" + big + "</size>\n" + small; }
+        public static readonly string[] LengthTiles = { Tile("1", "ONE GAME"), Tile("3", "BEST OF 3"), Tile("5", "BEST OF 5") };
+        public static readonly string[] ScoringTiles = { Tile("11", "EVERY RALLY SCORES"), Tile("9", "ONLY THE SERVER SCORES") };
+        public static readonly string[] AbilityTiles = { Tile("OFF", "PLAIN SQUASH"), Tile("ON", "SPECIAL MOVES, FOR BOTH OF YOU") };
+        public static readonly string[] AimTiles = { Tile("NORMAL", "YOU AIM"), Tile("EXTRA", "MORE HELP AIMING") };
+        public const string CourtHint = "ENTER: SEE EVERY COURT";
+
+        /// <summary>The opponent's difficulty under their name: a bar that fills and warms from green to red up the ladder, and
+        /// its word (easy to the world No. 1).</summary>
+        void Meter(VisualElement under)
+        {
+            var row = Kit.Box(under, "k-diff");
+            _segs.Clear();
+            for (int i = 0; i < MatchChoices.Ladder.Length; i++) { var seg = Kit.Box(row, "k-diff-seg"); _segs.Add(seg); }
+            _tier = Kit.L(row, "", "k-diff-tier");
+        }
+
+        public static readonly string[] TierNames = { "EASY", "MEDIUM", "HARD", "PRO", "WORLD No. 1" };
+        static readonly Color[] TierColors = { new Color(0.47f, 0.86f, 0.35f), new Color(1f, 0.81f, 0.23f), new Color(1f, 0.55f, 0.16f), new Color(1f, 0.29f, 0.25f), new Color(0.75f, 0.47f, 1f) };
+        /// <summary>The ladder's place as a difficulty word: the bottom quarter easy ... the top, the world No. 1.</summary>
+        public static int Tier(int index, int count)
+        {
+            if (index >= count - 1) return 4;
+            float f = count > 1 ? index / (float)(count - 1) : 0f;
+            return f < 0.25f ? 0 : f < 0.5f ? 1 : f < 0.75f ? 2 : 3;
+        }
+
+        void UpdateMeter()
+        {
+            if (_tier == null) return;
+            int at = MatchChoices.LadderIndex(C.OpponentId), n = _segs.Count, t = Tier(at, n);
+            for (int i = 0; i < n; i++)
+                _segs[i].style.backgroundColor = i <= at ? TierColors[Tier(i, n)] : new Color(1f, 1f, 1f, 0.1f);
+            _tier.text = TierNames[t];
+            _tier.style.backgroundColor = TierColors[t];
+        }
 
         /// <summary>2026-10-25 playtest: the two scorings in plain words, under the choice.</summary>
         public const string ScoringHint = "To 11: every rally wins a point.  To 9: the old rules - only the server can win a point.";
@@ -419,6 +470,7 @@ namespace SquashGame.UI
             if (star != null) lines.Add("Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })));
             _oppLines.text = string.Join("\n", lines);
             KitDirector.OpponentPreview = star != null ? Cosmetics.AiKit(star.KitSeed) : Cosmetics.Signature(d.style);
+            UpdateMeter();
         }
 
         public override void Tick(float dt) { if (TwoPlayer) UpdateOpponent(); }
@@ -451,8 +503,17 @@ namespace SquashGame.UI
             }
         }
 
-        public override void OnShow() { base.OnShow(); MenuCinematics.Scene = TwoPlayer ? 1 : 0; }
-        public override void OnHide() { ProfileStore.Save(); KitDirector.OpponentPreview = null; }
+        // 2026-11-20 the players stand still here, as in the Locker Room (the menus' rally holds)
+        public override void OnShow()
+        {
+            base.OnShow(); MenuCinematics.Scene = TwoPlayer ? 1 : 0;
+            MatchRunner.Showcase = true; MatchRunner.Studio = true; MatchRunner.StudioPair = true; KitStudio.Show(true);   // (standing straight, in the studio)
+        }
+        public override void OnHide()
+        {
+            ProfileStore.Save(); KitDirector.OpponentPreview = null;
+            MatchRunner.Showcase = false; MatchRunner.Studio = false; MatchRunner.StudioPair = false; KitStudio.Show(false);
+        }
     }
 
     public sealed class QuickMatchScreen : VersusScreen

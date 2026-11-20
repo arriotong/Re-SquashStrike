@@ -52,6 +52,14 @@ namespace SquashGame
                              Lines = new Color(0.82f, 0.18f, 0.16f), FloorTint = new Color(0.96f, 0.88f, 0.76f), FarClip = 90f, Establishing = false },
             new CourtTheme { Id = "county", Name = "County Open", Blurb = "The club on event day: bleachers behind the glass, the scoreboard up", Walls = WallStyle.Plaster,
                              Lines = new Color(0.16f, 0.32f, 0.78f), FloorTint = new Color(0.92f, 0.86f, 0.78f), FarClip = 90f, Establishing = false },
+            // 2026-11-20 more legacy courts (VenueView.Legacy.cs) - made-up places, after City Rooftop and Desert Night
+            new CourtTheme { Id = "peak", Name = "Mountain Peak", Blurb = "A summit at night: snow, pines and the northern lights overhead", Walls = WallStyle.Glass, Outdoor = true, FarClip = 700f },
+            new CourtTheme { Id = "beach", Name = "Beach Sunset", Blurb = "On the sand by the sea, palms and string lights, the sun going down", Walls = WallStyle.Glass, Outdoor = true, FarClip = 700f },
+            new CourtTheme { Id = "orbit", Name = "Space Station", Blurb = "In orbit: the Earth filling the window beyond the front wall", Walls = WallStyle.Glass, FarClip = 700f },
+            new CourtTheme { Id = "neon", Name = "Neon City", Blurb = "A rainy street at night: neon signs, glowing towers, the wet ground shining", Walls = WallStyle.Glass, Outdoor = true, FarClip = 700f },
+            new CourtTheme { Id = "reef", Name = "Underwater Dome", Blurb = "Under a glass dome on the sea floor, coral and fish all round", Walls = WallStyle.Glass, FarClip = 450f },
+            new CourtTheme { Id = "temple", Name = "Jungle Temple", Blurb = "Stone ruins in the rainforest: the stepped temple, torches and mist", Walls = WallStyle.Glass, Outdoor = true, FarClip = 650f },
+            new CourtTheme { Id = "volcano", Name = "Volcano", Blurb = "Black rock by an erupting peak, rivers of lava glowing", Walls = WallStyle.Glass, Outdoor = true, FarClip = 700f },
         };
 
         /// <summary>The court being drawn (CourtView rebuilds when it changes).</summary>
@@ -86,6 +94,11 @@ namespace SquashGame
             }
         }
         static CourtTheme[] _pickable;
+
+        /// <summary>2026-11-20 (the user): the court list in two parts - the game's own made-up courts (legacy) and the World
+        /// Tour's real places (location). Pickable lists the legacy ones first.</summary>
+        public const string LegacyHeading = "LEGACY COURTS", LocationHeading = "LOCATION COURTS";
+        public static string SectionOf(int pickIndex) { return pickIndex < All.Length ? LegacyHeading : LocationHeading; }
 
         public static string[] Names { get { var p = Pickable; var n = new string[p.Length]; for (int i = 0; i < n.Length; i++) n[i] = p[i].Name; return n; } }
 

@@ -23,13 +23,14 @@ namespace SquashGame.UI
         readonly string[] _values;
         readonly int _current;
         readonly Action<int> _pick;
+        readonly Func<int, string> _sections;
         ScrollView _scroll;
         VisualElement _back;
         MenuItem _shown;
 
-        public PickListScreen(string title, string[] values, int current, Action<int> pick)
+        public PickListScreen(string title, string[] values, int current, Action<int> pick, Func<int, string> sections = null)
         {
-            _title = title; _values = values; _current = current; _pick = pick;
+            _title = title; _values = values; _current = current; _pick = pick; _sections = sections;
         }
 
         protected override string Title { get { return _title; } }
@@ -53,6 +54,12 @@ namespace SquashGame.UI
             for (int i = 0; i < _values.Length; i++)
             {
                 int k = i;
+                // 2026-11-20 the list's parts (the courts: legacy, then location), a heading over each
+                if (_sections != null && (i == 0 || _sections(i) != _sections(i - 1)))
+                {
+                    var head = new Label(_sections(i)); head.AddToClassList("k-pick-head"); head.pickingMode = PickingMode.Ignore;
+                    _scroll.Add(head);
+                }
                 var row = AddTo(_scroll, new ActionItem(_values[i], () => Choose(k), i == _current ? "✓" : null));
                 if (i == _current) row.Root.AddToClassList("k-pick-row--now");
             }

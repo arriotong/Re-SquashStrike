@@ -41,6 +41,7 @@ namespace SquashGame.Progression
         public static string Moment(MatchRunner r, int i)
         {
             if (r != null && r.Demo && i == 0 && PreviewPose != null) return PreviewPose;
+            if (r != null && r.Demo && MatchRunner.Showcase) return MatchRunner.Studio ? "stand" : "lobby";   // 2026-11-20 held still: standing straight in the studio, tall on court
             if (r == null || r.Sim == null || r.Demo || r.Sim.Phase != SquashSim.MatchPhase.MatchOver) return null;
             int w = r.Sim.Score.MatchWinner;
             if (w < 0) return null;

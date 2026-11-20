@@ -146,6 +146,13 @@ namespace SquashGame.Athlete
                 // ---------------- match moments ----------------
                 Pose("celebrate", "moment").Crouch(0.02f).Lean(-5).Feet(-0.22f, 0, 0.22f, 0, 14, -14)
                     .Racket(-0.55f, 1.15f, -0.20f, -0.3f, 0.9f, 0.1f, -0.9f, 0.0f, 0.3f).Hand(0.25f, 2.10f, -0.10f, 0.3f, -0.1f, 0.3f).Look(10),
+                // 2026-11-20 the lobby: standing tall and relaxed for the Locker Room and the match setup (the user: "stand up
+                // straight, like a character in a game lobby") - feet under the hips, the racket hanging easy at the side
+                Pose("lobby", "moment").Crouch(0.0f).Lean(2).Feet(-0.17f, 0, 0.17f, 0, 8, -8)
+                    .Racket(-0.27f, 0.24f, -0.04f, 0.0f, -1.0f, -0.12f, -1.0f, 0.0f, 0.0f).Hand(0.21f, 0.70f, 0.0f, 0.15f, -0.6f, 0.0f).Look(0),
+                // 2026-11-20 the studio: completely straight - feet together, arms down, the racket hanging at the side
+                Pose("stand", "moment").Crouch(0.0f).Lean(0).Feet(-0.11f, 0, 0.11f, 0, 4, -4)
+                    .Racket(-0.24f, 0.22f, 0.0f, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f).Hand(0.20f, 0.68f, 0.0f, 0.12f, -0.6f, 0.0f).Look(0),
                 Pose("dejected", "moment").Crouch(0.0f).Lean(30).Feet(-0.16f, 0, 0.16f, 0, 10, -10)
                     .Racket(-0.25f, 0.35f, -0.25f, 0.0f, -0.7f, -0.7f, -0.9f, 0.0f, 0.0f).Hand(0.20f, 0.80f, 0.0f).Look(-25),
 

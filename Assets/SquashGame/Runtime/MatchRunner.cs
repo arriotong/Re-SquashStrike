@@ -458,9 +458,11 @@ namespace SquashGame
                 // The menus' demo rally: on and on.
                 if (Sim.Phase == MatchPhase.MatchOver || Sim.Phase == MatchPhase.GameOver) { BeginDemo(); return; }
                 Input.ConsumeReady();
-                if (Showcase != Clock.Paused) { if (Showcase) Clock.Pause(); else Clock.Resume(); }
+                bool hold = Showcase || EmptyCourt;
+                if (hold != Clock.Paused) { if (hold) Clock.Pause(); else Clock.Resume(); }
                 base.Update();
-                if (Showcase) View = ShowcaseView(View);
+                if (EmptyCourt) View = EmptyView(View);
+                else if (Showcase) View = ShowcaseView(View);
                 return;
             }
 
@@ -568,15 +570,41 @@ namespace SquashGame
         /// <summary>2026-10-29 ("in the choosing kit page the character keeps on moving so I couldn't tell what I'm wearing"): the
         /// Locker Room holds the menus' rally - you stand still mid-court in your ready stance, the opponent and the ball out of shot.</summary>
         public static bool Showcase;
-        protected override void Awake() { Showcase = false; base.Awake(); }   // (a new scene: no Locker Room open)
+        protected override void Awake() { Showcase = false; EmptyCourt = false; Studio = false; StudioPair = false; base.Awake(); }
+        /// <summary>2026-11-20 the title: the courts empty (the user: "no one playing in the courts") - the rally holds, the
+        /// athletes and the ball are put away under the floor.</summary>
+        public static bool EmptyCourt;
+
+        static RenderSnapshot EmptyView(RenderSnapshot v)
+        {
+            v.A0 = Still(v.A0, new Vector3(0f, -60f, 0f));
+            if (v.Count > 1) v.A1 = Still(v.A1, new Vector3(2f, -60f, 0f));
+            v.BallPos = new Vector3(0f, -60f, 0f);
+            return v;
+        }   // (a new scene: no Locker Room open)
         /// <summary>Where you stand for it: sim (x, 0, z) for the cameras, and in the world.</summary>
         public static readonly Vector3 ShowcaseSim = new Vector3(0f, 0f, 5.2f);
         public static readonly Vector3 ShowcaseSpot = SimToWorld.Pos(ShowcaseSim.x, 0.0, ShowcaseSim.z);
+        /// <summary>2026-11-20 the Locker Room's photo studio (KitStudio): you stand in it, away from the court; the opponent is put
+        /// away.</summary>
+        public static bool Studio;
+        /// <summary>The match setup's pair in the studio: the opponent stands in it too (else they're put away).</summary>
+        public static bool StudioPair;
+
+        /// <summary>Where the opponent stands for it (2026-11-20: in shot for the match setup's picture of them).</summary>
+        public static readonly Vector3 ShowcaseThemSim = new Vector3(1.8f, 0f, 8.2f);
 
         static RenderSnapshot ShowcaseView(RenderSnapshot v)
         {
+            if (Studio)
+            {
+                v.A0 = Still(v.A0, KitStudio.World);
+                if (v.Count > 1) v.A1 = Still(v.A1, StudioPair ? KitStudio.ThemWorld : new Vector3(2f, -60f, 0f));
+                v.BallPos = new Vector3(0f, -60f, 0f);
+                return v;
+            }
             v.A0 = Still(v.A0, ShowcaseSpot);
-            if (v.Count > 1) v.A1 = Still(v.A1, SimToWorld.Pos(-2.6, 0.0, 9.2));
+            if (v.Count > 1) v.A1 = Still(v.A1, SimToWorld.Pos(ShowcaseThemSim.x, 0.0, ShowcaseThemSim.z));
             v.BallPos = new Vector3(0f, -20f, 0f);
             return v;
         }
