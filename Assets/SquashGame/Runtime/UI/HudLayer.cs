@@ -61,6 +61,14 @@ namespace SquashGame
         public string CineText { get { return _cine.style.display == DisplayStyle.Flex ? _cineTitle.text : null; } }
         // the chaos remake
         readonly VisualElement _power = new VisualElement(), _powerFill = new VisualElement(), _freeze = new VisualElement();
+        // 2026-11-20 Quick Match's specials (after Mario Tennis): the meters top right, Focus dims the screen, a Special Shot flashes
+        readonly SpecialMeter _spMine = new SpecialMeter(true), _spThem = new SpecialMeter(false);
+        readonly VisualElement _focusDim = new VisualElement(), _flash = new VisualElement();
+        readonly Label _focusWord = new Label("FOCUS");
+        float _flashLeft, _dimLevel;
+        /// <summary>The specials' state (tests): your meter shown, the dim's strength.</summary>
+        public bool SpecialMeterShown { get { return _spMine.style.display == DisplayStyle.Flex; } }
+        public float FocusDim { get { return _dimLevel; } }
         readonly Label _powerLabel = new Label(), _pop = new Label(), _popSmall = new Label(), _freezeWord = new Label("TIME STOP");
         MatchSimulation _chaosFor;
         int _chaosRead;
@@ -150,6 +158,11 @@ namespace SquashGame
             _power.AddToClassList("hud-power"); _powerLabel.AddToClassList("hud-power-label");
             var track = new VisualElement(); track.AddToClassList("hud-power-track"); _powerFill.AddToClassList("hud-power-fill"); track.Add(_powerFill);
             _power.Add(_powerLabel); _power.Add(track); _power.style.display = DisplayStyle.None; Add(_power);
+            _focusDim.AddToClassList("hud-focus-dim"); _focusDim.style.backgroundImage = Background.FromTexture2D(Vignette()); _focusDim.style.opacity = 0;
+            _focusWord.AddToClassList("hud-focus-word"); _focusDim.Add(_focusWord); _focusDim.pickingMode = PickingMode.Ignore; _focusWord.pickingMode = PickingMode.Ignore;
+            Insert(0, _focusDim);
+            _flash.AddToClassList("hud-flash"); _flash.style.opacity = 0; _flash.pickingMode = PickingMode.Ignore; Add(_flash);
+            _spMine.style.display = DisplayStyle.None; _spThem.style.display = DisplayStyle.None; Add(_spMine); Add(_spThem);
             _pop.AddToClassList("hud-pop"); _pop.style.display = DisplayStyle.None; Add(_pop);
             _popSmall.AddToClassList("hud-pop-small"); _popSmall.style.display = DisplayStyle.None; Add(_popSmall);
             foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub, _powerLabel, _pop, _popSmall, _freezeWord }) l.pickingMode = PickingMode.Ignore;
@@ -285,7 +298,22 @@ namespace SquashGame
             if (_chaosFor != m) { _chaosFor = m; _chaosRead = m.Chaos.Count; _popLeft = 0; _popSmallLeft = 0; }
             int me = twoPlayer ? 0 : r.HumanIndex;
             var mine = me >= 0 && me < 2 ? m.Players[me].Player.Mods : null;
-            bool meter = mine != null && mine.HasUltimate && !r.ReplayActive;
+            // Quick Match's specials: the Mario-style meters top right instead of the Gauntlet's POWER bar
+            var them = me >= 0 && me < 2 ? m.Players[1 - me].Player.Mods : null;
+            bool special = mine != null && mine.Level("special") > 0 && !r.ReplayActive;
+            _spMine.style.display = special ? DisplayStyle.Flex : DisplayStyle.None;
+            _spThem.style.display = special && them != null && them.Level("special") > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            if (special)
+            {
+                float v = Mathf.Clamp01((float)mine.Power);
+                _spMine.Set(v, "YOUR SPECIAL", v >= 1f ? "READY!  hold " + IntentSource.Keys("Hit") + " to charge it" : v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS  " + IntentSource.FocusKey : "FILL IT: GOOD SHOTS, WINNERS");
+                if (them != null) { float t = Mathf.Clamp01((float)them.Power); _spThem.Set(t, "THEIR SPECIAL", t >= 1f ? "READY - LOOK OUT" : ""); }
+            }
+            float dtF = Time.unscaledDeltaTime;
+            _dimLevel = Mathf.MoveTowards(_dimLevel, r.Focusing ? 1f : 0f, dtF * (r.Focusing ? 5f : 2.5f));
+            _focusDim.style.opacity = _dimLevel;
+            if (_flashLeft > 0) { _flashLeft -= dtF; _flash.style.opacity = Mathf.Clamp01(_flashLeft / 0.35f) * 0.6f; }
+            bool meter = mine != null && mine.HasUltimate && !special && !r.ReplayActive;
             _power.style.display = meter ? DisplayStyle.Flex : DisplayStyle.None;
             if (meter)
             {
@@ -303,6 +331,11 @@ namespace SquashGame
                 var pm = n.Player >= 0 && n.Player < 2 ? m.Players[n.Player].Player.Mods : null;
                 switch (n.Kind)
                 {
+                    case "ult" when pm != null && pm.Level("special") > 0:
+                        Pop(mineNote ? "SPECIAL SHOT!" : "THEIR SPECIAL!", true);
+                        _flashLeft = 0.35f;
+                        VenueView.Excite(1f);
+                        break;
                     case "ult":
                         Pop(pm != null && pm.Level("freeze") + pm.Level("world") > 0 ? "TIME STOP!" : pm != null && pm.Level("inferno") > 0 ? "INFERNO!" : "JACKPOT!", true);
                         VenueView.Excite(0.9f);
@@ -326,6 +359,23 @@ namespace SquashGame
             bool frozen = false;
             for (int i = 0; i < 2; i++) { var pm = m.Players[i].Player.Mods; if (pm != null && pm.Frozen) frozen = true; }
             _freeze.style.display = frozen && !r.ReplayActive && m.Phase == MatchPhase.Rally ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>The Focus dim: dark blue, clear in the middle, heavy at the edges.</summary>
+        static Texture2D Vignette()
+        {
+            const int N = 256;
+            var t = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var px = new Color[N * N];
+            for (int y = 0; y < N; y++)
+                for (int x = 0; x < N; x++)
+                {
+                    float dx = (x + 0.5f) / N - 0.5f, dy = (y + 0.5f) / N - 0.5f, d = Mathf.Sqrt(dx * dx + dy * dy) / 0.7071f;
+                    float a = Mathf.Lerp(0.18f, 0.85f, Mathf.SmoothStep(0.25f, 1f, d));
+                    px[y * N + x] = new Color(0.02f, 0.05f, 0.16f, a);
+                }
+            t.SetPixels(px); t.Apply();
+            return t;
         }
 
         void Pop(string text, bool big)

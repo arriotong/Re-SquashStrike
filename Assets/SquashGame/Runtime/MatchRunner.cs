@@ -76,6 +76,8 @@ namespace SquashGame
         public int ParPoints;
         /// <summary>P5: Focus charges each game (the Gauntlet's slow motion; 0: none).</summary>
         public int FocusCharges;
+        /// <summary>2026-11-20 Quick Match's Abilities: Focus is paid for from the Special meter (RunMods.FocusCost), not charges.</summary>
+        public bool MeterFocus;
         public SquashSim.AthleteAttributes OppAttributes;
         /// <summary>P7 phase 5: your career gear's looks (cosmetic ids: a frame, shoes, a shirt) over your loadout.</summary>
         public string[] GearLooks;
@@ -493,10 +495,19 @@ namespace SquashGame
             bool focus = Input.ConsumeFocus();
             int gamesNow = Sim.Score.Games[0] + Sim.Score.Games[1];
             if (gamesNow != _focusGame) { _focusGame = gamesNow; FocusLeft = Settings.FocusCharges; }
-            if (focus && FocusLeft > 0 && Sim.Phase == MatchPhase.Rally && !SlowMoActive && !Clock.Paused)
+            if (focus && Sim.Phase == MatchPhase.Rally && !SlowMoActive && !Clock.Paused)
             {
-                FocusLeft--;
-                SlowMo(FocusSeconds, FocusScale);
+                var mine = HumanIndex >= 0 && HumanIndex < 2 ? Sim.Players[HumanIndex].Player.Mods : null;
+                if (FocusLeft > 0) { FocusLeft--; SlowMo(FocusSeconds, FocusScale); _focusing = true; }
+                else if (Settings.MeterFocus && mine != null && mine.SpendFocus()) { SlowMo(FocusSeconds, FocusScale); _focusing = true; }
+            }
+            if (!SlowMoActive) _focusing = false;
+            // the Special Shot (anyone's ultimate): a moment of slow motion to see it
+            if (_ultRead > Sim.Chaos.Count) _ultRead = 0;                    // (a new match: a new list)
+            while (_ultRead < Sim.Chaos.Count)
+            {
+                var n = Sim.Chaos[_ultRead++];
+                if (n.Kind == "ult" && !SlowMoActive) { SlowMo(SpecialSlowSeconds, SpecialSlowScale); _focusing = false; }
             }
 
             // Ready (Enter / pad Y) from either player. Consumed every frame so a Y pressed
@@ -697,6 +708,12 @@ namespace SquashGame
 
         /// <summary>P5 Focus: charges left this game; how long and how slow a charge is.</summary>
         public int FocusLeft { get; private set; }
+        /// <summary>The slow motion now is a Focus (the HUD dims the screen for it).</summary>
+        public bool Focusing { get { return _focusing && SlowMoActive; } }
+        bool _focusing;
+        int _ultRead;
+        public const float SpecialSlowSeconds = 0.7f;
+        public const double SpecialSlowScale = 0.3;
         int _focusGame = -1;
         public const float FocusSeconds = 1.6f;
         public const double FocusScale = 0.35;

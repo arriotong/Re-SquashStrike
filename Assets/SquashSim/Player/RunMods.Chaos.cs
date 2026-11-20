@@ -38,6 +38,9 @@
 //              bounty     long rallies won are worth more
 //              firstblood the first point of each game is worth more
 //              allin      (evolved) the jackpot times your combo
+//   SPECIAL    special    (Quick Match's Abilities, 2026-11-20, after Mario Tennis) ULT: the Special Shot - a fireball
+//              autoult    the computer fires its ultimate as soon as the meter is full (no charge needed)
+//              focus      (the game's) Focus costs FocusCost of the meter
 //   GUARD      magnet     much more reach
 //              shield     your own errors become lets (a few a game)
 //              fortress   (evolved) the shield never runs out
@@ -87,10 +90,15 @@ namespace SquashSim
         // ---------------- the meter and the ultimate ----------------
 
         /// <summary>Has an ultimate card (Time Stop, Inferno, Jackpot - or an evolution of one).</summary>
-        public bool HasUltimate { get { return Level("freeze") > 0 || Level("inferno") > 0 || Level("jackpot") > 0 || Level("world") > 0 || Level("allin") > 0; } }
+        public bool HasUltimate { get { return Level("freeze") > 0 || Level("inferno") > 0 || Level("jackpot") > 0 || Level("world") > 0 || Level("allin") > 0 || Level("special") > 0; } }
         double MeterRate { get { return 1 + 0.2 * Level("overclock"); } }
         public void MeterShot() { if (HasUltimate) Power = System.Math.Min(1, Power + MeterPerShot * MeterRate); }
         public void MeterWin() { if (HasUltimate) Power = System.Math.Min(1, Power + MeterPerWin * MeterRate); }
+        /// <summary>The Special meter's share Focus costs (Quick Match's Abilities).</summary>
+        public const double FocusCost = 0.34;
+        /// <summary>Spend the meter on Focus (the game slows the rally): false if there isn't enough.</summary>
+        public bool SpendFocus() { if (!HasUltimate || Power < FocusCost) return false; Power -= FocusCost; return true; }
+
         /// <summary>A new game: The World starts it with a full meter.</summary>
         public void NewGame() { ShieldsUsed = 0; RewindsUsed = 0; if (Level("world") > 0) Power = 1; }
 
@@ -98,11 +106,12 @@ namespace SquashSim
         public void AtStroke(double charge, bool touch)
         {
             UltNow = false;
-            if (HasUltimate && Power >= 1 && charge >= UltCharge)
+            if (HasUltimate && Power >= 1 && (charge >= UltCharge || Level("autoult") > 0))
             {
                 Power = 0;
                 UltNow = true;
                 if (Level("inferno") > 0) FireShots = FireShotsPerUlt - 1 + Level("inferno");   // 3, 4, 5
+                if (Level("special") > 0) FireShots = System.Math.Max(FireShots, 1);              // the Special Shot: this one
             }
             ShotFire = !touch && (FireShots > 0 || (Level("supernova") > 0 && charge >= UltCharge));
         }

@@ -494,7 +494,7 @@ namespace SquashGame.UI
                 if (MatchChoices.QuickMatchAbilities && C.Abilities)
                 {
                     s.Mods = MatchChoices.AbilityKit();
-                    s.FocusCharges = MatchChoices.AbilityFocus;
+                    s.MeterFocus = true;                                          // 2026-11-20: Focus from the Special meter
                     var theirs = s.OppMods != null ? new List<SquashSim.RunMod>(s.OppMods) : new List<SquashSim.RunMod>();
                     theirs.AddRange(MatchChoices.AbilityKitForThem());
                     s.OppMods = theirs;

@@ -76,6 +76,7 @@ namespace SquashGame.Tests
         public IEnumerator EveryWorldTourStageBuildsAndIsFilmed()
         {
             VenueView.Detail = 2;
+            SquashGame.UI.FrontEnd.StartAtTitle = false;   // the title cycles the courts every few seconds - it would switch them under us
             SceneManager.LoadScene("Match");
             yield return null; yield return null;
             var cam = Camera.main;

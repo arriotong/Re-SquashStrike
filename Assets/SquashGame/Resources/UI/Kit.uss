@@ -1462,3 +1462,29 @@
 .k-lk-side > .k-lk-pic { width: 400px; height: 440px; margin-bottom: 14px; }
 .k-lk-side > .k-lk-info { width: 400px; flex-grow: 1; }
 .lk-card--side { width: 400px; margin-bottom: 14px; }
+
+/* ---------- 2026-11-20 Quick Match's specials (after Mario Tennis): the meters top right, the Focus dim, the flash ---------- */
+.hud-sp { position: absolute; right: 24px; flex-direction: row; align-items: center; padding: 10px 14px; border-radius: 14px;
+    background-color: rgba(10, 11, 14, 0.88); border-width: 2px; border-color: rgba(255, 204, 64, 0.35); }
+.hud-sp--mine { top: 22px; width: 430px; }
+.hud-sp--them { top: 134px; width: 330px; border-color: rgba(255, 90, 80, 0.35); }
+.hud-sp-star { width: 58px; height: 58px; margin-right: 12px; border-radius: 29px; font-size: 34px; -unity-text-align: middle-center;
+    color: rgba(255, 255, 255, 0.25); background-color: rgba(255, 255, 255, 0.06); }
+.hud-sp--them .hud-sp-star { width: 40px; height: 40px; border-radius: 20px; font-size: 24px; }
+.hud-sp-body { flex-grow: 1; }
+.hud-sp-title { font-size: 13px; letter-spacing: 3px; color: rgba(255, 255, 255, 0.85); margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.hud-sp-track { height: 18px; border-radius: 9px; background-color: rgba(255, 255, 255, 0.10); overflow: hidden; }
+.hud-sp--them .hud-sp-track { height: 12px; }
+.hud-sp-fill { height: 100%; width: 0; border-radius: 9px; background-color: rgb(255, 196, 40); }
+.hud-sp--them .hud-sp-fill { background-color: rgb(255, 98, 80); }
+.hud-sp-tick { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background-color: rgba(10, 11, 14, 0.9); }
+.hud-sp-hint { margin-top: 6px; font-size: 11px; letter-spacing: 1px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.hud-sp--ready { border-color: rgb(255, 204, 64); background-color: rgba(60, 40, 6, 0.92); }
+.hud-sp--ready .hud-sp-star { color: rgb(255, 230, 120); background-color: rgb(255, 150, 30); }
+.hud-sp--ready .hud-sp-fill { background-color: rgb(255, 120, 30); }
+.hud-sp--pulse .hud-sp-star { scale: 1.18 1.18; background-color: rgb(255, 214, 80); color: rgb(255, 255, 255); }
+.hud-sp--pulse { border-color: rgb(255, 255, 255); }
+.hud-focus-dim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; -unity-background-scale-mode: stretch-to-fill; }
+.hud-focus-word { position: absolute; left: 0; right: 0; top: 120px; font-size: 64px; letter-spacing: 18px; -unity-text-align: middle-center;
+    color: rgba(140, 200, 255, 0.9); text-shadow: 0 0 24px rgba(80, 160, 255, 0.8); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-flash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgb(255, 244, 214); }

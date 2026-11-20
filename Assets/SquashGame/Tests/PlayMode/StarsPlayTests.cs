@@ -111,8 +111,52 @@ namespace SquashGame.Tests
             qm.Reachable().Find(i => i is PrimaryItem).Submit();
             yield return Wait(2f, () => fe.Top == null);
             var r = fe.Match;
-            Assert.That(r.Settings.FocusCharges, Is.EqualTo(MatchChoices.AbilityFocus), "Focus to use");
+            Assert.That(r.Settings.MeterFocus, Is.True, "Focus from the Special meter");
+            Assert.That(r.Sim.Players[0].Player.Mods.HasUltimate, Is.True, "you have the Special Shot");
+            Assert.That(r.Sim.Players[1].Player.Mods.Level("autoult"), Is.EqualTo(1), "they fire theirs when full");
             Assert.That(r.Settings.Mods, Is.Not.Null.And.Not.Empty, "your abilities");
+        }
+
+        /// <summary>2026-11-20 the specials (after Mario Tennis): the meter top right, Focus spends some of it and dims the screen,
+        /// a full meter fires the Special Shot - the computer's too.</summary>
+        [UnityTest]
+        public IEnumerator QuickMatchSpecialsMeterFocusAndSpecialShot()
+        {
+            var kb = InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            FrontEnd fe = null;
+            yield return Boot(f => fe = f);
+            ProfileStore.Current.Choices.Abilities = true;
+            ProfileStore.Current.Settings.WarmUp = false;                           // (straight to the rally)
+            fe.Push(new QuickMatchScreen());
+            yield return null; yield return null;
+            fe.Top.Reachable().Find(i => i is PrimaryItem).Submit();
+            yield return Wait(2f, () => fe.Top == null);
+            var r = fe.Match;
+            r.SetAutopilot(new SquashSim.OpponentBrain(SquashSim.AiProfile.ByName("retriever").WithDifficulty(0.9), 11));
+            yield return Wait(25f, () => r.Sim.Phase == SquashSim.MatchPhase.Rally);
+            Assert.That(r.Sim.Phase, Is.EqualTo(SquashSim.MatchPhase.Rally), "a rally under way");
+            Assert.That(fe.Hud.SpecialMeterShown, Is.True, "the Special meter, top right");
+
+            var mine = r.Sim.Players[0].Player.Mods;
+            mine.Power = 0.5;
+            Press(kb.fKey); yield return null; Release(kb.fKey); yield return null; yield return null;
+            Assert.That(r.Focusing, Is.True, "Focus: the rally slows");
+            Assert.That(mine.Power, Is.EqualTo(0.5 - SquashSim.RunMods.FocusCost).Within(1e-6), "paid for from the meter");
+            yield return Wait(0.4f, () => false);
+            Assert.That(fe.Hud.FocusDim, Is.GreaterThan(0.5f), "the screen dims");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Focus.png");
+
+            // the computer's meter full: it fires its Special Shot on its next stroke
+            yield return Wait(3f, () => !r.Focusing);
+            var theirs = r.Sim.Players[1].Player.Mods;
+            int before = r.Sim.Chaos.Count;
+            theirs.Power = 1;
+            yield return Wait(20f, () => r.Sim.Chaos.Count > before && r.Sim.Chaos.Exists(n => n.Kind == "ult"));
+            Assert.That(r.Sim.Chaos.Exists(n => n.Kind == "ult" && n.Player == 1), Is.True, "their Special Shot");
+            Assert.That(theirs.Power, Is.LessThan(1), "their meter spent");
+            yield return null; yield return null;
+            Assert.That(fe.Hud.PopText, Is.EqualTo("THEIR SPECIAL!"));
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Shot.png");
         }
 
         [UnityTest]

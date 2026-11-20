@@ -907,11 +907,10 @@ namespace SquashGame
             // the towers either side, through the glass; the CN Tower up the far end
             Sky(c, false, 700f);
             var win = Glow(c, new Color(1.8f, 1.6f, 1.2f));
+            var street = new Buildings(c, null);
             foreach (int s in new[] { -1, 1 })
-            {
-                var tw = c.Palette.UnlitColor(new Color(0.9f, 0.9f, 0.95f)); tw.mainTexture = ProcTex.CityWindows(s < 0 ? 0 : 3);
-                Greybox.TexturedBox("Tower", c.Venue, tw, W(s * (hx + 16), 60, (front + back) / 2), new Vector3(30f, 120f, back - front), new Vector2(12.8f, 25.6f), false);
-            }
+                street.Tower(W(s * (hx + 16), 0, (front + back) / 2), 30f, back - front, 120f, s < 0 ? 0 : 3, new System.Random(912 + s), true);
+            street.Finish();
             Vector3 cn = W(30, 0, -340);
             var concrete = Glow(c, new Color(0.55f, 0.55f, 0.62f));
             Greybox.Box("CnShaft", c.Venue, concrete, cn + Vector3.up * 170f, new Vector3(16f, 340f, 16f), false);
@@ -980,9 +979,10 @@ namespace SquashGame
             Sky(c, false, 700f);
             Color[] neon = { new Color(1.8f, 2.0f, 2.4f), new Color(0.4f, 1.2f, 2.4f), new Color(2.4f, 0.5f, 0.6f) };
             Skyline(c, 60, 281, 80f, 280f, -180f, 180f, 80f, 220f, neon, -2f);
-            var tw = c.Palette.UnlitColor(new Color(0.95f, 0.95f, 1f)); tw.mainTexture = ProcTex.CityWindows(2);
             Vector3 one = W(-20, 0, -130);
-            Greybox.TexturedBox("OneCanadaSquare", c.Venue, tw, one + Vector3.up * 117f, new Vector3(50f, 234f, 50f), new Vector2(12.8f, 25.6f), false);
+            var wharf = new Buildings(c, null);
+            wharf.Tower(one, 50f, 50f, 234f, 2, new System.Random(983), true);
+            wharf.Finish();
             var cap = Greybox.Box("PyramidTop", c.Venue, Glow(c, new Color(1.4f, 1.5f, 1.7f)), one + Vector3.up * 242f, new Vector3(25f, 25f, 25f), false);
             cap.transform.localRotation = Quaternion.Euler(45f, 0, 45f);
             Greybox.Box("Beacon", c.Venue, Glow(c, new Color(3f, 3f, 3f)), one + Vector3.up * 258f, Vector3.one * 2.4f, false);

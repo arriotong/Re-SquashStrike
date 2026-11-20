@@ -226,14 +226,12 @@ namespace SquashGame
         static void Skyline(Ctx c, int count, int seed, float rMin, float rMax, float aFrom, float aTo, float hMin, float hMax, Color[] neon, float baseY = -2f, bool reflect = false)
         {
             var rng = new System.Random(seed);
-            var mats = new Material[4];
-            for (int i = 0; i < mats.Length; i++) { mats[i] = c.Palette.UnlitColor(new Color(0.9f, 0.9f, 0.95f)); mats[i].mainTexture = ProcTex.CityWindows(i); }
-            var red = Glow(c, new Color(3f, 0.2f, 0.15f));
             var neonMats = neon != null ? System.Array.ConvertAll(neon, n => Glow(c, n)) : null;
             Material[] reflMats = null;
             if (reflect && neon != null)
                 reflMats = System.Array.ConvertAll(neon, n => { var m = c.Palette.Clear(new Color(n.r, n.g, n.b, 0.35f)); m.mainTexture = ProcTex.SoftSpot(); return m; });
             Vector3 centre = W(0, 0, L / 2);
+            var city = new Buildings(c, neon);
             for (int i = 0; i < count; i++)
             {
                 float a = Mathf.Lerp(aFrom, aTo, (float)rng.NextDouble()) * Mathf.Deg2Rad;
@@ -241,13 +239,11 @@ namespace SquashGame
                 Vector3 p = centre + new Vector3(Mathf.Sin(a) * r, 0, -Mathf.Cos(a) * r);
                 float w = 12f + (float)rng.NextDouble() * 22f, d = 12f + (float)rng.NextDouble() * 22f;
                 float h = Mathf.Lerp(hMin, hMax, (float)(rng.NextDouble() * rng.NextDouble()));
-                Greybox.TexturedBox("Tower", c.Venue, mats[i % mats.Length], new Vector3(p.x, baseY + h / 2, p.z), new Vector3(w, h, d), new Vector2(12.8f, 25.6f), false);
-                if (h > hMax * 0.45f && rng.NextDouble() < 0.6) Greybox.Box("AirLight", c.Venue, red, new Vector3(p.x, baseY + h + 1.5f, p.z), new Vector3(0.9f, 0.9f, 0.9f), false);
+                // 2026-11-20 a real 3D tower (tiers, shaded sides, roof details) instead of a window-papered box
+                city.Tower(new Vector3(p.x, baseY, p.z), w, d, h, i, rng);
                 if (neonMats != null && rng.NextDouble() < 0.55)
                 {
                     int k = rng.Next(neonMats.Length);
-                    for (int band = 0; band < 3; band++)
-                        Greybox.Box("Neon", c.Venue, neonMats[k], new Vector3(p.x, baseY + h * (0.35f + band * 0.25f), p.z), new Vector3(w + 0.4f, 1.2f, d + 0.4f), false);
                     if (reflMats != null)
                     {
                         var q = Greybox.Primitive(PrimitiveType.Quad, "NeonReflection", c.Venue, reflMats[k], false);
@@ -257,6 +253,7 @@ namespace SquashGame
                     }
                 }
             }
+            city.Finish();
         }
 
         /// <summary>A ring of far lights round the horizon (a city at night).</summary>
@@ -540,8 +537,9 @@ namespace SquashGame
             GlassShell(c);
             GalleryMat(c, Greybox.Hex(0x7a1018), Greybox.Hex(0xe8c040));
             // the mall: a glass block on the left, cream stone round the plaza, the tower with its lit pyramid top
-            var glassBlock = c.Palette.UnlitColor(new Color(0.75f, 0.85f, 1f)); glassBlock.mainTexture = ProcTex.CityWindows(2);
-            Greybox.TexturedBox("GlassBlock", c.Venue, glassBlock, W(-42, 12, 0), new Vector3(26f, 26f, 46f), new Vector2(12.8f, 25.6f), false);
+            var block = new Buildings(c, null);
+            block.Tower(W(-42, -1, 0), 26f, 46f, 27f, 2, new System.Random(541), true);
+            block.Finish();
             var cream = Tex(c, new Color(0.92f, 0.86f, 0.74f), ProcTex.Stone(), 0.15f);
             var warmWin = Glow(c, new Color(2.0f, 1.5f, 0.8f));
             Facade(c, W(40, 9, 4), new Vector3(24f, 18f, 46f), cream, warmWin, 4, 90f);

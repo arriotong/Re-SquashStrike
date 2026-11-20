@@ -461,9 +461,7 @@ namespace SquashGame
             }
             // The city: towers all round, their windows lit, the nearer ones below the deck.
             var rng = new System.Random(9);
-            var mats = new Material[4];
-            for (int i = 0; i < mats.Length; i++) { mats[i] = c.Palette.UnlitColor(new Color(1f, 1f, 1f)); mats[i].mainTexture = ProcTex.CityWindows(i); }
-            var red = c.Palette.UnlitColor(new Color(3f, 0.2f, 0.15f));
+            var city = new Buildings(c, new[] { new Color(2.4f, 1.3f, 0.5f), new Color(0.5f, 1.6f, 2.6f) }, 1.08f);   // 2026-11-20 real 3D towers
             int built = 0;
             for (int i = 0; i < 400 && built < 160; i++)
             {
@@ -473,11 +471,10 @@ namespace SquashGame
                 float w = 14f + (float)rng.NextDouble() * 26f, d = 14f + (float)rng.NextDouble() * 26f;
                 float top = -45f + (float)(rng.NextDouble() * rng.NextDouble() * rng.NextDouble()) * 230f + r * 0.04f;   // most below the deck, a few towering
                 float bottom = -120f, h = top - bottom;
-                Greybox.TexturedBox("Tower", c.Venue, mats[built % mats.Length], new Vector3(x, bottom + h / 2, z), new Vector3(w, h, d), new Vector2(12.8f, 25.6f), false);
-                if (top > 40f && rng.NextDouble() < 0.5)
-                    Greybox.Box("AirLight", c.Venue, red, new Vector3(x, top + 2f, z), new Vector3(0.8f, 0.8f, 0.8f), false);
+                city.Tower(new Vector3(x, bottom, z), w, d, h, built, rng);
                 built++;
             }
+            city.Finish();
             // String lights over the deck, zigzagging between posts.
             var bulb = c.Palette.UnlitColor(new Color(2.4f, 1.6f, 0.8f));
             var bulbs = new MeshMerge();
