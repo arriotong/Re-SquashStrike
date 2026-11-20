@@ -55,6 +55,7 @@ namespace SquashGame.UI
 
     public sealed class WorldMapScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         const int You = CareerSession.You;
         protected override string Kicker { get { return "WORLD TOUR  ·  " + Career.When(Career.S); } }
         protected override string Title { get { return "The world map"; } }

@@ -331,11 +331,37 @@ namespace SquashGame.UI
             return null;
         }
 
+        /// <summary>The toon world behind the menus now: the top screen's (a dialog or pop-up over it keeps it) - only while
+        /// the menus' demo plays (never behind a real match's pause).</summary>
+        MenuWorld WorldUp()
+        {
+            if (Match == null || !Match.Demo) return MenuWorld.None;
+            for (int i = _stack.Count - 1; i >= 0; i--)
+            {
+                var s = _stack[i];
+                if (s.Backdrop != MenuWorld.None) return s.Backdrop;
+                if (s is DialogScreen || s.Overlay) continue;
+                return MenuWorld.None;
+            }
+            return MenuWorld.None;
+        }
+
+        /// <summary>Show the world the screens want (each frame: a hub's tab changes it).</summary>
+        void UpdateWorld()
+        {
+            var w = WorldUp();
+            if (w == MatchRunner.Backdrop && w == Dioramas.Current) return;
+            Dioramas.Show(w);
+            MatchRunner.Backdrop = Dioramas.Current;
+            _dim.style.display = Top != null && Top.Dims && Dioramas.Current == MenuWorld.None ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
         void UpdateFlags()
         {
             MenuOpen = Top != null;
             BlocksGamePause = Top != null && !Top.EscapeIsGame;
-            _dim.style.display = Top != null && Top.Dims ? DisplayStyle.Flex : DisplayStyle.None;
+            _dim.style.display = Top != null && Top.Dims && WorldUp() == MenuWorld.None ? DisplayStyle.Flex : DisplayStyle.None;
+            UpdateWorld();
         }
 
         // ---------------- game actions (used by the screens) ----------------
@@ -488,6 +514,7 @@ namespace SquashGame.UI
         void Update()
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            UpdateWorld();
             _input.Sample(dt);
             // 2026-10-30: the playtest's "that felt wrong" - F8, or a pad's right stick click (View replays the point)
             var kb8 = UnityEngine.InputSystem.Keyboard.current; var gp8 = UnityEngine.InputSystem.Gamepad.current;

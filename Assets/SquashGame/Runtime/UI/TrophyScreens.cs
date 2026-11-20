@@ -142,6 +142,7 @@ namespace SquashGame.UI
 
     public sealed class TrophyCabinetScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "CAREER  ·  " + Career.S.Name.ToUpperInvariant(); } }
         protected override string Title { get { return "Trophy cabinet"; } }
         static readonly string[] Shelves = { "Your club's open", "Challenger 3 · 6", "Challenger 9 · 12 · 15", "Copper · Bronze", "Silver · Gold", "Platinum · Diamond", "World Championship · Tour Finals" };

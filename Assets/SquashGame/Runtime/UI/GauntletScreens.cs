@@ -317,6 +317,8 @@ namespace SquashGame.UI
             }
         }
         protected override bool ShowChip { get { return false; } }
+        public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }                  // 2026-11-20 the floating island behind it
+        public override bool Spatial { get { return true; } }
         bool _banishing;
 
         protected override void Compose()
@@ -329,27 +331,32 @@ namespace SquashGame.UI
 
             if (run == null || run.Over)
             {
-                var about = Kit.Panel(grid, run != null ? "THE RUN" : "HOW TO PLAY"); about.AddToClassList("gt-main");
-                if (run != null)
-                {
-                    Kit.L(about, "Floor " + run.FloorsWon + " cleared  ·  " + run.Score.ToString("N0") + " points", "gt-big");
-                    Kit.L(about, run.BossesBeaten + (run.BossesBeaten == 1 ? " boss" : " bosses") + " beaten  ·  " + run.Picks + " abilities picked", "gt-text");
-                    Build(about, run);
-                }
-                else
-                {
-                    // 2026-10-30 (the kid test): three short steps instead of four paragraphs of rules
-                    Kit.L(about, "1   Win a short game to go up a floor. How high can you climb?", "gt-text");
-                    Kit.L(about, "2   After every win, pick a power card. It makes you stronger!", "gt-text");
-                    Kit.L(about, "3   Lose a game and you lose a heart. No hearts left? Start again.", "gt-text");
-                }
-                Records(grid, st);
-                AddTo(Root, new PrimaryItem(run != null ? "New run" : "Start a run", () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }));   // first: it has the focus
-                var more = Kit.Box(Content, "gt-more");
-                AddTo(more, new ActionItem("Your cards  ·  " + GauntletFlow.Cards.Deck.Count, () => Fe.Push(new DeckScreen()), "▶"));
-                AddTo(more, new ActionItem("Get more cards", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)), "▶"));
-                AddTo(more, new ActionItem("Upgrades", () => Fe.Push(new TalentsScreen()), "▶"));
-                AddTo(more, new ActionItem("Card book", () => Fe.Push(new CodexScreen()), "▶"));
+                // 2026-11-20 (the user: "the ui larger and shaped like the career one"): one big card to start, four picture
+                // cards beside it, the how-to-play behind a ? - the island on the right
+                grid.RemoveFromHierarchy();
+                var stage = Kit.Box(Content, "gt-stage");
+                var hero = AddTo(stage, new CardItem(run != null ? "NEW RUN" : "START A RUN", run != null ? "RUN OVER" : "THE GAUNTLET",
+                        () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }, CardSize.Hero)        // first: it has the focus
+                    .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
+                    .Line(run != null
+                        ? "Floor " + run.FloorsWon + " cleared  ·  " + run.Score.ToString("N0") + " points  ·  " + run.BossesBeaten + (run.BossesBeaten == 1 ? " boss" : " bosses") + " beaten"
+                        : "Win a game, climb a floor, pick a power card. How high can you go?")
+                    .Badge(() => st.BestFloor > 0 ? "BEST  ·  FLOOR " + st.BestFloor : "NEW", true));
+                hero.Root.AddToClassList("gt-hero");
+                var sides = Kit.Box(stage, "gt-sides");
+                Mini(sides, new CardItem("YOUR CARDS", "YOUR DECK", () => Fe.Push(new DeckScreen()))
+                    .Drawn("stripes", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
+                    .Badge(() => GauntletFlow.Cards.Deck.Count + " CARDS"));
+                Mini(sides, new CardItem("GET MORE CARDS", "PACKS", () => Fe.Push(new StoreScreen(StoreScreen.CardsTab)))
+                    .Drawn("spots", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255)));
+                Mini(sides, new CardItem("UPGRADES", "SPEND COINS", () => Fe.Push(new TalentsScreen()))
+                    .Drawn("trophy", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
+                    .Badge(() => GauntletFlow.State.Coins + " COINS", GauntletFlow.State.Coins > 0));
+                Mini(sides, new CardItem("CARD BOOK", "EVERY CARD", () => Fe.Push(new CodexScreen()))
+                    .Drawn("rings", new Color32(14, 26, 22, 255), new Color32(200, 255, 61, 255)));
+                var help = new ActionItem("?  How to play", () => Fe.Push(new GauntletHelpScreen()));
+                help.Root.AddToClassList("k-action--chip");
+                AddTo(TopBar, help);
                 return;
             }
 
@@ -392,20 +399,28 @@ namespace SquashGame.UI
                 return;
             }
 
-            // the next floor
+            // the next floor: a big card to play it (2026-11-20, like the career's), the opponent and your build beside it
             var fl = Gauntlet.Floor(run, run.Floor);
-            var next = Kit.Panel(grid, fl.Kind == FloorKind.Boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "NEXT"); next.AddToClassList("gt-main");
-            Kit.L(next, (fl.Kind == FloorKind.Boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
+            grid.RemoveFromHierarchy();
+            var stage2 = Kit.Box(Content, "gt-stage");
+            bool boss = fl.Kind == FloorKind.Boss;
+            var play = AddTo(stage2, new CardItem(boss ? "FACE THE BOSS" : "PLAY FLOOR " + run.Floor, boss ? "THE BOSS  ·  " + fl.Name.ToUpperInvariant() : fl.Kind == FloorKind.Elite ? "ELITE FLOOR" : "NEXT FLOOR",
+                    () => GauntletFlow.Play(Fe), CardSize.Hero)
+                .Drawn(boss ? "trophy" : "chevrons", boss ? new Color32(34, 10, 18, 255) : new Color32(30, 14, 14, 255), boss ? new Color32(255, 60, 90, 255) : new Color32(255, 90, 74, 255))
+                .Line(GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins")
+                .Badge(() => "FLOOR " + run.Floor, true));
+            play.Root.AddToClassList("gt-hero");
+            var col = Kit.Box(stage2, "gt-col");
+            var next = Kit.Panel(col, boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "YOUR OPPONENT"); next.AddToClassList("gt-info");
+            Kit.L(next, (boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
             foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
             if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
             if (fl.Signature.Count > 0) Kit.L(next, "Signature: " + string.Join(", ", fl.Signature.ConvertAll(m => { var a = GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "gt-trait");
             var court = Courts.Find(GauntletFlow.CourtFor(run, run.Floor));
             Kit.L(next, "One game to " + fl.Points + (Gauntlet.HeadStart(run) > 0 ? ", you start " + Gauntlet.HeadStart(run) + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
-            var me = Kit.Panel(grid, "YOUR BUILD"); me.AddToClassList("gt-side");
+            var me = Kit.Panel(col, "YOUR BUILD"); me.AddToClassList("gt-info");
             Kit.L(me, GauntletFlow.Hearts(run) + (run.Golden ? "   + golden racket" : ""), "gt-hearts");
-            Kit.L(me, run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins", "gt-text");
             Build(me, run);
-            AddTo(Root, new PrimaryItem((fl.Kind == FloorKind.Boss ? "Face the boss" : "Play floor " + run.Floor), () => GauntletFlow.Play(Fe)));
             var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? Its coins are kept.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
             quit.Root.AddToClassList("k-action--chip");
             AddTo(TopBar, quit);
@@ -452,7 +467,28 @@ namespace SquashGame.UI
             if (st.Coins > 0) Kit.L(r, st.Coins + " Gauntlet coins to spend on upgrades", "gt-text");
         }
 
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+        /// <summary>A side card, smaller (the start screen's four).</summary>
+        void Mini(VisualElement row, CardItem card) { AddTo(row, card); card.Root.AddToClassList("gt-mini"); }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+    }
+
+    /// <summary>2026-11-20 the Gauntlet's how-to-play, behind the start screen's ? (the three steps of the kid test).</summary>
+    public sealed class GauntletHelpScreen : DialogScreen
+    {
+        protected override string Title { get { return "How to play"; } }
+        protected override string Line
+        {
+            get
+            {
+                return "1   Win a short game to go up a floor. How high can you climb?\n" +
+                       "2   After every win, pick a power card. It makes you stronger!\n" +
+                       "3   Lose a game and you lose a heart. No hearts left? Start again.";
+            }
+        }
+        protected override string YesLabel { get { return "Got it"; } }
+        protected override string NoLabel { get { return "Back"; } }
+        protected override void OnYes() { Fe.Pop(); }
     }
 
     // ---------------- talents ----------------
@@ -462,6 +498,7 @@ namespace SquashGame.UI
         protected override string Kicker { get { return "THE GAUNTLET  ·  YOU HAVE " + GauntletFlow.State.Coins + " GAUNTLET COINS"; } }
         protected override string Title { get { return "Upgrades"; } }
         protected override bool ShowChip { get { return false; } }
+        public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }
         static readonly string[][] Pages = { new[] { "hearty", "reroll", "wider", "banish" }, new[] { "kit", "revive", "treasure" } };
 
         protected override void Compose()
@@ -517,6 +554,7 @@ namespace SquashGame.UI
         protected override string Kicker { get { return "THE GAUNTLET  ·  EVERY CARD"; } }
         protected override string Title { get { return "Card book"; } }
         protected override bool ShowChip { get { return false; } }
+        public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }
 
         protected override void Compose()
         {

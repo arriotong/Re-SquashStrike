@@ -41,6 +41,8 @@ namespace SquashGame.UI
         readonly List<VisualElement> _pages = new List<VisualElement>();
         readonly List<string> _pageNames = new List<string>();
         public int PageIndex { get { return Tabs != null ? Tabs.Index : 0; } }
+        /// <summary>The page shown now (its tab's name), or null.</summary>
+        protected string PageName { get { int i = PageIndex; return i >= 0 && i < _pageNames.Count ? _pageNames[i] : null; } }
 
         protected sealed override void Build()
         {

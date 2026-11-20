@@ -113,6 +113,7 @@ namespace SquashGame.UI
     /// <summary>Your record: the matches, the titles by tier, the rivals and the match history (the PLAYER page's old panels).</summary>
     public sealed class CareerRecordScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         /// <summary>The way into the trophy cabinet (tests).</summary>
         public ActionItem Cabinet { get; private set; }
         protected override string Kicker { get { return "CAREER  ·  " + Career.When(Career.S); } }

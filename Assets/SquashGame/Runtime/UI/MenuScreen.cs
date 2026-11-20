@@ -27,6 +27,8 @@ namespace SquashGame.UI
         protected virtual bool Sidebar { get { return !Centred; } }
         /// <summary>Dim the court behind this screen.</summary>
         public virtual bool Dims { get { return false; } }
+        /// <summary>2026-11-20 the toon world behind this screen instead of the court (Dioramas; None: the court).</summary>
+        public virtual MenuWorld Backdrop { get { return MenuWorld.None; } }
         /// <summary>Shown over the screen below, which stays in view (a pop-up list).</summary>
         public virtual bool Overlay { get { return false; } }
         /// <summary>UI redesign: focus moves in 2D to the nearest choice in the pressed direction (cards, grids).</summary>

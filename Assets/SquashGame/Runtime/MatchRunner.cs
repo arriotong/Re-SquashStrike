@@ -581,10 +581,12 @@ namespace SquashGame
         /// <summary>2026-10-29 ("in the choosing kit page the character keeps on moving so I couldn't tell what I'm wearing"): the
         /// Locker Room holds the menus' rally - you stand still mid-court in your ready stance, the opponent and the ball out of shot.</summary>
         public static bool Showcase;
-        protected override void Awake() { Showcase = false; EmptyCourt = false; Studio = false; StudioPair = false; base.Awake(); }
+        protected override void Awake() { Showcase = false; EmptyCourt = false; Studio = false; StudioPair = false; Backdrop = MenuWorld.None; Dioramas.Reset(); base.Awake(); }
         /// <summary>2026-11-20 the title: the courts empty (the user: "no one playing in the courts") - the rally holds, the
         /// athletes and the ball are put away under the floor.</summary>
         public static bool EmptyCourt;
+        /// <summary>2026-11-20 a menu's toon world is up (Dioramas): the menu camera films it, held still. None: the court.</summary>
+        public static MenuWorld Backdrop;
 
         static RenderSnapshot EmptyView(RenderSnapshot v)
         {

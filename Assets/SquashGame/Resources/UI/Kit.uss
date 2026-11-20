@@ -1488,3 +1488,23 @@
 .hud-focus-word { position: absolute; left: 0; right: 0; top: 120px; font-size: 64px; letter-spacing: 18px; -unity-text-align: middle-center;
     color: rgba(140, 200, 255, 0.9); text-shadow: 0 0 24px rgba(80, 160, 255, 0.8); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .hud-flash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgb(255, 244, 214); }
+
+/* ---------- 2026-11-20 the Gauntlet remade like the career's cards, on its floating island ---------- */
+.gt-stage { flex-direction: row; align-items: flex-end; flex-grow: 1; margin-bottom: 8px; }
+.gt-hero { width: 540px; height: 540px; margin-right: 24px; border-width: 3px; }
+.gt-hero .k-card-title { font-size: 60px; }
+.gt-hero .k-card-line { font-size: 15px; margin-top: 8px; }
+.gt-hero .k-card-kicker { font-size: 13px; }
+.gt-hero .k-card-shade { height: 46%; }
+.gt-sides { flex-direction: row; flex-wrap: wrap; width: 540px; height: 540px; align-content: flex-start; }
+.gt-mini { width: 252px; height: 262px; margin: 0 16px 16px 0; }
+.gt-mini .k-card-title { font-size: 28px; }
+.gt-mini .k-card-shade { height: 50%; }
+.gt-col { width: 600px; justify-content: flex-end; }
+.gt-info { margin-bottom: 16px; padding: 22px 26px; background-color: rgba(10, 11, 14, 0.86); border-radius: 16px; }
+.gt-info .gt-big { font-size: 32px; }
+.gt-info .gt-text { font-size: 18px; }
+/* the floor's pick: big cards too (2026-11-20) */
+.gt-card { width: 340px; height: 400px; margin-right: 24px; }
+.gt-card .k-card-title { font-size: 36px; }
+.gt-card .k-card-line { font-size: 14px; }

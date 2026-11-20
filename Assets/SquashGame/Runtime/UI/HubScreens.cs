@@ -30,6 +30,22 @@ namespace SquashGame.UI
 
     public sealed class MainMenuScreen : GameScreen
     {
+        /// <summary>2026-11-20 the toon world behind the hub follows its tab: CAREER the city at dusk, CHALLENGES the platform at
+        /// night, TRAINING the camp in the morning, the rest of PLAY the park island (the Others hub keeps the court).</summary>
+        public override MenuWorld Backdrop
+        {
+            get
+            {
+                switch (PageName)
+                {
+                    case "CAREER": return MenuWorld.Career;
+                    case "CHALLENGES": return MenuWorld.Challenges;
+                    case "TRAINING": return MenuWorld.Training;
+                    case "PLAY": case "MODES": case "ONLINE": case "PACKS": return MenuWorld.Home;
+                    default: return MenuWorld.None;
+                }
+            }
+        }
         protected override bool ShowCoins { get { return true; } }
         protected override string Title { get { return Which == Hub.Play ? "PLAY" : "OTHERS"; } }
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }
@@ -303,6 +319,7 @@ namespace SquashGame.UI
     /// up to down just three buttons"): the logo and PLAY, OTHERS, SETTINGS.</summary>
     public sealed class HomeScreen : MenuScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Home; } }   // 2026-11-20 its toon world (Dioramas)
         MainMenuScreen.Hub _focus;                                            // the button you came back from keeps the focus
         public HomeScreen(MainMenuScreen.Hub focus = MainMenuScreen.Hub.Play) { _focus = focus; }
 

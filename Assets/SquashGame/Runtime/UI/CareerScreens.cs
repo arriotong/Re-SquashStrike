@@ -429,6 +429,7 @@ namespace SquashGame.UI
 
     public sealed class CareerHubScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         const int You = CareerSession.You;
         protected override string Kicker { get { return "CAREER  ·  " + Career.When(Career.S); } }
         protected override string Title { get { return Career.S.Name; } }
@@ -975,6 +976,7 @@ namespace SquashGame.UI
 
     public sealed class SimResultScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         readonly int _opp; readonly bool _won; readonly string _score;
         public SimResultScreen(int opp, bool won, string score) { _opp = opp; _won = won; _score = score; }
         protected override bool ShowChip { get { return false; } }
@@ -1004,6 +1006,7 @@ namespace SquashGame.UI
 
     public sealed class DrawScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         const int You = CareerSession.You;
         readonly EventState _e;
         public DrawScreen(EventState e) { _e = e; }
@@ -1201,6 +1204,7 @@ namespace SquashGame.UI
 
     public sealed class EventResultScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         const int You = CareerSession.You;
         readonly EventState _e;
         public EventResultScreen(EventState e) { _e = e; Reward = Rewards.CareerEvent(Career.C, e); }
@@ -1245,6 +1249,7 @@ namespace SquashGame.UI
 
     public sealed class SeasonSummaryScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         SeasonRec R { get { var l = Career.S.Seasons; return l[l.Count - 1]; } }
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { return "SEASON " + R.Season + " REVIEW"; } }
@@ -1284,6 +1289,7 @@ namespace SquashGame.UI
 
     public sealed class SponsorScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { return "SEASON " + Career.S.Season + "  ·  SPONSORS"; } }
         protected override string Title { get { var n = Career.S.Offers.Count; return n == 0 ? "No sponsors yet" : n == 1 ? "A company wants to pay you!" : "Two companies want to pay you!"; } }
@@ -1330,6 +1336,7 @@ namespace SquashGame.UI
 
     public sealed class CareerSettingsScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { return "CAREER"; } }
         protected override string Title { get { return "Match settings"; } }
@@ -1348,6 +1355,7 @@ namespace SquashGame.UI
 
     public sealed class RetireScreen : DialogScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "CAREER MATCH"; } }
         protected override string Title { get { return "Retire from the match?"; } }
         protected override string Line { get { return "Leaving counts as a loss."; } }

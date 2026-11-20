@@ -119,7 +119,10 @@ namespace SquashGame.UI
             for (int i = 0; i < n; i++)
             {
                 float u = i / (n - 1f);                                   // 1 = top row of the texture
-                float a = Mathf.Lerp(0f, 0.9f, Mathf.SmoothStep(0.15f, 1f, u));
+                // (2026-11-20: Mathf.SmoothStep(0.15, 1, u) blends 0.15..1 - it left 13% at the bottom edge, a hard line over a
+                // bright sky - the fade now reaches nothing)
+                float k = Mathf.Clamp01((u - 0.15f) / 0.85f);
+                float a = 0.9f * k * k * (3f - 2f * k);
                 _top.SetPixel(0, i, new Color(0.02f, 0.024f, 0.03f, a));
             }
             _top.Apply();

@@ -106,6 +106,7 @@ namespace SquashGame.UI
 
     public sealed class TargetArcadeScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "MODES"; } }
         protected override string Title { get { return "Target Arcade"; } }
 
@@ -158,6 +159,7 @@ namespace SquashGame.UI
 
     public sealed class LevelScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
         readonly ArcadeMode _mode;
         public LevelScreen(ArcadeMode mode) { _mode = mode; }
         protected override string Kicker { get { return "TARGET ARCADE"; } }
@@ -212,6 +214,7 @@ namespace SquashGame.UI
 
     public sealed class PracticeScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
         readonly bool _drills;
         public PracticeScreen(bool drills = false) { _drills = drills; }
         protected override string Kicker { get { return "PRACTICE"; } }

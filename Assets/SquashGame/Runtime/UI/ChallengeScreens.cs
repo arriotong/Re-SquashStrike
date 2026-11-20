@@ -93,6 +93,7 @@ namespace SquashGame.UI
 
     public sealed class ChallengesScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Challenges; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "CHALLENGES  ·  NEW ONES IN " + Challenges.LeftToday(); } }
         protected override string Title { get { return "Today's games"; } }
         protected override bool ShowChip { get { return false; } }

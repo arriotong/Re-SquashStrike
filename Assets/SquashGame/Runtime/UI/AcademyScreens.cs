@@ -106,6 +106,7 @@ namespace SquashGame.UI
 
     public sealed class AcademyScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "LEARN"; } }
         protected override string Title { get { return "Academy"; } }
 

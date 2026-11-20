@@ -131,6 +131,17 @@ namespace SquashGame
         /// <summary>Film the demo rally with this camera (instead of the gameplay camera).</summary>
         public static void Apply(Camera cam, SimRunnerBase runner, float dt)
         {
+            // 2026-11-20 a menu's toon world (the Gauntlet's island, Home, Career, Challenges, Training): the camera held still on it
+            if (MatchRunner.Backdrop != MenuWorld.None)
+            {
+                _scene = -1;
+                var w = MatchRunner.Backdrop;
+                cam.fieldOfView = Dioramas.Fov(w);
+                if (cam.farClipPlane < Dioramas.FarClip) cam.farClipPlane = Dioramas.FarClip;
+                cam.transform.position = Dioramas.CamPos(w);
+                cam.transform.LookAt(Dioramas.LookAt(w), Vector3.up);
+                return;
+            }
             // 2026-11-20 the title's empty courts: the TV view - high behind the back wall, the whole court, held still
             if (MatchRunner.EmptyCourt)
             {

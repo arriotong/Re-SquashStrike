@@ -47,17 +47,18 @@ namespace SquashGame.Tests
             Assert.That(menu.Focused.Name, Is.EqualTo("QUICK MATCH"));
             Assert.That(menu.CardsInView, Is.LessThanOrEqualTo(4), "at most 4 cards in view");
 
+            // 2026-11-20 behind PLAY's hub now: its toon world (Dioramas), the camera held still on it - no more cuts round the
+            // court (the slow-motion rally still plays: the title, the match setup and the studio still show it)
             var cam = Camera.main.transform;
+            yield return null; yield return null;
+            Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Home), "the park island behind PLAY");
             Vector3 a = cam.position;
             yield return Wait(MenuCinematics.CutSeconds + 0.5f);
-            Vector3 b = cam.position;
-            Assert.That(Vector3.Distance(a, b), Is.GreaterThan(1.0f), "the camera cut to another angle");
+            Assert.That(Vector3.Distance(a, cam.position), Is.LessThan(0.01f), "held still: a background, not a film");
 
             yield return Tap(kb.rightArrowKey);                                   // Local Versus
             Assert.That(menu.Focused.Name, Is.EqualTo("LOCAL VERSUS"));
-            Assert.That(MenuCinematics.Scene, Is.EqualTo(1), "its own set of angles");
-            yield return null; yield return null;
-            Assert.That(Vector3.Distance(cam.position, b), Is.GreaterThan(1.0f), "a new card, a new set of angles");
+            Assert.That(MenuCinematics.Scene, Is.EqualTo(1), "its own set of angles (for when the court shows)");
             foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" })      // PLAY's hub (2026-10-29)
             {
                 yield return Tap(kb.eKey);

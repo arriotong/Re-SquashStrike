@@ -24,6 +24,7 @@ namespace SquashGame.UI
         protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "THE GAUNTLET  ·  USING " + GauntletFlow.Cards.Deck.Count + " OF " + GauntletCards.DeckSize; } }
         protected override string Title { get { return "Your cards"; } }
+        public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }                  // 2026-11-20 the Gauntlet's island behind it
         protected override bool ShowChip { get { return false; } }
 
         readonly string _focus;
