@@ -339,6 +339,11 @@ namespace SquashSim
 
         // ---------------- randomness (deterministic) ----------------
 
+        bool _zoneAimed;
+        double _zoneX, _zoneY, _zoneHold, _specialSeen = -1;
+        /// <summary>How long the AI takes to Focus against a Special Shot coming at it.</summary>
+        public const double SpecialReaction = 0.12;
+
         double Uniform()
         {
             _seed = unchecked(_seed * 1664525u + 1013904223u);
@@ -374,6 +379,33 @@ namespace SquashSim
                 intent.Touch.Released = true; intent.Touch.Held = false;
                 _releaseNext = false;
             }
+
+            // ---- 2026-11-22 the Special Shot: aim it (low, away from them - the nick), fire; defend one with Focus ----
+            intent.SpecialPressed = false;
+            if (m.ZoneBy == me)
+            {
+                if (!_zoneAimed)
+                {
+                    _zoneAimed = true;
+                    double away = m.Players[opp].Player.Pos.X >= 0 ? -1 : 1;
+                    _zoneX = away * (CourtDimensions.HALF_W - 0.3 - 0.4 * Uniform());
+                    _zoneY = CourtDimensions.TIN_H + 0.1 + 0.25 * Uniform();
+                    _zoneHold = 0.5 + 0.9 * Uniform();
+                }
+                intent.HasAimPoint = true; intent.AimPointX = _zoneX; intent.AimPointY = _zoneY;
+                intent.Move.X = 0; intent.Move.Z = 0; intent.MoveMagnitude = 0;
+                if (m.ZoneTime >= _zoneHold) intent.Hit.Pressed = true;
+                return;
+            }
+            _zoneAimed = false;
+            var sm = p.Mods;
+            if (sm != null && m.SpecialIncoming(me))
+            {
+                if (_specialSeen < 0) _specialSeen = t;
+                if (t - _specialSeen > SpecialReaction && sm.Power >= RunMods.FocusCost) intent.SpecialPressed = true;
+            }
+            else _specialSeen = -1;
+            if (sm != null && m.CanSpecial(me) && ctrl.Prediction.Valid && ctrl.Prediction.Time < 0.8 && Uniform() < 0.08) intent.SpecialPressed = true;
 
             // ---- new rally / new shot bookkeeping ----
             if (m.History.Count != _lastRally)

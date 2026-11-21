@@ -385,7 +385,7 @@ namespace SquashGame
             if (_dive.WasPressedThisFrame()) Intent.DivePressed = true;          // consumed by the next fixed step
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
-            if (_slowmo.WasPressedThisFrame()) _slowmoPressed = true;
+            if (_slowmo.WasPressedThisFrame()) { _slowmoPressed = true; Intent.SpecialPressed = true; }   // 2026-11-22 the Special Shot (the sim's)
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
             if ((_appeal.WasPressedThisFrame() && !FromMouse(_appeal)) || ReadyKey()) _ready = true;

@@ -43,6 +43,8 @@ namespace SquashSim
         /// <summary>Game profile: this shot (a drive, kill or boast on the simple hitting system) comes off the front
         /// wall with little of its rise left (ArcadeHitSection.FrontWallRiseKeep). Cleared at that impact.</summary>
         public bool DipOffFrontWall;
+        /// <summary>2026-11-22 a Special Shot: the front wall keeps more of its pace (KeepPaceShare of the usual softening).</summary>
+        public bool SpecialPace;
         public NickRecord LastNick;
 
         // --- counters ---
@@ -76,6 +78,7 @@ namespace SquashSim
             LastImpactRestitution = 0;
             LastRacketContact = null;
             DipOffFrontWall = false;
+            SpecialPace = false;
             LastNick = null;
 
             FloorBounces = 0;

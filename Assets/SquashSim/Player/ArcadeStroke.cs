@@ -504,6 +504,7 @@ namespace SquashSim
             ball.Vel.CopyFrom(_vel);
             ball.Omega.X = 0; ball.Omega.Y = 0; ball.Omega.Z = 0;
             BallPhysics.Wake(ball);
+            ball.SpecialPace = false;
             ball.DipOffFrontWall = _dip;
             _dip = false;
             ball.FloorSinceFrontWall = 0;
@@ -544,6 +545,49 @@ namespace SquashSim
             };
             ctrl.Racket.LastContact = ev;
             ball.LastRacketContact = new RacketTouch { By = "player", Time = ball.SimTime, Speed = ev.BallSpeedOut, Stroke = _stroke, Technique = ev.Technique };
+            return ev;
+        }
+
+        /// <summary>2026-11-22 the Special Shot: struck from where the ball hangs, straight at (tx, ty) on the front wall at
+        /// <paramref name="speed"/> - no miss, no softening; it dips off the front wall like a kill.</summary>
+        public SimEvent SpecialNow(TestPlayerController ctrl, BallState ball, List<Surface> surfaces, double tx, double ty, double speed)
+        {
+            _stroke = "hit"; _charging = false; _serveCharging = false; _pending = -1; _boast = false; _releaseWait = 0; _charge = 0; _setTime = 0;
+            Solve(ball, surfaces, tx, ty, 0, 0, speed);
+            double before = V3.Length(ball.Vel);
+            ball.Vel.CopyFrom(_vel);
+            ball.Omega.X = 0; ball.Omega.Y = 0; ball.Omega.Z = 0;
+            BallPhysics.Wake(ball);
+            ball.DipOffFrontWall = true;
+            ball.SpecialPace = true;
+            ball.FloorSinceFrontWall = 0;
+            double m = PhysicsConfig.Current.Ball.Mass;
+            BallTemperature.ApplyImpactHeat(ball, 0.5 * m * (before * before + speed * speed) * 0.25, "racket");
+            var sw = ctrl.Swing;
+            sw.Stroke = _stroke; sw.Mode = "prepared";
+            Swing.ArcadeCommit(sw, ctrl, ball.Pos);
+            ctrl.Racket.HeadPos.CopyFrom(ball.Pos);
+            ctrl.Racket.SweetSpot.CopyFrom(ball.Pos);
+            double v = V3.Length(ball.Vel);
+            var ev = new SimEvent
+            {
+                Type = SimEventType.RacketContact,
+                Point = new V3(ball.Pos.X, ball.Pos.Y, ball.Pos.Z),
+                Stroke = _stroke, Mode = sw.Mode, Technique = "kill",
+                Side = ctrl.Player.SwingSide >= 0 ? 1 : -1,
+                HeadSpeed = speed * 0.8,
+                FaceNormal = new V3(ball.Vel.X / v, ball.Vel.Y / v, ball.Vel.Z / v),
+                Restitution = PhysicsConfig.Current.Racket.Restitution,
+                BallSpeedOut = v,
+                OutVel = new V3(ball.Vel.X, ball.Vel.Y, ball.Vel.Z),
+                Temperature = ball.Temperature,
+                Time = ball.SimTime,
+                SwingPhaseAtContact = 0.5,
+                ArcadeQuality = 1, Earliness = 1, ArcadeDistance = 0,
+                Label = "SPECIAL",
+            };
+            ctrl.Racket.LastContact = ev;
+            ball.LastRacketContact = new RacketTouch { By = "player", Time = ball.SimTime, Speed = v, Stroke = _stroke, Technique = "kill" };
             return ev;
         }
 

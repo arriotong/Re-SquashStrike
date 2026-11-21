@@ -34,6 +34,8 @@ namespace SquashGame.Tests
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             LabSimRunner r = court.Runner;
             var aim = GameObject.Find("AimTarget0").GetComponent<AimTargetView>();
+            Assert.That(AimTargetView.ShowShotLine, Is.False, "2026-11-22: the dot is off by default");
+            AimTargetView.ShowShotLine = true;                                       // (Settings > Show shot line On)
             yield return WaitReal(0.3f);
             r.Sim.Player.Player.Pos.X = -2.0; r.Sim.Player.Player.Pos.Z = 7.5;      // back left, ball in hand
 

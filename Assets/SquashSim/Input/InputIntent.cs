@@ -49,6 +49,9 @@ namespace SquashSim
         public bool Sprint;
         /// <summary>Boast tapped (E / pad RB): arms (or disarms) a boast for the next stroke. One-shot edge.</summary>
         public bool BoastPressed;
+        /// <summary>2026-11-22 Special (F / pad RT): with a full meter and your ball, the Special Shot; with one coming at you, Focus
+        /// against it. One-shot edge.</summary>
+        public bool SpecialPressed;
 
         public void ClearEdges()
         {
@@ -58,6 +61,7 @@ namespace SquashSim
             AppealPressed = false;
             DivePressed = false;
             BoastPressed = false;
+            SpecialPressed = false;
         }
     }
 }

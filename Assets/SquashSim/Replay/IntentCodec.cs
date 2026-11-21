@@ -40,7 +40,7 @@ namespace SquashSim.Replays
         public const double SecondScale = 1000;     // hold times: milliseconds
 
         public const ushort FHasAim = 1 << 0, FHitP = 1 << 1, FHitR = 1 << 2, FHitH = 1 << 3, FTouchP = 1 << 4, FTouchR = 1 << 5, FTouchH = 1 << 6,
-                            FFocus = 1 << 7, FSplit = 1 << 8, FAppeal = 1 << 9, FDive = 1 << 10, FSprint = 1 << 11, FBoast = 1 << 12, FAssisted = 1 << 13, FLines = 1 << 14;
+                            FFocus = 1 << 7, FSplit = 1 << 8, FAppeal = 1 << 9, FDive = 1 << 10, FSprint = 1 << 11, FBoast = 1 << 12, FAssisted = 1 << 13, FLines = 1 << 14, FSpecial = 1 << 15;
 
         static short S(double v, double scale)
         {
@@ -67,6 +67,7 @@ namespace SquashSim.Replays
             if (i.Touch.Pressed) f |= FTouchP; if (i.Touch.Released) f |= FTouchR; if (i.Touch.Held) f |= FTouchH;
             if (i.MomentumFocus) f |= FFocus; if (i.SplitStepPressed) f |= FSplit; if (i.AppealPressed) f |= FAppeal;
             if (i.DivePressed) f |= FDive; if (i.Sprint) f |= FSprint; if (i.BoastPressed) f |= FBoast;
+            if (i.SpecialPressed) f |= FSpecial;
             if (assisted) f |= FAssisted;
             if (lines) f |= FLines;
             return new QFrame
@@ -92,6 +93,7 @@ namespace SquashSim.Replays
             i.Touch.HeldSeconds = q.TouchMs / SecondScale;
             i.MomentumFocus = (q.Flags & FFocus) != 0; i.SplitStepPressed = (q.Flags & FSplit) != 0; i.AppealPressed = (q.Flags & FAppeal) != 0;
             i.DivePressed = (q.Flags & FDive) != 0; i.Sprint = (q.Flags & FSprint) != 0; i.BoastPressed = (q.Flags & FBoast) != 0;
+            i.SpecialPressed = (q.Flags & FSpecial) != 0;
             i.PausePressed = false;
         }
     }

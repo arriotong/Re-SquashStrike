@@ -91,7 +91,13 @@ namespace SquashSim
 
         /// <summary>Has an ultimate card (Time Stop, Inferno, Jackpot - or an evolution of one).</summary>
         public bool HasUltimate { get { return Level("freeze") > 0 || Level("inferno") > 0 || Level("jackpot") > 0 || Level("world") > 0 || Level("allin") > 0 || Level("special") > 0; } }
-        double MeterRate { get { return 1 + 0.2 * Level("overclock"); } }
+        /// <summary>2026-11-22 (the user: "too fast to charge up a special"): the Special card's meter fills 3x slower.</summary>
+        double MeterRate { get { return (1 + 0.2 * Level("overclock")) * (Level("special") > 0 ? 1.0 / 3.0 : 1.0); } }
+        /// <summary>2026-11-22 the meter a mistake costs (Special card only): your error or fault, a stroke against you.</summary>
+        public const double ErrorPenalty = 0.12, StrokePenalty = 0.08;
+        public void MeterPenalty(double amount) { if (amount > 0 && Level("special") > 0) Power = System.Math.Max(0, Power - amount); }
+        /// <summary>The ultimates fired by a charged stroke (the Special Shot is its own button: MatchSimulation.Special).</summary>
+        bool StrokeUlt { get { return Level("freeze") > 0 || Level("inferno") > 0 || Level("jackpot") > 0 || Level("world") > 0 || Level("allin") > 0; } }
         public void MeterShot() { if (HasUltimate) Power = System.Math.Min(1, Power + MeterPerShot * MeterRate); }
         public void MeterWin() { if (HasUltimate) Power = System.Math.Min(1, Power + MeterPerWin * MeterRate); }
         /// <summary>The Special meter's share Focus costs (Quick Match's Abilities).</summary>
@@ -106,12 +112,11 @@ namespace SquashSim
         public void AtStroke(double charge, bool touch)
         {
             UltNow = false;
-            if (HasUltimate && Power >= 1 && (charge >= UltCharge || Level("autoult") > 0))
+            if (StrokeUlt && Power >= 1 && (charge >= UltCharge || Level("autoult") > 0))
             {
                 Power = 0;
                 UltNow = true;
                 if (Level("inferno") > 0) FireShots = FireShotsPerUlt - 1 + Level("inferno");   // 3, 4, 5
-                if (Level("special") > 0) FireShots = System.Math.Max(FireShots, 1);              // the Special Shot: this one
             }
             ShotFire = !touch && (FireShots > 0 || (Level("supernova") > 0 && charge >= UltCharge));
         }

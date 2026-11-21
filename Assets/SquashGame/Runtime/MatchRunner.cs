@@ -587,6 +587,16 @@ namespace SquashGame
             bool focus = Input.ConsumeFocus();
             int gamesNow = Sim.Score.Games[0] + Sim.Score.Games[1];
             if (gamesNow != _focusGame) { _focusGame = gamesNow; FocusLeft = Settings.FocusCharges; }
+            // 2026-11-22 the Special Shot: the same key starts one (full meter, your ball) or defends one (the sim does both, from the
+            // intent); here only the look - a defended Special Shot in slow motion
+            int hi = HumanIndex >= 0 && HumanIndex < 2 ? HumanIndex : 0;
+            var hm = Sim.Players[hi].Player.Mods;
+            bool specialMoment = Sim.ZoneBy >= 0 || Sim.CanSpecial(hi) || Sim.SpecialIncoming(hi);
+            if (focus && specialMoment)
+            {
+                if (Sim.SpecialIncoming(hi) && hm != null && hm.Power >= SquashSim.RunMods.FocusCost && !Clock.Paused) { SlowMo(FocusSeconds, FocusScale); _focusing = true; }
+                focus = false;
+            }
             if (focus && Sim.Phase == MatchPhase.Rally && !SlowMoActive && !Clock.Paused)
             {
                 var mine = HumanIndex >= 0 && HumanIndex < 2 ? Sim.Players[HumanIndex].Player.Mods : null;
@@ -600,6 +610,8 @@ namespace SquashGame
             {
                 var n = Sim.Chaos[_ultRead++];
                 if (n.Kind == "ult" && !SlowMoActive) { SlowMo(SpecialSlowSeconds, SpecialSlowScale); _focusing = false; }
+                if (n.Kind == "special") { GameplayCameraRig.Kick(0.22f); UI.Juice.Rumble(0.9f, 0.9f, 0.3f); }
+                if (n.Kind == "zone" && n.Player == hi) UI.Juice.Rumble(0.3f, 0.6f, 0.15f);
             }
 
             // Ready (Enter / pad Y) from either player. Consumed every frame so a Y pressed

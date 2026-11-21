@@ -101,6 +101,33 @@ namespace SquashGame
             return true;
         }
 
+        /// <summary>2026-11-22 aiming a Special Shot (yours, or either local player's): the camera drops in behind the ball, looking
+        /// at the front wall - the aiming screen. True: filmed.</summary>
+        public bool ZoneCam { get; private set; }
+        float _zoneBlend;
+        bool FilmZone(MatchRunner m)
+        {
+            bool on = m != null && !m.Demo && m.Sim != null && m.Sim.ZoneBy >= 0 && (m.Sim.ZoneBy == m.HumanIndex || m.Settings.TwoPlayer) && !m.ReplayActive;
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            _zoneBlend = on ? Mathf.MoveTowards(_zoneBlend, 1f, dt / 0.25f) : 0f;
+            ZoneCam = on;
+            if (!on) return false;
+            var b = m.Sim.Ball.Pos;
+            var aim = m.Sim.Players[m.Sim.ZoneBy].Aim;
+            double ax = aim.HasWallTarget && aim.TargetWall == 0 ? aim.WallTarget.X : b.X, ay = aim.HasWallTarget && aim.TargetWall == 0 ? aim.WallTarget.Y : 1.2;
+            // up and to the ball's side, away from the player (who stands beside it), so the front wall and the aim are in view
+            var pl = m.Sim.Players[m.Sim.ZoneBy].Player.Pos;
+            double side = b.X >= pl.X ? 1 : -1;
+            double cx = System.Math.Max(-2.9, System.Math.Min(2.9, b.X + side * 1.0));
+            Vector3 pos = SimToWorld.Pos(cx, b.Y + 1.6, System.Math.Min(CourtDimensions.LENGTH + 0.5, b.Z + 3.4));
+            Vector3 look = Vector3.Lerp(SimToWorld.Pos(b.X * 0.5, 1.6, 0.0), SimToWorld.Pos(ax, ay, 0.0), 0.5f);
+            float e = _zoneBlend * _zoneBlend * (3f - 2f * _zoneBlend);
+            transform.position = Vector3.Lerp(transform.position, pos, e);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look - pos, Vector3.up), e);
+            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 50f, e);
+            return true;
+        }
+
         void Awake()
         {
             _cam = GetComponent<Camera>();
@@ -162,6 +189,7 @@ namespace SquashGame
             _wasCut = false;
 
             if (FilmWinner(Runner as MatchRunner)) return;
+            if (FilmZone(Runner as MatchRunner)) return;
 
             // The menus' demo rally: slow-motion cuts from cinematic angles (the old home screen).
             if (Runner is MatchRunner menu && menu.Demo)

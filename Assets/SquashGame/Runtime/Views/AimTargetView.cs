@@ -50,7 +50,7 @@ namespace SquashGame
         /// <summary>Accessibility setting: the ring's colour (0 white, 1 yellow, 2 cyan).</summary>
         public static int RingColourIndex;
         /// <summary>Settings > Controls > Show shot line: Off hides the line's dot (the aim help still pulls the shot).</summary>
-        public static bool ShowShotLine = true;
+        public static bool ShowShotLine;
         public static readonly Color[] RingColours = { new Color(1f, 1f, 1f, 0.85f), new Color(1f, 0.9f, 0.3f, 0.9f), new Color(0.4f, 0.95f, 1f, 0.9f) };
         /// <summary>0..1 how visible the reticle is this frame (tests).</summary>
         public float Fade { get; private set; }

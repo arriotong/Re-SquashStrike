@@ -149,17 +149,17 @@ namespace SquashGame.UI
         public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKit()
         {
             SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
-            return new System.Collections.Generic.List<SquashSim.RunMod> { M("nick", 2), M("rail", 2), M("wide", 2), M("hlob", 2), M("ace", 1), M("nickbank", 1), M("special", 1), M("freeze", 1) };
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("nick", 2), M("rail", 2), M("wide", 2), M("hlob", 2), M("ace", 1), M("nickbank", 1), M("special", 1) };
         }
         public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKitForThem()
         {
             SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
-            return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("nickbank", 1), M("special", 1), M("freeze", 1), M("autoult", 1) };
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("nickbank", 1), M("special", 1) };   // 2026-11-22: the Special Shot only (its own button; Time Stop gone)
         }
         /// <summary>Quick Match's Abilities row (batch 2). Off for now (2026-10-28: "remove special ability from quick play
         /// until we get them all figured out"): the row is hidden and a saved "On" is not played. True brings it back.</summary>
         public const bool QuickMatchAbilities = true;            // 2026-11-20 back on Quick Match, Off by default (the user: "so it's easy for me to test it")
-        public const string AbilityHint = "Abilities: a Special meter fills as you play - Focus spends some of it (slow motion), a full meter and a charged shot fire your Special Shot. Aces and nicks score 2. For them too.";
+        public const string AbilityHint = "Abilities: a Special meter fills slowly as you play (mistakes cost some). Full: press " + IntentSource.FocusKey + " on your ball - you jump to it, time stops, aim anywhere, then Hit. Their Special Shot? Focus (" + IntentSource.FocusKey + ") to slow it. Aces and nicks score 2.";
 
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };

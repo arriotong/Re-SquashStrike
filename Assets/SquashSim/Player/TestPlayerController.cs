@@ -129,6 +129,18 @@ namespace SquashSim
             return contact;
         }
 
+        /// <summary>2026-11-22 aiming the Special Shot (the rally frozen): only the aim moves, from the ball where it hangs.</summary>
+        public void AimOnly(InputIntent intent, BallState ball, List<Surface> surfaces)
+        {
+            _origin.X = ball.Pos.X; _origin.Y = ball.Pos.Y; _origin.Z = ball.Pos.Z;
+            AimController.Step(Aim, intent, _origin);
+            if (WallAimEnabled && PhysicsConfig.Current.WallAim != null)
+            {
+                if (intent.HasAimPoint) WallAimSolver.ApplyPoint(Aim, intent.AimPointX, intent.AimPointY, _origin);
+                else WallAimSolver.Apply(this, Aim, _origin, ball, surfaces);
+            }
+        }
+
         public void Reset()
         {
             Player.Reset();

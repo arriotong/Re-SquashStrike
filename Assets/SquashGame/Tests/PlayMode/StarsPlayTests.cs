@@ -113,7 +113,7 @@ namespace SquashGame.Tests
             var r = fe.Match;
             Assert.That(r.Settings.MeterFocus, Is.True, "Focus from the Special meter");
             Assert.That(r.Sim.Players[0].Player.Mods.HasUltimate, Is.True, "you have the Special Shot");
-            Assert.That(r.Sim.Players[1].Player.Mods.Level("autoult"), Is.EqualTo(1), "they fire theirs when full");
+            Assert.That(r.Sim.Players[1].Player.Mods.Level("special"), Is.EqualTo(1), "they have the Special Shot too");
             Assert.That(r.Settings.Mods, Is.Not.Null.And.Not.Empty, "your abilities");
         }
 
@@ -146,17 +146,33 @@ namespace SquashGame.Tests
             Assert.That(fe.Hud.FocusDim, Is.GreaterThan(0.5f), "the screen dims");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Focus.png");
 
-            // the computer's meter full: it fires its Special Shot on its next stroke
+            // 2026-11-22 the Special Shot: a full meter, the ball coming - you (the stand-in) jump to it, time stops, the aiming view
             yield return Wait(3f, () => !r.Focusing);
-            var theirs = r.Sim.Players[1].Player.Mods;
-            int before = r.Sim.Chaos.Count;
-            theirs.Power = 1;
-            yield return Wait(20f, () => r.Sim.Chaos.Count > before && r.Sim.Chaos.Exists(n => n.Kind == "ult"));
-            Assert.That(r.Sim.Chaos.Exists(n => n.Kind == "ult" && n.Player == 1), Is.True, "their Special Shot");
-            Assert.That(theirs.Power, Is.LessThan(1), "their meter spent");
+            mine.Power = 1;
+            yield return Wait(25f, () => r.Sim.ZoneBy == 0);
+            Assert.That(r.Sim.ZoneBy, Is.EqualTo(0), "you're aiming a Special Shot");
+            var rig = Camera.main.GetComponent<GameplayCameraRig>();
+            yield return Wait(0.35f, () => false);
+            Assert.That(rig.ZoneCam, Is.True, "the aiming view");
+            Assert.That(fe.Hud.FocusDim, Is.GreaterThan(0.5f), "time stands still: the screen dims");
+            var held = r.Sim.Ball.Pos.Clone();
             yield return null; yield return null;
-            Assert.That(fe.Hud.PopText, Is.EqualTo("THEIR SPECIAL!"));
+            Assert.That(r.Sim.Ball.Pos.Z, Is.EqualTo(held.Z).Within(1e-9), "the ball hangs");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Aim.png");
+            yield return Wait(4f, () => r.Sim.SpecialBy == 0);
+            Assert.That(r.Sim.SpecialBy, Is.EqualTo(0), "fired");
+            Assert.That(mine.Power, Is.LessThan(0.01), "the meter spent");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Shot.png");
+
+            // the computer's: it jumps to the ball and fires too
+            yield return Wait(8f, () => r.Sim.Phase == SquashSim.MatchPhase.Rally && r.Sim.SpecialBy < 0);
+            var theirs = r.Sim.Players[1].Player.Mods;
+            theirs.Power = 1;
+            yield return Wait(25f, () => r.Sim.ZoneBy == 1);
+            Assert.That(r.Sim.ZoneBy, Is.EqualTo(1), "their Special Shot");
+            yield return null; yield return null;
+            Assert.That(fe.Hud.PopText, Is.EqualTo("THEIR SPECIAL SHOT!"));
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Theirs.png");
         }
 
         [UnityTest]

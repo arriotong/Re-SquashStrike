@@ -434,13 +434,20 @@ namespace SquashGame
             if (special)
             {
                 float v = Mathf.Clamp01((float)mine.Power);
-                _spMine.Set(v, "YOUR SPECIAL", v >= 1f ? "READY!  hold " + IntentSource.Keys("Hit") + " to charge it" : v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS  " + IntentSource.FocusKey : "FILL IT: GOOD SHOTS, WINNERS");
+                // 2026-11-22: the Special Shot is its own button; aiming, the meter drains
+                string hint = m.ZoneBy == me ? "AIM IT  ·  " + IntentSource.Keys("Hit") + " to fire" :
+                              m.SpecialIncoming(me) ? (v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS NOW!  " + IntentSource.FocusKey : "NO METER TO FOCUS") :
+                              v >= 1f ? "READY!  " + IntentSource.FocusKey + " when the ball comes to you" :
+                              v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS  " + IntentSource.FocusKey : "FILL IT: GOOD SHOTS, WINNERS";
+                _spMine.Set(v, "YOUR SPECIAL", hint);
                 if (them != null) { float t = Mathf.Clamp01((float)them.Power); _spThem.Set(t, "THEIR SPECIAL", t >= 1f ? "READY - LOOK OUT" : ""); }
             }
             float dtF = Time.unscaledDeltaTime;
-            _dimLevel = Mathf.MoveTowards(_dimLevel, r.Focusing ? 1f : 0f, dtF * (r.Focusing ? 5f : 2.5f));
+            bool dimOn = r.Focusing || m.ZoneBy >= 0;                                 // 2026-11-22: aiming a Special Shot - time stands still
+            _dimLevel = Mathf.MoveTowards(_dimLevel, dimOn ? 1f : 0f, dtF * (dimOn ? 5f : 2.5f));
             _focusDim.style.opacity = _dimLevel;
-            if (_flashLeft > 0) { _flashLeft -= dtF; _flash.style.opacity = Mathf.Clamp01(_flashLeft / 0.35f) * 0.6f; }
+            if (_flashLeft > 0) { _flashLeft -= dtF; _flash.style.opacity = Mathf.Clamp01(_flashLeft / 0.35f) * (Juice.ReduceMotion ? 0.12f : 0.3f); }
+            _focusWord.text = m.ZoneBy >= 0 ? (m.ZoneBy == me ? "AIM" : "") : "FOCUS";
             bool meter = mine != null && mine.HasUltimate && !special && !r.ReplayActive;
             _power.style.display = meter ? DisplayStyle.Flex : DisplayStyle.None;
             if (meter)
@@ -459,6 +466,17 @@ namespace SquashGame
                 var pm = n.Player >= 0 && n.Player < 2 ? m.Players[n.Player].Player.Mods : null;
                 switch (n.Kind)
                 {
+                    case "zone":
+                        Pop(mineNote ? "SPECIAL SHOT  ·  AIM!" : "THEIR SPECIAL SHOT!", true);
+                        if (mineNote) _flashLeft = 0.15f;
+                        VenueView.Excite(0.8f);
+                        break;
+                    case "special":
+                        Pop(mineNote ? "SPECIAL!" : "FOCUS TO SAVE IT!  " + IntentSource.FocusKey, !mineNote);
+                        _flashLeft = 0.12f;
+                        VenueView.Excite(1f);
+                        break;
+                    case "defend": Pop(mineNote ? "FOCUS!  GET IT BACK" : "THEY FOCUSED", false); break;
                     case "ult" when pm != null && pm.Level("special") > 0:
                         Pop(mineNote ? "SPECIAL SHOT!" : "THEIR SPECIAL!", true);
                         _flashLeft = 0.35f;

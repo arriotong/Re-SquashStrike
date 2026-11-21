@@ -181,7 +181,8 @@ namespace SquashSim
                 double from = GameTuning.Ball.FrontWallPaceFrom;
                 if (impactSpeed > from)
                 {
-                    double keep = (from + GameTuning.Ball.FrontWallPaceKeep * (impactSpeed - from)) / impactSpeed;
+                    double share = ball.SpecialPace ? 0.85 : GameTuning.Ball.FrontWallPaceKeep;       // 2026-11-22 a Special Shot keeps its pace
+                    double keep = (from + share * (impactSpeed - from)) / impactSpeed;
                     ball.Vel.X *= keep; ball.Vel.Y *= keep; ball.Vel.Z *= keep;
                 }
             }

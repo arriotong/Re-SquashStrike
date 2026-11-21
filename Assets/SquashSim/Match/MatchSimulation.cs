@@ -38,7 +38,7 @@ namespace SquashSim
         public RallyOutcome Outcome;
     }
 
-    public sealed class MatchSimulation
+    public sealed partial class MatchSimulation
     {
         public readonly List<Surface> Surfaces = CourtSurfaces.Create();
         public readonly BallState Ball = new BallState();
@@ -372,6 +372,7 @@ namespace SquashSim
             Interference.Reset();
             _lastStriker = -1; _nickBy = -1;                                  // P5
             _chaosStriker = -1; _curveT = 0; _curveArmed = false;               // chaos: a new rally - no freeze or haste carried over
+            SpecialReset();
             for (int i = 0; i < 2; i++) { var cm = Players[i].Player.Mods; if (cm != null) { cm.FreezeTimer = 0; cm.HasteTimer = 0; } }
             if (!_gameInit) { _gameInit = true; for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.NewGame(); }
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
@@ -523,6 +524,9 @@ namespace SquashSim
                     if (Referee.OnAppeal(i, d, Time)) { FinishRally(); break; }
                 }
             }
+
+            // ---- 2026-11-22 the Special Shot: a press starts (or defends) one; aiming, the rally stands still ----
+            if (SpecialStep(dt)) return;
 
             // ---- split-step presses ----
             for (int i = 0; i < 2; i++)
@@ -710,6 +714,14 @@ namespace SquashSim
                     return 0;
                 }
             }
+            if (o.Loser >= 0 && o.Kind != RallyEnd.Let)
+            {
+                // 2026-11-22 (the user): your own mistakes cost special meter - the tin or out off your racket, a stroke against you,
+                // a fault
+                var pm = Players[o.Loser].Player.Mods;
+                bool own = ((o.Kind == RallyEnd.Down || o.Kind == RallyEnd.Out) && _lastStriker == o.Loser) || o.Kind == RallyEnd.Fault || o.Kind == RallyEnd.FootFault;
+                if (pm != null) pm.MeterPenalty(own ? RunMods.ErrorPenalty : o.Kind == RallyEnd.Stroke ? RunMods.StrokePenalty : 0);
+            }
             if (o.Loser >= 0 && o.Kind != RallyEnd.Let && o.Kind != RallyEnd.Fault && o.Kind != RallyEnd.FootFault)
             {
                 // chaos: Shield (your own error a let), Rewind (any lost rally a let)
@@ -772,12 +784,13 @@ namespace SquashSim
         static RunMods ModsOf(TestPlayer p) { if (p.Mods == null) p.Mods = new RunMods(); return p.Mods; }
 
         /// <summary>Was player i's last stroke a fireball / did it curve (the game's ball effects)?</summary>
-        public bool ShotIsFire(int i) { return i >= 0 && i < 2 && _fireShot[i]; }
+        public bool ShotIsFire(int i) { return i >= 0 && i < 2 && (_fireShot[i] || SpecialBy == i); }
         public bool ShotCurved(int i) { return i >= 0 && i < 2 && _curvedShot[i]; }
 
         /// <summary>A stroke: the ultimate (Time Stop), the fireball spent, the meter, what it does to the opponent.</summary>
         void ChaosAtContact(int i, SimEvent contact)
         {
+            SpecialAtContact(i);
             var mm = Players[i].Player.Mods;
             _ultShot[i] = false; _fireShot[i] = false; _curvedShot[i] = false;
             if (mm == null) { _chaosStriker = -1; _curveT = 0; return; }

@@ -26,7 +26,7 @@ namespace SquashGame.Profile
         public bool Assisted;
         /// <summary>2026-11-20 the shot line's dot on the wall (where the shot really goes): Off hides it - the aim help still
         /// works - so a player sharing the screen can't read your shot (the user: it gives the shot away in multiplayer).</summary>
-        public bool ShowShotLine = true;
+        public bool ShowShotLine;                // 2026-11-22 (the user): off by default, in every mode
         /// <summary>2026-11-21 the polish pass: the gamepad's rumble; fewer big moves (no shake, zooms, flashes).</summary>
         public bool Rumble = true, ReduceMotion;
         public float AimSpeed = 1f;              // IntentSource.MouseSensitivityScale
@@ -177,7 +177,7 @@ namespace SquashGame.Profile
 
     public static class ProfileStore
     {
-        public const int CurrentVersion = 7;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet; 6: P6 the stars; 7: Graphics
+        public const int CurrentVersion = 8;              // 2: P2-M5 progression; 3: P3-R2 challenges; 4: P4 Gear Drops; 5: P5 the roguelite Gauntlet; 6: P6 the stars; 7: Graphics
         public const string FileName = "profile.json";
 
         /// <summary>Where the profile lives (tests may point it elsewhere; -profiledir PATH on the command line: perf runs leave
@@ -262,6 +262,7 @@ namespace SquashGame.Profile
             if (p.Version < 6) p.Choices.OpponentId = UI.MatchChoices.OldToId(p.Choices.Difficulty);   // P6: Easy / Medium / Hard -> a club player, a star
             if (System.Array.IndexOf(UI.MatchChoices.Ladder, p.Choices.OpponentId) < 0) p.Choices.OpponentId = UI.MatchChoices.Ladder[0];
             if (p.Version < 7) p.Settings.Graphics = p.Settings.Venue >= 2 ? 0 : 3;     // batch 1: a lowered arena -> Low, else Auto
+            if (p.Version < 8) p.Settings.ShowShotLine = false;            // 2026-11-22: the shot line's dot off for everyone
             if (p.Version < 5) g.Gauntlet.Run = null;                     // P5: a run of the old Gauntlet ends (its best floor is kept)
             if (g.Gauntlet.Talents == null) g.Gauntlet.Talents = new List<SquashSim.RunMod>();
             if (g.Gauntlet.Codex == null) g.Gauntlet.Codex = new List<SquashSim.RunMod>();
