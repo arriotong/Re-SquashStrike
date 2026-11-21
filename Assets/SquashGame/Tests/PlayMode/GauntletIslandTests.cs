@@ -123,7 +123,16 @@ namespace SquashGame.Tests
                 fe.Pop();
                 yield return null; yield return null;
             }
-            Assert.That(seen.Count, Is.EqualTo(10), "ten tabs, ten worlds");
+            Assert.That(seen.Count, Is.EqualTo(9), "nine tabs, nine worlds (2026-11-21: PACKS off the Play hub)");
+            fe.Push(new SettingsScreen());
+            yield return Wait(0.6f, () => false);
+            Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Settings), "Settings: the snowy workshop");
+            Assert.That(seen.Contains(MenuWorld.Settings), Is.False, "its own world");
+            Shot("WORLD_Settings.png", fe, false);
+            yield return CaptureUI(fe, "WORLD_Settings_Screen.png");
+            Paste(sheet, "WORLD_Settings.png", n++);
+            fe.Pop();
+            yield return null; yield return null;
             fe.Push(new GauntletScreen());
             yield return Wait(0.5f, () => false);
             Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Gauntlet));

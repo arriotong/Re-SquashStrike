@@ -203,7 +203,7 @@ namespace SquashGame.Tests
             Assert.That(((MainMenuScreen)fe.Top).Which, Is.EqualTo(MainMenuScreen.Hub.Play));
             yield return CaptureUI(fe, "P2M1_UI_2_MainMenu.png");
             // U2: every tab of the hub, for review
-            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" })
+            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" })
             {
                 yield return Tap(kb.eKey);
                 Assert.That(((MainMenuScreen)fe.Top).Tabs.Current, Is.EqualTo(tab));

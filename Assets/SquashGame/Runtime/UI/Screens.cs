@@ -165,6 +165,7 @@ namespace SquashGame.UI
     /// Every change applies at once and is saved on leaving.</summary>
     public sealed class SettingsScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Settings; } }   // 2026-11-21 the snowy workshop (Dioramas)
         static GameSettings S { get { return ProfileStore.Current.Settings; } }
         protected override string Kicker { get { return "SETTINGS"; } }
         protected override string Title { get { return "Settings"; } }
@@ -302,6 +303,7 @@ namespace SquashGame.UI
 
     public sealed class ControlsHelpScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Settings; } }   // 2026-11-21 the snowy workshop (Dioramas)
         protected override string Kicker { get { return "HOW TO PLAY"; } }
         protected override string Title { get { return "Controls"; } }
         protected override bool ShowChip { get { return false; } }

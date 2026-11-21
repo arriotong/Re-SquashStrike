@@ -44,7 +44,6 @@ namespace SquashGame.UI
                     case "PLAY": return MenuWorld.Home;
                     case "MODES": return MenuWorld.Modes;
                     case "ONLINE": return MenuWorld.Online;
-                    case "PACKS": return MenuWorld.Packs;
                     case "STORE": return MenuWorld.Store;
                     case "YOU": return MenuWorld.You;
                     case "REPLAYS": return MenuWorld.Replays;
@@ -78,10 +77,10 @@ namespace SquashGame.UI
         /// 2026-10-29 ("instead of dumping everything in one singular ui ... split into 2 separate ui like things involve
         /// playing is PLAY and others are like OTHERS"): two hubs from the home screen - PlaySections and OtherSections.
         /// 2026-11-20 (the user couldn't find the pulls from the main page): PACKS, the store's mystery packs, on PLAY's strip too.
-        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" };
+        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };   // (2026-11-21 PACKS gone: the shop is the Others hub's STORE)
         public static readonly string[] OtherSections = { "STORE", "YOU", "REPLAYS" };
         /// <summary>Every section, both hubs (PLAY's first).</summary>
-        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS", "STORE", "YOU", "REPLAYS" };
+        public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "STORE", "YOU", "REPLAYS" };
 
         public enum Hub { Play, Others }
         public readonly Hub Which;
@@ -191,7 +190,6 @@ namespace SquashGame.UI
 
             // ---- STORE (2026-10-29): the three gachas - card packs, cosmetics, the pro shop ----
             if (Has("STORE")) Packs(Kit.Box(Page("STORE"), "k-row"));
-            if (Has("PACKS")) Packs(Kit.Box(Page("PACKS"), "k-row"));
 
             // ---- YOU (was LOCKER): your kit, the drops, your records ----
             if (Has("YOU"))
@@ -285,7 +283,6 @@ namespace SquashGame.UI
                 { "TRAINING", AcademyScreen.Summary() },
                 { "YOU", GearDrops.Wallet.Coins.ToString("N0") + " coins  ·  level " + Rewards.LevelOf(ProfileStore.Current.Progress.Xp) },
                 { "STORE", GearDrops.Wallet.Coins / GearDrops.PullCost + " pulls of coins" },
-                { "PACKS", GearDrops.Wallet.Coins / GearDrops.PullCost + " pulls of coins" },
                 { "REPLAYS", Replays.ReplayLibrary.Entries.Count + " replays" },
             };
             var mine = MySections;
@@ -293,7 +290,6 @@ namespace SquashGame.UI
             Tabs.SetDot(System.Array.IndexOf(mine, "CHALLENGES"), today < Challenges.DailyCount);
             Tabs.SetDot(System.Array.IndexOf(mine, "YOU"), AnyNew());
             Tabs.SetDot(System.Array.IndexOf(mine, "STORE"), GearDrops.CanPull(1));
-            Tabs.SetDot(System.Array.IndexOf(mine, "PACKS"), GearDrops.CanPull(1));
         }
         float _railAge;
 

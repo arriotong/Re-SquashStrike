@@ -13,6 +13,7 @@ namespace SquashGame.UI
 {
     public sealed class RebindScreen : MenuScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Settings; } }   // 2026-11-21 the snowy workshop (Dioramas)
         protected override bool Sidebar { get { return false; } }
         protected override string RootClass { get { return "k-tray"; } }
         public override bool Spatial { get { return true; } }

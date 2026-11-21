@@ -59,7 +59,7 @@ namespace SquashGame.Tests
             yield return Tap(kb.rightArrowKey);                                   // Local Versus
             Assert.That(menu.Focused.Name, Is.EqualTo("LOCAL VERSUS"));
             Assert.That(MenuCinematics.Scene, Is.EqualTo(1), "its own set of angles (for when the court shows)");
-            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "PACKS" })      // PLAY's hub (2026-10-29)
+            foreach (var tab in new[] { "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" })      // PLAY's hub (2026-10-29)
             {
                 yield return Tap(kb.eKey);
                 Assert.That(menu.Tabs.Current, Is.EqualTo(tab));
@@ -69,7 +69,7 @@ namespace SquashGame.Tests
             yield return Tap(kb.eKey);
             Assert.That(menu.Tabs.Current, Is.EqualTo("PLAY"), "E from the last section: round to the first");
             yield return Tap(kb.qKey);
-            Assert.That(menu.Tabs.Current, Is.EqualTo("PACKS"), "Q: the one before");
+            Assert.That(menu.Tabs.Current, Is.EqualTo("TRAINING"), "Q: the one before");
             Assert.That(menu.Tabs.Style, Is.EqualTo(TabStyle.Strip));
             Assert.That(menu.Tabs.worldBound.yMax, Is.LessThan(menu.Coins.worldBound.yMax + 30f), "up in the top bar");
             Assert.That(menu.Tabs.worldBound.xMax, Is.LessThanOrEqualTo(menu.Coins.worldBound.xMin), "on the right, before the coins");

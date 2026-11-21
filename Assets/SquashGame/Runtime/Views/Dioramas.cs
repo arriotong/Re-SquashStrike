@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace SquashGame
 {
-    public enum MenuWorld { None, Gauntlet, Home, Career, Challenges, Training, Modes, Online, Packs, Store, You, Replays }
+    public enum MenuWorld { None, Gauntlet, Home, Career, Challenges, Training, Modes, Online, Packs, Store, You, Replays, Settings }
 
     public static partial class Dioramas
     {
@@ -49,6 +49,7 @@ namespace SquashGame
                 case MenuWorld.Packs: return new Def { Sim = new Vector3(3000f, 0f, -10000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildPacks };
                 case MenuWorld.Store: return new Def { Sim = new Vector3(-3000f, 0f, -10000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildStore };
                 case MenuWorld.You: return new Def { Sim = new Vector3(6000f, 0f, -4000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildYou };
+                case MenuWorld.Settings: return new Def { Sim = new Vector3(6000f, 0f, -10000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildSettings };   // 2026-11-21
                 case MenuWorld.Replays: return new Def { Sim = new Vector3(6000f, 0f, -7000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildReplays };
                 default: return default;
             }
