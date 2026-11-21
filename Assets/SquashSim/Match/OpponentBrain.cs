@@ -382,6 +382,7 @@ namespace SquashSim
 
             // ---- 2026-11-22 the Special Shot: aim it (low, away from them - the nick), fire; defend one with Focus ----
             intent.SpecialPressed = false;
+            intent.FocusHeld = false;
             if (m.ZoneBy == me)
             {
                 if (!_zoneAimed)
@@ -399,13 +400,15 @@ namespace SquashSim
             }
             _zoneAimed = false;
             var sm = p.Mods;
-            if (sm != null && m.SpecialIncoming(me))
+            // Focus: held against a Special Shot coming at it (after a moment to see it), until it plays the ball
+            if (sm != null && (m.SpecialIncoming(me) || (m.SpecialDefended && m.Focusing(me))))
             {
                 if (_specialSeen < 0) _specialSeen = t;
-                if (t - _specialSeen > SpecialReaction && sm.Power >= RunMods.FocusCost) intent.SpecialPressed = true;
+                if (t - _specialSeen > SpecialReaction) intent.FocusHeld = true;
             }
             else _specialSeen = -1;
-            if (sm != null && m.CanSpecial(me) && ctrl.Prediction.Valid && ctrl.Prediction.Time < 0.8 && Uniform() < 0.08) intent.SpecialPressed = true;
+            // the Special Shot: a full meter - soon after their shot comes off the front wall
+            if (sm != null && m.CanSpecial(me) && Uniform() < 0.04) intent.SpecialPressed = true;
 
             // ---- new rally / new shot bookkeeping ----
             if (m.History.Count != _lastRally)

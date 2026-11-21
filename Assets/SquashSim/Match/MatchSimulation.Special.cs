@@ -15,9 +15,12 @@
 //   the shot  SpecialPace, straight at the aim; the opponent's reach and
 //             timing cut hard (SpecialReachCut, SpecialGraceCut) until
 //             their next stroke - almost unreturnable
-//   defend    Focus (the same key) while a Special Shot comes at you, with
-//             FocusCost of meter: the ball slows to FocusSlow of its pace
-//             and most of the cut is lifted - you can get it back
+//   focus     (2026-11-22, its own key, held) any time your opponent's shot
+//             is off the front wall and coming to you: slow motion (the
+//             game's clock) while the meter drains (FocusDrainSeconds from
+//             full). Against a Special Shot: you move FocusSpeed times as
+//             fast, with more reach and timing - you can get it back
+//   special   (its own key: Q / D-pad up) any time in that same window
 //
 // A sim action from the intent (InputIntent.SpecialPressed), so replays
 // and both machines online see the same; the AI uses it too
@@ -31,7 +34,28 @@ namespace SquashSim
     public sealed partial class MatchSimulation
     {
         public const double ZoneSeconds = 2.6, SpecialPace = 64.0, SpecialReachCut = 0.7, SpecialGraceCut = 0.8;
-        public const double FocusSlow = 0.5, DefendedReachCut = 0.1, DefendedGraceCut = 0.1;
+        /// <summary>Focus against a Special Shot is time slowed for the defender, not a slower ball (a slowed low kill would only die
+        /// shorter): they move FocusSpeed times as fast, with more reach and a wider timing window (negative cuts) until they play it.</summary>
+        public const double FocusSpeed = 1.5, DefendedReachCut = 0.6, DefendedGraceCut = 0.7;
+        /// <summary>Seconds of (sim) time a full meter lasts while focusing - about four seconds on the slowed clock.</summary>
+        public const double FocusDrainSeconds = 1.5;
+        readonly bool[] _focusing = new bool[2];
+        /// <summary>Player i is focusing now (the game slows its clock for a local one).</summary>
+        public bool Focusing(int i) { return i >= 0 && i < 2 && _focusing[i]; }
+
+        /// <summary>The window for Focus and the Special Shot: the opponent's shot has hit the front wall and it's coming to player i.</summary>
+        public bool BallComing(int i)
+        {
+            return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.Shots > 0 && Referee.ExpectedStriker == i &&
+                   Referee.LastHitter == 1 - i && !Ball.Asleep && Ball.FloorSinceFrontWall < 2;
+        }
+
+        /// <summary>Player i may focus: the Special card, some meter, the ball coming.</summary>
+        public bool CanFocus(int i)
+        {
+            var mm = M(Players[i]);
+            return mm != null && mm.Level("special") > 0 && mm.Power > 0 && ZoneBy < 0 && BallComing(i);
+        }
 
         /// <summary>Who is aiming a Special Shot now (-1: nobody) and for how long; who struck the Special Shot in flight (-1: none),
         /// and whether its target slowed it with Focus.</summary>
@@ -52,9 +76,8 @@ namespace SquashSim
             var mm = M(Players[i]);
             if (mm == null || mm.Level("special") <= 0 || mm.Power < 1) return false;
             if (Phase != MatchPhase.Rally || Referee.Outcome != null || Referee.Shots == 0 || ZoneBy >= 0) return false;
-            if (Referee.PendingStriker != i || SpecialBy == 1 - i) return false;         // (a Special Shot coming: defend it, no counter)
-            var pr = Players[i].Prediction;
-            return pr.Valid && !Ball.Asleep && Ball.FloorSinceFrontWall < 2;
+            if (SpecialBy == 1 - i) return false;                                         // (a Special Shot coming: defend it, no counter)
+            return BallComing(i);                                                          // 2026-11-22: any time it's off the wall
         }
 
         /// <summary>A Special Shot is coming at player j, not yet slowed: Focus defends it.</summary>
@@ -63,13 +86,22 @@ namespace SquashSim
         /// <summary>Each step, before anyone moves: the Special presses (start, defend), the aiming. True: frozen this step.</summary>
         bool SpecialStep(double dt)
         {
-            SlowIfDue();
             for (int i = 0; i < 2; i++)
             {
                 if (!Intents[i].SpecialPressed) continue;
                 Intents[i].SpecialPressed = false;
                 if (CanSpecial(i)) StartSpecial(i);
-                else if (SpecialIncoming(i)) DefendSpecial(i);
+            }
+            // Focus, held: the meter drains; against a Special Shot, it slows it (once)
+            for (int i = 0; i < 2; i++)
+            {
+                bool want = Intents[i].FocusHeld && CanFocus(i);
+                if (want && SpecialIncoming(i)) DefendSpecial(i);
+                var fm = M(Players[i]);
+                if (want) fm.Power = System.Math.Max(0, fm.Power - dt / FocusDrainSeconds);
+                if (fm != null) fm.FocusBoost = want && SpecialDefended && SpecialBy == 1 - i ? FocusSpeed : 1;
+                if (want && !_focusing[i]) Note(i, "focus", 0);
+                _focusing[i] = want;
             }
             if (ZoneBy < 0) return false;
             int z = ZoneBy;
@@ -91,11 +123,14 @@ namespace SquashSim
             var c = Players[i];
             var pr = c.Prediction;
             ZoneBy = i; ZoneTime = 0;
-            _zoneBall.Set(pr.Point.X, System.Math.Max(0.5, pr.Point.Y), pr.Point.Z);
+            // where you'd meet it (or, too far to read yet, where it is now)
+            if (pr.Valid) _zoneBall.Set(pr.Point.X, System.Math.Max(0.5, pr.Point.Y), pr.Point.Z);
+            else _zoneBall.Set(Ball.Pos.X, System.Math.Max(0.5, Ball.Pos.Y), System.Math.Max(1.0, Ball.Pos.Z));
+            _focusing[0] = _focusing[1] = false;
             // the teleport: to where you'd meet it, the ball at your racket
             double sp = PhysicsConfig.Current.MovementAssist.PreferredSpacing;
-            double x = System.Math.Max(-HALF_W + 0.3, System.Math.Min(HALF_W - 0.3, pr.Point.X - sp));
-            double zz = System.Math.Max(0.8, System.Math.Min(CourtDimensions.LENGTH - 0.3, pr.Point.Z + 0.15));
+            double x = System.Math.Max(-HALF_W + 0.3, System.Math.Min(HALF_W - 0.3, _zoneBall.X - sp));
+            double zz = System.Math.Max(0.8, System.Math.Min(CourtDimensions.LENGTH - 0.3, _zoneBall.Z + 0.15));
             c.Player.Pos.Set(x, 0, zz);
             c.Player.Vel.Set(0, 0, 0);
             c.Racket.MarkTeleported();
@@ -138,31 +173,20 @@ namespace SquashSim
             Note(i, "special", 0);
         }
 
-        /// <summary>Focus against a Special Shot: FocusCost of the meter, the ball slowed, most of the cut lifted.</summary>
+        /// <summary>Focus against a Special Shot (the meter drains as for any Focus): the ball slowed, most of the cut lifted.</summary>
         void DefendSpecial(int j)
         {
             var mm = M(Players[j]);
-            if (mm == null || !mm.SpendFocus()) return;
-            _slowPending = true;                                              // slowed once it's off the front wall (SlowIfDue)
-            SlowIfDue();
+            if (mm == null) return;
             mm.ReachCut = DefendedReachCut; mm.GraceCut = DefendedGraceCut;
             SpecialDefended = true; SpecialsDefended++;
             Note(j, "defend", 0);
         }
 
         /// <summary>A stroke by someone: a Special Shot in flight is over (the striker's own one has just begun).</summary>
-        void SpecialAtContact(int i) { if (SpecialBy >= 0 && SpecialBy != i) { SpecialBy = -1; SpecialDefended = false; _slowPending = false; } }
+        void SpecialAtContact(int i) { if (SpecialBy >= 0 && SpecialBy != i) { SpecialBy = -1; SpecialDefended = false; } }
 
-        void SpecialReset() { ZoneBy = -1; SpecialBy = -1; SpecialDefended = false; _slowPending = false; }
+        void SpecialReset() { ZoneBy = -1; SpecialBy = -1; SpecialDefended = false; _focusing[0] = _focusing[1] = false; }
 
-        bool _slowPending;
-        /// <summary>Focus slows a Special Shot coming back off the front wall (slowed on its way in, it would only die short).</summary>
-        void SlowIfDue()
-        {
-            if (!_slowPending || Ball.Vel.Z <= 0) return;
-            _slowPending = false;
-            Ball.Vel.Set(Ball.Vel.X * FocusSlow, Ball.Vel.Y * FocusSlow, Ball.Vel.Z * FocusSlow);
-            Ball.SpecialPace = false;
-        }
     }
 }

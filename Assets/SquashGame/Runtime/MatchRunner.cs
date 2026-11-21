@@ -587,15 +587,15 @@ namespace SquashGame
             bool focus = Input.ConsumeFocus();
             int gamesNow = Sim.Score.Games[0] + Sim.Score.Games[1];
             if (gamesNow != _focusGame) { _focusGame = gamesNow; FocusLeft = Settings.FocusCharges; }
-            // 2026-11-22 the Special Shot: the same key starts one (full meter, your ball) or defends one (the sim does both, from the
-            // intent); here only the look - a defended Special Shot in slow motion
+            // 2026-11-22 with the Special card, Focus is the sim's (held, the meter draining, only while the ball comes to you): here
+            // only its slow motion, while a local player focuses
             int hi = HumanIndex >= 0 && HumanIndex < 2 ? HumanIndex : 0;
             var hm = Sim.Players[hi].Player.Mods;
-            bool specialMoment = Sim.ZoneBy >= 0 || Sim.CanSpecial(hi) || Sim.SpecialIncoming(hi);
-            if (focus && specialMoment)
+            if (hm != null && hm.Level("special") > 0)
             {
-                if (Sim.SpecialIncoming(hi) && hm != null && hm.Power >= SquashSim.RunMods.FocusCost && !Clock.Paused) { SlowMo(FocusSeconds, FocusScale); _focusing = true; }
                 focus = false;
+                bool held = Sim.Focusing(hi) || (Settings.TwoPlayer && Sim.Focusing(1 - hi));
+                if (held && !Clock.Paused) { SlowMo(0.12f, FocusScale); _focusing = true; }
             }
             if (focus && Sim.Phase == MatchPhase.Rally && !SlowMoActive && !Clock.Paused)
             {

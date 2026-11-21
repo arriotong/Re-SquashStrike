@@ -436,9 +436,10 @@ namespace SquashGame
                 float v = Mathf.Clamp01((float)mine.Power);
                 // 2026-11-22: the Special Shot is its own button; aiming, the meter drains
                 string hint = m.ZoneBy == me ? "AIM IT  ·  " + IntentSource.Keys("Hit") + " to fire" :
-                              m.SpecialIncoming(me) ? (v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS NOW!  " + IntentSource.FocusKey : "NO METER TO FOCUS") :
-                              v >= 1f ? "READY!  " + IntentSource.FocusKey + " when the ball comes to you" :
-                              v >= (float)SquashSim.RunMods.FocusCost ? "FOCUS  " + IntentSource.FocusKey : "FILL IT: GOOD SHOTS, WINNERS";
+                              m.SpecialIncoming(me) ? (v > 0.01f ? "HOLD " + IntentSource.FocusKey + " TO FOCUS!" : "NO METER TO FOCUS") :
+                              m.Focusing(me) ? "FOCUS  ·  the meter drains" :
+                              v >= 1f ? "READY!  " + IntentSource.SpecialKey + " once it's off the wall" :
+                              v > 0.05f ? "HOLD " + IntentSource.FocusKey + " TO FOCUS" : "FILL IT: GOOD SHOTS, WINNERS";
                 _spMine.Set(v, "YOUR SPECIAL", hint);
                 if (them != null) { float t = Mathf.Clamp01((float)them.Power); _spThem.Set(t, "THEIR SPECIAL", t >= 1f ? "READY - LOOK OUT" : ""); }
             }
@@ -472,7 +473,7 @@ namespace SquashGame
                         VenueView.Excite(0.8f);
                         break;
                     case "special":
-                        Pop(mineNote ? "SPECIAL!" : "FOCUS TO SAVE IT!  " + IntentSource.FocusKey, !mineNote);
+                        Pop(mineNote ? "SPECIAL!" : "HOLD " + IntentSource.FocusKey + " TO SAVE IT!", !mineNote);
                         _flashLeft = 0.12f;
                         VenueView.Excite(1f);
                         break;

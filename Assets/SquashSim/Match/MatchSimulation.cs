@@ -796,7 +796,7 @@ namespace SquashSim
             if (mm == null) { _chaosStriker = -1; _curveT = 0; return; }
             _chaosStriker = i; _chaosTech = contact.Technique;
             _afterFront = false; _wallsAfterFront = 0; _floorsAfterFront = 0; _curveT = 0; _curveArmed = false;
-            mm.ReachCut = 0; mm.GraceCut = 0;                                   // their own stroke made: the cuts against them spent
+            mm.ReachCut = 0; mm.GraceCut = 0; mm.FocusBoost = 1;                // their own stroke made: the cuts against them spent
             var op = Players[1 - i].Player;
             _ultShot[i] = mm.UltNow; _fireShot[i] = mm.ShotFire;
             if (mm.ShotFire) { if (mm.FireShots > 0) mm.FireShots--; Note(i, "fire", mm.FireShots); }

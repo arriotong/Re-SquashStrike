@@ -93,7 +93,7 @@ namespace SquashGame
         const float MOVE_DEADZONE = 0.18f;
 
         readonly InputActionMap _map;
-        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint, _boast, _slowmo;
+        readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint, _boast, _slowmo, _special;
         bool _slowmoPressed;
 
         public const float ReticleStartX = 0f, ReticleStartY = 1.8f;
@@ -231,6 +231,10 @@ namespace SquashGame
             _slowmo = _map.AddAction("Focus", InputActionType.Button);
             _slowmo.AddBinding("<Keyboard>/f");
             _slowmo.AddBinding("<Gamepad>/rightTrigger");
+            // 2026-11-22 the Special Shot: its own key (Q / D-pad up)
+            _special = _map.AddAction("Special", InputActionType.Button);
+            _special.AddBinding("<Keyboard>/q");
+            _special.AddBinding("<Gamepad>/dpad/up");
 
             _dive = _map.AddAction("Dive", InputActionType.Button);
             _dive.AddBinding("<Keyboard>/space");
@@ -385,7 +389,9 @@ namespace SquashGame
             if (_dive.WasPressedThisFrame()) Intent.DivePressed = true;          // consumed by the next fixed step
             Intent.MomentumFocus = _focus.IsPressed();
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
-            if (_slowmo.WasPressedThisFrame()) { _slowmoPressed = true; Intent.SpecialPressed = true; }   // 2026-11-22 the Special Shot (the sim's)
+            if (_slowmo.WasPressedThisFrame()) _slowmoPressed = true;
+            Intent.FocusHeld = _slowmo.IsPressed();                                    // 2026-11-22 Focus, held (the sim's, with the Special card)
+            if (_special.WasPressedThisFrame()) Intent.SpecialPressed = true;          // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
             if ((_appeal.WasPressedThisFrame() && !FromMouse(_appeal)) || ReadyKey()) _ready = true;
@@ -419,6 +425,8 @@ namespace SquashGame
         /// <summary>Did the pause binding fire? Consumes it.</summary>
         /// <summary>P5: what to press for Focus.</summary>
         public const string FocusKey = "F / RT";
+        /// <summary>2026-11-22 what to press for the Special Shot.</summary>
+        public const string SpecialKey = "Q / D-pad up";
         /// <summary>P5: the Focus key since the last call (the Gauntlet's slow motion).</summary>
         public bool ConsumeFocus() { bool f = _slowmoPressed; _slowmoPressed = false; return f; }
 

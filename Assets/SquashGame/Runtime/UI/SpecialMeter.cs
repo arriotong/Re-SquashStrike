@@ -27,7 +27,7 @@ namespace SquashGame
             _title.AddToClassList("hud-sp-title"); _hint.AddToClassList("hud-sp-hint");
             var track = new VisualElement(); track.AddToClassList("hud-sp-track");
             _fill.AddToClassList("hud-sp-fill"); track.Add(_fill);
-            for (int k = 1; k < 3; k++) { var tick = new VisualElement(); tick.AddToClassList("hud-sp-tick"); tick.style.left = Length.Percent(100f * k / 3f); track.Add(tick); }
+            // 2026-11-22 (the user): one smooth bar - Focus drains it slowly, not by thirds
             body.Add(_title); body.Add(track); body.Add(_hint);
             Add(_star); Add(body);
             foreach (var e in new VisualElement[] { _title, _hint, _star, _fill, track, body }) e.pickingMode = PickingMode.Ignore;

@@ -65,7 +65,7 @@ namespace SquashSim.Replays
             if (i.HasAimPoint) f |= FHasAim;
             if (i.Hit.Pressed) f |= FHitP; if (i.Hit.Released) f |= FHitR; if (i.Hit.Held) f |= FHitH;
             if (i.Touch.Pressed) f |= FTouchP; if (i.Touch.Released) f |= FTouchR; if (i.Touch.Held) f |= FTouchH;
-            if (i.MomentumFocus) f |= FFocus; if (i.SplitStepPressed) f |= FSplit; if (i.AppealPressed) f |= FAppeal;
+            if (i.FocusHeld) f |= FFocus; if (i.SplitStepPressed) f |= FSplit; if (i.AppealPressed) f |= FAppeal;     // 2026-11-22: FFocus is Focus held
             if (i.DivePressed) f |= FDive; if (i.Sprint) f |= FSprint; if (i.BoastPressed) f |= FBoast;
             if (i.SpecialPressed) f |= FSpecial;
             if (assisted) f |= FAssisted;
@@ -91,7 +91,7 @@ namespace SquashSim.Replays
             i.Hit.HeldSeconds = q.HitMs / SecondScale;
             i.Touch.Pressed = (q.Flags & FTouchP) != 0; i.Touch.Released = (q.Flags & FTouchR) != 0; i.Touch.Held = (q.Flags & FTouchH) != 0;
             i.Touch.HeldSeconds = q.TouchMs / SecondScale;
-            i.MomentumFocus = (q.Flags & FFocus) != 0; i.SplitStepPressed = (q.Flags & FSplit) != 0; i.AppealPressed = (q.Flags & FAppeal) != 0;
+            i.FocusHeld = (q.Flags & FFocus) != 0; i.MomentumFocus = false; i.SplitStepPressed = (q.Flags & FSplit) != 0; i.AppealPressed = (q.Flags & FAppeal) != 0;
             i.DivePressed = (q.Flags & FDive) != 0; i.Sprint = (q.Flags & FSprint) != 0; i.BoastPressed = (q.Flags & FBoast) != 0;
             i.SpecialPressed = (q.Flags & FSpecial) != 0;
             i.PausePressed = false;

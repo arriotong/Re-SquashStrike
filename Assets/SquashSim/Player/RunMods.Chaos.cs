@@ -150,10 +150,12 @@ namespace SquashSim
                 double k = 1;
                 if (SlowTimer > 0) k *= SlowScale;
                 if (HasteTimer > 0) k *= HasteScale;
-                return k;
+                return k * FocusBoost;
             }
         }
         public bool Frozen { get { return FreezeTimer > 0; } }
+        /// <summary>2026-11-22 focusing against a Special Shot: faster (the slowed world, felt from inside it). 1: nothing.</summary>
+        public double FocusBoost = 1;
         /// <summary>Lost rallies replayed a game (Rewind).</summary>
         public int Rewinds { get { return Level("rewind"); } }
 

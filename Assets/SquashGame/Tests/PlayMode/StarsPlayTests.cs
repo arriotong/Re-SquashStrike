@@ -138,13 +138,6 @@ namespace SquashGame.Tests
             Assert.That(fe.Hud.SpecialMeterShown, Is.True, "the Special meter, top right");
 
             var mine = r.Sim.Players[0].Player.Mods;
-            mine.Power = 0.5;
-            Press(kb.fKey); yield return null; Release(kb.fKey); yield return null; yield return null;
-            Assert.That(r.Focusing, Is.True, "Focus: the rally slows");
-            Assert.That(mine.Power, Is.EqualTo(0.5 - SquashSim.RunMods.FocusCost).Within(1e-6), "paid for from the meter");
-            yield return Wait(0.4f, () => false);
-            Assert.That(fe.Hud.FocusDim, Is.GreaterThan(0.5f), "the screen dims");
-            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Focus.png");
 
             // 2026-11-22 the Special Shot: a full meter, the ball coming - you (the stand-in) jump to it, time stops, the aiming view
             yield return Wait(3f, () => !r.Focusing);
@@ -161,7 +154,7 @@ namespace SquashGame.Tests
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Aim.png");
             yield return Wait(4f, () => r.Sim.SpecialBy == 0);
             Assert.That(r.Sim.SpecialBy, Is.EqualTo(0), "fired");
-            Assert.That(mine.Power, Is.LessThan(0.01), "the meter spent");
+            Assert.That(mine.Power, Is.LessThan(0.1), "the meter spent (a shot since may have added a sliver)");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Shot.png");
 
             // the computer's: it jumps to the ball and fires too
@@ -173,6 +166,17 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             Assert.That(fe.Hud.PopText, Is.EqualTo("THEIR SPECIAL SHOT!"));
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Theirs.png");
+
+            // 2026-11-22 Focus, held, against it: the rally slows, the meter drains (not a chunk), the Special Shot slowed
+            mine.Power = 0.6;
+            yield return Wait(6f, () => r.Focusing);
+            Assert.That(r.Focusing, Is.True, "you (the stand-in) focus against it");
+            Assert.That(r.Sim.SpecialDefended, Is.True, "their Special Shot slowed");
+            double p0 = mine.Power;
+            yield return Wait(0.3f, () => false);
+            Assert.That(mine.Power, Is.LessThan(p0).And.GreaterThan(p0 - 0.3), "the meter drains slowly while you focus");
+            Assert.That(fe.Hud.FocusDim, Is.GreaterThan(0.3f), "the screen dims");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Focus.png");
         }
 
         [UnityTest]
