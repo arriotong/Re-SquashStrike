@@ -185,7 +185,7 @@ namespace SquashGame.UI
                 var shelf = Kit.Box(band, "k-tro-shelf");
                 foreach (var l in byShelf[i]) Items.Add(AddTo(shelf, new TrophyItem(l)));
             }
-            if (shown == 0) Kit.L(_scroll, "No titles yet. Win your club's open and the first one goes here.", "k-cr-empty");
+            if (shown == 0) EmptyState.Add(_scroll, "trophy", "No titles yet", "Win your club's open and the first one goes on this shelf.", new Color32(255, 184, 59, 255));
             Summary();
         }
 

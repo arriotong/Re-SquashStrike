@@ -26,6 +26,7 @@ namespace SquashGame.UI
         protected override string Title { get { return "Your cards"; } }
         public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }                  // 2026-11-20 the Gauntlet's island behind it
         protected override bool ShowChip { get { return false; } }
+        public override bool Spatial { get { return true; } }                 // 2026-11-21 a grid of cards (was a long list)
 
         readonly string _focus;
         readonly List<(MenuItem item, Ability card)> _rows = new List<(MenuItem, Ability)>();
@@ -55,11 +56,19 @@ namespace SquashGame.UI
                 int sx = rx == null ? -1 : GauntletCards.DeckLevel(rx) * 10 + (int)x.Rarity, sy = ry == null ? -1 : GauntletCards.DeckLevel(ry) * 10 + (int)y.Rarity;
                 return sx != sy ? sy.CompareTo(sx) : string.CompareOrdinal(x.Name, y.Name);
             });
+            // 2026-11-21 (the screen sweep: a long orange list): a grid of cards - the picture, the name, the level, IN DECK
+            var grid = Kit.Box(_scroll, "dk-grid");
             foreach (var a in cards)
             {
                 var card = a;
-                var item = AddTo(_scroll, new ActionItem(Line(a), () => Toggle(card), C.Deck.Contains(a.Id) ? "✓" : ""));
-                item.Enabled = () => GauntletCards.Find(C, card.Id) != null;
+                var r = GauntletCards.Find(C, a.Id);
+                string kicker = r == null ? "NOT FOUND YET" : r.Evolved ? "POWERED UP" : "LEVEL " + GauntletCards.LevelFor(r.Copies);
+                var item = AddTo(grid, new CardItem(a.Name.ToUpperInvariant(), kicker, () => Toggle(card))
+                    .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), a.Family != Family.None ? GauntletFlow.FamilyColour(a.Family) : GauntletFlow.RarityColour(a.Rarity))
+                    .Badge(() => C.Deck.Contains(card.Id) ? "IN DECK" : "", true));
+                item.Root.AddToClassList("dk-card");
+                item.Locked = () => GauntletCards.Find(C, card.Id) == null;
+                item.LockLine = () => "in a Card Pack";
                 _rows.Add((item, a));
             }
         }

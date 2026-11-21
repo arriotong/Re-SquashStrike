@@ -132,7 +132,7 @@ namespace SquashGame.UI
             var list = new List<Item>();
             foreach (var b in GearDrops.Banners()) foreach (var it in b.Items) if (GearDrops.PlateCost(it) > 0) list.Add(it);
             list.Sort((a, c) => c.Rarity != a.Rarity ? c.Rarity.CompareTo(a.Rarity) : string.CompareOrdinal(a.Name, c.Name));
-            if (list.Count == 0) { Kit.L(Content, "Nothing to make gold yet. Open some mystery packs first!", "k-cr-empty"); return; }
+            if (list.Count == 0) { EmptyState.Add(Content, "rings", "Nothing to make gold yet", "Open some mystery packs first - then make your favourites gold.", new Color32(255, 184, 59, 255)); return; }
             var row = Kit.Box(Content, "k-row");
             foreach (var it in list.GetRange(0, Mathf.Min(6, list.Count)))
             {

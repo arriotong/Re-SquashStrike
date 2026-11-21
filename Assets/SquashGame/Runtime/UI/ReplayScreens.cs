@@ -75,9 +75,10 @@ namespace SquashGame.UI
                 var page = Page(tabs[t]);
                 var row = Kit.Box(page, "k-row"); row.AddToClassList("k-rl-row");
                 var list = ReplayLibrary.Entries.FindAll(e => t == 0 || (t == 1 ? e.Pinned : e.Mode == "career"));
-                if (list.Count == 0)
-                    Kit.L(page, t == 0 ? "No replays yet. Every match you play is kept here - the last 20, and the ones you pin."
-                               : t == 1 ? "Nothing kept yet. Press F on a replay to keep it for good." : "No career matches yet.", "k-cr-empty");
+                if (list.Count == 0)                                              // 2026-11-21 the sweep: an empty page says so plainly
+                    EmptyState.Add(page, t == 1 ? "trophy" : "trail", t == 0 ? "No replays yet" : t == 1 ? "Nothing pinned yet" : "No career matches yet",
+                        t == 0 ? "Every match you play is kept here - the last 20, and the ones you pin."
+                               : t == 1 ? "Press F on a replay to keep it for good." : "Play your first career event and it's kept here.");
                 foreach (var e in list)
                 {
                     var ee = e;

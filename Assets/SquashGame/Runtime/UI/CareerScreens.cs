@@ -519,17 +519,15 @@ namespace SquashGame.UI
             rw.Add(new RankTable(Career.Rows(c, Career.Around(c, You, 2))));
             Kit.L(rw, Career.ToNext(c), "k-cr-note");
 
-            var bottom = Kit.Box(central, "k-cr-bottom");
-            var news = Kit.Panel(bottom, "NEWS"); news.AddToClassList("k-cr-news");
-            var nrow = Kit.Box(news, "k-cr-news-row");
+            // 2026-11-21 (the screen sweep: five panels of small text): the news is one line now; the season's timeline is the
+            // CALENDAR tab's
             foreach (var (k, text) in Career.News(c))
             {
-                var item = Kit.Box(nrow, "k-cr-news-item");
-                Kit.L(item, k, "k-cr-news-k");
-                Kit.L(item, text, "k-cr-news-t");
+                var line = Kit.Box(central, "k-cr-newsline");
+                Kit.L(line, k, "k-cr-newsline-k");
+                Kit.L(line, text, "k-cr-newsline-t");
+                break;
             }
-            var season = Kit.Panel(bottom, "COMING UP  ·  MORE ★ = A BIGGER EVENT"); season.AddToClassList("k-cr-season");
-            season.Add(new Timeline(Career.Months(c, s.Season)));
 
             // ---- CALENDAR ----
             var cal = Kit.Box(Page("CALENDAR"), "k-cr-cal");
@@ -1293,7 +1291,7 @@ namespace SquashGame.UI
         public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-20 its toon world (Dioramas)
         protected override bool ShowChip { get { return false; } }
         protected override string Kicker { get { return "SEASON " + Career.S.Season + "  ·  SPONSORS"; } }
-        protected override string Title { get { var n = Career.S.Offers.Count; return n == 0 ? "No sponsors yet" : n == 1 ? "A company wants to pay you!" : "Two companies want to pay you!"; } }
+        protected override string Title { get { var n = Career.S.Offers.Count; return n == 0 ? "Sponsors" : n == 1 ? "A company wants to pay you!" : "Two companies want to pay you!"; } }
 
         protected override void Compose()
         {
@@ -1315,8 +1313,14 @@ namespace SquashGame.UI
                     .Badge(() => Career.Money(d.Retainer), true));
                 card.Root.AddToClassList("k-card--sponsor");
             }
+            if (s.Offers.Count == 0)
+            {
+                EmptyState.Add(Content, "chevrons", "No sponsors yet", "Get a world ranking and companies will want to pay you.", new Color32(255, 184, 59, 255));
+                AddTo(Root, new PrimaryItem("OK", () => Sign(-1)));
+                return;
+            }
             AddTo(Root, new PrimaryItem("No thanks", () => Sign(-1)));
-            Kit.L(Content, s.Offers.Count == 0 ? "Get a world ranking and companies will want to pay you." : "Not in the top places at the end of the season? Then you don't get the money. Title money comes straight away.", "k-cr-note");
+            Kit.L(Content, "Not in the top places at the end of the season? Then you don't get the money. Title money comes straight away.", "k-cr-note");
         }
 
         void Sign(int i)

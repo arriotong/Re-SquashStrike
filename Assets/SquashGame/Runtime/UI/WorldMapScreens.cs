@@ -137,8 +137,13 @@ namespace SquashGame.UI
                     row.Add(Career.Badge((int)e.Tier, 18));
                     var txt = Kit.Box(row, "k-wm-row-text");
                     Kit.L(txt, e.Name, "k-wm-row-name");
-                    var info = Tour.Info(e.Tier);
-                    Kit.L(txt, Career.Stars((int)e.Tier) + "  ·  " + e.City + "  ·  travel about " + Career.Money(c.TripCost(e.City, e.Tier)) + "  ·  " + Chance(c, e, w == 0), "k-wm-row-n");
+                    // 2026-11-21 (the screen sweep: a grid of tiny text): can you play - a coloured chip - and what the trip costs
+                    var sub = Kit.Box(txt, "k-wm-row-sub");
+                    string chance = Chance(c, e, w == 0);
+                    var chip = Kit.L(sub, chance, "k-wm-chip");
+                    chip.AddToClassList(chance.Contains("can play") || chance.Contains("can always") || chance.StartsWith("Anyone") ? "k-wm-chip--go"
+                                      : chance.StartsWith("win a match") || chance.Contains("free pass") ? "k-wm-chip--maybe" : "k-wm-chip--no");
+                    Kit.L(sub, "trip " + Career.Money(c.TripCost(e.City, e.Tier)), "k-wm-row-n");
                 }
             }
         }

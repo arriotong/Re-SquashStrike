@@ -671,11 +671,9 @@ namespace SquashGame.UI
                 .Row("Great hits", a.GreatHits, b.GreatHits));
             if (!m.Settings.TwoPlayer) CoachTip(left, st);
             var right = Kit.Box(cols, "k-ft-right");
-            var hi = Kit.Panel(right, "HIGHLIGHTS");
-            var hrow = Kit.Box(hi, "k-ft-highs");
-            High(hrow, st.LongestRally.ToString(), "MOST HITS IN A POINT");
-            High(hrow, (System.Math.Max(a.TopPace, b.TopPace) * 3.6).ToString("0"), "FASTEST BALL (KM/H)");
-            High(hrow, a.GreatHits.ToString(), "GREAT HITS");
+            // 2026-11-21 (the screen sweep: lots of small panels): the highlights are a line under the score (great hits are in
+            // THE MATCH already)
+            Kit.L(chips, "LONGEST POINT  " + st.LongestRally + " HITS     ·     FASTEST BALL  " + (System.Math.Max(a.TopPace, b.TopPace) * 3.6).ToString("0") + " KM/H", "k-ft-highline");
             if (m.Settings.Online) OnlinePanel(right, m);
             if (Reward != null) { right.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }
 

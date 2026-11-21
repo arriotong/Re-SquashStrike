@@ -556,25 +556,31 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         public override MenuWorld Backdrop { get { return MenuWorld.Gauntlet; } }
 
+        public override bool Spatial { get { return true; } }
+
         protected override void Compose()
         {
             var st = GauntletFlow.State;
-            // 2026-10-30 (the kid test): what the colours and the lines mean
-            Kit.L(Content, "Every power card. Bright: you've used it.  Grey: not yet.  (in Upgrades): buy it there first.  \"mix\": use both cards to make it!", "k-cr-note");
-            var grid = Kit.Box(Content, "gt-codex");
-            // the chaos remake: by build (the retired cards are out)
+            // 2026-11-21 (the screen sweep: six columns of tiny names): a tab per build, its cards as pictures - bright: you've
+            // used it; LOCKED: buy it in Upgrades first; a mix: the two cards that make it
             foreach (var fam in new[] { Family.Time, Family.Power, Family.Trick, Family.Jackpot, Family.Guard, Family.None })
             {
-                var p = Kit.Panel(grid, fam == Family.None ? "ANY BUILD" : fam.ToString().ToUpperInvariant()); p.AddToClassList("gt-codex-panel");
-                if (fam != Family.None) p.Q<Label>(className: "k-panel-title").style.color = GauntletFlow.FamilyColour(fam);
+                var grid = Kit.Box(Page(fam == Family.None ? "ANY BUILD" : fam.ToString().ToUpperInvariant()), "dk-grid");
+                Color col = fam != Family.None ? GauntletFlow.FamilyColour(fam) : (Color)new Color32(200, 255, 61, 255);
                 foreach (var a in GauntletAbilities.All().FindAll(x => x.Family == fam && !x.Retired && x.Kind != AbilityKind.Instant))
                 {
+                    var ab = a;
                     var best = st.Codex != null ? st.Codex.Find(c => c.Id == a.Id) : null;
                     bool open = GauntletTalents.Unlocked(st.Talents, a);
-                    var r = Kit.Box(p, "gt-ab");
-                    var n = Kit.L(r, open ? a.Name : a.Name + "  (in Upgrades)", "gt-ab-name");
-                    n.style.color = best != null ? GauntletFlow.RarityColour(a.Rarity) : new Color(1, 1, 1, open ? 0.55f : 0.3f);
-                    Kit.L(r, best != null ? (a.MaxLevel > 1 ? GauntletFlow.Pips(best.Level, a.MaxLevel) : "✓") : (a.Recipe != null ? "mix " + GauntletAbilities.Find(a.Recipe[0]).Name + " + " + GauntletAbilities.Find(a.Recipe[1]).Name : ""), "gt-ab-pips");
+                    string mix = a.Recipe != null ? "Mix " + GauntletAbilities.Find(a.Recipe[0]).Name + " + " + GauntletAbilities.Find(a.Recipe[1]).Name : null;
+                    var card = AddTo(grid, new CardItem(a.Name.ToUpperInvariant(), best != null ? "USED  ·  BEST LEVEL " + best.Level : "NOT USED YET", null)
+                        .Drawn(GauntletFlow.Art(a), new Color32(18, 20, 26, 255), best != null ? col : new Color(col.r, col.g, col.b, 0.35f))
+                        .Line(mix ?? a.Blurb)
+                        .Badge(() => best != null ? (a.MaxLevel > 1 ? GauntletFlow.Pips(best.Level, a.MaxLevel) : "✓") : "", best != null));
+                    card.Root.AddToClassList("dk-card");
+                    card.Root.AddToClassList("dk-card--book");
+                    card.Locked = () => !open;
+                    card.LockLine = () => "in Upgrades";
                 }
             }
         }
