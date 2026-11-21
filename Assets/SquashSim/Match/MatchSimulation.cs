@@ -638,6 +638,9 @@ namespace SquashSim
         // ---------------- P5: the Gauntlet run's abilities at a rally's end ----------------
 
         int _lastStriker = -1, _nickBy = -1;
+        /// <summary>2026-11-21 (the Gauntlet's floors): who nicked the ball this rally (-1: nobody), who struck it last.</summary>
+        public int NickBy { get { return _nickBy; } }
+        public int LastStriker { get { return _lastStriker; } }
 
         /// <summary>Second Serve (a fault replayed), then the winner's extra points (an ace, a nick), Vampire, Momentum.</summary>
         int RunModsAtRallyEnd()

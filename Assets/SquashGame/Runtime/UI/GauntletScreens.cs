@@ -36,6 +36,9 @@ namespace SquashGame.UI
         public static RewardResult LastReward;
         /// <summary>What a boss gave (an ability unlocked), shown once.</summary>
         public static string LastUnlock;
+        /// <summary>2026-11-21 the last floor played (its result screen), and whether a failed one is played again.</summary>
+        public static FloorPlay LastFloor;
+        public static bool LastRetry;
 
         /// <summary>2026-10-28: your cards, the deck a run draws from.</summary>
         public static CardCollection Cards
@@ -92,6 +95,8 @@ namespace SquashGame.UI
         /// <summary>A run's end: its coins kept, the records.</summary>
         static void Finish(GauntletRun run)
         {
+            if (run.RunWon) G.RunsWon++;
+            G.BestFloorScore = Mathf.Max(G.BestFloorScore, run.BestFloorScore);
             G.BestFloor = Mathf.Max(G.BestFloor, run.FloorsWon);
             G.BestScore = Mathf.Max(G.BestScore, run.Score);
             G.Coins += run.Coins;
@@ -143,7 +148,8 @@ namespace SquashGame.UI
             return new MatchSettings
             {
                 Opponent = fl.OpponentId, Difficulty = (float)fl.Difficulty, GamesToWin = 1, Scoring = "par", WarmUp = false,
-                Gauntlet = true, ParPoints = fl.Points,
+                Gauntlet = true, ParPoints = 999,                                    // 2026-11-21: the floor's target decides it, not a game
+                GauntletFloor = Gauntlet.BeginFloor(run, Talents),
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = CourtFor(run, f), CrowdFill = CrowdFor(f),
@@ -159,28 +165,39 @@ namespace SquashGame.UI
             fe.StartMatch(Settings(run));
         }
 
-        /// <summary>The floor's match is over (or forfeited): the run moves on; back to the Gauntlet screen.</summary>
+        /// <summary>The floor's match over another way (the old post-match, a forfeit): as a floor played.</summary>
         public static void AfterMatch(FrontEnd fe, bool won, int margin)
         {
+            var f = fe.Match != null ? fe.Match.Floor : null;
+            if (f == null) f = new FloorPlay { Target = 1, Rallies = 1, Played = 1, Score = won ? 1 : 0, Done = true };
+            AfterFloor(fe, f);
+        }
+
+        /// <summary>2026-11-21 a floor over (FloorResultScreen's Continue): cleared - the score, the coins, the pick (the run won
+        /// at floor 15); failed - the run over, unless the Golden Racket or Second Chance plays it again.</summary>
+        public static void AfterFloor(FrontEnd fe, FloorPlay play)
+        {
             var run = Run;
-            LastUnlock = null;
+            LastUnlock = null; LastFloor = play; LastRetry = false;
             if (run != null)
             {
+                bool won = play.Cleared;
                 if (won)
                 {
                     int aces = 0, nicks = 0;
                     if (fe.Stats != null && fe.Match != null) { var facts = fe.Stats.Facts(fe.Match); aces = facts.Aces; nicks = facts.Nicks; }
                     bool boss = Gauntlet.KindOf(run.Floor) == FloorKind.Boss;
-                    Gauntlet.Won(run, margin, aces, nicks, Talents);
+                    Gauntlet.Won(run, play, aces, nicks, Talents);
                     LastReward = Rewards.GauntletFloor(run.FloorsWon, boss);
                     if (boss) LastUnlock = UnlockOne(run);
+                    if (run.RunWon && run.ChoiceDue) LastReward = Rewards.GauntletRunWon();
                 }
                 else
                 {
-                    Gauntlet.Lost(run);
+                    LastRetry = Gauntlet.Lost(run, play);
                     LastReward = null;
                 }
-                Playtest.Log("gauntlet", ("floor", won ? run.FloorsWon : run.Floor), ("won", won), ("lives", run.Lives), ("deck", run.HasDeck ? run.Deck.Count : 0), ("active", run.Abilities.Count));
+                Playtest.Log("gauntlet", ("floor", won ? run.FloorsWon : run.Floor), ("won", won), ("score", play.Score), ("target", play.Target), ("retry", LastRetry), ("deck", run.HasDeck ? run.Deck.Count : 0), ("active", run.Abilities.Count));
                 if (run.Over) { Playtest.Log("gauntlet_over", ("floors", run.FloorsWon), ("score", run.Score), ("bosses", run.BossesBeaten)); Finish(run); }
                 else G.BestFloor = Mathf.Max(G.BestFloor, run.FloorsWon);
                 ProfileStore.Save();
@@ -236,17 +253,27 @@ namespace SquashGame.UI
             return ok;
         }
 
-        public static string Hearts(GauntletRun r)
+        /// <summary>2026-11-21 (no hearts): the run so far in a line - the floor, the run's score, the coins.</summary>
+        public static string RunLine(GauntletRun r)
         {
-            int max = Mathf.Max(Gauntlet.StartLives, r.Lives);
-            return new string('♥', r.Lives) + new string('♡', max - r.Lives);
+            return (r.Endless ? "ENDLESS  ·  " : "") + "Floor " + r.Floor + (r.Endless ? "" : " of " + Gauntlet.WinFloor) + "  ·  " + r.Score.ToString("N0") + " points  ·  " + r.Coins + " coins";
+        }
+
+        /// <summary>Floor 15 cleared: take the win or go on into endless.</summary>
+        public static void Choose(bool endless)
+        {
+            var run = Run;
+            if (run == null) return;
+            Gauntlet.Choose(run, endless);
+            if (run.Over) Finish(run);
+            ProfileStore.Save();
         }
 
         public static string Line()
         {
             var r = Run;
-            if (r == null || r.Over) return State.BestFloor > 0 ? "Best: floor " + State.BestFloor + "  ·  " + State.BestScore.ToString("N0") + " pts  ·  " + State.Coins + " coins" : "Endless floors. Build your player. How far can you go?";
-            return "Floor " + r.Floor + "  ·  " + Hearts(r) + "  ·  " + r.Score.ToString("N0") + " pts";
+            if (r == null || r.Over) return State.BestFloor > 0 ? "Best: floor " + State.BestFloor + "  ·  runs won " + State.RunsWon + "  ·  " + State.Coins + " coins" : "Hit the target score on every floor. Clear 15 to win!";
+            return RunLine(r);
         }
 
         /// <summary>"●●●○○".</summary>
@@ -310,10 +337,11 @@ namespace SquashGame.UI
             {
                 var r = GauntletFlow.Run;
                 if (r == null) return "The Gauntlet";
-                if (r.Over) return "Run over";
+                if (r.Over) return r.RunWon ? "You won the Gauntlet!" : "Run over";
+                if (r.ChoiceDue) return "You won the Gauntlet!";
                 if (r.AwaitingPick) return r.BossPick ? "Boss beaten - your reward" : "Floor " + r.FloorsWon + " cleared";
                 var f = Gauntlet.Floor(r, r.Floor);
-                return f.Kind == FloorKind.Boss ? "Boss: " + f.Name : (f.Kind == FloorKind.Elite ? "Elite floor " : "Floor ") + r.Floor;
+                return f.Kind == FloorKind.Boss ? "Boss: " + f.Name : "Floor " + r.Floor;
             }
         }
         protected override bool ShowChip { get { return false; } }
@@ -335,13 +363,13 @@ namespace SquashGame.UI
                 // cards beside it, the how-to-play behind a ? - the island on the right
                 grid.RemoveFromHierarchy();
                 var stage = Kit.Box(Content, "gt-stage");
-                var hero = AddTo(stage, new CardItem(run != null ? "NEW RUN" : "START A RUN", run != null ? "RUN OVER" : "THE GAUNTLET",
+                var hero = AddTo(stage, new CardItem(run != null ? "NEW RUN" : "START A RUN", run != null ? (run.RunWon ? "RUN WON!" : "RUN OVER") : "THE GAUNTLET",
                         () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }, CardSize.Hero)        // first: it has the focus
                     .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
                     .Line(run != null
-                        ? "Floor " + run.FloorsWon + " cleared  ·  " + run.Score.ToString("N0") + " points  ·  " + run.BossesBeaten + (run.BossesBeaten == 1 ? " boss" : " bosses") + " beaten"
-                        : "Win a game, climb a floor, pick a power card. How high can you go?")
-                    .Badge(() => st.BestFloor > 0 ? "BEST  ·  FLOOR " + st.BestFloor : "NEW", true));
+                        ? (run.RunWon ? "All " + Gauntlet.WinFloor + " floors" + (run.FloorsWon > Gauntlet.WinFloor ? " and " + (run.FloorsWon - Gauntlet.WinFloor) + " endless" : "") : "Floor " + run.Floor + " was too much") + "  ·  " + run.Score.ToString("N0") + " points"
+                        : "Hit the target score on every floor. Clear floor " + Gauntlet.WinFloor + " to win!")
+                    .Badge(() => st.RunsWon > 0 ? "WON " + st.RunsWon + "  ·  BEST FLOOR " + st.BestFloor : st.BestFloor > 0 ? "BEST  ·  FLOOR " + st.BestFloor : "NEW", true));
                 hero.Root.AddToClassList("gt-hero");
                 var sides = Kit.Box(stage, "gt-sides");
                 Mini(sides, new CardItem("YOUR CARDS", "YOUR DECK", () => Fe.Push(new DeckScreen()))
@@ -360,9 +388,27 @@ namespace SquashGame.UI
                 return;
             }
 
+            if (run.ChoiceDue)
+            {
+                // 2026-11-21 floor 15 cleared: the run is won - take the win, or keep going into endless
+                grid.RemoveFromHierarchy();
+                var won = Kit.Box(Content, "gt-stage");
+                var take = AddTo(won, new CardItem("TAKE THE WIN", "THE GAUNTLET  ·  WON", () => { GauntletFlow.Choose(false); Fe.Replace(new GauntletScreen()); }, CardSize.Hero)
+                    .Drawn("trophy", new Color32(30, 24, 10, 255), new Color32(255, 196, 64, 255))
+                    .Line(run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins to bank  ·  the run ends here, won")
+                    .Badge(() => "ALL " + Gauntlet.WinFloor + " FLOORS", true));
+                take.Root.AddToClassList("gt-hero");
+                var go = AddTo(won, new CardItem("KEEP GOING", "ENDLESS", () => { GauntletFlow.Choose(true); Fe.Replace(new GauntletScreen()); }, CardSize.Hero)
+                    .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
+                    .Line("The floors never end - the targets keep climbing. Fail one and the run is over (it still counts as won).")
+                    .Badge(() => "HIGH SCORE", false));
+                go.Root.AddToClassList("gt-hero");
+                return;
+            }
+
             if (run.AwaitingPick)
             {
-                Kit.L(Content, GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins  ·  next: floor " + run.Floor +
+                Kit.L(Content, GauntletFlow.RunLine(run) + "  ·  next: floor " + run.Floor +
                                (run.BossPick ? (run.HasDeck ? "  ·  a boss's reward: the card plays a level higher" : "  ·  a boss's reward: every card takes two levels") : "")
                                + (run.HasDeck ? "  ·  from your deck" : ""), "gt-line");
                 var row = Kit.Box(Content, "k-row");
@@ -404,22 +450,27 @@ namespace SquashGame.UI
             grid.RemoveFromHierarchy();
             var stage2 = Kit.Box(Content, "gt-stage");
             bool boss = fl.Kind == FloorKind.Boss;
-            var play = AddTo(stage2, new CardItem(boss ? "FACE THE BOSS" : "PLAY FLOOR " + run.Floor, boss ? "THE BOSS  ·  " + fl.Name.ToUpperInvariant() : fl.Kind == FloorKind.Elite ? "ELITE FLOOR" : "NEXT FLOOR",
+            int rallies = Gauntlet.RalliesFor(run, fl, GauntletFlow.State.Talents);
+            var play = AddTo(stage2, new CardItem(boss ? "FACE THE BOSS" : "PLAY FLOOR " + run.Floor,
+                    (run.Endless ? "ENDLESS  ·  " : "FLOOR " + run.Floor + " OF " + Gauntlet.WinFloor + "  ·  ") + (boss ? "THE BOSS" : "NEXT FLOOR"),
                     () => GauntletFlow.Play(Fe), CardSize.Hero)
                 .Drawn(boss ? "trophy" : "chevrons", boss ? new Color32(34, 10, 18, 255) : new Color32(30, 14, 14, 255), boss ? new Color32(255, 60, 90, 255) : new Color32(255, 90, 74, 255))
-                .Line(GauntletFlow.Hearts(run) + "   " + run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins")
-                .Badge(() => "FLOOR " + run.Floor, true));
+                .Line("Score " + fl.Target.ToString("N0") + " in " + rallies + " rallies" + (GauntletFlow.LastRetry ? "  ·  SECOND CHANCE: try it again" : "") + "\n" + GauntletFlow.RunLine(run))
+                .Badge(() => "TARGET " + fl.Target.ToString("N0"), true));
+            GauntletFlow.LastRetry = false;
+            var target = Kit.L(play.Art, fl.Target.ToString("N0"), "gt-target-big");
             play.Root.AddToClassList("gt-hero");
             var col = Kit.Box(stage2, "gt-col");
             var next = Kit.Panel(col, boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "YOUR OPPONENT"); next.AddToClassList("gt-info");
             Kit.L(next, (boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
             foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
+            foreach (var tw in fl.Twists) Kit.L(next, "TWIST: " + Gauntlet.TwistName(tw) + " - " + Gauntlet.TwistText(tw), "gt-twist");
             if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
             if (fl.Signature.Count > 0) Kit.L(next, "Signature: " + string.Join(", ", fl.Signature.ConvertAll(m => { var a = GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "gt-trait");
             var court = Courts.Find(GauntletFlow.CourtFor(run, run.Floor));
-            Kit.L(next, "One game to " + fl.Points + (Gauntlet.HeadStart(run) > 0 ? ", you start " + Gauntlet.HeadStart(run) + "-0 up" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
+            Kit.L(next, rallies + " rallies" + (Gauntlet.HeadStart(run) > 0 ? "  ·  you start with " + Gauntlet.HeadStart(run) * 100 + " points" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
             var me = Kit.Panel(col, "YOUR BUILD"); me.AddToClassList("gt-info");
-            Kit.L(me, GauntletFlow.Hearts(run) + (run.Golden ? "   + golden racket" : ""), "gt-hearts");
+            Kit.L(me, run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins" + (run.Golden ? "  ·  golden racket: one retry" : "") + (run.CanRevive && !run.Revived ? "  ·  second chance ready" : ""), "gt-hearts");
             Build(me, run);
             var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? Its coins are kept.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
             quit.Root.AddToClassList("k-action--chip");
@@ -481,9 +532,10 @@ namespace SquashGame.UI
         {
             get
             {
-                return "1   Win a short game to go up a floor. How high can you climb?\n" +
-                       "2   After every win, pick a power card. It makes you stronger!\n" +
-                       "3   Lose a game and you lose a heart. No hearts left? Start again.";
+                return "1   Score the floor's target before your rallies run out. Miss it and the run is over!\n" +
+                       "2   Win rallies in a row to build your multiplier, up to 5x. Winners, nicks and aces count most.\n" +
+                       "3   At 5x the wheel spins: points, rallies, double scores - or the Golden Wheel!\n" +
+                       "4   After every floor, pick a power card. Clear floor " + Gauntlet.WinFloor + " to win.";
             }
         }
         protected override string YesLabel { get { return "Got it"; } }

@@ -1,11 +1,13 @@
 // ===========================================================
 // Assets/SquashSim.Testing/Editor/GauntletTests.cs
 // P5 the Gauntlet roguelite's rules:
-//   - floors: game to 7, elites every 5th, bosses every 10th (a game to
-//     11, legends), the endless climb (attributes past 30, Cannon past 60)
+//   - floors (2026-11-21 the arcade remake): a target score in a set of
+//     rallies, a boss every 5th (a star, a twist), floor 15 wins the run,
+//     then endless (traits, attributes past 10, Cannon past 30)
 //   - cards: seeded, new / level-up, slots enforced, evolutions only with
 //     both parts at the top, boss picks two levels, rerolls and banishes
-//   - hearts: lose one, golden racket, Revive; Showtime and Nick Bank heal
+//   - no hearts: a failed floor ends the run - the golden racket and
+//     Second Chance play it again; Showtime and Nick Bank give rallies
 //   - talents: bought with coins, change a new run; locked abilities only
 //     in the pool once unlocked
 //   - the player built: attributes and sim abilities from the levels
@@ -27,38 +29,47 @@ namespace SquashSim.Tests
             return l;
         }
 
-        [Test] public void FloorsGetHarderWithElitesAndBosses()
+        [Test] public void FloorsGetHarderWithBossesAndTwists()
         {
             var run = Gauntlet.NewRun(7);
             var f1 = Gauntlet.Floor(run, 1);
-            Assert.That(f1.Kind, Is.EqualTo(FloorKind.Normal)); Assert.That(f1.Points, Is.EqualTo(7)); Assert.That(f1.Traits, Is.Empty);
-            var f5 = Gauntlet.Floor(run, 5);
-            Assert.That(f5.Kind, Is.EqualTo(FloorKind.Elite)); Assert.That(f5.Traits.Count, Is.EqualTo(1)); Assert.That(f5.Title, Does.StartWith("Elite"));
-            var f10 = Gauntlet.Floor(run, 10);
-            Assert.That(f10.Kind, Is.EqualTo(FloorKind.Boss)); Assert.That(f10.Points, Is.EqualTo(11));
-            Assert.That(f10.Name, Is.EqualTo(SquashSim.Career.Stars.FullName(SquashSim.Career.Stars.Find("s45"))), "P6: the first boss is the world No. 45");
-            Assert.That(f10.OpponentId, Is.EqualTo("star:s45")); Assert.That(f10.Signature, Is.Not.Empty, "with their signature shots");
-            Assert.That(f10.Traits.Count, Is.EqualTo(1), "the first boss: one trait");
-            Assert.That(f5.OpponentId, Does.StartWith("star:"), "an elite is a star too");
-            var f100 = Gauntlet.Floor(run, 100);
-            Assert.That(f100.OpponentId, Is.EqualTo("star:s01"), "floor 100: the world No. 1");
-            Assert.That(f100.Difficulty, Is.EqualTo(1.0));
-            Assert.That(Gauntlet.Floor(run, 90).OpponentId, Is.EqualTo("star:s05"));
-            Assert.That(Gauntlet.Floor(run, 110).OpponentId, Is.EqualTo("star:s10"), "then round the top 10");
+            Assert.That(f1.Kind, Is.EqualTo(FloorKind.Normal)); Assert.That(f1.Target, Is.EqualTo(Gauntlet.FirstTarget)); Assert.That(f1.Traits, Is.Empty); Assert.That(f1.Twists, Is.Empty);
+            Assert.That(Gauntlet.RalliesFor(run, f1, null), Is.EqualTo(Gauntlet.Rallies));
+            for (int fl = 2; fl <= 20; fl++) if (Gauntlet.KindOf(fl) == Gauntlet.KindOf(fl - 1)) Assert.That(Gauntlet.TargetFor(fl), Is.GreaterThanOrEqualTo(Gauntlet.TargetFor(fl - 1)), "the targets climb");
+            foreach (int b in new[] { 5, 10, 15 })
+            {
+                var f = Gauntlet.Floor(run, b);
+                Assert.That(f.Kind, Is.EqualTo(FloorKind.Boss), "a boss every 5th");
+                Assert.That(f.OpponentId, Does.StartWith("star:")); Assert.That(f.Signature, Is.Not.Empty, "with their signature shots");
+                Assert.That(f.Twists.Count, Is.EqualTo(1), "a boss: one twist");
+                Assert.That(Gauntlet.TwistName(f.Twists[0]), Is.Not.EqualTo(f.Twists[0]), "named");
+            }
+            Assert.That(Gauntlet.Floor(run, 5).OpponentId, Is.EqualTo("star:" + SquashSim.Career.Stars.All()[29].Id), "floor 5: the world No. 30");
+            Assert.That(Gauntlet.Floor(run, 15).OpponentId, Is.EqualTo("star:" + SquashSim.Career.Stars.All()[4].Id), "floor 15: the No. 5");
+            Assert.That(Gauntlet.Floor(run, 35).OpponentId, Is.EqualTo("star:" + SquashSim.Career.Stars.No1.Id), "endless: the No. 1 at 35");
+            Assert.That(Gauntlet.Floor(run, 35).Difficulty, Is.EqualTo(1.0));
+            Assert.That(Gauntlet.Floor(run, 20).Twists.Count, Is.EqualTo(2), "from floor 20: two twists");
+            Assert.That(Gauntlet.Floor(run, 16).Traits.Count, Is.GreaterThan(0), "endless floors bend the rules");
             Assert.That(Gauntlet.Floor(run, 7).OpponentId, Is.EqualTo(Gauntlet.Floor(run, 7).Style), "an ordinary floor: a style");
-            Assert.That(Gauntlet.Floor(run, 20).Traits.Count, Is.EqualTo(2), "from the second: two");
-            Assert.That(Gauntlet.Difficulty(20), Is.GreaterThan(Gauntlet.Difficulty(2)));
+            Assert.That(Gauntlet.Difficulty(15), Is.GreaterThan(Gauntlet.Difficulty(1)));
             Assert.That(Gauntlet.Difficulty(200), Is.EqualTo(1.0));
             Assert.That(Gauntlet.Floor(run, 12).Attributes, Is.Null, "a neutral athlete early on");
-            Assert.That(Gauntlet.Floor(run, 48).Attributes.Power, Is.GreaterThan(5), "stronger past 30");
-            var late = Gauntlet.Floor(run, 81);
-            Assert.That(late.Traits.Find(t => t.Id == "e_cannon").Level, Is.GreaterThanOrEqualTo(3), "past 60 the Cannon grows: endless");
+            Assert.That(Gauntlet.Floor(run, 28).Attributes.Power, Is.GreaterThan(5), "stronger past 10");
+            Assert.That(Gauntlet.Floor(run, 61).Traits.Find(t => t.Id == "e_cannon").Level, Is.GreaterThanOrEqualTo(3), "past 30 the Cannon grows: endless");
+        }
+
+        /// <summary>A floor cleared just at its target.</summary>
+        public static FloorPlay Clear(GauntletRun run, int over = 0)
+        {
+            var f = Gauntlet.BeginFloor(run, null);
+            f.Score = f.Target + over; f.Played = 1; f.Done = true;
+            return f;
         }
 
         [Test] public void CardsAreSeededAndFollowTheRules()
         {
             var a = Gauntlet.NewRun(42); var b = Gauntlet.NewRun(42);
-            Gauntlet.Won(a, 3, 0, 0); Gauntlet.Won(b, 3, 0, 0);
+            Gauntlet.Won(a, Clear(a), 0, 0); Gauntlet.Won(b, Clear(b), 0, 0);
             Assert.That(a.AwaitingPick, Is.True);
             Assert.That(a.Offer.Count, Is.EqualTo(3));
             Assert.That(a.Offer, Is.EqualTo(b.Offer), "the same seed, the same cards");
@@ -72,15 +83,16 @@ namespace SquashSim.Tests
             Assert.That(a.Floor, Is.EqualTo(2));
         }
 
-        [Test] public void AnEliteOffersFourAndABossTwoLevels()
+        [Test] public void ABigScoreOffersFourAndABossTwoLevels()
         {
             var run = Gauntlet.NewRun(5);
-            run.Floor = 5;
-            Gauntlet.Won(run, 2, 0, 0);
-            Assert.That(run.Offer.Count, Is.EqualTo(4), "an elite: a pick of four");
+            run.Floor = 3;
+            Gauntlet.Won(run, Clear(run, Gauntlet.TargetFor(3) / 2), 0, 0);
+            Assert.That(run.Offer.Count, Is.EqualTo(4), "half the target again: a pick of four");
             Gauntlet.Pick(run, run.Offer.Find(id => GauntletAbilities.Find(id).Kind != AbilityKind.Instant) ?? run.Offer[0]);
             run.Floor = 10;
-            Gauntlet.Won(run, 2, 0, 0);
+            Gauntlet.Won(run, Clear(run), 0, 0);
+            Assert.That(run.Offer.Count, Is.EqualTo(3), "just the target: three");
             Assert.That(run.BossPick, Is.True);
             foreach (var id in run.Offer)
             {
@@ -93,6 +105,23 @@ namespace SquashSim.Tests
             Gauntlet.Pick(run, card);
             Assert.That(Gauntlet.Level(run, card), Is.EqualTo(System.Math.Min(GauntletAbilities.Find(card).MaxLevel, before + 2)), "two levels at once");
             Assert.That(run.BossesBeaten, Is.EqualTo(1));
+        }
+
+        [Test] public void FloorFifteenWinsTheRunThenEndless()
+        {
+            var a = Gauntlet.NewRun(21); a.Floor = Gauntlet.WinFloor;
+            Gauntlet.Won(a, Clear(a), 0, 0);
+            Assert.That(a.RunWon, Is.True); Assert.That(a.ChoiceDue, Is.True);
+            Gauntlet.Choose(a, false);
+            Assert.That(a.Over, Is.True, "take the win: the run ends"); Assert.That(a.Failed, Is.False);
+            var b = Gauntlet.NewRun(21); b.Floor = Gauntlet.WinFloor;
+            Gauntlet.Won(b, Clear(b), 0, 0);
+            Gauntlet.Choose(b, true);
+            Assert.That(b.Over, Is.False); Assert.That(b.Endless, Is.True); Assert.That(b.AwaitingPick, Is.True, "endless: the pick, then floor 16");
+            Gauntlet.Pick(b, b.Offer[0]);
+            Assert.That(b.Floor, Is.EqualTo(Gauntlet.WinFloor + 1));
+            Gauntlet.Lost(b, null);
+            Assert.That(b.Over, Is.True); Assert.That(b.RunWon, Is.True, "a failed endless floor: still a run won");
         }
 
         [Test] public void SlotsMakeABuild()
@@ -149,7 +178,7 @@ namespace SquashSim.Tests
         {
             var run = Gauntlet.NewRun(13, Talents(("banish", 1)));
             Assert.That(run.Rerolls, Is.EqualTo(1)); Assert.That(run.Banishes, Is.EqualTo(1));
-            Gauntlet.Won(run, 1, 0, 0);
+            Gauntlet.Won(run, Clear(run), 0, 0);
             var first = new List<string>(run.Offer);
             Assert.That(Gauntlet.Reroll(run, null), Is.True);
             Assert.That(run.Offer, Is.Not.EqualTo(first), "new cards");
@@ -160,31 +189,31 @@ namespace SquashSim.Tests
             for (int i = 0; i < 20; i++) { run.Roll = 100 + i; Assert.That(Gauntlet.OfferFor(run, null), Does.Not.Contain(gone), "banished for the run"); }
         }
 
-        [Test] public void HeartsGoldenRacketAndRevive()
+        [Test] public void AFailedFloorEndsTheRunUnlessRetried()
         {
+            var plain = Gauntlet.NewRun(3);
+            Assert.That(Gauntlet.Lost(plain, null), Is.False);
+            Assert.That(plain.Over, Is.True, "no hearts: over at once"); Assert.That(plain.Failed, Is.True);
             var run = Gauntlet.NewRun(3, Talents(("hearty", 1), ("revive", 1)));
-            Assert.That(run.Lives, Is.EqualTo(4));
+            Assert.That(Gauntlet.RalliesFor(run, Gauntlet.Floor(run, 1), Talents(("hearty", 1))), Is.EqualTo(Gauntlet.Rallies + 1), "Extra Rally: one more");
             run.Golden = true;
-            Gauntlet.Lost(run);
-            Assert.That(run.Lives, Is.EqualTo(4)); Assert.That(run.Golden, Is.False, "the golden racket took it");
-            for (int i = 0; i < 4; i++) Gauntlet.Lost(run);
-            Assert.That(run.Over, Is.False); Assert.That(run.Revived, Is.True); Assert.That(run.Lives, Is.EqualTo(1), "Revive: one more");
-            Gauntlet.Lost(run);
+            Assert.That(Gauntlet.Lost(run, null), Is.True, "the golden racket: again");
+            Assert.That(run.Golden, Is.False);
+            Assert.That(Gauntlet.Lost(run, null), Is.True, "Second Chance: again"); Assert.That(run.Revived, Is.True);
+            Assert.That(Gauntlet.Lost(run, null), Is.False);
             Assert.That(run.Over, Is.True);
         }
 
-        [Test] public void ShowtimeAndNickBankHeal()
+        [Test] public void ShowtimeAndNickBankGiveRallies()
         {
             var run = Gauntlet.NewRun(4);
-            run.Lives = 2;
             run.Abilities.Add(new RunMod { Id = "showtime", Level = 1 });
             run.Abilities.Add(new RunMod { Id = "nickbank", Level = 5 });
-            Gauntlet.Won(run, 1, 1, 1);
-            Assert.That(run.Lives, Is.EqualTo(4), "an ace (Showtime) and the first nick (Nick Bank 5)");
-            Gauntlet.Pick(run, run.Offer[0]);
-            int lives = run.Lives;
-            Gauntlet.Won(run, 1, 0, 1);
-            Assert.That(run.Lives, Is.EqualTo(lives), "Nick Bank heals once a run");
+            Gauntlet.Won(run, Clear(run), 1, 1);
+            Assert.That(run.BonusRallies, Is.EqualTo(2), "an ace (Showtime) and the first nick (Nick Bank 5)");
+            Gauntlet.Pick(run, run.Offer.Find(id => id != "life") ?? run.Offer[0]);
+            Gauntlet.Won(run, Clear(run), 0, 1);
+            Assert.That(run.BonusRallies, Is.EqualTo(0), "Nick Bank once a run");
         }
 
         [Test] public void TalentsAndUnlocks()

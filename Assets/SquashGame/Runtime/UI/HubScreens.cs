@@ -598,7 +598,7 @@ namespace SquashGame.UI
             Add(new ActionItem("Settings", () => Fe.Push(new SettingsScreen())));
             Add(new ActionItem("Controls", () => Fe.Push(new ControlsHelpScreen())));
             if (career) Add(new ActionItem("Quit: retire from the match", () => Fe.Push(new RetireScreen())));
-            else if (gauntlet) Add(new ActionItem("Quit: forfeit the floor", () => Fe.Push(new ConfirmScreen("Forfeit this floor? It costs a life.", () => GauntletFlow.AfterMatch(Fe, false, 0)))));
+            else if (gauntlet) Add(new ActionItem("Quit: forfeit the floor", () => Fe.Push(new ConfirmScreen("Forfeit this floor? It counts as failed.", () => GauntletFlow.AfterMatch(Fe, false, 0)))));
             else Add(new ActionItem("Quit to menu", () => Fe.Push(new ConfirmScreen("Leave the match?", () => Fe.QuitToMenu()))));
             var prompts = new PromptBar(); prompts.AddToClassList("k-prompts--side");
             prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Resume"));

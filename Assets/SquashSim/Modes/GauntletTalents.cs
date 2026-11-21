@@ -35,12 +35,12 @@ namespace SquashSim.Modes
             if (_all != null) return _all;
             _all = new List<Talent>();
             void T(string id, string name, string text, params int[] costs) { _all.Add(new Talent { Id = id, Name = name, Text = text, Costs = costs }); }
-            T("hearty", "Extra Heart", "Start with one more heart", 60, 160);             // (2026-10-30, the kid test: plain words)
+            T("hearty", "Extra Rally", "One more rally on every floor", 60, 160);          // (2026-11-21: was Extra Heart - no hearts now)             // (2026-10-30, the kid test: plain words)
             T("reroll", "New Cards", "Don't like the cards? Swap them for new ones (once more a run)", 40, 100, 180);
             T("wider", "Wider View", "Pick from 4 cards, not 3", 260);
             T("banish", "Throw Away", "Throw away a card you never want to see (once more a run)", 60, 130, 220);
             T("kit", "Kit Bag", "Start every run with a free power", 80, 200);
-            T("revive", "Second Chance", "Lost your last heart? Get one back (once a run)", 320);
+            T("revive", "Second Chance", "Fail a floor? Play it again (once a run)", 320);
             T("treasure", "Treasure", "Get more coins from every floor", 50, 110, 200);
             foreach (var a in GauntletAbilities.All())
                 if (a.Locked && !a.Retired) _all.Add(new Talent { Id = "unlock_" + a.Id, Name = a.Name, Text = "A new card: " + a.Blurb, Costs = new[] { UnlockCost(a) }, Unlocks = a.Id });

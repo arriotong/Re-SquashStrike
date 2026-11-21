@@ -165,6 +165,7 @@ namespace SquashGame
             _spMine.style.display = DisplayStyle.None; _spThem.style.display = DisplayStyle.None; Add(_spMine); Add(_spThem);
             _pop.AddToClassList("hud-pop"); _pop.style.display = DisplayStyle.None; Add(_pop);
             _popSmall.AddToClassList("hud-pop-small"); _popSmall.style.display = DisplayStyle.None; Add(_popSmall);
+            _floorBar.style.display = DisplayStyle.None; Add(_floorBar);
             foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub, _powerLabel, _pop, _popSmall, _freezeWord }) l.pickingMode = PickingMode.Ignore;
             foreach (var v in new[] { _power, _powerFill, track, _freeze }) v.pickingMode = PickingMode.Ignore;
         }
@@ -176,6 +177,10 @@ namespace SquashGame
             if (on && l.text != text) l.text = text;
         }
 
+        /// <summary>2026-11-21 the Gauntlet floor's bar (target, score, rallies left, multiplier, wheel).</summary>
+        readonly SquashGame.UI.FloorBar _floorBar = new SquashGame.UI.FloorBar();
+        public SquashGame.UI.FloorBar FloorBar { get { return _floorBar; } }
+
         public void Refresh(MatchRunner r, bool allowed)
         {
             bool visible = allowed && r != null && r.Sim != null && !r.Demo && !r.InSetup && r.Puzzle == null;
@@ -185,6 +190,8 @@ namespace SquashGame
             MatchScore s = m.Score;
             var names = r.Names;
             bool twoPlayer = r.Settings.TwoPlayer;
+            _floorBar.Set(r);
+            _bug.style.display = r.Floor != null ? DisplayStyle.None : DisplayStyle.Flex;       // a floor: its bar, not a game's score
 
             // ---- score bug ----
             for (int p = 0; p < 2; p++)

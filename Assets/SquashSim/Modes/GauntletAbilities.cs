@@ -93,7 +93,7 @@ namespace SquashSim.Modes
             A("ace", "Ace Machine", AbilityKind.Power, Rarity.Epic, "An ace is worth more.",
               l => l >= 5 ? "Aces score 3 points" : "Aces score 2 points");
             A("nickbank", "Nick Bank", AbilityKind.Power, Rarity.Epic, "A nick is worth more.",
-              l => l >= 5 ? "Nicks score 3 points, and your first nick of the run heals a heart" : "Nicks score 2 points");
+              l => l >= 5 ? "Nicks score 3 points, and your first nick of the run gives +1 rally on the next floor" : "Nicks score 2 points");
             A("pressure", "Pressure", AbilityKind.Power, Rarity.Common, "Make them run: the opponent tires faster.",
               l => "Opponent's stamina drain " + Pct(l, 0.1));
             A("momentum", "Momentum", AbilityKind.Power, Rarity.Rare, "Three rallies in a row and you're on fire.",
@@ -113,7 +113,7 @@ namespace SquashSim.Modes
             A("clock", "Clockwork", AbilityKind.Evolved, Rarity.Legendary, "Rail Drive + Steady Hands: the perfect length.",
               l => "Straight drives never spray and never mishit", max: 1, recipe: new[] { "rail", "steady" });
             A("showtime", "Showtime", AbilityKind.Evolved, Rarity.Legendary, "Ace Machine + Thunder Serve: the crowd's favourite.",
-              l => "Your first ace of each floor heals a heart", max: 1, inSim: false, recipe: new[] { "ace", "thunder" });
+              l => "An ace on a floor gives +1 rally on the next floor", max: 1, inSim: false, recipe: new[] { "ace", "thunder" });
             A("matador", "Matador", AbilityKind.Evolved, Rarity.Legendary, "Trickle Boast + Volley Drop: send them the wrong way.",
               l => "After your drop or boast, the opponent is 20% slower for a moment", max: 1, recipe: new[] { "trickle", "vdrop" });
 
@@ -132,8 +132,8 @@ namespace SquashSim.Modes
             A("scout", "Scout", AbilityKind.Perk, Rarity.Common, "Know who is next.", l => "See the next floor's opponent and trait before you pick", max: 1, locked: true, inSim: false);
 
             // ---- instant ----
-            A("life", "Extra Life", AbilityKind.Instant, Rarity.Rare, "One more go.", l => "+1 heart (up to " + Gauntlet.MaxLives + ")", max: 1, inSim: false);
-            A("golden", "Golden Racket", AbilityKind.Instant, Rarity.Epic, "The next floor you lose costs nothing.", l => "Your next lost floor costs no heart", max: 1, inSim: false);
+            A("life", "Extra Rallies", AbilityKind.Instant, Rarity.Rare, "More chances next floor.", l => "+2 rallies on the next floor", max: 1, inSim: false);
+            A("golden", "Golden Racket", AbilityKind.Instant, Rarity.Epic, "Fail a floor? Play it again.", l => "Fail a floor and play it again (once)", max: 1, inSim: false);
             A("coins", "Purse", AbilityKind.Instant, Rarity.Common, "Coins now.", l => "+" + Gauntlet.PurseCoins + " coins", max: 1, inSim: false);
 
             // =========== the chaos remake (2026-10-28): the builds ===========

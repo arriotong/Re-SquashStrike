@@ -380,6 +380,17 @@ namespace SquashGame.Progression
         public const int GauntletBossXp = 150;
 
         /// <summary>P5: an evolution taken in a Gauntlet run.</summary>
+        /// <summary>2026-11-21 the Gauntlet won (floor 15 cleared): a big reward.</summary>
+        public static RewardResult GauntletRunWon()
+        {
+            var r = Begin();
+            Xp(r, "The Gauntlet: run won", GauntletRunWonXp);
+            Pulls(r, 0, 1, "winning the Gauntlet");
+            Achieve(r, new[] { "gt_boss" });
+            return End(r);
+        }
+        public const int GauntletRunWonXp = 600;
+
         public static RewardResult GauntletEvolved()
         {
             var r = Begin();

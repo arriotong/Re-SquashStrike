@@ -83,7 +83,7 @@ namespace SquashSim.Tests
             Assert.That(run.Abilities, Is.Empty, "nothing active at first");
             for (int f = 0; f < 4; f++)
             {
-                Gauntlet.Won(run, 3, 0, 0, null);
+                Gauntlet.Won(run, GauntletTests.Clear(run), 0, 0, null);
                 Assert.That(run.AwaitingPick, Is.True);
                 foreach (var id in run.Offer) Assert.That(ids, Does.Contain(id), "from the deck only");
                 foreach (var id in run.Offer) Assert.That(Gauntlet.Level(run, id), Is.EqualTo(0), "none already active");
@@ -93,9 +93,9 @@ namespace SquashSim.Tests
                 Assert.That(Gauntlet.Pick(run, pick), Is.True);
                 Assert.That(Gauntlet.Level(run, pick), Is.EqualTo(want), pick + ": its card's level (evolved: the top)");
             }
-            Gauntlet.Won(run, 3, 0, 0, null);
+            Gauntlet.Won(run, GauntletTests.Clear(run), 0, 0, null);
             Gauntlet.Pick(run, run.Offer[0]);
-            Gauntlet.Won(run, 3, 0, 0, null);
+            Gauntlet.Won(run, GauntletTests.Clear(run), 0, 0, null);
             Assert.That(run.Offer, Is.EqualTo(new List<string> { "life" }).Or.EqualTo(new List<string> { "coins" }), "the deck spent: a bonus instead");
         }
 
@@ -105,11 +105,11 @@ namespace SquashSim.Tests
             var c = new CardCollection();
             foreach (var a in GauntletCards.All()) { c.Cards.Add(new CardRec { Id = a.Id, Copies = 1 }); c.Deck.Add(a.Id); }
             var run = Gauntlet.NewRun(7, null, GauntletCards.RunDeck(c));
-            Gauntlet.Won(run, 3, 0, 0, null);
+            Gauntlet.Won(run, GauntletTests.Clear(run), 0, 0, null);
             Assert.That(run.Offer.Count, Is.EqualTo(3));
             Gauntlet.Pick(run, run.Offer[0]);
             run.Abilities.Add(new RunMod { Id = "lucky", Level = 1 });
-            Gauntlet.Won(run, 3, 0, 0, null);
+            Gauntlet.Won(run, GauntletTests.Clear(run), 0, 0, null);
             Assert.That(run.Offer.Count, Is.EqualTo(4), "Lucky 1: one more");
             run.Rerolls = 1;
             Assert.That(Gauntlet.Reroll(run, null), Is.True);
@@ -120,7 +120,7 @@ namespace SquashSim.Tests
         [Test] public void TheFloorsKeepGettingHarder()
         {
             for (int f = 2; f <= 60; f++) Assert.That(Gauntlet.Difficulty(f), Is.GreaterThanOrEqualTo(Gauntlet.Difficulty(f - 1)));
-            Assert.That(Gauntlet.Difficulty(30) - Gauntlet.Difficulty(20), Is.GreaterThan(Gauntlet.Difficulty(14) - Gauntlet.Difficulty(4)), "steeper past the knee");
+            Assert.That(Gauntlet.Difficulty(30), Is.GreaterThan(Gauntlet.Difficulty(Gauntlet.WinFloor)), "2026-11-21: endless keeps climbing past floor 15");
             Assert.That(Gauntlet.Floor(new GauntletRun { Seed = 5 }, 70).Traits.Count, Is.GreaterThan(Gauntlet.Floor(new GauntletRun { Seed = 5 }, 30).Traits.Count), "more traits late");
         }
     }

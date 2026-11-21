@@ -139,6 +139,8 @@ namespace SquashGame.Profile
     {
         public SquashSim.Modes.GauntletRun Run;
         public int BestFloor, BestScore, Runs;
+        /// <summary>2026-11-21 the arcade remake: runs won (floor 15 cleared), the best single floor's score.</summary>
+        public int RunsWon, BestFloorScore;
         /// <summary>P5: coins kept between runs, the talents bought, the codex (each ability's best level), bosses beaten.</summary>
         public int Coins, BossesBeaten;
         public List<SquashSim.RunMod> Talents = new List<SquashSim.RunMod>();

@@ -100,7 +100,8 @@ namespace SquashGame.Tests
             Assert.That(run.HasDeck, Is.True, "the run draws from your deck");
             Assert.That(run.Deck.Count, Is.EqualTo(cards.Deck.Count));
             Assert.That(run.Abilities, Is.Empty, "nothing active at first");
-            SquashSim.Modes.Gauntlet.Won(run, 3, 0, 0, GauntletFlow.State.Talents);
+            var fp = SquashSim.Modes.Gauntlet.BeginFloor(run, GauntletFlow.State.Talents); fp.Score = fp.Target; fp.Done = true;
+            SquashSim.Modes.Gauntlet.Won(run, fp, 0, 0, GauntletFlow.State.Talents);
             foreach (var id in run.Offer) Assert.That(cards.Deck, Does.Contain(id), "drawn from the deck");
             fe.Replace(new GauntletScreen());
             yield return Wait(0.5f, () => false);

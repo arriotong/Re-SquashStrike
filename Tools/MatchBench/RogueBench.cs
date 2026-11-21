@@ -24,7 +24,7 @@ using SquashSim.Replays;
 
 static class RogueBench
 {
-    public const int FloorCap = 80;
+    public const int FloorCap = 40;
     /// <summary>The card deck the runs draw from (null: the old draw from every ability).</summary>
     public static string DeckMode;
 
@@ -53,6 +53,7 @@ static class RogueBench
         var taken = new Dictionary<string, List<int>>();
         int bosses = 0; long coins = 0; int lostAt = 0;
         var lossFloors = new List<int>();
+        var ratios = new List<double>(); int wins = 0; long spins = 0;
         for (int r = 0; r < runs; r++)
         {
             var run = Gauntlet.NewRun((uint)(1000 + r * 7919), talents, DeckFor(r));
@@ -61,10 +62,15 @@ static class RogueBench
             while (!run.Over && run.Floor <= FloorCap && guard++ < 400)
             {
                 if (run.AwaitingPick) { Gauntlet.Pick(run, Choose(run, policy, rng)); continue; }
-                var (won, margin, aces, nicks) = Floor(run, (uint)(r * 1000 + guard));
-                if (won) Gauntlet.Won(run, margin, aces, nicks, talents);
-                else { Gauntlet.Lost(run); lossFloors.Add(run.Floor); }
+                if (run.ChoiceDue) { Gauntlet.Choose(run, Endless); if (run.Over) break; continue; }
+                var (play, aces, nicks) = Floor(run, (uint)(r * 1000 + guard), talents);
+                ratios.Add((double)play.Score / play.Target);
+                if (Verbose) Console.WriteLine("    floor " + play.Floor + ": " + play.Score + "/" + play.Target + "  rallies " + play.Played + "/" + play.Rallies + "  done " + play.Done + "  best " + play.BestRally + "  mult " + play.Mult + "  spins " + play.Spins);
+                spins += play.Spins;
+                if (play.Cleared) Gauntlet.Won(run, play, aces, nicks, talents);
+                else { int at = run.Floor; if (!Gauntlet.Lost(run, play)) lossFloors.Add(at); }
             }
+            if (run.RunWon) wins++;
             floors.Add(run.FloorsWon);
             bosses += run.BossesBeaten; coins += run.Coins;
             foreach (var m in run.Abilities)
@@ -79,7 +85,9 @@ static class RogueBench
         int Q(double q) { return floors[Math.Min(floors.Count - 1, (int)(q * floors.Count))]; }
         Console.WriteLine("floors cleared  median " + Q(0.5) + "   p25 " + Q(0.25) + "   p75 " + Q(0.75) + "   best " + floors[floors.Count - 1] +
                           "   bosses a run " + ((double)bosses / runs).ToString("0.00") + "   coins a run " + (coins / runs));
-        if (lossFloors.Count > 0) Console.WriteLine("hearts lost at floors (median) " + lossFloors.OrderBy(x => x).ElementAt(lossFloors.Count / 2));
+        Console.WriteLine("runs won (floor " + Gauntlet.WinFloor + ") " + wins + " of " + runs + "   wheel spins a run " + ((double)spins / runs).ToString("0.0") +
+                          "   score/target a floor  median " + ratios.OrderBy(x => x).ElementAt(ratios.Count / 2).ToString("0.00"));
+        if (lossFloors.Count > 0) Console.WriteLine("runs ended at floors (median) " + lossFloors.OrderBy(x => x).ElementAt(lossFloors.Count / 2));
         Console.WriteLine("ability            taken   mean floor of those runs");
         foreach (var kv in taken.OrderByDescending(k => k.Value.Average()))
             Console.WriteLine("  " + kv.Key.PadRight(16) + kv.Value.Count.ToString().PadLeft(5) + "   " + kv.Value.Average().ToString("0.0"));
@@ -95,22 +103,25 @@ static class RogueBench
             var up = offer.FindAll(id => Gauntlet.Level(run, id) > 0);
             if (up.Count > 0) return up[rng.Next(up.Count)];
             var life = offer.Find(id => id == "life");
-            if (life != null && run.Lives <= 1) return life;
+            if (life != null && run.Floor % 5 == 4) return life;                // the extra rallies before a boss
             var keep = offer.FindAll(id => GauntletAbilities.Find(id).Kind != AbilityKind.Instant);
             if (keep.Count > 0) return keep[rng.Next(keep.Count)];
         }
         return offer[rng.Next(offer.Count)];
     }
 
-    static (bool, int, int, int) Floor(GauntletRun run, uint seed)
+    /// <summary>2026-11-21 the run goes into endless after floor 15 (--endless).</summary>
+    public static bool Endless = true, Verbose = Environment.GetEnvironmentVariable("ROGUE_V") == "1";
+
+    static (FloorPlay, int, int) Floor(GauntletRun run, uint seed, List<RunMod> talents)
     {
+        var play = Gauntlet.BeginFloor(run, talents);
         var f = Gauntlet.Floor(run, run.Floor);
         var traits = Gauntlet.OppMods(f);
         var s = new ReplaySetup
         {
-            Opponent = f.Style, Difficulty = (float)f.Difficulty, GamesToWin = 1, Scoring = "par", ParPoints = f.Points, BotSeed = seed, Lets = true,
+            Opponent = f.Style, Difficulty = (float)f.Difficulty, GamesToWin = 1, Scoring = "par", ParPoints = 999, BotSeed = seed, Lets = true,
             Attr0 = Gauntlet.Attributes(run), Mods0 = Gauntlet.SimMods(run), Attr1 = f.Attributes, Mods1 = traits,
-            EachGame0 = Gauntlet.HeadStart(run),
         };
         ReplayMatch.Configure(s);
         var m = ReplayMatch.Build(s);
@@ -118,8 +129,21 @@ static class RogueBench
         m.Players[0].WallAimEnabled = true; m.Players[0].ArcadeHitEnabled = true;
         Program.ArcadeAi(m);
         double dt = PhysicsConfig.Current.Sim.FixedDt;
-        int aces = 0, nicks = 0, last = -1;
-        while (m.Phase != MatchPhase.MatchOver && m.Time < 1800)
+        int aces = 0, nicks = 0, last = -1, pts = m.Score.Points[0];
+        m.RallyEnded += o =>
+        {
+            int gp = m.Score.Points[0] - pts; pts = m.Score.Points[0];
+            bool let = o == null || o.Kind == RallyEnd.Let || o.Winner < 0, won = !let && o.Winner == 0, notUp = !let && o.Kind == RallyEnd.NotUp;
+            var t = m.Ball.LastRacketContact;
+            GauntletFloor.Rally(play, new FloorRally
+            {
+                Won = won, Let = let, Kind = let ? RallyEnd.Let : o.Kind, Shots = m.Referee.Shots, GamePoints = gp,
+                Ace = won && notUp && m.Referee.Shots == 1, Nick = won && notUp && m.NickBy == 0,
+                Kill = won && notUp && m.LastStriker == 0 && t != null && t.Technique == "kill",
+            });
+            if (play.SpinDue) GauntletFloor.Spin(play);
+        };
+        while (!play.Done && m.Phase != MatchPhase.MatchOver && m.Time < 1800)
         {
             m.Step(dt);
             foreach (var e in m.StepEvents)
@@ -129,9 +153,7 @@ static class RogueBench
             }
         }
         foreach (var st in m.Stats) if (st.Shots == 1 && st.Outcome != null && st.Outcome.Kind == RallyEnd.NotUp && st.Outcome.Winner == 0) aces++;
-        bool won = m.Score.MatchWinner == 0;
-        int margin = Math.Abs(m.Score.Points[0] - m.Score.Points[1]);
         PhysicsConfig.ResetToDefaults();
-        return (won, margin, aces, nicks);
+        return (play, aces, nicks);
     }
 }

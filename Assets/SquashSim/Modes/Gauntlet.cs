@@ -35,7 +35,8 @@ namespace SquashSim.Modes
     [Serializable]
     public sealed class GauntletRun
     {
-        public const int CurrentVersion = 2;
+        /// <summary>3: 2026-11-21 the arcade remake - no hearts; a floor is a target score in a set number of rallies.</summary>
+        public const int CurrentVersion = 3;
         public int Version = CurrentVersion;
         public bool Active;
         public uint Seed;
@@ -51,11 +52,20 @@ namespace SquashSim.Modes
         public bool HasDeck { get { return Deck != null && Deck.Count > 0; } }
         /// <summary>The floor just won was a boss (its pick takes two levels).</summary>
         public bool BossPick;
+        /// <summary>2026-11-21 the arcade remake: rallies added to the next floor (Extra Rallies, Showtime...), floor 15 cleared
+        /// (the run won), the choice after it waiting, endless chosen, the last floor's score and the best one.</summary>
+        public int BonusRallies, LastFloorScore, BestFloorScore;
+        public bool RunWon, ChoiceDue, Endless;
+        /// <summary>The run ended by a failed floor (not taken as a win).</summary>
+        public bool Failed;
         public int FloorsWon { get { return Floor - 1; } }
     }
 
     public sealed class FloorInfo
     {
+        /// <summary>2026-11-21: the score to reach, and a boss's twists (Gauntlet.Twists ids).</summary>
+        public int Target;
+        public List<string> Twists = new List<string>();
         public FloorKind Kind;
         public string Style, Name, Title;
         public double Difficulty;
@@ -78,16 +88,10 @@ namespace SquashSim.Modes
         public static Career.Star StarFor(int floor)
         {
             var all = Career.Stars.All();
-            var kind = KindOf(floor);
-            if (kind == FloorKind.Normal) return null;
-            if (kind == FloorKind.Boss)
-            {
-                if (floor % 100 == 0) return Career.Stars.No1;
-                int c = (floor % 100) / 10 - 1;                                  // 0..8 within the hundred
-                return all[(floor < 100 ? 45 - 5 * c : 10 - c) - 1];
-            }
-            if (floor < 100) return all[Math.Max(2, 50 - floor / 2) - 1];
-            return all[10 + (int)(Hash((uint)floor) % 20u)];
+            if (KindOf(floor) != FloorKind.Boss) return null;
+            // 2026-11-21: floor 5 the No. 30, 10 the No. 15, 15 the No. 5; endless climbs to the No. 1 (floor 35), then round the top 10
+            int rank = floor == 5 ? 30 : floor == 10 ? 15 : floor == 15 ? 5 : floor <= 35 ? Math.Max(1, 5 - (floor - 15) / 5) : (floor / 5) % 10 + 1;
+            return rank == 1 ? Career.Stars.No1 : all[rank - 1];
         }
 
         /// <summary>The traits an elite can have (and a boss two of): RunMods ids on the opponent, and their names.</summary>
@@ -136,20 +140,76 @@ namespace SquashSim.Modes
 
         // ---------------- the floors ----------------
 
-        public static FloorKind KindOf(int floor) { return floor % 10 == 0 ? FloorKind.Boss : floor % 5 == 0 ? FloorKind.Elite : FloorKind.Normal; }
+        /// <summary>2026-11-21 the arcade remake: a boss every 5th floor (5, 10, 15 - then endless: 20, 25 ...).</summary>
+        public static FloorKind KindOf(int floor) { return floor % 5 == 0 ? FloorKind.Boss : FloorKind.Normal; }
+        /// <summary>Clear this floor and the run is won (then endless, if you choose).</summary>
+        public const int WinFloor = 15;
+
+        // ---------------- a floor's goal (2026-11-21) ----------------
+
+        public const int Rallies = 12, BossRallies = 14, FirstTarget = 300;
+        public const double TargetGrowth = 1.07, BossTarget = 1.15;
+
+        /// <summary>The score to reach on a floor: 300, then 7% more a floor (rounded to 50); a boss 15% more (MatchBench --rogue: a new player clears about 5 floors, with talents 8, 1 in 9 wins).</summary>
+        public static int TargetFor(int floor)
+        {
+            double t = FirstTarget * Math.Pow(TargetGrowth, Math.Max(0, floor - 1));
+            if (KindOf(floor) == FloorKind.Boss) t *= BossTarget;
+            return (int)(Math.Round(t / 50.0) * 50);
+        }
+
+        /// <summary>The rallies a floor gives: 12 (a boss 14), the Extra Rally talent, the run's bonus rallies, a Short Floor twist.</summary>
+        public static int RalliesFor(GauntletRun run, FloorInfo f, List<RunMod> talents)
+        {
+            int n = (f.Kind == FloorKind.Boss ? BossRallies : Rallies) + GauntletTalents.Level(talents, "hearty") + run.BonusRallies;
+            if (f.Twists.Contains("short")) n -= 2;
+            return Math.Max(3, n);
+        }
+
+        /// <summary>The bosses' twists (the user's "bad coins"): one a boss, two from floor 20.</summary>
+        public static readonly (string id, string name, string text)[] Twists =
+        {
+            ("ceiling", "Low Ceiling", "your multiplier stops at 3x"),
+            ("winners", "Winners Only", "their mistakes score nothing"),
+            ("short", "Short Floor", "2 fewer rallies"),
+            ("cannon", "Cannon", "their drives are faster"),
+            ("cold", "Cold Start", "your multiplier grows half as fast"),
+            ("nowheel", "No Wheel", "the wheel doesn't spin this floor"),
+        };
+
+        public static string TwistName(string id) { foreach (var t in Twists) if (t.id == id) return t.name; return id; }
+        public static string TwistText(string id) { foreach (var t in Twists) if (t.id == id) return t.text; return ""; }
+
+        /// <summary>A floor's play: its target and rallies, the twists set on the multiplier and the wheel, a head start's points.</summary>
+        public static FloorPlay BeginFloor(GauntletRun run, List<RunMod> talents)
+        {
+            var f = Floor(run, run.Floor);
+            var p = GauntletFloor.Begin(run.Floor, f.Target, RalliesFor(run, f, talents), Mix(run.Seed, (uint)run.Floor * 31u + 7u), HeadStart(run) * 100);
+            if (f.Twists.Contains("ceiling")) p.MaxMult = 3.0;
+            if (f.Twists.Contains("cold")) p.MultStep = 0.5;
+            if (f.Twists.Contains("winners")) p.WinnersOnly = true;
+            if (f.Twists.Contains("nowheel")) p.NoWheel = true;
+            return p;
+        }
 
         /// <summary>The AI's difficulty on a floor: from the easiest, a slow climb - the game's Medium about floor 20, Hard about
         /// 37, the top past 125 (MatchBench --rogue: a median player clears about 9 floors, 40% beat the first boss).
         /// 2026-10-28 (card decks: "bots needs to be harder and harder so it doesn't get boring when you keep winning"): past
         /// the Knee the climb steepens (Climb2 a floor more), and the opponent's athlete starts to grow from LiftFrom.</summary>
-        public static double Difficulty(int floor) { int f = Math.Max(1, floor); return Math.Min(1.0, Start + Climb * (f - 1) + Climb2 * Math.Max(0, f - Knee)); }
-        public const int Knee = 15, LiftFrom = 20, LiftEvery = 4, CannonFrom = 50;
+        public static double Difficulty(int floor)
+        {
+            // 2026-11-21 the arcade remake: 0.10 on floor 1 to 0.70 on floor 15, then +0.02 a floor in endless
+            int f = Math.Max(1, floor);
+            double d = f <= WinFloor ? 0.10 + 0.60 * (f - 1) / (WinFloor - 1) : 0.70 + 0.02 * (f - WinFloor);
+            return Math.Min(1.0, d);
+        }
+        public const int Knee = 15, LiftFrom = 10, LiftEvery = 3, CannonFrom = 30;
         public const double Climb2 = 0.012;
         public const double Start = 0.0, Climb = 0.0075;     // P6: 0.008 after the AI learned to keep out of its own shot and the line (median 8 floors); the chaos remake: 0.0055 -> 0.0075 (the cards are stronger: MatchBench --rogue median 15 -> 13, p25 9, a great build 80)
 
         public static FloorInfo Floor(GauntletRun run, int floor)
         {
-            var f = new FloorInfo { Kind = KindOf(floor), Difficulty = Difficulty(floor), Points = KindOf(floor) == FloorKind.Boss ? 11 : 7 };
+            var f = new FloorInfo { Kind = KindOf(floor), Difficulty = Difficulty(floor), Points = KindOf(floor) == FloorKind.Boss ? 11 : 7, Target = TargetFor(floor) };
             uint h = Mix(run.Seed, (uint)floor);
             var star = StarFor(floor);
             if (star != null)
@@ -159,7 +219,7 @@ namespace SquashSim.Modes
             if (f.Kind == FloorKind.Boss)
             {
                 f.Title = star.Title;
-                f.Difficulty = Math.Min(1.0, f.Difficulty + 0.02);
+                f.Difficulty = Math.Min(1.0, f.Difficulty + 0.05);
                 if (star == Career.Stars.No1) f.Difficulty = 1.0;               // the world No. 1 plays at their very best
                 f.Signature.AddRange(star.Signature);
             }
@@ -169,8 +229,20 @@ namespace SquashSim.Modes
                 f.Name = "Floor " + floor;
                 f.OpponentId = f.Style;
             }
-            int traits = f.Kind == FloorKind.Boss ? (floor >= 20 ? 2 : 1) : f.Kind == FloorKind.Elite ? 1 : 0;
-            if (floor > 40) traits += 1 + (floor - 40) / 15;                  // late floors: one more, and another every 15 (2026-10-28)
+            int traits = floor > WinFloor ? 1 + (floor - WinFloor) / 10 : 0;   // 2026-11-21: endless floors bend the rules too
+            // the bosses' twists: one, two from floor 20 (never the same twice)
+            if (f.Kind == FloorKind.Boss)
+            {
+                var tw = new List<int>(); for (int k = 0; k < Twists.Length; k++) tw.Add(k);
+                uint th = Mix(run.Seed ^ 0xB055u, (uint)floor);
+                for (int i = 0; i < (floor >= 20 ? 2 : 1) && tw.Count > 0; i++)
+                {
+                    th = Hash(th + 29);
+                    int k = tw[(int)(th % (uint)tw.Count)];
+                    tw.Remove(k);
+                    f.Twists.Add(Twists[k].id);
+                }
+            }
             var pool = new List<int>();
             for (int k = 0; k < Traits.Length; k++) pool.Add(k);
             for (int i = 0; i < traits && pool.Count > 0; i++)
@@ -180,7 +252,7 @@ namespace SquashSim.Modes
                 pool.Remove(k);
                 f.Traits.Add(new RunMod { Id = Traits[k].id, Level = Traits[k].id.StartsWith("e_") ? 1 : ChaosTraitLevel + (floor > 50 ? Math.Min(2, (floor - 50) / 15 + 1) : 0) });
             }
-            if (f.Kind == FloorKind.Elite) f.Title = "Elite  ·  " + TraitNames(f);
+            if (f.Twists.Contains("cannon") && !f.Traits.Exists(t => t.Id == "e_cannon")) f.Traits.Add(new RunMod { Id = "e_cannon", Level = 1 });
             // past LiftFrom the opponent's athlete grows; past CannonFrom the Cannon does
             int lift = floor > LiftFrom ? Math.Min(5, (floor - LiftFrom) / LiftEvery) : 0;
             bool wall = f.Traits.Exists(t => t.Id == "e_wall");
@@ -273,37 +345,61 @@ namespace SquashSim.Modes
             return (int)Math.Round(c);
         }
 
-        /// <summary>A floor won by this many points (with this many aces and nicks of yours): score, coins, heals, the pick.</summary>
-        public static void Won(GauntletRun run, int margin, int aces, int nicks, List<RunMod> talents = null)
+        /// <summary>2026-11-21 a floor cleared (its target reached): the score and coins (the wheel's too), its card levels, the
+        /// next floor's bonus rallies (Showtime, Nick Bank), the pick - one more card for beating the target by half again, and the
+        /// wheel's extra picks. Floor 15: the run is won (the choice: take the win, or endless).</summary>
+        public static void Won(GauntletRun run, FloorPlay play, int aces, int nicks, List<RunMod> talents = null)
         {
             if (!run.Active || run.Over || run.AwaitingPick) return;
             int floor = run.Floor;
             var kind = KindOf(floor);
-            double mult = kind == FloorKind.Boss ? 3 : kind == FloorKind.Elite ? 1.5 : 1;
-            run.Score += (int)Math.Round((100 + 10 * Math.Max(0, margin)) * mult);
-            run.Coins += CoinsFor(run, floor, talents);
-            if (aces > 0 && Level(run, "showtime") > 0) Heal(run);
-            if (nicks > 0 && Level(run, "nickbank") >= 5 && !run.NickHealed) { run.NickHealed = true; Heal(run); }
+            run.Score += play.Score;
+            run.LastFloorScore = play.Score;
+            if (play.Score > run.BestFloorScore) run.BestFloorScore = play.Score;
+            run.Coins += CoinsFor(run, floor, talents) + play.Coins;
+            run.BonusRallies = 0;
+            if (aces > 0 && Level(run, "showtime") > 0) run.BonusRallies++;
+            if (nicks > 0 && Level(run, "nickbank") >= 5 && !run.NickHealed) { run.NickHealed = true; run.BonusRallies++; }
+            for (int i = 0; i < play.CardLevels; i++) LevelUpOne(run, (uint)i);
             if (kind == FloorKind.Boss) run.BossesBeaten++;
             run.Floor++;
             run.BossPick = kind == FloorKind.Boss;
             run.Roll = 0;
-            int cards = Math.Min(MaxDraw, run.Cards + (kind == FloorKind.Elite ? 1 : 0) + LuckyCards(Level(run, "lucky")));   // 2026-10-30: Lucky, more cards
+            if (floor == WinFloor && !run.Endless) { run.RunWon = true; run.ChoiceDue = true; }
+            bool big = (long)play.Score * 2 >= (long)play.Target * 3;
+            int cards = Math.Min(MaxDraw, run.Cards + (big ? 1 : 0) + play.ExtraPicks + LuckyCards(Level(run, "lucky")));
             run.Offer = OfferFor(run, talents, cards);
             run.AwaitingPick = run.Offer.Count > 0;
         }
 
-        static void Heal(GauntletRun run) { if (run.Lives < MaxLives) run.Lives++; }
-
-        /// <summary>A floor lost: a heart (unless the golden racket saves it); none left - Revive once, else the run is over.</summary>
-        public static void Lost(GauntletRun run)
+        /// <summary>The wheel's "a card levels up": one of your powers, not yet at its top, one level up (seeded).</summary>
+        static void LevelUpOne(GauntletRun run, uint salt)
         {
-            if (!run.Active || run.Over) return;
-            if (run.Golden) { run.Golden = false; return; }
-            run.Lives--;
-            if (run.Lives > 0) return;
-            if (run.CanRevive && !run.Revived) { run.Revived = true; run.Lives = 1; return; }
-            run.Lives = 0; run.Over = true;
+            var can = new List<RunMod>();
+            foreach (var m in run.Abilities) { var a = GauntletAbilities.Find(m.Id); if (a != null && a.Kind != AbilityKind.Instant && m.Level < a.MaxLevel) can.Add(m); }
+            if (can.Count == 0) { run.Coins += 20; return; }
+            can[(int)(Mix(run.Seed, (uint)run.Floor * 977u + salt) % (uint)can.Count)].Level++;
+        }
+
+        /// <summary>2026-11-21 a floor failed (the rallies ran out short of the target): the run is over - unless the Golden Racket
+        /// or Second Chance gives the floor again (true: play it again).</summary>
+        public static bool Lost(GauntletRun run, FloorPlay play = null)
+        {
+            if (!run.Active || run.Over) return false;
+            if (play != null) { run.LastFloorScore = play.Score; if (play.Score > run.BestFloorScore) run.BestFloorScore = play.Score; }
+            if (run.Golden) { run.Golden = false; return true; }
+            if (run.CanRevive && !run.Revived) { run.Revived = true; return true; }
+            run.Over = true; run.Failed = true;
+            return false;
+        }
+
+        /// <summary>Floor 15 cleared: take the win (the run ends, won) or go on into endless.</summary>
+        public static void Choose(GauntletRun run, bool endless)
+        {
+            if (!run.ChoiceDue) return;
+            run.ChoiceDue = false;
+            if (endless) run.Endless = true;
+            else { run.Over = true; run.AwaitingPick = false; run.Offer.Clear(); }
         }
 
         // ---------------- the cards ----------------
@@ -335,7 +431,7 @@ namespace SquashSim.Modes
                 if (a.Kind == AbilityKind.Instant)
                 {
                     if (boss) continue;
-                    if (a.Id == "life" && run.Lives >= MaxLives) continue;
+                    if (a.Id == "life" && run.BonusRallies >= 4) continue;
                     if (a.Id == "golden" && run.Golden) continue;
                     w = a.Id == "coins" ? 6 : a.Id == "life" ? 8 : 4;
                 }
@@ -396,7 +492,7 @@ namespace SquashSim.Modes
                 offer.Add(pool[k]);
                 pool.RemoveAt(k);
             }
-            if (offer.Count == 0 && !run.BossPick) offer.Add(run.Lives < MaxLives ? "life" : "coins");
+            if (offer.Count == 0 && !run.BossPick) offer.Add(run.BonusRallies < 4 ? "life" : "coins");
             return offer;
         }
 
@@ -426,7 +522,7 @@ namespace SquashSim.Modes
             if (a == null) return false;
             switch (a.Kind == AbilityKind.Instant ? a.Id : null)
             {
-                case "life": Heal(run); break;
+                case "life": run.BonusRallies += 2; break;                     // 2026-11-21: +2 rallies on the next floor
                 case "golden": run.Golden = true; break;
                 case "coins": run.Coins += PurseCoins; break;
                 default: SetLevel(run, id, LevelAfter(run, id)); break;

@@ -1618,3 +1618,55 @@
 .k-wm-chip--maybe { background-color: rgb(255, 196, 64); color: rgb(14, 15, 18); }
 .k-wm-chip--no { background-color: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.75); }
 .k-ft-highline { margin-left: 18px; font-size: 13px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+
+/* ---------- 2026-11-21 the Gauntlet's arcade floors ---------- */
+.gt-target-big { position: absolute; left: 24px; bottom: 6px; font-size: 84px; -unity-text-align: lower-left; color: rgb(255, 255, 255);
+    text-shadow: 0 4px 18px rgba(0, 0, 0, 0.7); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.gt-twist { margin-top: 6px; font-size: 18px; white-space: normal; color: rgb(255, 120, 100); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* the floor bar (HUD) */
+.fb { position: absolute; top: 18px; left: 50%; translate: -50% 0; width: 420px; padding: 10px 16px; border-radius: 14px;
+    background-color: rgba(10, 10, 16, 0.78); border-width: 3px; border-color: rgb(255, 90, 74); }
+.fb-top, .fb-mid, .fb-mrow { flex-direction: row; justify-content: space-between; align-items: flex-end; }
+.fb-floor { font-size: 16px; color: rgb(255, 196, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-left { font-size: 16px; color: rgb(230, 230, 240); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-left--last { color: rgb(255, 90, 74); }
+.fb-score { font-size: 40px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-target { font-size: 22px; margin-bottom: 6px; color: rgb(170, 170, 190); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-bar { height: 12px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.12); overflow: hidden; margin: 4px 0; }
+.fb-fill { height: 100%; width: 0; background-color: rgb(255, 90, 74); transition-property: width; transition-duration: 0.25s; }
+.fb-fill--done { background-color: rgb(200, 255, 61); }
+.fb-mult { font-size: 28px; color: rgb(60, 170, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-mult--max { color: rgb(255, 196, 64); }
+.fb-power { font-size: 18px; color: rgb(255, 196, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-pop { position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px; font-size: 26px; -unity-text-align: middle-center;
+    color: rgb(200, 255, 61); text-shadow: 0 3px 10px rgba(0, 0, 0, 0.8); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fb-pop--lost { color: rgb(255, 90, 74); }
+
+/* the wheel */
+.fe-screen.wh-screen { left: 0; right: 0; top: 0; bottom: 0; width: auto; padding: 0; background-image: none;
+    background-color: rgba(0, 0, 0, 0.55); justify-content: center; align-items: center; }
+.wh-screen .fe-title { display: none; }
+.wh-screen > .fe-content, .wh-screen > VisualElement { align-items: center; }
+.wh-head { font-size: 54px; color: rgb(255, 255, 255); -unity-text-align: middle-center; text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.wh-head--gold { color: rgb(255, 214, 80); }
+.wh { width: 440px; height: 440px; align-self: center; margin: 12px 0; }
+.wh-disc { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.wh-label { position: absolute; width: 130px; height: 30px; margin-left: -65px; margin-top: -15px; font-size: 19px; -unity-text-align: middle-center;
+    color: rgb(15, 15, 20); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.wh-pointer { position: absolute; top: -34px; left: 50%; width: 60px; margin-left: -30px; font-size: 48px; -unity-text-align: middle-center; color: rgb(255, 255, 255);
+    text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9); }
+.wh-result { font-size: 40px; min-height: 52px; color: rgb(200, 255, 61); -unity-text-align: middle-center; text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+
+/* the floor's result */
+.fr-box { align-self: center; align-items: center; width: 640px; padding: 24px 28px; border-radius: 22px; background-color: rgba(12, 12, 18, 0.9); }
+.fr-big { flex-direction: row; align-items: flex-end; margin: 14px 0; }
+.fr-score { font-size: 84px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fr-target { font-size: 36px; margin: 0 0 16px 10px; color: rgb(170, 170, 190); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fr-rows { align-self: stretch; }
+.fr-row { flex-direction: row; justify-content: space-between; padding: 6px 4px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.1); }
+.fr-row-k { font-size: 20px; color: rgb(190, 190, 205); }
+.fr-row-v { font-size: 20px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.fr-note { margin-top: 14px; font-size: 22px; white-space: normal; -unity-text-align: middle-center; color: rgb(255, 196, 64); }

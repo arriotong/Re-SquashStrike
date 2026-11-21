@@ -228,7 +228,7 @@ namespace SquashGame.Tests
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P3_Gauntlet_Floor.png");
 
-            GauntletFlow.AfterMatch(fe, true, 4);                                    // as if floor 1 was won 7-3
+            GauntletFlow.AfterMatch(fe, true, 4);                                    // as if floor 1 was cleared
             yield return null; yield return null;
             var run = GauntletFlow.Run;
             Assert.That(run.AwaitingPick, Is.True);
@@ -247,7 +247,7 @@ namespace SquashGame.Tests
 
             var settings = GauntletFlow.Settings(run);
             Assert.That(settings.Gauntlet, Is.True); Assert.That(settings.GamesToWin, Is.EqualTo(1));
-            Assert.That(settings.ParPoints, Is.EqualTo(7), "a game to 7");
+            Assert.That(settings.GauntletFloor, Is.Not.Null, "2026-11-21: a floor's target, not a game"); Assert.That(settings.GauntletFloor.Floor, Is.EqualTo(2));
             Assert.That(settings.Difficulty, Is.EqualTo((float)SquashSim.Modes.Gauntlet.Difficulty(2)));
             // UI remake: a different court every floor, from all of them; a boss on a World Tour stage; the same for the same run
             Assert.That(settings.Court, Is.EqualTo(GauntletFlow.CourtFor(run, 2)));
@@ -268,21 +268,32 @@ namespace SquashGame.Tests
             GauntletFlow.Play(fe);
             yield return Wait(2f, () => fe.Match != null && fe.Match.Settings.Gauntlet && !fe.Match.Demo);
             var r = fe.Match;
-            Assert.That(PhysicsConfig.Current.Match.ParPoints, Is.EqualTo(7), "the match plays to 7");
+            Assert.That(r.Floor, Is.Not.Null, "2026-11-21: a floor - a target in its rallies");
+            Assert.That(r.Floor.Target, Is.EqualTo(SquashSim.Modes.Gauntlet.TargetFor(2)));
             r.SetAutopilot(new OpponentBrain(AiProfile.ByName("attacker").WithDifficulty(0.9), 5));
             r.SetTimeScale(12);
-            yield return Wait(240f, () => fe.Top is PostMatchScreen);
+            bool barSeen = false, wheelSeen = false;
+            yield return Wait(300f, () =>
+            {
+                if (r.Floor != null && r.Floor.Played > 0 && !barSeen) barSeen = true;
+                if (fe.Top is WheelScreen) wheelSeen = true;
+                return fe.Top is FloorResultScreen;
+            });
             r.SetTimeScale(SimRunnerBase.GameSpeed);
-            Assert.That(fe.Top, Is.InstanceOf<PostMatchScreen>(), "full time");
-            int w = r.Sim.Score.MatchWinner, pts = r.Sim.Score.Points[w];
-            Assert.That(pts == 7 || pts - r.Sim.Score.Points[1 - w] == 2, Is.True, "a game to 7: " + pts);
-            bool won = w == 0;
-            int lives = run.Lives;
+            Assert.That(fe.Top, Is.InstanceOf<FloorResultScreen>(), "the floor's result");
+            Assert.That(barSeen, Is.True);
+            var play = r.Floor;
+            Assert.That(play.Done, Is.True);
+            Assert.That(play.Cleared || play.Played >= play.Rallies, Is.True, "cleared, or out of rallies: " + play.Score + "/" + play.Target + " in " + play.Played + "/" + play.Rallies);
+            Debug.Log("[gauntlet floor] " + play.Score + "/" + play.Target + " in " + play.Played + "/" + play.Rallies + " spins " + play.Spins + " wheel shown " + wheelSeen);
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "P5_Gauntlet_FloorResult.png");
+            bool won = play.Cleared;
             yield return Tap(kb.enterKey);                                            // Continue
             yield return Wait(2f, () => fe.Top is GauntletScreen);
             Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>(), "back to the run");
-            if (won) Assert.That(GauntletFlow.Run.AwaitingPick, Is.True, "won: a pick");
-            else Assert.That(GauntletFlow.Run.Lives, Is.EqualTo(lives - 1), "lost: a heart");
+            if (won) Assert.That(GauntletFlow.Run.AwaitingPick, Is.True, "cleared: a pick");
+            else Assert.That(GauntletFlow.Run.Over, Is.True, "failed: the run is over");
 
             // ---- talents and the codex ----
             GauntletFlow.Abandon();
@@ -304,6 +315,45 @@ namespace SquashGame.Tests
         }
 
         /// <summary>P3-R6: Scenarios - the screen, a scenario's match starting part-way, its stars back on the screen.</summary>
+        [UnityTest]
+        public IEnumerator AGauntletFloorBarAndTheWheel()
+        {
+            // 2026-11-21 the arcade floors: the HUD's bar over a floor, the wheel spinning over the paused match
+            LocalMatchTests.FreshProfile();
+            FrontEnd.StartAtTitle = false;
+            var kb = InputSystem.AddDevice<Keyboard>();
+            SceneManager.LoadScene("Match");
+            yield return Menu(null);
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            GauntletFlow.NewRun();
+            GauntletFlow.Play(fe);
+            yield return Wait(3f, () => fe.Match != null && fe.Match.Settings.Gauntlet && !fe.Match.Demo);
+            var r = fe.Match;
+            r.SetAutopilot(new OpponentBrain(AiProfile.ByName("attacker").WithDifficulty(0.9), 5));
+            r.SetTimeScale(6);
+            yield return Wait(120f, () => r.Floor != null && r.Floor.Played >= 1 && r.Sim.Phase == MatchPhase.Rally);
+            r.SetTimeScale(SimRunnerBase.GameSpeed);
+            Assert.That(r.Floor.Played, Is.GreaterThanOrEqualTo(1));
+            yield return Wait(0.3f, () => false);
+            yield return CaptureUI(fe, "P5_Gauntlet_FloorBar.png");
+            // charge the wheel and end the streak: it spins
+            r.Floor.Power = 3; r.Floor.SpinDue = true;
+            yield return Wait(1f, () => fe.Top is WheelScreen);
+            Assert.That(fe.Top, Is.InstanceOf<WheelScreen>(), "the wheel");
+            Assert.That(r.Clock.Paused, Is.True, "the match waits");
+            yield return Wait(1.2f, () => false);
+            yield return CaptureUI(fe, "P5_Gauntlet_Wheel.png");
+            var wheel = (WheelScreen)fe.Top;
+            yield return Wait(2f, () => wheel.Spins.Count > 0 && false);
+            yield return CaptureUI(fe, "P5_Gauntlet_WheelPrize.png");
+            yield return Wait(8f, () => !(fe.Top is WheelScreen));
+            Assert.That(fe.Top, Is.Not.InstanceOf<WheelScreen>(), "spun: on with the floor");
+            Assert.That(r.Floor.Spins, Is.EqualTo(1));
+            Assert.That(r.Floor.Done || !r.Clock.Paused, Is.True, "the floor goes on");
+            GauntletFlow.Abandon();
+            fe.QuitToMenu();
+        }
+
         [UnityTest]
         public IEnumerator AScenarioStartsPartWayAndScoresStars()
         {

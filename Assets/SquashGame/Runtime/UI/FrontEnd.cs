@@ -534,8 +534,9 @@ namespace SquashGame.UI
             if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else if (Academy != null) AcademyScreens(dt); else PracticeScreens();
             if (Top != null)
             {
-                Top.Tick(dt);
-                Top.HandleInput(_input);
+                var top = Top;
+                top.Tick(dt);
+                if (Top == top) top.HandleInput(_input);                              // (a screen may close itself in its Tick)
             }
             // a developer's look at the UI kit (F12 on the main menu)
             var kbd = UnityEngine.InputSystem.Keyboard.current;
@@ -581,6 +582,13 @@ namespace SquashGame.UI
             bool playing = !m.Demo && !m.InSetup && m.Sim != null;
             bool onlineOver = m.OnlineMatch != null && m.OnlineMatch.Finished;
             if (onlineOver && Top is PauseScreen) Resume();                        // online: the match ended under the menu
+            // 2026-11-21 a Gauntlet floor: the wheel (the match paused under it), then the floor's result
+            if (playing && m.Floor != null)
+            {
+                if (Top == null && m.WheelDue) { Push(new WheelScreen()); return; }
+                if (Top == null && m.FloorOver) { Push(new FloorResultScreen()); return; }
+                if (Top is WheelScreen || Top is FloorResultScreen) return;
+            }
             if (playing && Top == null && m.Clock.Paused && m.DeviceLost == null && !m.ReplayActive) Push(new PauseScreen());
             if (Top is PauseScreen && !m.Clock.Paused) Pop();                      // resumed with Esc / Start
             if (playing && Top == null && (m.Sim.Phase == MatchPhase.MatchOver || onlineOver))

@@ -74,6 +74,9 @@ namespace SquashGame
         public string OppKit;
         /// <summary>P5 the Gauntlet: a game to this many (0: the scoring's own); the opponent's attributes; both sides' run abilities.</summary>
         public int ParPoints;
+        /// <summary>2026-11-21 a Gauntlet floor (the arcade remake): its target, rallies, multiplier and wheel - the game's own score
+        /// doesn't decide it. Null: an ordinary match.</summary>
+        public SquashSim.Modes.FloorPlay GauntletFloor;
         /// <summary>P5: Focus charges each game (the Gauntlet's slow motion; 0: none).</summary>
         public int FocusCharges;
         /// <summary>2026-11-20 Quick Match's Abilities: Focus is paid for from the Special meter (RunMods.FocusCost), not charges.</summary>
@@ -275,7 +278,60 @@ namespace SquashGame
                 Names[0] = string.IsNullOrEmpty(Settings.P1Name) ? "YOU" : Settings.P1Name; Names[1] = OpponentName;
             }
             Sim.RallyEnded += OnRallyEnded;
+            // 2026-11-21 a Gauntlet floor: a fresh copy of its play (a restart plays it from the start again)
+            Floor = Settings.GauntletFloor != null ? Settings.GauntletFloor.Clone() : null;
+            FloorOver = false; FloorPops = 0; _floorPts = Sim.Score.Points[0];
         }
+
+        // ---------------- 2026-11-21 the Gauntlet's arcade floors ----------------
+
+        /// <summary>The floor being played (null: an ordinary match), its last rally's pop, the floor over (cleared or failed).</summary>
+        public SquashSim.Modes.FloorPlay Floor { get; private set; }
+        public SquashSim.Modes.FloorScore LastFloorPop { get; private set; }
+        public float LastFloorPopAt { get; private set; } = -99f;
+        public int FloorPops { get; private set; }
+        public bool FloorOver { get; private set; }
+        /// <summary>The wheel is due a spin (the front end shows it, the match paused).</summary>
+        public bool WheelDue { get { return Floor != null && Floor.SpinDue && !FloorOver; } }
+        int _floorPts;
+
+        void FloorTick()
+        {
+            if (Floor != null && Sim != null && Sim.Phase == MatchPhase.Rally) _floorPts = Sim.Score.Points[HumanIndex >= 0 ? HumanIndex : 0];
+        }
+
+        /// <summary>A rally of the floor ended: how it was won (its game points: the Jackpot cards' extra ones), scored.</summary>
+        void FloorRally(RallyOutcome o)
+        {
+            int me = HumanIndex >= 0 ? HumanIndex : 0;
+            int pts = Sim.Score.Points[me];
+            int gp = pts - _floorPts; _floorPts = pts;
+            bool let = o == null || o.Kind == RallyEnd.Let || o.Winner < 0;
+            bool won = !let && o.Winner == me;
+            bool notUp = !let && o.Kind == RallyEnd.NotUp;
+            var touch = Sim.Ball.LastRacketContact;
+            var r = new SquashSim.Modes.FloorRally
+            {
+                Won = won, Let = let, Kind = let ? RallyEnd.Let : o.Kind, Shots = Sim.Referee.Shots, GamePoints = gp,
+                Ace = won && notUp && Sim.Referee.Shots == 1,
+                Nick = won && notUp && Sim.NickBy == me,
+                Kill = won && notUp && Sim.LastStriker == me && touch != null && touch.Technique == "kill",
+            };
+            if (let) return;
+            LastFloorPop = SquashSim.Modes.GauntletFloor.Rally(Floor, r);
+            LastFloorPopAt = Time.unscaledTime; FloorPops++;
+            if (!Floor.SpinDue && Floor.Done) EndFloor();
+        }
+
+        /// <summary>The wheel has spun (WheelScreen): on with the floor, or its end.</summary>
+        public void WheelSpun()
+        {
+            if (Floor == null) return;
+            if (Floor.Done) EndFloor();
+            else Clock.Resume();
+        }
+
+        void EndFloor() { FloorOver = true; Clock.Pause(); }
 
         // ---------------- devices ----------------
 
@@ -394,6 +450,7 @@ namespace SquashGame
 
         void OnRallyEnded(RallyOutcome o)
         {
+            if (Floor != null) FloorRally(o);
             LastCall = null; LastCallStriker = -1;
             if (!UI.CallWords.IsCall(o)) return;
             // The interference state is still the call's (it moves on at the end of this step).
@@ -471,6 +528,7 @@ namespace SquashGame
             WatchDevices();
             Cutscene();
             PuzzleTick(Time.unscaledDeltaTime);
+            FloorTick();
             // A review is skipped with any key (not on the frame it started).
             if (ReplayActive) { if (_reviewFrames++ > 0 && AnyPress()) StopReplay(); }
             else { _reviewFrames = 0; ReviewingCall = false; }
@@ -563,6 +621,7 @@ namespace SquashGame
             SquashSim.Modes.BookPuzzles.Flight(mo, out V3 bp, out V3 bv, out int bounces);
             Sim.BeginMoment(new V3(mo.MeX, 0, mo.MeZ), new V3(mo.OppX, 0, mo.OppZ), bp, bv, bounces);
             Puzzle = p; PuzzleStage = PuzzleStep.Choosing; PuzzleChoice = -1; PuzzleResult = 0.5;
+            Floor = null; FloorOver = false;
             ClearDebugHistory();
             Demo = false; InSetup = false; DeviceLost = null;
             Clock.TimeScale = GameSpeed;
@@ -765,6 +824,7 @@ namespace SquashGame
             _setup = info.Setup;
             Sim = s.Sim;
             Sim.RallyEnded += OnRallyEnded;
+            Floor = null; FloorOver = false;
             s.Core.Stepped += OnOnlineStep;
             OpponentName = string.IsNullOrEmpty(info.OppName) ? "OPPONENT" : info.OppName.ToUpperInvariant();
             Names[s.Me] = "YOU"; Names[s.Them] = OpponentName;
