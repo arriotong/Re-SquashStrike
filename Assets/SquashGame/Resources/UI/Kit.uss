@@ -1670,3 +1670,60 @@
 .fr-row-k { font-size: 20px; color: rgb(190, 190, 205); }
 .fr-row-v { font-size: 20px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .fr-note { margin-top: 14px; font-size: 22px; white-space: normal; -unity-text-align: middle-center; color: rgb(255, 196, 64); }
+
+/* ================= 2026-11-21 the polish pass (Juice) ================= */
+.k-card { transition-property: scale, border-color, translate, opacity; transition-duration: 0.14s, 0.14s, 0.14s, 0.2s; }
+.k-card:hover { border-color: rgba(200, 255, 61, 0.55); }
+.k-card.fe-item--focused { scale: 1.045 1.045; translate: 0 -8px; }
+.k-card--press, .k-card.fe-item--focused.k-card--press { scale: 0.97 0.97; translate: 0 -2px; transition-duration: 0.06s; }
+.k-card-shine { position: absolute; top: -40%; bottom: -40%; left: -30%; width: 22%; rotate: 18deg; background-color: rgba(255, 255, 255, 0.10);
+    translate: -400px 0; transition-property: translate; transition-duration: 0s; }
+.k-card.fe-item--focused .k-card-shine { translate: 900px 0; transition-duration: 0.75s; transition-timing-function: ease-out-cubic; }
+.fe-item { transition-property: scale, translate, opacity, background-color; transition-duration: 0.12s; }
+.jc-pre { opacity: 0; translate: 0 26px; }
+.k-card.jc-pre { opacity: 0; translate: 0 36px; scale: 0.96 0.96; }
+.jc-fade-pre { opacity: 0; }
+.jc-fade-pre, .k-page { transition-property: opacity; transition-duration: 0.2s; }
+.jc-bump { scale: 1.25 1.25; }
+.k-coins, .rw-xp, .rw-level, .k-count { transition-property: scale; transition-duration: 0.1s; }
+.jc-coin { width: 22px; height: 22px; border-radius: 11px; background-color: rgb(255, 196, 64); border-width: 3px; border-color: rgb(200, 130, 20); }
+.jc-ring { border-width: 5px; }
+.jc-spark { width: 8px; height: 8px; border-radius: 4px; }
+.jc-dust { background-color: rgb(220, 220, 230); }
+
+.k-starrow { flex-direction: row; align-items: center; }
+.k-starrow-star { font-size: 46px; margin-right: 6px; color: rgba(255, 255, 255, 0.18); scale: 0.8 0.8; transition-property: scale, color; transition-duration: 0.18s; transition-timing-function: ease-out-back; }
+.k-starrow-star--on { color: rgb(255, 207, 58); scale: 1.1 1.1; }
+.sc-result-starrow { flex-direction: row; align-items: center; }
+.sc-result-starrow > .sc-result-stars { margin-left: 14px; font-size: 26px; }
+.rw-level--burst { color: rgb(200, 255, 61); }
+
+/* the match HUD's polish */
+.sb-side { position: relative; transition-property: background-color; transition-duration: 0.3s; border-radius: 8px; }
+.sb-side--won { background-color: rgba(200, 255, 61, 0.22); transition-duration: 0.05s; }
+.sb-plus { position: absolute; right: -6px; top: 18px; font-size: 26px; color: rgb(200, 255, 61); opacity: 0; translate: 0 0;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+    transition-property: translate, opacity; transition-duration: 0.6s; transition-timing-function: ease-out-cubic; }
+.sb-plus--on { opacity: 1; }
+.sb-plus--go { translate: 8px -34px; opacity: 0; }
+.sb--matchball { border-color: rgb(255, 196, 64); }
+.hud-ball--pulse { scale: 1.1 1.1; color: rgb(255, 214, 90); }
+.hud-callout { position: absolute; left: 0; top: 30%; padding: 10px 34px 10px 28px; font-size: 40px; letter-spacing: 3px; color: rgb(16, 16, 20);
+    background-color: rgb(200, 255, 61); border-top-right-radius: 14px; border-bottom-right-radius: 14px; translate: -110% 0;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); transition-property: translate; transition-duration: 0.28s; transition-timing-function: ease-out-back; }
+.hud-callout--in { translate: 0 0; }
+.hud-confetti { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.hud-confetti-bit { position: absolute; border-radius: 2px; }
+.hud-win { position: absolute; left: 0; right: 0; top: 3%; align-items: center; opacity: 0; scale: 2.4 2.4;
+    transition-property: scale, opacity; transition-duration: 0.32s; transition-timing-function: ease-out-back; }
+.hud-win--in { opacity: 1; scale: 1 1; }
+.hud-win-title { font-size: 120px; letter-spacing: 6px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 6px 24px rgba(0, 0, 0, 0.85); }
+.hud-win--lost .hud-win-title { color: rgb(255, 255, 255); }
+.hud-win-sub { font-size: 28px; letter-spacing: 3px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 3px 10px rgba(0, 0, 0, 0.85); }
+
+/* the fade between menus and matches */
+.fe-fade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgb(6, 7, 9); justify-content: flex-end; align-items: flex-end; padding: 48px 64px; }
+.fe-fade-ball { width: 44px; height: 44px; border-radius: 22px; background-color: rgb(20, 20, 24); border-width: 4px; border-color: rgb(200, 255, 61); }
+.fe-fade-dot { position: absolute; left: 7px; top: 7px; width: 9px; height: 9px; border-radius: 5px; background-color: rgb(255, 214, 90); }

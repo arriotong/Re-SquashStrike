@@ -260,6 +260,38 @@ namespace SquashGame.UI
             AddToClassList("k-stamp--in");
             pickingMode = PickingMode.Ignore;
             schedule.Execute(() => { RemoveFromClassList("k-stamp--in"); Sounds.Play("stamp"); }).StartingIn((long)(delay * 1000));
+            // 2026-11-21 the polish pass: it lands with a thump - the panel shakes, dust puffs out, the pad buzzes
+            schedule.Execute(() =>
+            {
+                Juice.Shake(parent, 5f, 0.22f);
+                Juice.Dust(this);
+                Juice.Rumble(0.35f, 0.15f, 0.12f);
+                if (ClassListContains("k-stamp--good")) Juice.Burst(this, new Color32(200, 255, 61, 255), 10);
+            }).StartingIn((long)(delay * 1000) + 90);
+        }
+    }
+
+    /// <summary>2026-11-21 stars that pop on one by one (a burst each), the empty ones dim.</summary>
+    public sealed class StarRow : VisualElement
+    {
+        public int Shown { get; private set; }
+
+        public StarRow(int got, int max = 3, float delay = 0.4f, float gap = 0.35f)
+        {
+            AddToClassList("k-starrow");
+            pickingMode = PickingMode.Ignore;
+            for (int i = 0; i < max; i++)
+            {
+                var st = new Label("★"); st.AddToClassList("k-starrow-star"); st.pickingMode = PickingMode.Ignore; Add(st);
+                if (i >= got) continue;
+                int k = i;
+                if (!Juice.On) { st.AddToClassList("k-starrow-star--on"); Shown = k + 1; continue; }
+                st.schedule.Execute(() =>
+                {
+                    st.AddToClassList("k-starrow-star--on"); Shown = k + 1;
+                    Sounds.Play("star"); Juice.Burst(st, new Color32(255, 207, 58, 255), 8); Juice.Rumble(0.2f, 0.3f, 0.08f);
+                }).StartingIn((long)((delay + gap * i) * 1000));
+            }
         }
     }
 }

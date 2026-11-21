@@ -177,7 +177,29 @@ namespace SquashGame.Athlete
         /// <summary>P2-M5: the pose of a match moment to hold (the celebration), or null - polled every frame.</summary>
         public System.Func<string> MomentSource;
         AthletePose _moment;
-        float _momentW;
+        float _momentW, _celT;
+        /// <summary>2026-11-21 the winner turns to the camera to celebrate (a real match's end; the menus: off).</summary>
+        public bool FaceCameraAtEnd;
+        /// <summary>How long the celebration has played (tests).</summary>
+        public float CelebrationPlayed { get { return _celT; } }
+
+        /// <summary>How much of a celebration's pose shows now: springs in past full, then a beat of its own - a fist pumps, a racket
+        /// shakes, arms sway, a bow goes down and up, a roar heaves.</summary>
+        static float CelebrationBeat(string name, float t)
+        {
+            float spring = t < 0.5f ? 1f + 0.18f * Mathf.Sin(t / 0.5f * Mathf.PI) : 1f;           // overshoot on the way in
+            float beat = t < 0.5f ? 0f : t - 0.5f;
+            switch (name)
+            {
+                case "cel_fist": return spring * (0.78f + 0.22f * Mathf.Abs(Mathf.Sin(beat * Mathf.PI * 1.7f)));
+                case "cel_raise": return spring * (0.86f + 0.14f * Mathf.Sin(beat * Mathf.PI * 4.2f));
+                case "cel_sky": return spring * (0.85f + 0.15f * Mathf.Abs(Mathf.Sin(beat * Mathf.PI * 1.2f)));
+                case "cel_wide": return spring * (0.88f + 0.12f * Mathf.Sin(beat * Mathf.PI * 1.1f));
+                case "cel_bow": return t < 0.4f ? t / 0.4f : 0.65f + 0.35f * (0.5f + 0.5f * Mathf.Cos(beat * Mathf.PI * 0.9f));
+                case "cel_knee": return spring * (0.9f + 0.1f * Mathf.Sin(beat * Mathf.PI * 2.6f));
+                default: return spring;
+            }
+        }
         /// <summary>The moment's pose being shown (tests).</summary>
         public string MomentShown { get; private set; }
         AthletePose _diveFrom;
@@ -364,8 +386,22 @@ namespace SquashGame.Athlete
             if (moment != null) { var mp = PoseLibrary.Active.Find(moment); if (mp != null) _moment = mp; }
             _momentW = MatchRunner.Studio && moment != null && _moment != null ? 1f                                       // (in the studio: standing at once)
                      : Mathf.MoveTowards(_momentW, moment != null && _moment != null ? 1f : 0f, (MatchRunner.Showcase ? 8f : 2.2f) * dt);
-            if (_momentW > 0.001f && _moment != null) { _tmp.Set(_moment); _out.Blend(_tmp, Ease(_momentW)); }
+            // 2026-11-21 the polish pass (the user: "the celebration from cosmetics actually plays"): a celebration moves - it
+            // springs in, then pumps / sways / bows on a beat; at the end of a real match the winner turns to the camera
+            bool cel = moment != null && _moment != null && _moment.Name.StartsWith("cel_") && !MatchRunner.Studio;
+            _celT = cel ? _celT + dt : 0f;
+            float celMod = cel ? CelebrationBeat(_moment.Name, _celT) : 1f;
+            if (_momentW > 0.001f && _moment != null) { _tmp.Set(_moment); _out.Blend(_tmp, Ease(_momentW) * celMod); }
             MomentShown = _momentW > 0.5f && _moment != null ? _moment.Name : null;
+            if (cel && FaceCameraAtEnd && Camera.main != null)
+            {
+                Vector3 toCam = Camera.main.transform.position - transform.position; toCam.y = 0f;
+                if (toCam.sqrMagnitude > 0.01f)
+                {
+                    float k = Ease(Mathf.Clamp01((_celT - 0.25f) / 0.9f));
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(-toCam.normalized, up), k);
+                }
+            }
 
             // ---------------- body ----------------
             _out.ApplyBody(Rig);
@@ -406,6 +442,11 @@ namespace SquashGame.Athlete
             if (!still) _bounce += dt * 2.3f * Mathf.PI * 2f;
             float toes = waiting ? Mathf.Abs(Mathf.Sin(_bounce * 0.5f)) * 0.012f : 0f;
             pelvis.localPosition += Vector3.up * (bob + toes + splitLift - splitDip - _plant * 0.06f);
+            if (_celT > 0f && _momentW > 0.05f && _moment != null && _moment.Name != "cel_bow" && _moment.Name != "cel_knee")
+            {
+                float hop = _celT < 0.42f ? Mathf.Sin(_celT / 0.42f * Mathf.PI) * 0.11f : Mathf.Abs(Mathf.Sin((_celT - 0.42f) * Mathf.PI * 1.7f)) * 0.025f;
+                pelvis.localPosition += Vector3.up * hop * _momentW;                   // a jump into it, then a bounce on the beat
+            }
 
             // ---------------- the racket target ----------------
             float w = 0f;

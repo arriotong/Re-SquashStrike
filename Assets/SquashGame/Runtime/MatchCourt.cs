@@ -51,6 +51,7 @@ namespace SquashGame
                 int who = i;
                 athlete.KitSource = () => Progression.KitDirector.For(Runner, who);          // online you may be athlete 1
                 athlete.MomentSource = () => Progression.KitDirector.Moment(Runner, who);   // the celebration
+                athlete.FaceCameraAtEnd = true;
                 Athlete.AthleteBody.Attach(athlete, Palette.Lit);                           // 2026-11-01: the real players
             }
 
@@ -78,6 +79,11 @@ namespace SquashGame
             var landing = new GameObject("LandingMarker").AddComponent<LandingMarkerView>();
             landing.transform.SetParent(transform, false);
             landing.Build(Runner, Palette);
+
+            // 2026-11-21 the polish pass: rings where a big shot dies
+            var burst = new GameObject("ImpactBurst").AddComponent<ImpactBurst>();
+            burst.transform.SetParent(transform, false);
+            burst.Build(Runner, Palette);
 
             // P2-M7: the referee review's drawing on the floor.
             var obstruction = new GameObject("ObstructionOverlay").AddComponent<ObstructionOverlay>();

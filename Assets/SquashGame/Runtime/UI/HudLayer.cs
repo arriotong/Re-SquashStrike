@@ -23,6 +23,7 @@
 // ===========================================================
 
 using SquashSim;
+using SquashGame.UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -127,6 +128,8 @@ namespace SquashGame
                 var bar = new VisualElement(); bar.AddToClassList("sb-stamina");
                 _stamina[p] = new VisualElement(); _stamina[p].AddToClassList("sb-stamina-fill");
                 bar.Add(_stamina[p]); side.Add(bar);
+                _plus[p] = new Label("+1"); _plus[p].AddToClassList("sb-plus"); _plus[p].pickingMode = PickingMode.Ignore; side.Add(_plus[p]);
+                _side[p] = side;
                 _bug.Add(side);
                 if (p == 0) _bug.Add(mid);
             }
@@ -166,6 +169,13 @@ namespace SquashGame
             _pop.AddToClassList("hud-pop"); _pop.style.display = DisplayStyle.None; Add(_pop);
             _popSmall.AddToClassList("hud-pop-small"); _popSmall.style.display = DisplayStyle.None; Add(_popSmall);
             _floorBar.style.display = DisplayStyle.None; Add(_floorBar);
+            // 2026-11-21 the polish pass: the callouts (3 IN A ROW, COMEBACK), the match won's title, the confetti
+            _callout.AddToClassList("hud-callout"); _callout.pickingMode = PickingMode.Ignore; _callout.style.display = DisplayStyle.None; Add(_callout);
+            _confetti.AddToClassList("hud-confetti"); _confetti.pickingMode = PickingMode.Ignore; Add(_confetti);
+            _win.AddToClassList("hud-win"); _win.pickingMode = PickingMode.Ignore; _win.style.display = DisplayStyle.None;
+            _winTitle.AddToClassList("hud-win-title"); _winSub.AddToClassList("hud-win-sub");
+            _winTitle.pickingMode = PickingMode.Ignore; _winSub.pickingMode = PickingMode.Ignore;
+            _win.Add(_winTitle); _win.Add(_winSub); Add(_win);
             foreach (var l in new[] { _banner, _sub, _centre, _prompt, _promptKey, _meta, _letKey, _ball, _rally, _introNames, _introSub, _powerLabel, _pop, _popSmall, _freezeWord }) l.pickingMode = PickingMode.Ignore;
             foreach (var v in new[] { _power, _powerFill, track, _freeze }) v.pickingMode = PickingMode.Ignore;
         }
@@ -175,6 +185,101 @@ namespace SquashGame
             bool on = !string.IsNullOrEmpty(text);
             l.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
             if (on && l.text != text) l.text = text;
+        }
+
+        // ---------------- 2026-11-21 the polish pass ----------------
+        readonly Label[] _plus = new Label[2];
+        readonly VisualElement[] _side = new VisualElement[2];
+        readonly Label _callout = new Label(), _winTitle = new Label(), _winSub = new Label();
+        readonly VisualElement _confetti = new VisualElement(), _win = new VisualElement();
+        float _calloutLeft;
+        int _seenRallies = -1, _streak, _streakWho = -1, _gamesSeen = -1;
+        readonly int[] _down = new int[2];
+        bool _comebackCalled;
+        object _celebFor;
+        /// <summary>The last callout (tests), the match-won title while it shows.</summary>
+        public string LastCallout { get; private set; }
+        public string WinTitle { get { return _win.style.display == DisplayStyle.Flex ? _winTitle.text : null; } }
+
+        void Callout(string text)
+        {
+            LastCallout = text;
+            _callout.text = text;
+            _callout.style.display = DisplayStyle.Flex;
+            _callout.RemoveFromClassList("hud-callout--in");
+            _callout.schedule.Execute(() => _callout.AddToClassList("hud-callout--in")).StartingIn(16);
+            _calloutLeft = 1.8f;
+        }
+
+        /// <summary>A rally won: the streaks, the comebacks.</summary>
+        void Callouts(MatchRunner r, MatchSimulation m, MatchScore s, string[] names)
+        {
+            int games = s.Games[0] + s.Games[1];
+            if (games != _gamesSeen) { _gamesSeen = games; _down[0] = _down[1] = 0; _comebackCalled = false; }
+            if (_seenRallies < 0 || m.History.Count < _seenRallies) { _seenRallies = m.History.Count; _streak = 0; _streakWho = -1; return; }
+            if (m.History.Count == _seenRallies) return;
+            _seenRallies = m.History.Count;
+            var o = m.History[m.History.Count - 1];
+            if (o == null || o.Winner < 0 || r.Floor != null) return;
+            int w = o.Winner;
+            if (w == _streakWho) _streak++; else { _streak = 1; _streakWho = w; }
+            bool you = !r.Settings.TwoPlayer && w == r.HumanIndex;
+            string who = you ? "" : names[w].ToUpperInvariant() + ":  ";
+            if (m.Phase == MatchPhase.MatchOver || m.Phase == MatchPhase.GameOver) return;
+            // (this game's points: down by 4 or more, then level or ahead - a comeback)
+            for (int p = 0; p < 2; p++) _down[p] = Mathf.Max(_down[p], s.Points[1 - p] - s.Points[p]);
+            if (!_comebackCalled && _down[w] >= 4 && s.Points[w] >= s.Points[1 - w]) { _comebackCalled = true; Callout(who + "COMEBACK!"); return; }
+            if (_streak == 3 || _streak == 5 || (_streak >= 7 && _streak % 2 == 1)) Callout(who + _streak + " IN A ROW!");
+        }
+
+        /// <summary>The match won: the title slams in, the confetti falls (once).</summary>
+        void Celebrate(MatchRunner r, MatchSimulation m, MatchScore s, string[] names)
+        {
+            bool on = m.Phase == MatchPhase.MatchOver && r.CelebrationTime >= 0 && !r.ReplayActive && Juice.Big && r.OnlineMatch == null;
+            if (!on) { _win.style.display = DisplayStyle.None; _win.RemoveFromClassList("hud-win--in"); return; }
+            int w = s.MatchWinner;
+            if (w < 0) return;
+            bool you = !r.Settings.TwoPlayer && w == r.HumanIndex;
+            _winTitle.text = you ? "YOU WIN!" : r.Settings.TwoPlayer ? names[w].ToUpperInvariant() + " WINS!" : "MATCH";
+            _winSub.text = (you || r.Settings.TwoPlayer ? "" : names[w] + " wins   ·   ") + "games " + s.Games[w] + "-" + s.Games[1 - w];
+            _win.EnableInClassList("hud-win--lost", !you && !r.Settings.TwoPlayer);
+            if (r.CelebrationTime > 0.7f && _win.style.display == DisplayStyle.None)
+            {
+                _win.style.display = DisplayStyle.Flex;
+                _win.schedule.Execute(() => _win.AddToClassList("hud-win--in")).StartingIn(16);
+                Sounds.Play("stamp");
+            }
+            if (!ReferenceEquals(_celebFor, m) && r.CelebrationTime > 0.8f && (you || r.Settings.TwoPlayer)) { _celebFor = m; Confetti(); }
+        }
+
+        static readonly Color[] ConfettiColours =
+        {
+            new Color32(200, 255, 61, 255), new Color32(255, 90, 74, 255), new Color32(60, 170, 255, 255),
+            new Color32(255, 196, 64, 255), new Color32(190, 110, 255, 255), new Color32(255, 255, 255, 255)
+        };
+
+        void Confetti()
+        {
+            var lay = _confetti.layout;
+            float w = lay.width > 10 ? lay.width : 1920f, h = lay.height > 10 ? lay.height : 1080f;
+            for (int i = 0; i < 90; i++)
+            {
+                var c = new VisualElement(); c.AddToClassList("hud-confetti-bit"); c.pickingMode = PickingMode.Ignore;
+                c.style.backgroundColor = ConfettiColours[i % ConfettiColours.Length];
+                float x = Random.Range(0f, w), y = -Random.Range(20f, h * 0.6f), vy = Random.Range(160f, 320f), sway = Random.Range(20f, 60f);
+                float spin = Random.Range(-540f, 540f), phase = Random.value * 6f, t = 0, life = Random.Range(3.2f, 4.6f);
+                c.style.width = Random.Range(8f, 14f); c.style.height = Random.Range(12f, 22f);
+                _confetti.Add(c);
+                c.schedule.Execute(() =>
+                {
+                    t += 0.016f;
+                    c.style.left = x + Mathf.Sin(phase + t * 3f) * sway;
+                    c.style.top = y + vy * t;
+                    c.style.rotate = new Rotate(spin * t);
+                    c.style.opacity = Mathf.Clamp01((life - t) * 2f);
+                    if (t >= life) c.RemoveFromHierarchy();
+                }).Every(16).Until(() => c.parent == null);
+            }
         }
 
         /// <summary>2026-11-21 the Gauntlet floor's bar (target, score, rallies left, multiplier, wheel).</summary>
@@ -202,6 +307,17 @@ namespace SquashGame
                 {
                     var l = _points[p];
                     if (_lastPoints[p] >= 0) { l.AddToClassList("sb-score--flip"); l.schedule.Execute(() => l.RemoveFromClassList("sb-score--flip")).StartingIn(160); }
+                    if (_lastPoints[p] >= 0 && s.Points[p] > _lastPoints[p] && Juice.On)
+                    {
+                        // 2026-11-21 the polish pass: a "+1" floats up off the score, the side flashes
+                        var plus = _plus[p]; var side = _side[p];
+                        plus.text = "+" + (s.Points[p] - _lastPoints[p]);
+                        plus.RemoveFromClassList("sb-plus--go"); plus.AddToClassList("sb-plus--on");
+                        plus.schedule.Execute(() => plus.AddToClassList("sb-plus--go")).StartingIn(30);
+                        plus.schedule.Execute(() => plus.RemoveFromClassList("sb-plus--on")).StartingIn(700);
+                        side.AddToClassList("sb-side--won");
+                        side.schedule.Execute(() => side.RemoveFromClassList("sb-side--won")).StartingIn(450);
+                    }
                     _lastPoints[p] = s.Points[p];
                 }
                 _points[p].text = s.Points[p].ToString();
@@ -292,6 +408,11 @@ namespace SquashGame
             _promptBox.style.display = strip ? DisplayStyle.Flex : DisplayStyle.None;
             if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
             _banner.style.fontSize = 40 * CallTextScale;
+            Callouts(r, m, s, names);
+            if (_calloutLeft > 0) { _calloutLeft -= Time.unscaledDeltaTime; if (_calloutLeft <= 0) { _callout.style.display = DisplayStyle.None; _callout.RemoveFromClassList("hud-callout--in"); } }
+            Celebrate(r, m, s, names);
+            if (_win.style.display == DisplayStyle.Flex) { _centre.style.display = DisplayStyle.None; _meta.style.display = DisplayStyle.None; }
+            else _meta.style.display = DisplayStyle.Flex;
             LetChip(r, m, twoPlayer);
             NetChip(r);
             Broadcast(r, m, s, names);
@@ -401,6 +522,11 @@ namespace SquashGame
                 for (int p = 0; p < 2; p++)
                     if (GameBall(s, p)) ball = (s.Games[p] + 1 >= s.GamesToWin ? "MATCH BALL" : "GAME BALL") + "  ·  " + names[p];
             Show(_ball, ball);
+            // 2026-11-21: a match ball pulses (and the score bug with it)
+            bool mb = ball != null && ball.StartsWith("MATCH") && Juice.On;
+            bool beat = mb && Mathf.Repeat(Time.unscaledTime, 0.9f) < 0.45f;
+            _ball.EnableInClassList("hud-ball--pulse", beat);
+            _bug.EnableInClassList("sb--matchball", mb);
 
             int shots = m.Referee.Shots;
             Show(_rally, m.Phase == MatchPhase.Rally && shots >= RallyCountFrom && !r.ReplayActive ? "RALLY  " + shots : null);

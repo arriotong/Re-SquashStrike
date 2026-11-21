@@ -108,6 +108,9 @@ namespace SquashGame.Audio
             }
         }
 
+        float _roarIn;
+        int _rallyShots;
+
         public void Play(string name, float volume)
         {
             if (_clips == null || !_clips.TryGetValue(name, out var takes) || volume <= 0.01f) return;
@@ -161,11 +164,17 @@ namespace SquashGame.Audio
                         Play("applause", 0.25f + Mathf.Clamp01(shots / 18f) * 0.7f);       // longer rally, bigger hands
                 }
                 if (live && (m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver) && _lastPhase != m.Phase)
+                {
                     Play("cheer", m.Phase == MatchPhase.MatchOver ? 1f : 0.8f);
+                    if (m.Phase == MatchPhase.MatchOver) _roarIn = 0.45f;                  // 2026-11-21: the roar - a second wave
+                }
+                if (_roarIn > 0f) { _roarIn -= Time.unscaledDeltaTime; if (_roarIn <= 0f && live) { Play("applause", 1f); Play("cheer", 0.7f); } }
+                if (rally) _rallyShots = m.Referee.Shots;
                 _lastPhase = m.Phase;
             }
             // The bed: hushed in a rally, talking between them.
-            float want = !live ? 0f : rally ? 0.07f : 0.30f;
+            // 2026-11-21 the polish pass: in a long rally the hush gives way - a murmur that grows with every shot
+            float want = !live ? 0f : rally ? 0.07f + 0.30f * Mathf.Clamp01((_rallyShots - 6) / 16f) : 0.30f;
             float k = 1f - Mathf.Exp(-(rally ? 6f : 1.2f) * Time.unscaledDeltaTime);  // hush fast, come back slowly
             _bedLevel += (want - _bedLevel) * k;
             if (_bed != null) _bed.volume = _bedLevel * Volume * Presence * Size;

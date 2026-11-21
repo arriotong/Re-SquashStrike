@@ -27,6 +27,8 @@ namespace SquashGame.Profile
         /// <summary>2026-11-20 the shot line's dot on the wall (where the shot really goes): Off hides it - the aim help still
         /// works - so a player sharing the screen can't read your shot (the user: it gives the shot away in multiplayer).</summary>
         public bool ShowShotLine = true;
+        /// <summary>2026-11-21 the polish pass: the gamepad's rumble; fewer big moves (no shake, zooms, flashes).</summary>
+        public bool Rumble = true, ReduceMotion;
         public float AimSpeed = 1f;              // IntentSource.MouseSensitivityScale
         public bool InvertMouseY;
         // ---- video ----
@@ -333,6 +335,8 @@ namespace SquashGame.Profile
             IntentSource.InvertMouseY = s.InvertMouseY;
             IntentSource.Assisted = s.Assisted;
             AimTargetView.ShowShotLine = s.ShowShotLine;
+            UI.Juice.RumbleOn = s.Rumble;
+            UI.Juice.ReduceMotion = s.ReduceMotion;
             ArcadePopups.Enabled = s.Popups;
             MatchRunner.Lets = s.Lets;
             GameplayCameraRig.Preset = s.Camera;

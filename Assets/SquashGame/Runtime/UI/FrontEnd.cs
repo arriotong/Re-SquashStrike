@@ -116,6 +116,13 @@ namespace SquashGame.UI
             _menus.AddToClassList("fe-layer");
             _menus.pickingMode = PickingMode.Ignore;
             _root.Add(_menus);
+            // 2026-11-21 the polish pass: the fade between the menus and a match (black, a spinning ball, then the court)
+            _fade = new VisualElement(); _fade.AddToClassList("fe-fade"); _fade.pickingMode = PickingMode.Ignore;
+            _spinner = new VisualElement(); _spinner.AddToClassList("fe-fade-ball"); _spinner.pickingMode = PickingMode.Ignore;
+            var dot = new VisualElement(); dot.AddToClassList("fe-fade-dot"); _spinner.Add(dot);
+            _fade.Add(_spinner);
+            _fade.style.display = DisplayStyle.None;
+            _root.Add(_fade);
 
             CarouselItem.ListOpener = c => Push(new PickListScreen(c.Name, c.Values, c.Index, c.Pick, c.Sections));
             _input = new MenuInput();
@@ -292,7 +299,8 @@ namespace SquashGame.UI
 
         static void Enter(MenuScreen s, int dir)
         {
-            if (!AnimateScreens) return;
+            if (!AnimateScreens || Juice.ReduceMotion) return;
+            if (dir > 0) Juice.Cascade(s.Root);                                     // 2026-11-21 the cards drop in one by one
             string cls = s.Root.ClassListContains("fe-screen--centre") ? "fe-in-fade" : dir > 0 ? "fe-in-right" : "fe-in-left";
             s.Root.AddToClassList(cls);
             s.Root.schedule.Execute(() => s.Root.RemoveFromClassList(cls)).StartingIn(20);
@@ -366,8 +374,35 @@ namespace SquashGame.UI
 
         // ---------------- game actions (used by the screens) ----------------
 
+        VisualElement _fade, _spinner;
+        float _fadeT = 99f;
+        const float FadeHold = 0.25f, FadeOut = 0.45f;
+        /// <summary>The fade's black is up (tests).</summary>
+        public bool Fading { get { return _fade != null && _fade.style.display == DisplayStyle.Flex; } }
+
+        /// <summary>Cut to black (a spinning ball), then fade up on what comes next - a match starting, the menus coming back.</summary>
+        public void FadeThrough()
+        {
+            if (!Juice.On || _fade == null) return;
+            _fadeT = 0f;
+            _fade.style.display = DisplayStyle.Flex;
+            _fade.style.opacity = 1f;
+        }
+
+        void TickFade(float dt)
+        {
+            if (_fade == null || _fadeT > FadeHold + FadeOut) return;
+            _fadeT += Mathf.Min(dt, 0.05f);
+            float u = Mathf.Clamp01((_fadeT - FadeHold) / FadeOut);
+            _fade.style.opacity = 1f - u * u * (3f - 2f * u);
+            _spinner.style.rotate = new Rotate(_fadeT * 540f);
+            _spinner.style.opacity = 1f - Mathf.Clamp01(u * 3f);
+            if (_fadeT > FadeHold + FadeOut) _fade.style.display = DisplayStyle.None;
+        }
+
         public void StartMatch(MatchSettings s)
         {
+            FadeThrough();
             Clear();
             ClearToasts(NowPlaying);                                              // batch 6: the menus' "now playing" doesn't follow you on court
             if (_note != null) _note.style.display = DisplayStyle.None;
@@ -387,6 +422,7 @@ namespace SquashGame.UI
 
         public void Restart()
         {
+            FadeThrough();
             Clear();
             Stats.Reset();
             Match.RestartMatch();
@@ -404,6 +440,8 @@ namespace SquashGame.UI
         public void QuitToMenu()
         {
             if (Match == null) { StartAtTitle = false; SceneManager.LoadScene(MatchScene); return; }
+            FadeThrough();
+            Juice.StopRumble();
             Clear();
             Runner.Clock.Resume();
             Match.BeginDemo();
@@ -531,6 +569,8 @@ namespace SquashGame.UI
                 else if (Match == null) { Online.OnlineService.TakePending(); Online.OnlineService.Leave(); }
             }
             TickToasts(dt);
+            Juice.Tick(Time.unscaledDeltaTime);
+            TickFade(Time.unscaledDeltaTime);
             if (Match != null) MatchScreens(dt); else if (Arcade != null) ArcadeScreens(dt); else if (Academy != null) AcademyScreens(dt); else PracticeScreens();
             if (Top != null)
             {
@@ -594,12 +634,16 @@ namespace SquashGame.UI
             if (playing && Top == null && (m.Sim.Phase == MatchPhase.MatchOver || onlineOver))
             {
                 _matchOverFor += dt;
-                if (_matchOverFor > 1.6f) Push(new PostMatchScreen());
+                // 2026-11-21 the polish pass: the winner celebrates first (the close-up, the confetti); Enter skips to full time
+                float wait = Juice.Big && !onlineOver ? CelebrateSeconds : 1.6f;
+                if (_matchOverFor > wait || (_matchOverFor > 0.9f && _input.Submit)) Push(new PostMatchScreen());
             }
             else _matchOverFor = 0f;
         }
 
         float _overFor;
+        /// <summary>How long the match-won celebration plays before full time.</summary>
+        public const float CelebrateSeconds = 4.8f;
 
         void ArcadeScreens(float dt)
         {

@@ -114,9 +114,13 @@ namespace SquashGame.UI
             return p;
         }
 
+        int _shownPage = -1;
+
         void ShowPage(int i)
         {
             for (int k = 0; k < _pages.Count; k++) _pages[k].style.display = k == i ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_shownPage >= 0 && _shownPage != i && i < _pages.Count) { Juice.FadeIn(_pages[i]); Juice.Cascade(_pages[i]); }   // 2026-11-21 a tab cross-fades in
+            _shownPage = i;
             Root.schedule.Execute(() => { FocusFirstShown(); OnPage(i); });
         }
 

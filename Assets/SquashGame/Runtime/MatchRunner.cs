@@ -280,6 +280,7 @@ namespace SquashGame
             Sim.RallyEnded += OnRallyEnded;
             // 2026-11-21 a Gauntlet floor: a fresh copy of its play (a restart plays it from the start again)
             Floor = Settings.GauntletFloor != null ? Settings.GauntletFloor.Clone() : null;
+            MatchOverAt = -1f;
             FloorOver = false; FloorPops = 0; _floorPts = Sim.Score.Points[0];
         }
 
@@ -448,9 +449,42 @@ namespace SquashGame
             }
         }
 
+        // ---------------- 2026-11-21 the polish pass: big shots and the match won ----------------
+
+        /// <summary>A winner, a nick or a kill died here (world point; kind 0 winner, 1 nick, 2 kill): the views burst.</summary>
+        public event System.Action<Vector3, int> BigHit;
+        /// <summary>When the match ended (real time; -1: not yet): the celebration's clock.</summary>
+        public float MatchOverAt { get; private set; } = -1f;
+        public float CelebrationTime { get { return MatchOverAt < 0 ? -1f : Time.unscaledTime - MatchOverAt; } }
+        /// <summary>The freeze-frames so far (tests).</summary>
+        public int HitStops { get; private set; }
+        public const float HitStopSeconds = 0.11f, MatchPointSlowSeconds = 1.1f;
+
+        void Juicy(RallyOutcome o)
+        {
+            if (Demo || Puzzle != null || o == null || o.Winner < 0) return;
+            bool online = OnlineMatch != null;
+            if (Sim.Score.MatchOver)
+            {
+                MatchOverAt = Time.unscaledTime;
+                if (!online && UI.Juice.Big) SlowMo(MatchPointSlowSeconds, 0.3);           // the last ball dies in slow motion
+                UI.Juice.Rumble(0.8f, 0.6f, 0.6f);
+            }
+            if (o.Kind != RallyEnd.NotUp) return;
+            var touch = Sim.Ball.LastRacketContact;
+            int kind = Sim.NickBy == o.Winner ? 1 : Sim.LastStriker == o.Winner && touch != null && touch.Technique == "kill" ? 2 : Sim.LastStriker == o.Winner ? 0 : -1;
+            if (kind < 0) return;                                                           // (not up off their own shot: no show)
+            BigHit?.Invoke(SimToWorld.Pos(o.Point), kind);
+            if (!Sim.Score.MatchOver && !online && UI.Juice.Big) { SlowMo(HitStopSeconds, 0.04); HitStops++; }
+            GameplayCameraRig.Kick(kind == 2 ? 0.16f : kind == 1 ? 0.12f : 0.08f);
+            bool mine = o.Winner == HumanIndex || Settings.TwoPlayer;
+            if (mine) UI.Juice.Rumble(kind == 2 ? 0.7f : 0.45f, kind == 1 ? 0.7f : 0.35f, 0.16f);
+        }
+
         void OnRallyEnded(RallyOutcome o)
         {
             if (Floor != null) FloorRally(o);
+            Juicy(o);
             LastCall = null; LastCallStriker = -1;
             if (!UI.CallWords.IsCall(o)) return;
             // The interference state is still the call's (it moves on at the end of this step).

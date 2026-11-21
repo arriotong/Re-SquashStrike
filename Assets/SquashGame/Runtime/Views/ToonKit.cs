@@ -443,6 +443,9 @@ namespace SquashGame
 
         public void Bob(Transform t, float speed, float phase, float amp) { _bob.Add((t, t.localPosition, speed, phase, amp)); }
         public void Drift(Transform t, float speed, float wrap) { _drift.Add((t, speed, wrap)); }
+        readonly List<(Transform t, Vector3 at, float rise, float range, float phase)> _float = new List<(Transform, Vector3, float, float, float)>();
+        /// <summary>2026-11-21 a mote: rises slowly, sways, and starts again below when it has risen its range.</summary>
+        public void Float(Transform t, float rise, float range, float phase) { _float.Add((t, t.localPosition, rise, range, phase)); }
         readonly List<(Transform t, Vector3 axis, float speed)> _spin = new List<(Transform, Vector3, float)>();
         readonly List<(Material m, Color on, float speed, float phase)> _blink = new List<(Material, Color, float, float)>();
         /// <summary>Turn slowly about an axis (deg/s): a windmill, a blimp's prop, a globe.</summary>
@@ -454,6 +457,11 @@ namespace SquashGame
         {
             float dt = Time.unscaledDeltaTime; _time += dt;
             foreach (var b in _bob) b.t.localPosition = b.at + Vector3.up * Mathf.Sin(_time * b.speed + b.phase) * b.amp;
+            foreach (var f in _float)
+            {
+                float y = Mathf.Repeat(_time * f.rise + f.phase * f.range / 6f, f.range) - f.range * 0.5f;
+                f.t.localPosition = f.at + new Vector3(Mathf.Sin(_time * 0.6f + f.phase) * f.range * 0.08f, y, 0f);
+            }
             foreach (var d in _drift)
             {
                 var p = d.t.localPosition; p.x += d.speed * dt;

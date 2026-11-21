@@ -377,7 +377,7 @@ namespace SquashGame.UI
                 var st = Kit.L(stars, "★", "k-ta-star");
                 if (i >= _stars) continue;
                 int k = i;
-                st.schedule.Execute(() => { st.AddToClassList("k-ta-star--on"); StarsShown = k + 1; Sounds.Play("star"); }).StartingIn(1200 + 380 * i);
+                st.schedule.Execute(() => { st.AddToClassList("k-ta-star--on"); StarsShown = k + 1; Sounds.Play("star"); Juice.Burst(st, new Color32(255, 207, 58, 255), 8); Juice.Rumble(0.2f, 0.3f, 0.08f); }).StartingIn(1200 + 380 * i);
             }
             if (_best) stars.Add(new Stamp(_prev == int.MinValue ? "FIRST SCORE" : "NEW BEST", 1.3f + 0.38f * _stars));
             else Kit.L(col, "Best " + ProfileStore.Record(_c.Id).Best.ToString("N0"), "k-ta-res-best");

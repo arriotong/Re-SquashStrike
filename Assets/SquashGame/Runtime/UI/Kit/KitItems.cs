@@ -55,6 +55,18 @@ namespace SquashGame.UI
             _body.Add(_kicker); _body.Add(_title); _body.Add(_line); _body.Add(_lock);
             Root.Insert(0, Art); Root.Add(_shade); Root.Add(_body); Root.Add(_badge); Root.Add(_new);
             foreach (var l in new[] { _kicker, _title, _line, _badge, _lock, _new }) l.pickingMode = PickingMode.Ignore;
+            // 2026-11-21 the polish pass: a shine sweeps the focused card; it squashes a little when pressed
+            var shine = new VisualElement(); shine.AddToClassList("k-card-shine"); shine.pickingMode = PickingMode.Ignore; Root.Add(shine);
+            Root.RegisterCallback<PointerDownEvent>(e => Root.AddToClassList("k-card--press"));
+            Root.RegisterCallback<PointerUpEvent>(e => Root.RemoveFromClassList("k-card--press"));
+            Root.RegisterCallback<PointerLeaveEvent>(e => Root.RemoveFromClassList("k-card--press"));
+        }
+
+        void Press()
+        {
+            if (!Juice.On) return;
+            Root.AddToClassList("k-card--press");
+            Root.schedule.Execute(() => Root.RemoveFromClassList("k-card--press")).StartingIn(110);
         }
 
         public CardItem Line(Func<string> line) { _lineText = line; return this; }
@@ -70,7 +82,7 @@ namespace SquashGame.UI
         public bool IsLocked { get { return Locked != null && Locked(); } }
         public string Title { get { return _title.text; } }
 
-        public override void Submit() { if (IsEnabled && !IsLocked && _run != null) _run(); }
+        public override void Submit() { Press(); if (IsEnabled && !IsLocked && _run != null) _run(); }
 
         public override void Refresh()
         {

@@ -91,7 +91,27 @@ namespace SquashGame
             root.transform.position = Origin(w);
             var life = root.AddComponent<DioramaLife>();
             Get(w).Build(root.transform, life);
+            Motes(root.transform, life, Get(w).Cam, Get(w).Look, (int)w);
             _roots[w] = root;
+        }
+
+        /// <summary>2026-11-21 the polish pass (idle menu life): soft glowing motes drift up through every world, between the
+        /// camera and what it looks at.</summary>
+        static void Motes(Transform root, DioramaLife life, Vector3 cam, Vector3 look, int seed)
+        {
+            var rng = new System.Random(4242 + seed);
+            float dist = Vector3.Distance(cam, look);
+            var holder = new GameObject("Motes").transform; holder.SetParent(root, false);
+            for (int i = 0; i < 34; i++)
+            {
+                float along = 0.3f + 0.65f * (float)rng.NextDouble();
+                Vector3 at = Vector3.Lerp(cam, look, along);
+                float spread = dist * 0.32f * along;
+                at += new Vector3(((float)rng.NextDouble() - 0.5f) * 2f * spread, ((float)rng.NextDouble() - 0.5f) * spread, ((float)rng.NextDouble() - 0.5f) * spread * 0.6f);
+                Color c = i % 3 == 0 ? new Color(0.85f, 1f, 0.45f, 0.75f) : new Color(1f, 0.97f, 0.85f, 0.6f);
+                var g = ToonKit.Billboard(holder, "Mote", at, dist * (0.004f + 0.006f * (float)rng.NextDouble()), c, cam);
+                life.Float(g.transform, dist * (0.006f + 0.01f * (float)rng.NextDouble()), spread * 0.9f + 1f, (float)rng.NextDouble() * 6f);
+            }
         }
     }
 }

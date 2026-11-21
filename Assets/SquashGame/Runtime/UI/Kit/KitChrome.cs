@@ -260,11 +260,11 @@ namespace SquashGame.UI
             Add(new CoinIcon(icon));
             _amount = Kit.L(this, "", "k-coins-amount");
             Refresh();
-            if (amount == null) schedule.Execute(Refresh).Every(250);
+            schedule.Execute(Refresh).Every(amount == null ? 250 : 50);          // (2026-11-21: a given amount may count up)
         }
 
         public string Text { get { return _amount.text; } }
-        public void Refresh() { _amount.text = _get().ToString("N0"); }
+        public void Refresh() { string t = _get().ToString("N0"); if (_amount.text != t) _amount.text = t; }
     }
 
     public sealed class PlayerChip : VisualElement

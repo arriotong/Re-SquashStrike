@@ -58,6 +58,49 @@ namespace SquashGame
         public Replays.Shot ReplayShot { get { return _shots.Current; } }
         bool _wasCut;
 
+        // ---------------- 2026-11-21 the polish pass: a kick on a big shot, the winner's close-up ----------------
+
+        static float _kick;
+        /// <summary>A small shake (a big shot): decays in a fraction of a second. Off with Reduce motion.</summary>
+        public static void Kick(float amount) { if (UI.Juice.Big) _kick = Mathf.Max(_kick, amount); }
+        /// <summary>The winner's close-up is on (tests).</summary>
+        public bool WinnerCam { get; private set; }
+        public const float WinnerCamFrom = 0.6f, WinnerCamBlend = 1.3f;
+        Vector3 _wcFromPos; Quaternion _wcFromRot; float _wcFromFov; object _wcFor;
+
+        void ApplyKick()
+        {
+            if (_kick <= 0.0005f) { _kick = 0f; return; }
+            float t = Time.unscaledTime * 60f;
+            transform.position += transform.right * (Mathf.PerlinNoise(t, 0.3f) - 0.5f) * _kick + transform.up * (Mathf.PerlinNoise(0.7f, t) - 0.5f) * _kick;
+            _kick *= Mathf.Exp(-14f * Mathf.Min(Time.unscaledDeltaTime, 0.05f));
+        }
+
+        /// <summary>The match won: after the last ball, the camera swings down in front of the winner as they celebrate, and drifts
+        /// round them. True: filmed.</summary>
+        bool FilmWinner(MatchRunner m)
+        {
+            WinnerCam = false;
+            if (m == null || m.Demo || m.Sim == null || m.Sim.Phase != MatchPhase.MatchOver || m.CelebrationTime < 0 || !UI.Juice.Big) return false;
+            int w = m.Sim.Score.MatchWinner;
+            if (w < 0 || w >= m.Athletes.Length) return false;
+            float t = m.CelebrationTime - WinnerCamFrom;
+            if (t < 0) { _wcFor = null; return false; }
+            if (!ReferenceEquals(_wcFor, m.Sim)) { _wcFor = m.Sim; _wcFromPos = transform.position; _wcFromRot = transform.rotation; _wcFromFov = _cam.fieldOfView; }
+            var p = m.Athletes[w].Player.Pos;
+            double side = p.X >= 0 ? -1 : 1;                                             // from the open side of the court
+            double orbit = side * (0.9 + 0.35 * Mathf.Sin(t * 0.35f));
+            double camZ = System.Math.Max(0.7, p.Z - 2.6);
+            Vector3 pos = SimToWorld.Pos(p.X + orbit, 1.45 + 0.1 * Mathf.Sin(t * 0.5f), camZ);
+            Vector3 look = SimToWorld.Pos(p.X, 1.05, p.Z);
+            float u = Mathf.Clamp01(t / WinnerCamBlend), e = u * u * u * (u * (u * 6f - 15f) + 10f);
+            transform.position = Vector3.Lerp(_wcFromPos, pos, e);
+            transform.rotation = Quaternion.Slerp(_wcFromRot, Quaternion.LookRotation(look - pos, Vector3.up), e);
+            _cam.fieldOfView = Mathf.Lerp(_wcFromFov, 40f, e);
+            WinnerCam = true;
+            return true;
+        }
+
         void Awake()
         {
             _cam = GetComponent<Camera>();
@@ -117,6 +160,8 @@ namespace SquashGame
                 return;
             }
             _wasCut = false;
+
+            if (FilmWinner(Runner as MatchRunner)) return;
 
             // The menus' demo rally: slow-motion cuts from cinematic angles (the old home screen).
             if (Runner is MatchRunner menu && menu.Demo)
@@ -178,6 +223,7 @@ namespace SquashGame
                 }
                 else _flyT = 99f;
             }
+            ApplyKick();
         }
     }
 }

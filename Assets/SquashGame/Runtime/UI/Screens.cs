@@ -32,11 +32,26 @@ namespace SquashGame.UI
             // the old intro's logo: outlined SQUASH, glowing lime STRIKE
             Content.style.alignItems = Align.Center;
             Text("re:", "fe-logo-re");
-            Text("SQUASH", "fe-logo-squash");
-            Text("STRIKE", "fe-logo-strike");
+            _squash = Text("SQUASH", "fe-logo-squash");
+            _strike = Text("STRIKE", "fe-logo-strike");
             Text("Real squash physics. Simple to play.", "fe-press");
             Text("v" + Application.version, "fe-version");
-            Add(new ButtonItem("START", () => Fe.Replace(new HomeScreen()), true));
+            _start = Add(new ButtonItem("START", () => Fe.Replace(new HomeScreen()), true));
+        }
+
+        // 2026-11-21 the polish pass (idle menu life): the logo breathes, STRIKE glows on a beat, START pulses
+        Label _squash, _strike;
+        MenuItem _start;
+        float _life;
+        void Breathe(float dt)
+        {
+            if (!Juice.On || _strike == null) return;
+            _life += dt;
+            float b = Juice.ReduceMotion ? 0f : Mathf.Sin(_life * 1.6f);
+            _squash.style.scale = new Scale(new Vector3(1f + 0.012f * b, 1f + 0.012f * b, 1f));
+            _strike.style.scale = new Scale(new Vector3(1f + 0.022f * b, 1f + 0.022f * b, 1f));
+            _strike.style.opacity = 0.88f + 0.12f * (0.5f + 0.5f * Mathf.Sin(_life * 2.4f));
+            if (_start != null) _start.Root.style.scale = new Scale(Vector3.one * (1f + (Juice.ReduceMotion ? 0f : 0.03f * Mathf.Max(0f, Mathf.Sin(_life * 3.2f)))));
         }
         public override void Back() { }                                   // nowhere to go back to
 
@@ -104,6 +119,7 @@ namespace SquashGame.UI
 
         public override void Tick(float dt)
         {
+            Breathe(dt);
             if ((_courtFor += dt) >= CourtSeconds) { _courtFor = 0f; NextCourt(); }
             var a = _attract;
             if (a == null) return;
@@ -226,6 +242,8 @@ namespace SquashGame.UI
                 "Only how the ball is drawn - the ball in play is the same for everyone.");
             Row(acc, new SelectorItem("Ring colour", new[] { "White", "Yellow", "Cyan" }, () => S.RingColour, i => { S.RingColour = i; Changed(false); }), "The aim ring on the wall.");
             Row(acc, new SelectorItem("Call text", new[] { "Normal", "Large", "Larger" }, () => Nearest(calls, S.CallTextScale), i => { S.CallTextScale = calls[i]; Changed(false); }), "The referee's calls on screen.");
+            Row(acc, new SelectorItem("Reduce motion", new[] { "Off", "On" }, () => S.ReduceMotion ? 1 : 0, i => { S.ReduceMotion = i == 1; Changed(false); }),
+                "On: no camera shake, flashes or zooms, and menus don't slide - calmer to watch."); 
             var pv = Kit.Panel(acc.parent, "PREVIEW"); pv.AddToClassList("k-set-preview");
             var pvRow = Kit.Box(pv, "k-set-pv-row");
             var ballBox = Kit.Box(pvRow, "k-set-pv-box"); ballBox.AddToClassList("k-set-pv-box--ball"); _ball = Kit.Box(ballBox, "k-set-ball"); Kit.L(ballBox, "BALL", "k-cr-tile-n");
@@ -236,6 +254,8 @@ namespace SquashGame.UI
             var g = Panel("GAMEPLAY");
             Row(g, new SelectorItem("\"Hit!\" pop-ups", new[] { "Off", "On" }, () => S.Popups ? 1 : 0, i => { S.Popups = i == 1; Changed(false); }), "The word over a good contact. The ring's flash stays either way.");
             Row(g, new SelectorItem("Let calls", new[] { "Off", "On" }, () => S.Lets ? 1 : 0, i => { S.Lets = i == 1; Changed(false); }), "On: ask for a let (" + IntentSource.Keys("Appeal") + ") when you are blocked, and the referee calls lets and strokes. Off: no let calls - play through. From your next match.");
+            Row(g, new SelectorItem("Controller rumble", new[] { "Off", "On" }, () => S.Rumble ? 1 : 0, i => { S.Rumble = i == 1; Changed(false); if (S.Rumble) Juice.Rumble(0.4f, 0.4f, 0.2f); }),
+                "The gamepad buzzes on big hits, the wheel and a match win.");
             Row(g, new SelectorItem("Landing marker", new[] { "Off", "On" }, () => S.LandingMarker ? 1 : 0, i => { S.LandingMarker = i == 1; Changed(false); }), "A light square on the floor where the ball will land.");
             var ch = ProfileStore.Current.Choices;
             Row(g, new SelectorItem("Quick Match scoring", MatchChoices.ScoringLabels, () => ch.Scoring, i => { ch.Scoring = i; Changed(false); }), VersusScreen.ScoringHint);

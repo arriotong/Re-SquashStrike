@@ -108,7 +108,9 @@ namespace SquashGame.UI
             {
                 var s = ScenarioFlow.LastScenario;
                 var head = Kit.Panel(Content, s.Name.ToUpperInvariant()); head.AddToClassList("sc-result");
-                Kit.L(head, ScenarioFlow.StarText(ScenarioFlow.LastStars) + (ScenarioFlow.LastStars == 0 ? "   not this time" : ScenarioFlow.LastBest ? "   new best!" : ""), "sc-result-stars");
+                var srow = Kit.Box(head, "sc-result-starrow");                       // 2026-11-21 the stars pop on one by one
+                srow.Add(new StarRow(ScenarioFlow.LastStars, 3, 0.35f));
+                Kit.L(srow, ScenarioFlow.LastStars == 0 ? "not this time" : ScenarioFlow.LastBest ? "new best!" : "", "sc-result-stars");
                 if (ScenarioFlow.LastReward != null) { head.Add(new RewardStrip(ScenarioFlow.LastReward)); Fe.ToastAchievements(ScenarioFlow.LastReward); }
                 ScenarioFlow.LastScenario = null; ScenarioFlow.LastReward = null;
             }

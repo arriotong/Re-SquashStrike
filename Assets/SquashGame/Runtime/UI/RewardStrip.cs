@@ -19,6 +19,8 @@ namespace SquashGame.UI
         readonly Label _level = new Label(), _xp = new Label();
         float _t;
         const float FillSeconds = 1.2f;
+        int _coinsShown, _walletShown;
+        bool _burst, _counted;
 
         public RewardStrip(RewardResult r)
         {
@@ -56,10 +58,30 @@ namespace SquashGame.UI
                 // 2026-10-29: as the coin icon and amounts - "+ (coin) 120   ·   (coin) 3,350 in all"
                 var c = new VisualElement(); c.AddToClassList("rw-coins");
                 var plus = new Label("YOU WON"); plus.AddToClassList("rw-tickets"); c.Add(plus);
-                var got = new CoinCount(() => r.Coins, 18f); got.AddToClassList("k-coins--inline"); c.Add(got);
+                // 2026-11-21 the polish pass: the coins fly from what you won into what you have, which counts up as they land
+                _coinsShown = Juice.On ? 0 : r.Coins;
+                _walletShown = Juice.On ? GearDrops.Wallet.Coins - r.Coins : GearDrops.Wallet.Coins;
+                var got = new CoinCount(() => _coinsShown, 18f); got.AddToClassList("k-coins--inline"); c.Add(got);
                 var mid = new Label("·   NOW YOU HAVE"); mid.AddToClassList("rw-tickets"); c.Add(mid);
-                var all = new CoinCount(() => GearDrops.Wallet.Coins, 18f); all.AddToClassList("k-coins--inline"); c.Add(all);
+                var all = new CoinCount(() => _walletShown, 18f); all.AddToClassList("k-coins--inline"); c.Add(all);
                 Add(c);
+                if (Juice.On)
+                {
+                    int total = r.Coins, flights = Mathf.Clamp(total / 10, 3, 10), each = 0;
+                    schedule.Execute(() =>
+                    {
+                        // count what you won up first, then fly it across
+                        float t = 0;
+                        got.schedule.Execute(() => { t += 0.016f; _coinsShown = Mathf.RoundToInt(total * Mathf.Clamp01(t / 0.5f)); }).Every(16).Until(() => t >= 0.5f);
+                        got.schedule.Execute(() => Juice.FlyCoins(got, all, flights, null)).StartingIn(550);
+                        // the wallet counts up as each coin lands (the last one: exactly)
+                        all.schedule.Execute(() =>
+                        {
+                            each++;
+                            _walletShown = each >= flights ? GearDrops.Wallet.Coins : GearDrops.Wallet.Coins - total + total * each / flights;
+                        }).Every(60).StartingIn(550 + 620).Until(() => each >= flights);
+                    }).StartingIn((long)(FillSeconds * 1000) + 150);
+                }
             }
             // P3-R1: what the next level brings - always something to play for
             int next = Rewards.NextUnlock(r.XpBefore + r.Xp, out var coming, out int toGo);
@@ -99,7 +121,18 @@ namespace SquashGame.UI
             bool up = level > _r.FromLevel;
             _level.text = (up ? "LEVEL UP!   " : "LEVEL ") + level;
             _level.EnableInClassList("rw-level--up", up);
-            _xp.text = "+" + _r.Xp + " XP";
+            // 2026-11-21 the polish pass: the XP counts up with the bar; a level up bursts
+            _xp.text = "+" + Mathf.RoundToInt(_r.Xp * (Juice.On ? Mathf.SmoothStep(0f, 1f, u) : 1f)) + " XP";
+            if (up && !_burst && Juice.On && u > 0f)
+            {
+                _burst = true;
+                Sounds.Play("levelup");
+                Juice.Bump(_level);
+                Juice.Burst(_level, new Color32(200, 255, 61, 255), 16);
+                Juice.Rumble(0.5f, 0.5f, 0.25f);
+                _level.AddToClassList("rw-level--burst");
+            }
+            if (u >= 1f && !_counted && Juice.On) { _counted = true; Juice.Bump(_xp); }
             _fill.style.width = Length.Percent(100f * Rewards.Into(xp));
         }
     }

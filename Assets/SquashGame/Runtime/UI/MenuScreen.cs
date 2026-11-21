@@ -64,8 +64,8 @@ namespace SquashGame.UI
 
         protected T Add<T>(T item) where T : MenuItem
         {
-            item.OnHover = it => Focus(it);
-            item.OnClick = it => { Focus(it); it.Submit(); };
+            item.OnHover = it => { if (Focused != it) Sounds.Play("focus"); Focus(it); };       // 2026-11-21 the mouse ticks too
+            item.OnClick = it => { Focus(it); Sounds.Play("select"); it.Submit(); };
             if (item.Name != null && item.Name.StartsWith("Quit")) item.Root.AddToClassList("fe-item--danger");
             if (!Centred && item.WantsSlant) item.UseSlant();
             Items.Add(item);
