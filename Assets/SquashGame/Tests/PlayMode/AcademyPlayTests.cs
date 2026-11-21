@@ -119,6 +119,8 @@ namespace SquashGame.Tests
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Move"), "the trail starts on the next lesson");
             yield return CaptureUI(fe, "U4_Academy_Trail.png");
             yield return Tap(kb.enterKey);
+            Assert.That(fe.Top, Is.InstanceOf<BriefingScreen>(), "get ready first (2026-11-21)");
+            yield return Tap(kb.enterKey);                                   // START
 
             yield return Loaded("WarmUpCourt");
             var court = Object.FindFirstObjectByType<WarmUpCourt>();

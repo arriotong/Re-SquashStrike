@@ -140,12 +140,15 @@ namespace SquashGame.Progression
             if (c != null && !passed) c.Tries++;
         }
 
-        /// <summary>The bank index of the shot puzzle to play now: the day's, then the next ones as puzzles are played.</summary>
+        /// <summary>The number of the shot puzzle to play now: the day's, then the next ones as puzzles are played
+        /// (2026-11-21: the book's puzzle is made from it - BookPuzzles.Make(PuzzleSeed())).</summary>
         public static int PuzzleIndex()
         {
             var c = Today(Puzzle);
             return Current().Day * 3 + (c != null ? c.Tries : 0);
         }
+
+        public static uint PuzzleSeed() { return (uint)(PuzzleIndex() * 7919 + 20261121); }
 
         /// <summary>A shot puzzle played: the next one is a new one.</summary>
         public static void PuzzleTried() { var c = Today(Puzzle); if (c != null) c.Tries++; }

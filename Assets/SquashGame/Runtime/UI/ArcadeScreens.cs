@@ -106,7 +106,7 @@ namespace SquashGame.UI
 
     public sealed class TargetArcadeScreen : GameScreen
     {
-        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
+        public override MenuWorld Backdrop { get { return MenuWorld.Modes; } }   // 2026-11-20 its toon world (Dioramas)
         protected override string Kicker { get { return "MODES"; } }
         protected override string Title { get { return "Target Arcade"; } }
 
@@ -152,14 +152,14 @@ namespace SquashGame.UI
             return Challenges.Get(ArcadeMode.TimeAttack, 2);
         }
 
-        static void PlayNext() { FrontEnd.LaunchChallenge(NextUp().Id); }
+        void PlayNext() { Briefing.Arcade(Fe, NextUp().Id, MenuWorld.Modes); }
 
         public override void OnShow() { base.OnShow(); MenuCinematics.Scene = 3; }
     }
 
     public sealed class LevelScreen : GameScreen
     {
-        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-20 its toon world (Dioramas)
+        public override MenuWorld Backdrop { get { return MenuWorld.Modes; } }   // 2026-11-20 its toon world (Dioramas)
         readonly ArcadeMode _mode;
         public LevelScreen(ArcadeMode mode) { _mode = mode; }
         protected override string Kicker { get { return "TARGET ARCADE"; } }
@@ -178,7 +178,7 @@ namespace SquashGame.UI
             for (int l = 0; l < 3; l++)
             {
                 var c = Challenges.Get(_mode, l);
-                _cards[l] = AddTo(row, new CardItem(c.LevelName, Challenges.ModeNames[(int)_mode].ToUpperInvariant(), () => FrontEnd.LaunchChallenge(c.Id), CardSize.L)
+                _cards[l] = AddTo(row, new CardItem(c.LevelName, Challenges.ModeNames[(int)_mode].ToUpperInvariant(), () => Briefing.Arcade(Fe, c.Id, MenuWorld.Modes), CardSize.L)
                     .Drawn(Stars.Art(_mode), Color.Lerp(Stars.Bg((int)_mode), new Color(0.3f, 0.05f, 0.05f), l * 0.3f), Color.white)
                     .Line(Stars.Rules(c))
                     .Badge(() => { var r = ProfileStore.Record(c.Id); return r == null ? "☆☆☆" : Stars.Of(r.Stars); }, ProfileStore.Record(c.Id) != null && ProfileStore.Record(c.Id).Stars == 3));
@@ -186,7 +186,7 @@ namespace SquashGame.UI
             }
             _detail = Kit.Panel(stage, "THE STARS");
             _detail.AddToClassList("k-ta-detail");
-            AddTo(Root, new PrimaryItem("Play", () => FrontEnd.LaunchChallenge(Challenges.Get(_mode, Focused is CardItem ? Level(Focused) : 0).Id)));
+            AddTo(Root, new PrimaryItem("Play", () => Briefing.Arcade(Fe, Challenges.Get(_mode, Focused is CardItem ? Level(Focused) : 0).Id, MenuWorld.Modes)));
         }
 
         int Level(MenuItem m) { for (int l = 0; l < 3; l++) if (_cards[l] == m) return l; return 0; }
@@ -226,7 +226,7 @@ namespace SquashGame.UI
         {
             // ---- FREE PRACTICE ----
             var free = Kit.Box(Page("FREE PRACTICE"), "k-ta-free");
-            var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => FrontEnd.LaunchFreePractice(), CardSize.Hero).Vignette("court")
+            var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => Briefing.FreePractice(Fe), CardSize.Hero).Vignette("court")
                 .Line("Just you, the ball and the wall."));
             hero.Root.AddToClassList("k-card--free");
             // 2026-10-30 (the kid test): three plain steps, not an eight-row table of the coach tray's settings
@@ -244,7 +244,7 @@ namespace SquashGame.UI
             {
                 if (c.Mode != ArcadeMode.Drill) continue;
                 var cc = c;
-                var card = AddTo(drills, new CardItem(c.Name, "DRILL " + (++i), () => FrontEnd.LaunchChallenge(cc.Id))
+                var card = AddTo(drills, new CardItem(c.Name, "DRILL " + (++i), () => Briefing.Arcade(Fe, cc.Id, MenuWorld.Training, false, "PRACTICE COURT  ·  DRILL"))
                     .Drawn(Stars.Art(c), Stars.Bg(i + 1), Color.white)
                     .Line(() => cc.Description + "\n" + Best(cc))
                     .Badge(() => { var r = ProfileStore.Record(cc.Id); return r == null ? "☆☆☆" : Stars.Of(r.Stars); }));
@@ -268,7 +268,7 @@ namespace SquashGame.UI
 
         void Start()
         {
-            if (PageIndex == 0) { FrontEnd.LaunchFreePractice(); return; }
+            if (PageIndex == 0) { Briefing.FreePractice(Fe); return; }
             var c = _lastDrill;
             if (c == null) foreach (var it in Items) if (it is CardItem ci && ci.Title != "FREE PRACTICE") { c = ci; break; }
             c?.Submit();

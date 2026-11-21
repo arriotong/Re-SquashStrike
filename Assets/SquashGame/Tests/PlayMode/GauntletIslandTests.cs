@@ -89,8 +89,8 @@ namespace SquashGame.Tests
             Assert.That(Vector3.Distance(Camera.main.transform.position, GauntletIsland.World), Is.GreaterThan(1000f), "the camera back on the court");
         }
 
-        /// <summary>2026-11-20 every mode's toon world: built, filmed (Captures/WORLD_*.png and WORLDS.png), the Play hub's tab picking
-        /// it, the Others hub keeping the court.</summary>
+        /// <summary>2026-11-21 every hub tab its own toon world (both hubs; none repeated), each built and filmed
+        /// (Captures/WORLD_*.png, WORLD_*_Hub.png, WORLDS.png with the Gauntlet's island too).</summary>
         [UnityTest]
         public IEnumerator EveryMenuWorldIsBuiltAndTheHubFollowsItsTab()
         {
@@ -99,34 +99,35 @@ namespace SquashGame.Tests
             SceneManager.LoadScene("Match");
             yield return Wait(5f, () => Object.FindFirstObjectByType<FrontEnd>() != null && Object.FindFirstObjectByType<FrontEnd>().Top != null);
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Play));
-            yield return Wait(0.6f, () => false);
-            var hub = (MainMenuScreen)fe.Top;
-            var sheet = new Texture2D(960 * 2, 540 * 3, TextureFormat.RGB24, false);
-            var want = new[] { ("PLAY", MenuWorld.Home), ("CAREER", MenuWorld.Career), ("CHALLENGES", MenuWorld.Challenges), ("TRAINING", MenuWorld.Training) };
+            var sheet = new Texture2D(640 * 3, 360 * 4, TextureFormat.RGB24, false);
+            var seen = new System.Collections.Generic.HashSet<MenuWorld>();
             int n = 0;
-            foreach (var (tab, world) in want)
+            foreach (var which in new[] { MainMenuScreen.Hub.Play, MainMenuScreen.Hub.Others })
             {
-                for (int i = 0; i < hub.MySections.Length && hub.Tabs.Current != tab; i++) { hub.OnTab(1); yield return null; }
-                Assert.That(hub.Tabs.Current, Is.EqualTo(tab));
-                yield return Wait(0.5f, () => false);
-                Assert.That(Dioramas.Current, Is.EqualTo(world), tab + ": its world");
-                Assert.That(Dioramas.Shown(world), Is.True);
-                Assert.That(Vector3.Distance(Camera.main.transform.position, Dioramas.Origin(world)), Is.LessThan(200f), tab + ": the camera on it");
-                Shot("WORLD_" + world + ".png", fe, false);
-                yield return CaptureUI(fe, "WORLD_" + world + "_Hub.png");
-                Paste(sheet, "WORLD_" + world + ".png", n++);
+                fe.Push(new MainMenuScreen(which));
+                yield return Wait(0.6f, () => false);
+                var hub = (MainMenuScreen)fe.Top;
+                foreach (var tab in hub.MySections)
+                {
+                    for (int i = 0; i < hub.MySections.Length && hub.Tabs.Current != tab; i++) { hub.OnTab(1); yield return null; }
+                    Assert.That(hub.Tabs.Current, Is.EqualTo(tab));
+                    yield return Wait(0.5f, () => false);
+                    var world = Dioramas.Current;
+                    Assert.That(world, Is.Not.EqualTo(MenuWorld.None), tab + ": a world of its own");
+                    Assert.That(seen.Add(world), Is.True, tab + ": not another tab's world (" + world + ")");
+                    Assert.That(Vector3.Distance(Camera.main.transform.position, Dioramas.Origin(world)), Is.LessThan(200f), tab + ": the camera on it");
+                    Shot("WORLD_" + world + ".png", fe, false);
+                    yield return CaptureUI(fe, "WORLD_" + world + "_Hub.png");
+                    Paste(sheet, "WORLD_" + world + ".png", n++);
+                }
+                fe.Pop();
+                yield return null; yield return null;
             }
+            Assert.That(seen.Count, Is.EqualTo(10), "ten tabs, ten worlds");
             fe.Push(new GauntletScreen());
             yield return Wait(0.5f, () => false);
             Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Gauntlet));
             Paste(sheet, "GAUNTLET_Island.png", n++);
-            fe.Pop(); fe.Pop();
-            yield return null; yield return null;
-            fe.Push(new MainMenuScreen(MainMenuScreen.Hub.Others));
-            yield return Wait(0.5f, () => false);
-            Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.None), "the Others hub keeps the court");
-            Assert.That(Vector3.Distance(Camera.main.transform.position, Dioramas.Origin(MenuWorld.Home)), Is.GreaterThan(1000f));
             sheet.Apply();
             File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", "WORLDS.png")), sheet.EncodeToPNG());
             Object.Destroy(sheet);
@@ -137,8 +138,8 @@ namespace SquashGame.Tests
             var path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Captures", file));
             if (!File.Exists(path)) return;
             var t = new Texture2D(2, 2); t.LoadImage(File.ReadAllBytes(path));
-            var rt = RenderTexture.GetTemporary(960, 540); Graphics.Blit(t, rt);
-            RenderTexture.active = rt; sheet.ReadPixels(new Rect(0, 0, 960, 540), (i % 2) * 960, (2 - i / 2) * 540); RenderTexture.active = null;
+            var rt = RenderTexture.GetTemporary(640, 360); Graphics.Blit(t, rt);
+            RenderTexture.active = rt; sheet.ReadPixels(new Rect(0, 0, 640, 360), (i % 3) * 640, (3 - i / 3) * 360); RenderTexture.active = null;
             RenderTexture.ReleaseTemporary(rt); Object.Destroy(t);
         }
     }

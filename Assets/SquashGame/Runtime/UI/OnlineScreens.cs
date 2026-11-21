@@ -6,8 +6,11 @@
 //   OnlineSearchScreen   connecting, then the quick or ranked queue: a
 //                        timer, your rating and the band; Cancel
 //   PrivateRoomScreen    host (length, scoring, court; the code to give
-//                        a friend) or join (type their code)
+//                        a friend) or join (JoinRoomScreen: type their code)
 //   LeaderboardScreen    the server's top players, and you
+// 2026-11-21 (the user: "all the online UI needs a redo - like the career
+// UI, big and small cards"): each screen a big card and small ones, on the
+// Online world's linked islands (Dioramas).
 //   OnlineText           the lines the cards and the HUD share
 //
 // When the server starts a match, the front end begins it from any of
@@ -65,9 +68,11 @@ namespace SquashGame.UI
     /// <summary>The first visit to ONLINE: the name other players will see, then on to where you were going.</summary>
     public sealed class OnlineNameScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Online; } }
+        public override bool Spatial { get { return true; } }
         readonly System.Func<MenuScreen> _then;
         TextItem _name;
-        Label _note;
+        Label _note, _big;
         public OnlineNameScreen(System.Func<MenuScreen> then) { _then = then; }
         protected override string Kicker { get { return "ONLINE"; } }
         protected override string Title { get { return "Your name online"; } }
@@ -82,11 +87,21 @@ namespace SquashGame.UI
 
         protected override void Compose()
         {
-            var p = Kit.Panel(Content, "WHO ARE YOU?"); p.AddToClassList("on-panel");
-            _name = AddTo(p, new TextItem("Name", OnlineService.Me.Name, Hub_MaxName));
-            _note = Kit.L(p, "Other players see this in rooms, matches and the leaderboard. Change it any time in your profile (your tag on the main menu).", "k-cr-note");
-            AddTo(Root, new PrimaryItem("Play as this name", Done));
+            var stage = Kit.Box(Content, "on-stage");
+            var play = AddTo(stage, new CardItem("PLAY AS THIS NAME", "WHO ARE YOU?", Done, CardSize.Hero)
+                .Drawn("split", new Color32(16, 26, 46, 255), new Color32(60, 170, 255, 255))
+                .Line("Other players see it in rooms, matches and the leaderboard."));
+            play.Root.AddToClassList("on-hero");
+            _big = Kit.L(play.Art, "", "on-hero-big");
+            var col = Kit.Box(stage, "on-col");
+            var box = Kit.Box(col, "on-namebox");
+            Kit.L(box, "YOUR NAME", "k-card-kicker");
+            _name = AddTo(box, new TextItem("Name", OnlineService.Me.Name, Hub_MaxName));
+            _name.Root.AddToClassList("on-namefield");
+            _note = Kit.L(box, "Press Enter on it to type. You can change it any time in your profile.", "on-small");
         }
+
+        public override void Tick(float dt) { if (_big != null) _big.text = _name.Value.Trim().Length > 0 ? _name.Value.Trim() : "?"; }
 
         const int Hub_MaxName = 16;
 
@@ -102,33 +117,46 @@ namespace SquashGame.UI
             Fe.Replace(_then());
         }
 
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
     }
 
     // ---------------- the queue ----------------
 
     public sealed class OnlineSearchScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Online; } }
+        public override bool Spatial { get { return true; } }
         readonly QueueKind _kind;
-        Label _state, _time, _line;
+        Label _time;
+        string _state = "", _line = "";
+        CardItem _cancel;
         bool _queued;
         public OnlineSearchScreen(QueueKind kind) { _kind = kind; }
         protected override string Kicker { get { return "ONLINE"; } }
-        protected override string Title { get { return _kind == QueueKind.Ranked ? "Ranked" : "Quick match"; } }
+        protected override string Title { get { return _kind == QueueKind.Ranked ? "Ranked" : "Quick play"; } }
         protected override bool ShowChip { get { return false; } }
 
         protected override void Compose()
         {
-            var p = Kit.Panel(Content, _kind == QueueKind.Ranked ? "THE LADDER" : "ANYONE, NOW"); p.AddToClassList("on-panel");
-            _state = Kit.L(p, "", "on-state");
-            _time = Kit.L(p, "", "on-time");
-            _line = Kit.L(p, "", "k-cr-note");
-            Kit.L(p, _kind == QueueKind.Ranked
-                ? "Best of 3, to 11, on the show court. Paired with someone near your rating; the longer you wait, the wider the search. Wins and losses move your rating."
-                : "Best of 3, to 11, on the show court, against the next player looking. It does not change your rating.", "k-cr-note");
-            AddTo(Root, new PrimaryItem("Cancel", Back));
+            var stage = Kit.Box(Content, "on-stage");
+            bool ranked = _kind == QueueKind.Ranked;
+            var card = AddTo(stage, new CardItem(ranked ? "FINDING A MATCH" : "FINDING A PLAYER", ranked ? "RANKED  ·  BEST OF 3" : "QUICK PLAY  ·  BEST OF 3", null, CardSize.Hero)
+                .Drawn("rings", new Color32(14, 22, 40, 255), new Color32(60, 170, 255, 255))
+                .Line(() => _state + (string.IsNullOrEmpty(_line) ? "" : "\n" + _line))
+                .Badge(() => ranked ? OnlineText.Rating() : OnlineText.Status(), true));
+            card.Root.AddToClassList("on-hero");
+            _time = Kit.L(card.Art, "", "on-hero-big");
+            var col = Kit.Box(stage, "on-col");
+            _cancel = AddTo(col, new CardItem("CANCEL", "STOP LOOKING", Back)
+                .Drawn("split", new Color32(40, 14, 16, 255), new Color32(255, 90, 74, 255)));
+            _cancel.Root.AddToClassList("on-mini");
+            var info = Kit.Box(col, "on-info");
+            Kit.L(info, ranked ? "Someone near your rating. Waiting longer widens the search. Wins and losses move your rating."
+                               : "The next player looking. Your rating doesn't change.", "on-small");
             OnlineService.Connect();
         }
+
+        public override void OnShow() { base.OnShow(); if (_cancel != null) Focus(_cancel); }
 
         public override void Tick(float dt)
         {
@@ -136,16 +164,14 @@ namespace SquashGame.UI
             if (st == NetState.Online && !_queued) { OnlineService.Queue(_kind); _queued = true; }
             if (st == NetState.Failed || (OnlineService.Error != null && _queued && !OnlineService.Queued))
             {
-                _state.text = "Can't play online right now";
-                _time.text = "";
-                _line.text = (OnlineService.Error ?? "") + "  ·  check Settings > Gameplay > Online server";
+                _state = "Can't play online right now";
+                _time.text = "--:--";
+                _line = (OnlineService.Error ?? "") + "  ·  Settings > Gameplay > Online server";
                 return;
             }
-            _state.text = st == NetState.Online ? "Looking for an opponent" : "Connecting to the server";
-            _time.text = st == NetState.Online ? OnlineText.Clock(OnlineService.QueuedSeconds) : "";
-            _line.text = _kind == QueueKind.Ranked
-                ? OnlineText.Rating() + "  ·  within " + (100 + 50 * Mathf.FloorToInt(OnlineService.QueuedSeconds / 10f))
-                : OnlineText.Status();
+            _state = st == NetState.Online ? "Looking for an opponent" : "Connecting to the server";
+            _time.text = st == NetState.Online ? OnlineText.Clock(OnlineService.QueuedSeconds) : "...";
+            _line = _kind == QueueKind.Ranked ? "Searching within " + (100 + 50 * Mathf.FloorToInt(OnlineService.QueuedSeconds / 10f)) + " of your rating" : "";
         }
 
         public override void Back() { OnlineService.Cancel(); Fe.Pop(); }
@@ -156,11 +182,13 @@ namespace SquashGame.UI
 
     public sealed class PrivateRoomScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Online; } }
+        public override bool Spatial { get { return true; } }
         static readonly string[] Lengths = { "1 game", "Best of 3", "Best of 5" };
         static readonly int[] Games = { 1, 2, 3 };
         int _length = 1, _scoring, _court;
-        TextItem _code;
-        Label _host, _join, _codeBig;
+        Label _codeBig;
+        string _host = "Pick the match, make the room, give the code to a friend.";
         bool _wantRoom;
         protected override string Kicker { get { return "ONLINE"; } }
         protected override string Title { get { return "Private room"; } }
@@ -168,22 +196,28 @@ namespace SquashGame.UI
 
         protected override void Compose()
         {
-            _court = Courts.IndexOf("show");
-            var grid = Kit.Box(Content, "on-grid");
-            var host = Kit.Panel(grid, "HOST A ROOM"); host.AddToClassList("on-panel");
-            AddTo(host, new SelectorItem("Match", Lengths, () => _length, v => _length = v));
-            AddTo(host, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => _scoring, v => _scoring = v));
-            AddTo(host, new CarouselItem("Court", Courts.Names, () => _court, v => { _court = v; Courts.CurrentId = Courts.Pickable[v].Id; })).Sections = Courts.SectionOf;
-            AddTo(host, new ActionItem("Make the room", MakeRoom, "▶"));
-            _codeBig = Kit.L(host, "", "on-code");
-            _host = Kit.L(host, "You pick the match; give the code to a friend.", "k-cr-note");
-
-            var join = Kit.Panel(grid, "JOIN A FRIEND"); join.AddToClassList("on-panel");
-            _code = AddTo(join, new TextItem("Code", "", 5));
-            AddTo(join, new ActionItem("Join", Join, "▶"));
-            _join = Kit.L(join, "Type the 5 letters your friend sees.", "k-cr-note");
+            _court = Mathf.Max(0, Courts.IndexOf("show"));
+            var stage = Kit.Box(Content, "on-stage");
+            var make = AddTo(stage, new CardItem("MAKE A ROOM", "HOST", MakeRoom, CardSize.Hero)
+                .Drawn("bracket", new Color32(14, 26, 22, 255), new Color32(200, 255, 61, 255))
+                .Line(() => Lengths[_length] + "  ·  " + MatchChoices.ScoringShort[_scoring] + "  ·  " + Courts.Pickable[Mathf.Clamp(_court, 0, Courts.Pickable.Length - 1)].Name + "\n" + _host)
+                .Badge(() => OnlineService.RoomCode != null ? "ROOM OPEN" : "", true));
+            make.Root.AddToClassList("on-hero");
+            _codeBig = Kit.L(make.Art, "", "on-hero-big");
+            var col = Kit.Box(stage, "on-sides");
+            Mini(col, new CardItem("MATCH", "HOW LONG", () => _length = (_length + 1) % Lengths.Length).Drawn("stripes", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
+                .Badge(() => Lengths[_length].ToUpperInvariant(), true));
+            Mini(col, new CardItem("SCORING", "POINTS", () => _scoring = (_scoring + 1) % MatchChoices.ScoringShort.Length).Drawn("corner", new Color32(26, 22, 14, 255), new Color32(255, 184, 59, 255))
+                .Badge(() => MatchChoices.ScoringShort[_scoring].ToUpperInvariant(), true));
+            Mini(col, new CardItem("COURT", "WHERE", () => Fe.Push(new PickListScreen("Court", Courts.Names, _court, v => { _court = v; Courts.CurrentId = Courts.Pickable[v].Id; }, Courts.SectionOf)))
+                .Drawn("wall", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255))
+                .Line(() => Courts.Pickable[Mathf.Clamp(_court, 0, Courts.Pickable.Length - 1)].Name));
+            Mini(col, new CardItem("JOIN A FRIEND", "THEIR CODE", () => Fe.Push(new JoinRoomScreen())).Drawn("split", new Color32(16, 26, 46, 255), new Color32(60, 170, 255, 255))
+                .Line("Type the 5 letters they see"));
             OnlineService.Connect();
         }
+
+        void Mini(VisualElement row, CardItem card) { AddTo(row, card); card.Root.AddToClassList("on-mini"); }
 
         void MakeRoom()
         {
@@ -198,38 +232,80 @@ namespace SquashGame.UI
             OnlineService.CreateRoom(Games[_length], _scoring == 1 ? "english" : "par", Courts.Pickable[Mathf.Clamp(_court, 0, Courts.Pickable.Length - 1)].Id);
         }
 
-        void Join()
-        {
-            _code.StopTyping();
-            var code = _code.Value.Trim().ToUpperInvariant();
-            if (code.Length != 5) { _join.text = "A room code is 5 letters."; return; }
-            if (OnlineService.State != NetState.Online) { OnlineService.Connect(); _join.text = "Connecting - try again in a moment."; return; }
-            OnlineService.JoinRoom(code);
-            _join.text = "Joining " + code + "...";
-        }
-
         public override void Tick(float dt)
         {
             if (_wantRoom && OnlineService.State == NetState.Online) Send();
             string code = OnlineService.RoomCode;
             _codeBig.text = code ?? "";
-            if (OnlineService.State == NetState.Failed) _host.text = OnlineService.Error ?? "Can't reach the server.";
-            else if (OnlineService.OpponentLeftRoom) _host.text = "Your friend left the room.";
-            else if (code != null) _host.text = "Waiting for your friend to join  ·  " + OnlineText.Status();
-            if (OnlineService.Error != null && OnlineService.State == NetState.Online && code == null) _join.text = OnlineService.Error;
+            if (OnlineService.State == NetState.Failed) _host = OnlineService.Error ?? "Can't reach the server.";
+            else if (OnlineService.OpponentLeftRoom) _host = "Your friend left the room.";
+            else if (code != null) _host = "Give your friend this code  ·  waiting  ·  " + OnlineText.Status();
         }
 
         public override void Back() { if (OnlineService.RoomCode != null) OnlineService.Cancel(); Fe.Pop(); }
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
+    }
+
+    /// <summary>2026-11-21 joining a friend's room: their code, big.</summary>
+    public sealed class JoinRoomScreen : GameScreen
+    {
+        public override MenuWorld Backdrop { get { return MenuWorld.Online; } }
+        public override bool Spatial { get { return true; } }
+        TextItem _code;
+        string _note = "Your friend sees a 5-letter code when they make a room.";
+        Label _big;
+        protected override string Kicker { get { return "ONLINE  ·  PRIVATE ROOM"; } }
+        protected override string Title { get { return "Join a friend"; } }
+        protected override bool ShowChip { get { return false; } }
+
+        protected override void Compose()
+        {
+            var stage = Kit.Box(Content, "on-stage");
+            var join = AddTo(stage, new CardItem("JOIN", "THEIR ROOM", Join, CardSize.Hero)
+                .Drawn("split", new Color32(16, 26, 46, 255), new Color32(60, 170, 255, 255))
+                .Line(() => _note));
+            join.Root.AddToClassList("on-hero");
+            _big = Kit.L(join.Art, "", "on-hero-big");
+            var col = Kit.Box(stage, "on-col");
+            var box = Kit.Box(col, "on-namebox");
+            Kit.L(box, "THE CODE", "k-card-kicker");
+            _code = AddTo(box, new TextItem("Code", "", 5));
+            _code.Root.AddToClassList("on-namefield");
+            Kit.L(box, "Press Enter on it to type, then pick JOIN.", "on-small");
+            OnlineService.Connect();
+        }
+
+        public override void Tick(float dt)
+        {
+            var v = _code.Value.Trim().ToUpperInvariant();
+            _big.text = v.Length > 0 ? v : "_ _ _ _ _";
+            if (OnlineService.Error != null && OnlineService.State == NetState.Online && OnlineService.RoomCode == null) _note = OnlineService.Error;
+        }
+
+        void Join()
+        {
+            _code.StopTyping();
+            var code = _code.Value.Trim().ToUpperInvariant();
+            if (code.Length != 5) { _note = "A room code is 5 letters."; return; }
+            if (OnlineService.State != NetState.Online) { OnlineService.Connect(); _note = "Connecting - try again in a moment."; return; }
+            OnlineService.JoinRoom(code);
+            _note = "Joining " + code + "...";
+        }
+
+        public override void Back() { if (OnlineService.RoomCode != null) OnlineService.Cancel(); Fe.Pop(); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Select"), (PromptBar.Btn.B, "Back")); }
     }
 
     // ---------------- the leaderboard ----------------
 
     public sealed class LeaderboardScreen : GameScreen
     {
-        public const int Shown = 15;
+        public override MenuWorld Backdrop { get { return MenuWorld.Online; } }
+        public override bool Spatial { get { return true; } }
+        public const int Shown = 10;
         VisualElement _list;
-        Label _note, _you;
+        Label _note, _rank;
+        string _you = "";
         Board _drawn;
         protected override string Kicker { get { return "ONLINE"; } }
         protected override string Title { get { return "Leaderboard"; } }
@@ -237,14 +313,17 @@ namespace SquashGame.UI
 
         protected override void Compose()
         {
-            var grid = Kit.Box(Content, "on-grid");
-            var p = Kit.Panel(grid, "THE LADDER"); p.AddToClassList("on-board");
-            _list = Kit.Box(p, "on-rows");
-            _note = Kit.L(p, "", "k-cr-note");
-            var me = Kit.Panel(grid, "YOU"); me.AddToClassList("on-panel");
-            _you = Kit.L(me, "", "on-state");
-            Kit.L(me, "Win and your score goes up; lose and it goes down. Everyone starts at 1000. You win coins for every win.", "k-cr-note");
-            AddTo(Root, new PrimaryItem("Refresh", () => OnlineService.FetchBoard()));
+            var stage = Kit.Box(Content, "on-stage");
+            var you = AddTo(stage, new CardItem(OnlineService.Me.Name.ToUpperInvariant(), "YOU", () => OnlineService.FetchBoard(), CardSize.Hero)
+                .Drawn("rings", new Color32(16, 26, 46, 255), new Color32(60, 170, 255, 255))
+                .Line(() => _you + "\nWin: your score goes up. Lose: it goes down. Everyone starts at 1000.")
+                .Badge(() => "PRESS ENTER TO REFRESH", false));
+            you.Root.AddToClassList("on-hero");
+            _rank = Kit.L(you.Art, "", "on-hero-big");
+            var board = Kit.Box(stage, "on-board2");
+            Kit.L(board, "THE TOP 10", "k-card-kicker");
+            _list = Kit.Box(board, "on-rows2");
+            _note = Kit.L(board, "", "on-small");
             OnlineService.FetchBoard();
         }
 
@@ -253,8 +332,9 @@ namespace SquashGame.UI
             OnlineService.PollBoard();
             var b = OnlineService.LastBoard;
             _note.text = OnlineService.BoardLoading ? "Loading..." : OnlineService.BoardError ?? (b != null && b.players.Length == 0 ? "Nobody has played a ranked match yet." : "");
-            var me = OnlineService.Me;
-            _you.text = me.Name + "\n" + (b != null && b.you != null && b.you.rank > 0 ? "#" + b.you.rank + "  ·  " + b.you.rating + "  ·  " + b.you.wins + " W  " + (b.you.games - b.you.wins) + " L" : OnlineText.Rating());
+            bool ranked = b != null && b.you != null && b.you.rank > 0;
+            _rank.text = ranked ? "#" + b.you.rank : "-";
+            _you = ranked ? b.you.rating + " points  ·  " + b.you.wins + " W  " + (b.you.games - b.you.wins) + " L" : OnlineText.Rating();
             if (b == _drawn) return;
             _drawn = b;
             _list.Clear();
@@ -262,12 +342,13 @@ namespace SquashGame.UI
             for (int i = 0; i < b.players.Length && i < Shown; i++)
             {
                 var r = b.players[i];
-                var row = Kit.Box(_list, "on-row");
-                if (r.you) row.AddToClassList("on-row--you");
-                Kit.L(row, r.rank.ToString(), "on-row-rank");
-                Kit.L(row, r.name, "on-row-name");
-                Kit.L(row, r.wins + "-" + (r.games - r.wins), "on-row-wl");
-                Kit.L(row, r.rating.ToString(), "on-row-rating");
+                var row = Kit.Box(_list, "on-row2");
+                if (r.you) row.AddToClassList("on-row2--you");
+                if (r.rank <= 3) row.AddToClassList("on-row2--top" + r.rank);
+                Kit.L(row, r.rank.ToString(), "on-row2-rank");
+                Kit.L(row, r.name, "on-row2-name");
+                Kit.L(row, r.wins + "-" + (r.games - r.wins), "on-row2-wl");
+                Kit.L(row, r.rating.ToString(), "on-row2-rating");
             }
         }
 

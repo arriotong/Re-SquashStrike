@@ -518,6 +518,7 @@ namespace SquashGame.UI
 
     public sealed class StatsScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.You; } }   // 2026-11-21 its toon world (Dioramas)
         protected override string Kicker { get { return "LOCKER ROOM"; } }
         protected override string Title { get { return "Stats"; } }
         protected override bool ShowChip { get { return false; } }
@@ -635,6 +636,7 @@ namespace SquashGame.UI
 
     public sealed class AchievementsScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.You; } }   // 2026-11-21 its toon world (Dioramas)
         protected override string Kicker { get { return "LOCKER ROOM"; } }
         protected override string Title { get { return "Achievements"; } }
         protected override bool ShowChip { get { return false; } }

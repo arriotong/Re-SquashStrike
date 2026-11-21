@@ -114,6 +114,17 @@ namespace SquashSim
             _serveLandingChecked = false;
         }
 
+        /// <summary>2026-11-21 the book's shot puzzles: a rally already under way - the ball has been to the front wall off
+        /// the other player's racket, and <paramref name="striker"/> plays it next (<paramref name="floorAfterFront"/> bounces already).</summary>
+        public void BeginMidRally(int striker, int floorAfterFront)
+        {
+            Server = Other(striker); ServeSide = 1;
+            ExpectedStriker = striker; LastHitter = Other(striker);
+            InServe = false; ServeStruck = true; ServeVolleyed = false;
+            Shots = 3; Outcome = null; TossDropped = false;
+            _toFrontWall = false; _floorAfterFront = floorAfterFront; _serveLandingChecked = true;
+        }
+
         /// <summary>The server re-tosses after dropping the ball: the rally starts over, no fault.</summary>
         public void ResetToss()
         {

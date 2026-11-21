@@ -284,10 +284,15 @@ namespace SquashGame.Progression
         }
 
         /// <summary>Playable challenges (2026-10-28): a shot puzzle played - solved or not.</summary>
-        public static RewardResult Puzzle(bool solved)
+        public static RewardResult Puzzle(bool solved) { return Puzzle(solved ? SquashSim.Modes.Verdict.Best : SquashSim.Modes.Verdict.Wrong); }
+
+        /// <summary>2026-11-21 the book's verdict: BEST the full reward (and solved), OK half, WRONG nothing.</summary>
+        public static RewardResult Puzzle(SquashSim.Modes.Verdict v)
         {
             var r = Begin();
-            if (solved) { Xp(r, "Shot puzzle solved", PuzzleXp); Coin(r, PuzzleCoins, "a shot puzzle"); }
+            bool solved = v == SquashSim.Modes.Verdict.Best;
+            if (solved) { Xp(r, "Shot puzzle: the book's shot", PuzzleXp); Coin(r, PuzzleCoins, "a shot puzzle"); }
+            else if (v == SquashSim.Modes.Verdict.Ok) { Xp(r, "Shot puzzle: a good shot", PuzzleXp / 2); Coin(r, PuzzleCoins / 2, "a good shot"); }
             Challenges.Record(r, new ChallengeEvent { PuzzleSolved = solved });
             Challenges.PuzzleTried();
             return End(r);

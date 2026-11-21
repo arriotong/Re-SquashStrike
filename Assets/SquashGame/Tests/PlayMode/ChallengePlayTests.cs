@@ -12,6 +12,7 @@
 using System.Collections;
 using System.IO;
 using NUnit.Framework;
+using SquashSim.Modes;
 using SquashGame.Progression;
 using SquashGame.UI;
 using SquashSim.Academy;
@@ -72,33 +73,35 @@ namespace SquashGame.Tests
             yield return Menu();
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "SHOT PUZZLE");
+            Assert.That(fe.Top, Is.InstanceOf<BriefingScreen>(), "get ready first (2026-11-21)");
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<PuzzleScreen>());
             var m = fe.Match;
-            Assert.That(m.Puzzle, Is.Not.Null, "today's puzzle from the bank");
+            Assert.That(m.Puzzle, Is.Not.Null, "today's puzzle from the rulebook");
             var p = m.Puzzle;
-            yield return Wait(1.5f, () => false);
-            yield return CaptureUI(fe, "CH_Puzzle_Watch.png");
-
-            yield return Wait(40f, () => m.PuzzleStage == MatchRunner.PuzzleStep.Choosing);
-            Assert.That(m.PuzzleStage, Is.EqualTo(MatchRunner.PuzzleStep.Choosing), "the rally froze");
-            Assert.That(m.Sim.StepCount, Is.EqualTo(p.Freeze), "at its moment, to the step");
-            Assert.That(SquashSim.Modes.ShotPuzzles.IsFreezeMoment(m.Sim), Is.True, "the same moment the puzzle was measured at");
-            yield return null; yield return null;
+            // 2026-11-21 the book's puzzle: its moment built and frozen at once - you, them and the ball where the rule puts them
+            Assert.That(m.PuzzleStage, Is.EqualTo(MatchRunner.PuzzleStep.Choosing), "frozen at its moment");
+            Assert.That(m.Sim.Phase, Is.EqualTo(SquashSim.MatchPhase.Rally));
+            Assert.That(m.Sim.Players[0].Player.Pos.Z, Is.EqualTo(p.Moment.MeZ).Within(0.05), "you where the rule puts you");
+            Assert.That(m.Sim.Players[1].Player.Pos.Z, Is.EqualTo(p.Moment.OppZ).Within(0.05), "and them");
+            yield return Wait(0.8f, () => false);
             Assert.That(((PuzzleScreen)fe.Top).Stage, Is.EqualTo(MatchRunner.PuzzleStep.Choosing));
-            Assert.That(fe.Top.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(p.Options.Count), "the shots to choose from");
+            Assert.That(fe.Top.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(p.Options.Count), "the choices");
             yield return CaptureUI(fe, "CH_Puzzle_Choose.png");
 
-            // the best one (it is what the test checks: solved)
-            for (int i = 0; i < 6 && !(fe.Top.Focused is CardItem c && c.Title == SquashSim.Modes.ShotPuzzles.Name(p.Options[p.Best]).ToUpperInvariant()); i++) yield return Tap(kb.rightArrowKey);
-            for (int i = 0; i < 6 && !(fe.Top.Focused is CardItem c && c.Title == SquashSim.Modes.ShotPuzzles.Name(p.Options[p.Best]).ToUpperInvariant()); i++) yield return Tap(kb.leftArrowKey);
-            yield return Tap(kb.enterKey);
+            // the book's one (what the test checks: solved)
+            string best = BookPuzzles.Name(p.Options[p.Best]).ToUpperInvariant();
+            var card = fe.Top.Reachable().Find(i => i is CardItem c && c.Title == best);
+            Assert.That(card, Is.Not.Null);
+            card.Submit();
+            yield return null; yield return null;
             Assert.That(m.PuzzleChoice, Is.EqualTo(p.Best));
-            Assert.That(m.PuzzleStage, Is.EqualTo(MatchRunner.PuzzleStep.Playing));
             yield return Wait(1.0f, () => false);
-            yield return CaptureUI(fe, "CH_Puzzle_Playing.png");
+            if (m.PuzzleStage == MatchRunner.PuzzleStep.Playing) yield return CaptureUI(fe, "CH_Puzzle_Playing.png");
             yield return Wait(40f, () => fe.Top is PuzzleScreen ps && ps.Stage == MatchRunner.PuzzleStep.Over);
             Assert.That(((PuzzleScreen)fe.Top).Stage, Is.EqualTo(MatchRunner.PuzzleStep.Over));
-            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.True, "solved: today's puzzle done");
+            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.True, "the book's shot: today's puzzle done");
             yield return Wait(0.8f, () => false);
             yield return CaptureUI(fe, "CH_Puzzle_Result.png");
 
@@ -122,6 +125,8 @@ namespace SquashGame.Tests
             var fe = Object.FindFirstObjectByType<FrontEnd>();
             string id = Challenges.QuizLessonId(false);
             yield return HubNav.Open(fe, kb, Tap, "CHALLENGES", "RULES QUIZ");
+            Assert.That(fe.Top, Is.InstanceOf<BriefingScreen>(), "get ready first (2026-11-21)");
+            yield return Tap(kb.enterKey);                                   // START
             yield return Wait(8f, () => { var f = Object.FindFirstObjectByType<FrontEnd>(); return f != null && f.Academy != null; });
             fe = Object.FindFirstObjectByType<FrontEnd>();
             var s = fe.Academy.Session;

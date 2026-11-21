@@ -148,6 +148,7 @@ namespace SquashGame.UI
 
     public sealed class PackScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Packs; } }   // 2026-11-21 its toon world (Dioramas)
         protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "THE GAUNTLET  ·  A PACK"; } }
         protected override string Title { get { return "Your cards"; } }

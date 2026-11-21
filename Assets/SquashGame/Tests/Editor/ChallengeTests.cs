@@ -94,7 +94,7 @@ namespace SquashGame.Tests
             Assert.That(Challenges.PuzzleIndex(), Is.EqualTo(i0 + 1), "a new puzzle next");
             var r = Rewards.Puzzle(true);
             Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.True);
-            Assert.That(r.Lines.Exists(l => l.StartsWith("Shot puzzle solved")), Is.True);
+            Assert.That(r.Lines.Exists(l => l.StartsWith("Shot puzzle: the book's shot")), Is.True);
             var w = Challenges.Current().Weekly;
             if (w.Id == Challenges.Rush) Assert.That(w.Progress, Is.EqualTo(1), "and one for the week's rush");
         }
@@ -158,32 +158,24 @@ namespace SquashGame.Tests
             Assert.That(Challenges.Current().Daily.Count, Is.EqualTo(Challenges.DailyCount));
         }
 
-        [Test] public void TheShotPuzzleBankStillMatchesTheSim()
+        [Test] public void TheDaysPuzzleIsTheRulebooksAndANewOneNext()
         {
-            Assert.That(ShotPuzzleBank.Count, Is.GreaterThanOrEqualTo(200), "the bank shipped");
-            var answers = new System.Collections.Generic.HashSet<string>();
-            foreach (var p in ShotPuzzleBank.All()) answers.Add(p.Options[p.Best]);
-            Assert.That(answers.Count, Is.EqualTo(ShotPuzzles.Shots.Length), "every shot is somebody's answer");
-            double dt = 1.0 / 240;
-            for (int k = 0; k < 3; k++)
-            {
-                var p = ShotPuzzleBank.At(k * 37);
-                Assert.That(p.Rates[p.Best], Is.GreaterThanOrEqualTo(0.5));
-                RallyOutcome Play()
-                {
-                    ReplayMatch.Configure(p.Setup());
-                    var sim = ReplayMatch.Build(p.Setup());
-                    while (sim.StepCount < p.Freeze) sim.Step(dt);
-                    Assert.That(ShotPuzzles.IsFreezeMoment(sim), Is.True, "puzzle " + p.Seed + ": the freeze is still the moment (re-make the bank if the sim changed)");
-                    ShotPuzzles.Force(sim, p, p.Options[p.Best], 0);
-                    double t0 = sim.Time;
-                    while (sim.Phase == MatchPhase.Rally && sim.Time - t0 < ShotPuzzles.PlayoutSeconds) sim.Step(dt);
-                    return sim.LastOutcome;
-                }
-                var a = Play(); var b = Play();
-                Assert.That(b?.Winner, Is.EqualTo(a?.Winner), "the same rally twice");
-                Assert.That(b?.Kind, Is.EqualTo(a?.Kind));
-            }
+            // 2026-11-21 the book's puzzles (BookPuzzles): made from the day's number, a new one after each played
+            var a = BookPuzzles.Make(Challenges.PuzzleSeed());
+            Assert.That(a, Is.Not.Null);
+            Assert.That(BookPuzzles.Make(Challenges.PuzzleSeed()).Options, Is.EqualTo(a.Options), "the same puzzle until it's played");
+            Rewards.Puzzle(Verdict.Ok);
+            var b = BookPuzzles.Make(Challenges.PuzzleSeed());
+            Assert.That(b.Seed, Is.Not.EqualTo(a.Seed), "a new one next");
+        }
+
+        [Test] public void AnOkShotEarnsHalfAndDoesNotSolveIt()
+        {
+            var ok = Rewards.Puzzle(Verdict.Ok);
+            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.False, "only the book's shot solves it");
+            var best = Rewards.Puzzle(Verdict.Best);
+            Assert.That(Challenges.Today(Challenges.Puzzle).Done, Is.True);
+            Assert.That(ok.Any, Is.True, "an OK shot still earns something");
         }
     }
 }

@@ -329,6 +329,25 @@ namespace SquashSim
             _bodiesTouching = false;
         }
 
+        /// <summary>2026-11-21 a shot puzzle's moment (BookPuzzles): you (athlete 0) and the opponent placed, the ball in flight
+        /// toward you off the front wall (<paramref name="floorAfterFront"/> bounces already) - the rally under way, your stroke next.</summary>
+        public void BeginMoment(V3 me, V3 opp, V3 ballPos, V3 ballVel, int floorAfterFront)
+        {
+            PlaceAt(Players[0], me);
+            PlaceAt(Players[1], opp);
+            SplitStep.Reset();
+            Referee.BeginMidRally(0, floorAfterFront);
+            Interference.Reset();
+            _lastStriker = 1; _nickBy = -1;
+            _chaosStriker = -1; _curveT = 0; _curveArmed = false;
+            Ball.Reset(ballPos, ballVel, null, Ball.Temperature);
+            Ball.FloorSinceFrontWall = floorAfterFront;
+            BallPhysics.Wake(Ball);
+            Phase = MatchPhase.Rally;
+            PhaseTime = 0;
+            _bodiesTouching = false;
+        }
+
         static void PlaceAt(TestPlayerController c, V3 pos)
         {
             c.Player.Spawn.CopyFrom(pos);

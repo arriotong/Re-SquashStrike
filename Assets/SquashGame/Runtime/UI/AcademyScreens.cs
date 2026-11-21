@@ -149,7 +149,7 @@ namespace SquashGame.UI
                 for (int i = 0; i < list.Count; i++)
                 {
                     var l = list[i];
-                    var node = new TrailNode(l, i + 1, () => FrontEnd.LaunchLesson(l.Id));
+                    var node = new TrailNode(l, i + 1, () => Briefing.Lesson(Fe, l.Id));
                     Add(node);
                     node.Root.RemoveFromHierarchy();
                     trail.Place(node.Root, i, list.Count);
@@ -160,7 +160,7 @@ namespace SquashGame.UI
             _card.AddToClassList("k-ac-card");
             bool all = ProfileStore.Current.Academy.Finished;
             var next = NextUp();
-            AddTo(Root, new PrimaryItem(all ? "Play again: " + next.Title : "Continue: " + next.Title, () => FrontEnd.LaunchLesson(NextUp().Id)));
+            AddTo(Root, new PrimaryItem(all ? "Play again: " + next.Title : "Continue: " + next.Title, () => Briefing.Lesson(Fe, NextUp().Id)));
         }
 
         public override void OnShow()

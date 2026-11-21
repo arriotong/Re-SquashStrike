@@ -92,6 +92,7 @@ namespace SquashGame.UI
 
     public sealed class ScenarioScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Modes; } }   // 2026-11-21 its toon world (Dioramas)
         static readonly string[] Arts = { "rings", "clock", "chevrons", "trophy", "bracket", "wall", "corner", "split", "nick", "menu", "drop", "angle", "spots", "stripes", "trophy" };
         readonly int _startGroup;
         public ScenarioScreen(int group = 0) { _startGroup = group; }
@@ -119,7 +120,7 @@ namespace SquashGame.UI
                 {
                     var s = sc;
                     string art = Arts[(g * 5 + k++) % Arts.Length];                    // 2026-10-25 playtest: each card its own picture
-                    var card = AddTo(row, new CardItem(s.Name, KidScore(s.Score), () => ScenarioFlow.Play(Fe, s))
+                    var card = AddTo(row, new CardItem(s.Name, KidScore(s.Score), () => Briefing.Scenario(Fe, s))
                         .Drawn(art, new Color32(18, 20, 28, 255), g == 2 ? (Color)new Color32(255, 184, 59, 255) : new Color32(200, 255, 61, 255))
                         .Line(s.Story + "\n★ Win   ★ " + s.Star2Text + "   ★ " + s.Star3Text)
                         .Badge(() => ScenarioFlow.StarText(ScenarioFlow.StarsOf(s.Id)), ScenarioFlow.StarsOf(s.Id) == 3));

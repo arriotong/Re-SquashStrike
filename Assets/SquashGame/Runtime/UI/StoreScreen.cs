@@ -48,6 +48,7 @@ namespace SquashGame.UI
 
     public sealed class StoreScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Store; } }   // 2026-11-21 its toon world (Dioramas)
         public const string CardsTab = "CARD PACKS", CosmeticsTab = "CLOTHES", ShopTab = "PRO SHOP";
         static readonly string[] Tabs3 = { CardsTab, CosmeticsTab, ShopTab };
 

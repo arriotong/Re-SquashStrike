@@ -377,7 +377,7 @@ namespace SquashGame
             {
                 Sim.Step(dt);
                 // a shot puzzle: the rally freezes at its moment, to the step (Clock stops within the frame)
-                if (Puzzle != null && PuzzleStage == PuzzleStep.Watching && Sim.StepCount >= Puzzle.Freeze) { PuzzleStage = PuzzleStep.Choosing; Clock.Pause(); }
+                // (2026-11-21 the book's puzzles start at their moment, frozen: no rally to watch first)
                 return;
             }
             if (_autopilot != null && _autoIntent != null) _autopilot.Fill(_autoIntent, Sim, 0, dt);
@@ -530,21 +530,23 @@ namespace SquashGame
 
         public enum PuzzleStep { Watching, Choosing, Playing, Over }
         /// <summary>The shot puzzle being played (null: none) and where it is.</summary>
-        public SquashSim.Modes.ShotPuzzle Puzzle { get; private set; }
+        public SquashSim.Modes.BookPuzzle Puzzle { get; private set; }
         public PuzzleStep PuzzleStage { get; private set; }
         /// <summary>The option chosen (-1: not yet) and how the rally then went for you (1 won, 0 lost, 0.5 neither).</summary>
         public int PuzzleChoice { get; private set; } = -1;
         public double PuzzleResult { get; private set; }
         public const double PuzzleReplaySpeed = 0.6;
+        /// <summary>How long your shot is played out before the answer (a rally still going: "it went on").</summary>
+        public const double PuzzlePlayoutSeconds = 6;
 
-        /// <summary>Play a shot puzzle: the AIs' rally (you are athlete 0, an AI standing in) to its moment, built and stepped
-        /// exactly as the puzzle was measured; then it waits for Choose.</summary>
-        public void BeginPuzzle(SquashSim.Modes.ShotPuzzle p, string court)
+        /// <summary>2026-11-21 play a shot puzzle (the book's - BookPuzzles): its moment built on the court (you, an AI standing in,
+        /// the opponent, the ball on its way to you) and frozen; then it waits for Choose.</summary>
+        public void BeginPuzzle(SquashSim.Modes.BookPuzzle p, string court)
         {
             EndOnline(true);
             EndRecording(true);
-            var setup = p.Setup();
-            Settings = new MatchSettings { Opponent = p.Them, Difficulty = p.ThemLevel, GamesToWin = 1, Scoring = "par", WarmUp = false, Court = court, CrowdFill = 1f };
+            var setup = SquashSim.Modes.BookPuzzles.Setup(p);
+            Settings = new MatchSettings { Opponent = setup.Opponent, Difficulty = setup.Difficulty, GamesToWin = 1, Scoring = "par", WarmUp = false, Court = court, CrowdFill = 1f };
             if (!string.IsNullOrEmpty(court)) Courts.CurrentId = court;
             Courts.CrowdFill = 1f;
             Input.UseDevices(null);
@@ -554,15 +556,18 @@ namespace SquashGame
             _setup = setup;
             Sim = ReplayMatch.Build(setup);
             Sim.Intents[0] = new InputIntent();                          // the stand-in AI plays you: no device input
-            Names[0] = "YOU"; Names[1] = AiProfile.ByName(p.Them).Name.ToUpperInvariant();
+            Names[0] = "YOU"; Names[1] = AiProfile.ByName(setup.Opponent).Name.ToUpperInvariant();
             OpponentName = Names[1];
             Recorder = null;
-            Puzzle = p; PuzzleStage = PuzzleStep.Watching; PuzzleChoice = -1; PuzzleResult = 0.5;
+            var mo = p.Moment;
+            SquashSim.Modes.BookPuzzles.Flight(mo, out V3 bp, out V3 bv, out int bounces);
+            Sim.BeginMoment(new V3(mo.MeX, 0, mo.MeZ), new V3(mo.OppX, 0, mo.OppZ), bp, bv, bounces);
+            Puzzle = p; PuzzleStage = PuzzleStep.Choosing; PuzzleChoice = -1; PuzzleResult = 0.5;
             ClearDebugHistory();
             Demo = false; InSetup = false; DeviceLost = null;
-            Clock.Resume();
             Clock.TimeScale = GameSpeed;
             Clock.Flush();
+            Clock.Pause();
             SnapViews();
         }
 
@@ -571,7 +576,9 @@ namespace SquashGame
         {
             if (Puzzle == null || PuzzleStage != PuzzleStep.Choosing || option < 0 || option >= Puzzle.Options.Count) return;
             PuzzleChoice = option;
-            SquashSim.Modes.ShotPuzzles.Force(Sim, Puzzle, Puzzle.Options[option], 0);
+            var c = SquashSim.Modes.BookPuzzles.Choice(Puzzle.Options[option]);
+            if (c != null && c.Let) { PuzzleStage = PuzzleStep.Over; return; }        // a let: the rally stops there
+            if (Sim.Bots[0] is OpponentBrain me) me.ForceAim = SquashSim.Modes.BookPuzzles.AimFor(c, Puzzle.Moment);
             PuzzleStage = PuzzleStep.Playing;
             _puzzleFrom = Sim.Time;
             Clock.Resume();
@@ -639,9 +646,10 @@ namespace SquashGame
         {
             if (Puzzle == null || PuzzleStage != PuzzleStep.Playing) return;
             // as the bank measured it: a rally still going after PlayoutSeconds is "the rally went on"
-            bool capped = Sim.Phase == MatchPhase.Rally && Sim.Time - _puzzleFrom >= SquashSim.Modes.ShotPuzzles.PlayoutSeconds;
+            bool capped = Sim.Phase == MatchPhase.Rally && Sim.Time - _puzzleFrom >= PuzzlePlayoutSeconds;
             if (Sim.Phase == MatchPhase.Rally && !capped) { _puzzleOverFor = 0; return; }
-            if (_puzzleOverFor == 0) PuzzleResult = capped ? 0.5 : SquashSim.Modes.ShotPuzzles.Score(Sim.LastOutcome);
+            var o = Sim.LastOutcome;
+            if (_puzzleOverFor == 0) PuzzleResult = capped || o == null || o.Kind == RallyEnd.Let || o.Winner < 0 ? 0.5 : o.Winner == 0 ? 1 : 0;
             if (capped) { PuzzleStage = PuzzleStep.Over; Clock.Pause(); return; }
             _puzzleOverFor += dt;
             if (_puzzleOverFor > 1.2f) { PuzzleStage = PuzzleStep.Over; Clock.Pause(); }

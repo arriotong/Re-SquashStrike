@@ -321,6 +321,10 @@ namespace SquashSim
         /// <summary>Shot puzzles (2026-10-28): the shot it plays at its next stroke ("straight", "cross", "lob", "drop", "kill",
         /// "boast"); spent by that stroke. Null: its own choice.</summary>
         public string ForceShot;
+        /// <summary>2026-11-21 the book's shot puzzles: the exact shot to play at its next stroke - the arcade shot's name, the aim
+        /// on the front wall (x, y), the charge, a boast. Spent by that stroke (even a late one). Null: its own choice.</summary>
+        public struct Aim { public string Shot; public double X, Y, Charge; public bool Boast; }
+        public Aim? ForceAim;
         bool _forcedTurn;
         /// <summary>It has chosen its shot for the ball coming (shot puzzles freeze before this).</summary>
         public bool Decided { get { return _decided; } }
@@ -719,6 +723,15 @@ namespace SquashSim
                 ("kill", side * 2.4, 0.95, c.ChargeFull * 0.5, false, side * 2.6, 3.0, 0.2 + Profile.WLow + 0.5 * Profile.WPressure - (deep ? 1.0 * risk : 0) + (front ? 0.4 : 0)),
                 ("boast", -side * 1.5, 1.2, 0.0, true, -side * 2.6, 1.6, 0.1 + 0.8 * Profile.WShort - (front ? 0.5 : 0)),
             };
+            if (ForceAim.HasValue)
+            {
+                var f = ForceAim.Value; ForceAim = null; _forcedTurn = true;
+                ArcadeShot = f.Shot; _aimPX = f.X; _aimPY = f.Y;
+                if (!late) _aChargeFor = f.Charge;
+                else if (f.Boast != _aBoast) _boastTapped = false;
+                _aBoast = f.Boast;
+                return;
+            }
             double[] score = new double[o.Length];
             double max = double.MinValue;
             // where I'll be at contact: the spot I'm running to (else here), then the auto-step toward the ball

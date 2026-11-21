@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace SquashGame
 {
-    public enum MenuWorld { None, Gauntlet, Home, Career, Challenges, Training }
+    public enum MenuWorld { None, Gauntlet, Home, Career, Challenges, Training, Modes, Online, Packs, Store, You, Replays }
 
     public static partial class Dioramas
     {
@@ -43,6 +43,13 @@ namespace SquashGame
                 case MenuWorld.Career: return new Def { Sim = new Vector3(-3000f, 0f, -4000f), Cam = CareerCam, Look = CareerLook, Fov = 38f, Build = BuildCareer };
                 case MenuWorld.Challenges: return new Def { Sim = new Vector3(0f, 0f, -7000f), Cam = ChallengeCam, Look = ChallengeLook, Fov = 38f, Build = BuildChallenges };
                 case MenuWorld.Training: return new Def { Sim = new Vector3(3000f, 0f, -7000f), Cam = TrainingCam, Look = TrainingLook, Fov = 38f, Build = BuildTraining };
+                // 2026-11-21 a world for every hub tab
+                case MenuWorld.Modes: return new Def { Sim = new Vector3(-3000f, 0f, -7000f), Cam = StdCam, Look = StdLook, Fov = 38f, Build = BuildModes };
+                case MenuWorld.Online: return new Def { Sim = new Vector3(0f, 0f, -10000f), Cam = new Vector3(4f, 16f, 84f), Look = new Vector3(22f, 4f, -12f), Fov = 40f, Build = BuildOnline };
+                case MenuWorld.Packs: return new Def { Sim = new Vector3(3000f, 0f, -10000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildPacks };
+                case MenuWorld.Store: return new Def { Sim = new Vector3(-3000f, 0f, -10000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildStore };
+                case MenuWorld.You: return new Def { Sim = new Vector3(6000f, 0f, -4000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildYou };
+                case MenuWorld.Replays: return new Def { Sim = new Vector3(6000f, 0f, -7000f), Cam = NearCam, Look = NearLook, Fov = 38f, Build = BuildReplays };
                 default: return default;
             }
         }

@@ -31,7 +31,7 @@ namespace SquashGame.UI
     public sealed class MainMenuScreen : GameScreen
     {
         /// <summary>2026-11-20 the toon world behind the hub follows its tab: CAREER the city at dusk, CHALLENGES the platform at
-        /// night, TRAINING the camp in the morning, the rest of PLAY the park island (the Others hub keeps the court).</summary>
+        /// night, TRAINING the camp in the morning - 2026-11-21 every tab its own (Dioramas.Worlds2), the Others hub too.</summary>
         public override MenuWorld Backdrop
         {
             get
@@ -41,7 +41,13 @@ namespace SquashGame.UI
                     case "CAREER": return MenuWorld.Career;
                     case "CHALLENGES": return MenuWorld.Challenges;
                     case "TRAINING": return MenuWorld.Training;
-                    case "PLAY": case "MODES": case "ONLINE": case "PACKS": return MenuWorld.Home;
+                    case "PLAY": return MenuWorld.Home;
+                    case "MODES": return MenuWorld.Modes;
+                    case "ONLINE": return MenuWorld.Online;
+                    case "PACKS": return MenuWorld.Packs;
+                    case "STORE": return MenuWorld.Store;
+                    case "YOU": return MenuWorld.You;
+                    case "REPLAYS": return MenuWorld.Replays;
                     default: return MenuWorld.None;
                 }
             }
@@ -121,13 +127,13 @@ namespace SquashGame.UI
             if (Has("CHALLENGES"))
             {
                 var ch = Kit.Box(Page("CHALLENGES"), "k-row");
-                AddTo(ch, new CardItem("SHOT PUZZLE", "TODAY", () => ChallengePlay.Puzzle(Fe), CardSize.Hero)
+                AddTo(ch, new CardItem("SHOT PUZZLE", "TODAY", () => Briefing.Puzzle(Fe), CardSize.Hero)
                     .Drawn("trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255))
                     .Line(() => "Pick the shot that wins the point!").Badge(() => ChallengeText.Status(Challenges.Puzzle), true));
-                AddTo(ch, new CardItem("RULES QUIZ", "TODAY", () => ChallengePlay.Quiz(false))
+                AddTo(ch, new CardItem("RULES QUIZ", "TODAY", () => Briefing.Quiz(Fe, false))
                     .Drawn("rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255))
                     .Line("Be the referee: 5 questions").Badge(() => ChallengeText.Status(Challenges.Quiz)));
-                AddTo(ch, new CardItem("SKILL TEST", "TODAY", ChallengePlay.Skill)
+                AddTo(ch, new CardItem("SKILL TEST", "TODAY", () => Briefing.Skill(Fe))
                     .Drawn("chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255))
                     .Line(Challenges.SkillWords).Badge(() => ChallengeText.Status(Challenges.Skill)));
                 AddTo(ch, new CardItem("THIS WEEK", "BIG PRIZE", () => Fe.Push(new ChallengesScreen()))
@@ -173,7 +179,7 @@ namespace SquashGame.UI
                 var academy = Kit.Box(Page("TRAINING"), "k-row");
                 AddTo(academy, new CardItem("PRACTICE COURT", "TRAIN", () => Fe.Push(new PracticeScreen()), CardSize.Hero).Drawn("stripes", new Color32(20, 32, 28, 255), new Color(1, 1, 1, 0.05f))
                     .Line("Hit the ball on your own").Badge(() => "5 DRILLS", true));
-                AddTo(academy, new CardItem("LEARN TO PLAY", "START HERE", () => FrontEnd.LaunchLesson(AcademyScreen.NextUp().Id))
+                AddTo(academy, new CardItem("LEARN TO PLAY", "START HERE", () => Briefing.Lesson(Fe, AcademyScreen.NextUp().Id))
                     .Drawn("trail", new Color32(30, 18, 52, 255), Color.white)
                     .Line(() => "Next lesson: " + AcademyScreen.NextUp().Title).Badge(() => AcademyScreen.Summary().ToUpperInvariant(), true));
                 AddTo(academy, new CardItem("ALL LESSONS", "LEARN", () => Fe.Push(new AcademyScreen())).Drawn("stripes", new Color32(26, 20, 40, 255), new Color(1, 1, 1, 0.05f))

@@ -57,6 +57,7 @@ namespace SquashGame.UI
 
     public sealed class ReplayLibraryScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Replays; } }   // 2026-11-21 its toon world (Dioramas)
         protected override string Kicker { get { return "REPLAY THEATRE"; } }
         protected override string Title { get { return "Library"; } }
         protected override bool ShowChip { get { return false; } }

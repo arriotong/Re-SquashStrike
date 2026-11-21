@@ -81,6 +81,8 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<LevelScreen>());
             yield return CaptureUI(fe, "P2M2_UI_2_Levels.png");
             yield return Tap(kb.enterKey);                                   // Easy
+            Assert.That(fe.Top, Is.InstanceOf<BriefingScreen>(), "get ready first (2026-11-21)");
+            yield return Tap(kb.enterKey);                                   // START
 
             yield return Loaded("WarmUpCourt");
             var court = Object.FindFirstObjectByType<WarmUpCourt>();

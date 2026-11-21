@@ -30,11 +30,25 @@ namespace SquashGame.UI
             public bool High, GreyBack, Stop;
         }
 
-        readonly Pic _pic;
+        Pic _pic;
 
         public RuleDiagram(int rule)
         {
             _pic = Of(rule);
+            AddToClassList("k-rule-pic");
+            pickingMode = PickingMode.Ignore;
+            generateVisualContent += Paint;
+        }
+
+        /// <summary>2026-11-21 a shot puzzle's moment, as the book draws it: you, them, the ball and the way it came - no answer on it.</summary>
+        public RuleDiagram(SquashSim.Modes.BookMoment m)
+        {
+            float bx = (float)m.BallX, bz = (float)m.BallZ;
+            _pic = new Pic { Me = V((float)m.MeX, (float)m.MeZ), Opp = V((float)m.OppX, (float)m.OppZ), Ball = V(bx, bz) };
+            if (m.OffBackWall) _pic.From = V(bx, 9.75f);
+            else if (m.Passing) _pic.From = V(bx * 0.6f, Mathf.Max(0.2f, bz - 3.5f));
+            else if (m.OppBoasted) _pic.From = V(-m.Side * 3.2f, 6.2f);
+            else _pic.From = V(bx * 0.4f, 0.1f);
             AddToClassList("k-rule-pic");
             pickingMode = PickingMode.Ignore;
             generateVisualContent += Paint;

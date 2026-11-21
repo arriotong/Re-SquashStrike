@@ -62,21 +62,21 @@ namespace SquashGame.UI
     /// <summary>Starting the challenges' activities from anywhere (the hub's cards, the challenges screen).</summary>
     static class ChallengePlay
     {
-        public static void Quiz(bool exam)
+        public static void StartQuiz(bool exam)
         {
             FrontEnd.FromChallenges = true;
             FrontEnd.LaunchLesson(Challenges.QuizLessonId(exam));
         }
 
-        public static void Puzzle(FrontEnd fe)
+        public static void StartPuzzle(FrontEnd fe)
         {
-            var p = ShotPuzzleBank.At(Challenges.PuzzleIndex());
+            var p = BookPuzzles.Make(Challenges.PuzzleSeed());      // 2026-11-21 the rulebook's puzzle, made on the spot
             if (p == null || fe.Match == null) return;
             fe.Match.BeginPuzzle(p, ChallengeText.PuzzleCourt());
             fe.Push(new PuzzleScreen());
         }
 
-        public static void Skill()
+        public static void StartSkill()
         {
             var c = Challenges.Today(Challenges.Skill);
             if (c == null || string.IsNullOrEmpty(c.Ref)) return;
@@ -87,7 +87,7 @@ namespace SquashGame.UI
         public static void Weekly(FrontEnd fe)
         {
             var w = Challenges.Current().Weekly;
-            if (w != null && w.Id == Challenges.Exam) Quiz(true); else Puzzle(fe);
+            Briefing.Weekly(fe);   // 2026-11-21 a get-ready screen first
         }
     }
 
@@ -117,9 +117,9 @@ namespace SquashGame.UI
             }
 
             var row = Kit.Box(Content, "k-row");
-            Card(row, Challenges.Puzzle, "SHOT PUZZLE", "Pick the shot that wins the point!", "trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255), () => ChallengePlay.Puzzle(Fe), CardSize.Hero);
-            Card(row, Challenges.Quiz, "RULES QUIZ", "Be the referee: 5 questions", "rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255), () => ChallengePlay.Quiz(false));
-            Card(row, Challenges.Skill, "SKILL TEST", Challenges.SkillWords(), "chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255), ChallengePlay.Skill);
+            Card(row, Challenges.Puzzle, "SHOT PUZZLE", "Pick the shot that wins the point!", "trail", new Color32(30, 18, 52, 255), new Color32(190, 110, 255, 255), () => Briefing.Puzzle(Fe), CardSize.Hero);
+            Card(row, Challenges.Quiz, "RULES QUIZ", "Be the referee: 5 questions", "rings", new Color32(16, 22, 34, 255), new Color32(111, 184, 255, 255), () => Briefing.Quiz(Fe, false));
+            Card(row, Challenges.Skill, "SKILL TEST", Challenges.SkillWords(), "chevrons", new Color32(22, 30, 12, 255), new Color32(200, 255, 61, 255), () => Briefing.Skill(Fe));
             var w = s.Weekly;
             var wd = w != null ? Challenges.Find(w.Id) : null;
             var prize = Cosmetics.Find(Challenges.WeeklyItems[s.WeekliesDone % Challenges.WeeklyItems.Length]);
@@ -140,88 +140,111 @@ namespace SquashGame.UI
 
     // ---------------- the shot puzzle ----------------
 
-    /// <summary>Over the court: watching the rally; the freeze and the choice; your shot played; the answer.</summary>
+    /// <summary>2026-11-21 the book's shot puzzle (BookPuzzles) over the court: the moment frozen - a top-down picture like the
+    /// book's and four choices (a shot and where it goes); your shot played out, slow; the verdict (best / OK / wrong), the
+    /// rule's page and why each choice was good or not.</summary>
     public sealed class PuzzleScreen : GameScreen
     {
         MatchRunner.PuzzleStep? _at;
         RewardResult _reward;
         /// <summary>The stage this screen shows (taken when it is made: the runner moving on replaces the screen).</summary>
-        MatchRunner.PuzzleStep _stage { get { if (_at == null) _at = Fe.Match != null ? Fe.Match.PuzzleStage : MatchRunner.PuzzleStep.Watching; return _at.Value; } }
-        protected override string Kicker { get { return "SHOT PUZZLE"; } }
+        MatchRunner.PuzzleStep _stage { get { if (_at == null) _at = Fe.Match != null ? Fe.Match.PuzzleStage : MatchRunner.PuzzleStep.Choosing; return _at.Value; } }
+        public override bool Spatial { get { return true; } }
+        protected override string Kicker { get { return "SHOT PUZZLE  ·  THE RULEBOOK"; } }
         protected override string Title
         {
             get
             {
                 switch (_stage)
                 {
-                    case MatchRunner.PuzzleStep.Choosing: return "Your shot?";
-                    case MatchRunner.PuzzleStep.Playing: return "Your shot: " + ShotPuzzles.Name(P.Options[Fe.Match.PuzzleChoice]);
-                    case MatchRunner.PuzzleStep.Over: return P.Solves(Fe.Match.PuzzleChoice) ? "The best shot" : "Not the best shot";
-                    default: return "Watch the rally";
+                    case MatchRunner.PuzzleStep.Choosing: return "What do you do?";
+                    case MatchRunner.PuzzleStep.Playing: return BookPuzzles.Name(P.Options[Fe.Match.PuzzleChoice]);
+                    case MatchRunner.PuzzleStep.Over: return P.VerdictOf(Fe.Match.PuzzleChoice) == Verdict.Best ? "The book's shot!" : P.VerdictOf(Fe.Match.PuzzleChoice) == Verdict.Ok ? "Good - but not the best" : "Not this time";
+                    default: return "Shot puzzle";
                 }
             }
         }
         protected override bool ShowChip { get { return false; } }
-        ShotPuzzle P { get { return Fe.Match.Puzzle; } }
+        BookPuzzle P { get { return Fe.Match.Puzzle; } }
         public MatchRunner.PuzzleStep Stage { get { return _stage; } }
 
         protected override void Compose()
         {
             var m = Fe.Match;
-            if (_stage == MatchRunner.PuzzleStep.Watching)
-            {
-                var box = Kit.Panel(Content, "YOU ARE IN YOUR KIT"); box.AddToClassList("pz-note");
-                Kit.L(box, "An AI plays the rally for you. Watch where they are - it freezes before your shot.", "pz-text");
-                return;
-            }
             if (_stage == MatchRunner.PuzzleStep.Choosing)
             {
-                var box = Kit.Panel(Content, "THE RALLY'S FROZEN"); box.AddToClassList("pz-note");
-                Kit.L(box, "The ball is coming to you. Look where they are standing - which shot wins the rally from here?", "pz-text");
-                var row = Kit.Box(Content, "k-row"); row.AddToClassList("pz-row");
+                var stage = Kit.Box(Content, "pz2-stage");
+                var look = Kit.Box(stage, "pz2-look");
+                Kit.L(look, "THE MOMENT", "k-card-kicker");
+                var pic = Kit.Box(look, "pz2-pic"); pic.Add(new RuleDiagram(P.Moment));
+                var key = Kit.Box(look, "pz2-key");
+                Kit.L(key, "●  you", "pz2-key-you"); Kit.L(key, "●  them", "pz2-key-them"); Kit.L(key, "●  the ball", "pz2-key-ball");
+                Kit.L(look, P.Look, "pz2-look-text");
+                var grid = Kit.Box(stage, "pz2-choices");
                 for (int i = 0; i < P.Options.Count; i++)
                 {
                     int k = i;
-                    AddTo(row, new CardItem(ShotPuzzles.Name(P.Options[i]).ToUpperInvariant(), "OPTION " + (char)('A' + i), () => { m.ChoosePuzzle(k); Fe.Replace(new PuzzleScreen()); }, CardSize.S)
-                        .Drawn(Art(P.Options[i]), new Color32(18, 20, 26, 255), new Color32(190, 110, 255, 255)));
+                    var c = BookPuzzles.Choice(P.Options[i]);
+                    var card = AddTo(grid, new CardItem(c.Name.ToUpperInvariant(), "CHOICE " + (char)('A' + i), () => { m.ChoosePuzzle(k); Fe.Replace(new PuzzleScreen()); })
+                        .Drawn(Art(c), new Color32(18, 20, 26, 255), new Color32(190, 110, 255, 255)));
+                    card.Root.AddToClassList("pz2-card");
                 }
                 return;
             }
             if (_stage == MatchRunner.PuzzleStep.Playing)
             {
-                var box = Kit.Panel(Content, "YOUR CHOICE"); box.AddToClassList("pz-note");
-                Kit.L(box, "Played from the frozen moment, in slow motion.", "pz-text");
+                var box = Kit.Box(Content, "pz2-note");
+                Kit.L(box, "YOUR CHOICE", "k-card-kicker");
+                Kit.L(box, "Played from the moment, in slow motion.", "pz2-note-text");
                 return;
             }
             // ---- the answer ----
-            bool solved = P.Solves(m.PuzzleChoice);
-            _reward = Rewards.Puzzle(solved);
-            var col = Kit.Box(Content, "pz-result");
-            var st = new Stamp(solved ? "✓  BEST SHOT" : "✗  NOT THE BEST", 0.15f);
-            st.AddToClassList(solved ? "k-stamp--good" : "k-stamp--bad");
-            col.Add(st);
-            Kit.L(col, "This time: " + (m.PuzzleResult >= 1 ? "you won the rally." : m.PuzzleResult <= 0 ? "you lost the rally." : "the rally went on."), "pz-text");
-            var panel = Kit.Panel(col, "WHAT EACH SHOT WINS FROM HERE  ·  " + ShotPuzzles.Trials + " TRIES EACH");
+            int pick = m.PuzzleChoice;
+            var v = P.VerdictOf(pick);
+            _reward = Rewards.Puzzle(v);
+            var res = Kit.Box(Content, "pz2-stage");
+            var left = Kit.Box(res, "pz2-verdict");
+            var st = new Stamp(v == Verdict.Best ? "★  BEST" : v == Verdict.Ok ? "✓  OK" : "✗  WRONG", 0.15f);
+            st.AddToClassList(v == Verdict.Wrong ? "k-stamp--bad" : "k-stamp--good");
+            left.Add(st);
+            var chosen = BookPuzzles.Choice(P.Options[pick]);
+            Kit.L(left, chosen != null && chosen.Let ? "You stopped and asked for a let." :
+                        "This time: " + (m.PuzzleResult >= 1 ? "you won the rally." : m.PuzzleResult <= 0 ? "you lost the rally." : "the rally went on."), "pz2-note-text");
+            var list = Kit.Box(left, "pz2-list");
             for (int i = 0; i < P.Options.Count; i++)
             {
-                var r = Kit.Box(panel, "pz-bar-row");
-                if (i == P.Best) r.AddToClassList("pz-bar-row--best");
-                if (i == m.PuzzleChoice) r.AddToClassList("pz-bar-row--you");
-                Kit.L(r, ShotPuzzles.Name(P.Options[i]) + (i == m.PuzzleChoice ? "  (you)" : "") + (i == P.Best ? "  ★" : ""), "pz-bar-name");
-                var bar = Kit.Box(r, "k-ta-bar"); bar.AddToClassList("pz-bar");
-                Kit.Box(bar, "k-ta-bar-fill").style.width = Length.Percent(100f * (float)P.Rates[i]);
-                Kit.L(r, Mathf.RoundToInt(100f * (float)P.Rates[i]) + "%", "pz-bar-pct");
+                var row = Kit.Box(list, "pz2-row");
+                var vi = P.Verdicts[i];
+                row.AddToClassList(vi == Verdict.Best ? "pz2-row--best" : vi == Verdict.Ok ? "pz2-row--ok" : "pz2-row--wrong");
+                if (i == pick) row.AddToClassList("pz2-row--you");
+                var head = Kit.Box(row, "pz2-row-head");
+                Kit.L(head, vi == Verdict.Best ? "BEST" : vi == Verdict.Ok ? "OK" : "WRONG", "pz2-chip");
+                Kit.L(head, BookPuzzles.Name(P.Options[i]) + (i == pick ? "   (you)" : ""), "pz2-row-name");
+                Kit.L(row, P.Reasons[i], "pz2-row-why");
             }
-            Kit.L(panel, P.Why, "pz-why");
-            if (_reward != null && _reward.Any) { col.Add(new RewardStrip(_reward)); Fe.ToastAchievements(_reward); }
-            AddTo(Root, new PrimaryItem("Next puzzle", () => { Fe.Pop(); ChallengePlay.Puzzle(Fe); }));
+            if (_reward != null && _reward.Any) { left.Add(new RewardStrip(_reward)); Fe.ToastAchievements(_reward); }
+            // the rule's page, as the book has it
+            var rule = SquashSim.SquashBook.Get(P.Rule);
+            var page = Kit.Box(res, "pz2-page");
+            Kit.L(page, "THE RULEBOOK  ·  RULE " + rule.N, "k-card-kicker");
+            Kit.L(page, rule.Title, "pz2-page-title");
+            var rp = Kit.Box(page, "pz2-pic"); rp.AddToClassList("pz2-pic--page"); rp.Add(new RuleDiagram(P.Rule));
+            Kit.L(page, rule.Words, "pz2-page-words");
+            var next = AddTo(Root, new PrimaryItem("Next puzzle", () => { Fe.Pop(); ChallengePlay.StartPuzzle(Fe); }));
             var more = Kit.Box(Root, "k-ft-more");
             AddTo(more, new ActionItem("Back to challenges", BackToChallenges));
         }
 
-        static string Art(string shot)
+        static string Art(BookChoice c)
         {
-            switch (shot) { case "drop": case "kill": return "drop"; case "boast": return "angle"; case "lob": return "trail"; default: return "corner"; }
+            if (c.Let) return "split";
+            if (c.Move) return "corner";
+            if (c.Wait) return "clock";
+            if (c.Volley) return "chevrons";
+            if (c.Boast) return "angle";
+            if (c.High) return "trail";
+            if (c.Front) return "drop";
+            return "corner";
         }
 
         void BackToChallenges()
@@ -239,8 +262,8 @@ namespace SquashGame.UI
 
         protected override void SetPrompts()
         {
-            if (_stage == MatchRunner.PuzzleStep.Choosing) Prompts.Set((PromptBar.Btn.A, "Play this shot"), (PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.B, "Quit"));
-            else if (_stage == MatchRunner.PuzzleStep.Over) Prompts.Set();                                   // like full time: the actions say it (bottom left)
+            if (_stage == MatchRunner.PuzzleStep.Choosing) Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Do this"), (PromptBar.Btn.B, "Quit"));
+            else if (_stage == MatchRunner.PuzzleStep.Over) Prompts.Set();
             else Prompts.Set((PromptBar.Btn.B, "Quit"));
         }
 

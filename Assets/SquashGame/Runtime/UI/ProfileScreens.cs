@@ -68,6 +68,7 @@ namespace SquashGame.UI
 
     public sealed class ProfileScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.You; } }   // 2026-11-21 its toon world (Dioramas)
         protected override string Kicker { get { return "YOUR PROFILE"; } }
         protected override string Title { get { return PlayerName.Shown(); } }
         protected override bool ShowChip { get { return false; } }

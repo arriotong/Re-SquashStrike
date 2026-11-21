@@ -71,8 +71,6 @@ public static class Program
         if (Array.IndexOf(args, "--arcade") >= 0) { ArcadeBench.Run(Arg(args, "--games") != null ? games : 30, Arg(args, "--only")); return 0; }
         if (Array.IndexOf(args, "--book") >= 0) { BookBench.Run(Arg(args, "--games") != null ? games : 8); return 0; }
         if (Array.IndexOf(args, "--stars") >= 0) { StarBench.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--only")); return 0; }
-        { int ib = Array.IndexOf(args, "--puzzle-bank"); if (ib >= 0) { PuzzleBench.Bank(int.Parse(args[ib + 1]), uint.Parse(args[ib + 2]), args[ib + 3]); return 0; } }
-        if (Array.IndexOf(args, "--puzzle") >= 0) { PuzzleBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
         if (Array.IndexOf(args, "--rogue") >= 0) { RogueBench.DeckMode = Arg(args, "--deck"); RogueBench.Run(Arg(args, "--games") != null ? games : 20, Arg(args, "--policy") ?? "greedy", int.Parse(Arg(args, "--talents") ?? "0")); return 0; }
         if (Array.IndexOf(args, "--shot-audit") >= 0) { ShotAudit.Run(); return 0; }
         if (Array.IndexOf(args, "--drive-audit") >= 0) { DriveAudit.Run(Array.IndexOf(args, "--assisted") >= 0, double.Parse(Arg(args, "--charge") ?? "0", System.Globalization.CultureInfo.InvariantCulture)); return 0; }
@@ -84,6 +82,19 @@ public static class Program
         if (Array.IndexOf(args, "--let-survey") >= 0) { Console.Write(SquashSim.LetSurvey.Run(Arg(args, "--games") != null ? games : 48, Array.IndexOf(args, "--no-appeals") < 0,
                 Arg(args, "--levels") != null ? Array.ConvertAll(Arg(args, "--levels").Split(','), double.Parse) : null)); return 0; }
         if (Array.IndexOf(args, "--verify-replays") >= 0) return ReplayTool.Verify(Arg(args, "--verify-replays") ?? "Assets/SquashGame/Resources/Replays");
+        if (Array.IndexOf(args, "--book-puzzles") >= 0)                     // 2026-11-21 the rulebook's shot puzzles: one per rule, in words
+        {
+            for (int rule = 1; rule <= 12; rule++)
+            {
+                var p = SquashSim.Modes.BookPuzzles.Make(20261121u, rule);
+                var mo = p.Moment;
+                Console.WriteLine("RULE " + rule + ": " + SquashSim.SquashBook.Get(rule).Title);
+                Console.WriteLine("  " + p.Look + string.Format("  (ball {0:0.0},{1:0.0}  you {2:0.0},{3:0.0}  them {4:0.0},{5:0.0})", mo.BallX, mo.BallZ, mo.MeX, mo.MeZ, mo.OppX, mo.OppZ));
+                for (int i = 0; i < p.Options.Count; i++)
+                    Console.WriteLine("    " + p.Verdicts[i].ToString().ToUpperInvariant().PadRight(6) + SquashSim.Modes.BookPuzzles.Name(p.Options[i]).PadRight(36) + p.Reasons[i]);
+            }
+            return 0;
+        }
         if (Array.IndexOf(args, "--make-replays") >= 0) { ReplayTool.Make(Arg(args, "--out") ?? "../../Assets/SquashGame/Resources/Replays"); return 0; }
         if (Array.IndexOf(args, "--balance") >= 0) { PressAudit.NoLets = Array.IndexOf(args, "--no-lets") >= 0; PressAudit.NoLines = Array.IndexOf(args, "--no-lines") >= 0; PressAudit.Assisted = Array.IndexOf(args, "--assisted") >= 0; PressAudit.Attr = double.Parse(Arg(args, "--attr") ?? "5"); PressAudit.Balance(Arg(args, "--games") != null ? games : 12); return 0; }
         if (Array.IndexOf(args, "--corner-audit") >= 0) { CornerAudit.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--p1") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.45")); return 0; }

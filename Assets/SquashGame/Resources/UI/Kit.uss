@@ -1508,3 +1508,84 @@
 .gt-card { width: 340px; height: 400px; margin-right: 24px; }
 .gt-card .k-card-title { font-size: 36px; }
 .gt-card .k-card-line { font-size: 14px; }
+
+/* ---------- 2026-11-21 online remade: a big card and small ones (like the career's) ---------- */
+.on-stage { flex-direction: row; align-items: flex-end; flex-grow: 1; margin-bottom: 8px; }
+.on-hero { width: 560px; height: 560px; margin-right: 24px; border-width: 3px; }
+.on-hero .k-card-title { font-size: 54px; }
+.on-hero .k-card-line { font-size: 15px; margin-top: 8px; }
+.on-hero .k-card-shade { height: 40%; }
+.on-hero-big { position: absolute; left: 0; right: 0; top: 70px; font-size: 96px; -unity-text-align: middle-center; color: rgb(255, 255, 255);
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 4px 18px rgba(0, 0, 0, 0.7); }
+.on-col { width: 540px; justify-content: flex-end; }
+.on-sides { flex-direction: row; flex-wrap: wrap; width: 540px; height: 560px; align-content: flex-start; }
+.on-mini { width: 252px; height: 272px; margin: 0 16px 16px 0; }
+.on-mini .k-card-title { font-size: 28px; }
+.on-col .on-mini { width: 360px; height: 260px; }
+.on-namebox { padding: 26px 28px; background-color: rgba(10, 11, 14, 0.9); border-radius: 18px; border-width: 2px; border-color: rgba(255, 255, 255, 0.12); }
+.on-namefield { margin: 12px 0 10px 0; height: 76px; }
+.on-namefield .unity-text-field__input { font-size: 34px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.on-info { margin-top: 14px; padding: 16px 20px; width: 360px; background-color: rgba(10, 11, 14, 0.85); border-radius: 14px; }
+.on-small { font-size: 13px; color: rgba(255, 255, 255, 0.75); white-space: normal; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.on-board2 { width: 720px; min-height: 560px; padding: 22px 26px; background-color: rgba(10, 11, 14, 0.9); border-radius: 18px; border-width: 2px; border-color: rgba(255, 255, 255, 0.12); }
+.on-rows2 { margin-top: 10px; }
+.on-row2 { flex-direction: row; align-items: center; height: 44px; margin-bottom: 4px; padding: 0 14px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.05); }
+.on-row2--you { background-color: rgba(200, 255, 61, 0.18); border-width: 2px; border-color: rgb(200, 255, 61); }
+.on-row2-rank { width: 56px; font-size: 24px; color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.on-row2--top1 .on-row2-rank { color: rgb(255, 204, 64); }
+.on-row2--top2 .on-row2-rank { color: rgb(210, 214, 224); }
+.on-row2--top3 .on-row2-rank { color: rgb(220, 140, 80); }
+.on-row2-name { flex-grow: 1; font-size: 24px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.on-row2-wl { width: 90px; font-size: 15px; color: rgba(255, 255, 255, 0.6); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.on-row2-rating { width: 80px; font-size: 24px; -unity-text-align: middle-right; color: rgb(60, 170, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+/* ---------- 2026-11-21 the get-ready screen before every activity (BriefingScreens) ---------- */
+.bf-stage { flex-direction: row; align-items: flex-end; flex-grow: 1; margin-bottom: 8px; }
+.bf-hero { width: 560px; height: 600px; margin-right: 24px; border-width: 3px; }
+.bf-hero .k-card-title { font-size: 52px; }
+.bf-hero .k-card-line { font-size: 15px; margin-top: 8px; }
+.bf-col { width: 640px; justify-content: flex-end; }
+.bf-panel { margin-bottom: 14px; padding: 18px 22px; background-color: rgba(10, 11, 14, 0.88); border-radius: 16px; border-width: 2px; border-color: rgba(255, 255, 255, 0.1); }
+.bf-step { flex-direction: row; align-items: center; margin-top: 10px; }
+.bf-step-n { width: 40px; height: 40px; margin-right: 14px; border-radius: 20px; font-size: 22px; -unity-text-align: middle-center;
+    color: rgb(10, 11, 14); background-color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.bf-step-text { flex-shrink: 1; font-size: 22px; white-space: normal; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.bf-goal { margin-top: 8px; font-size: 24px; white-space: normal; color: rgb(255, 204, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.bf-keys { margin-top: 8px; font-size: 14px; white-space: normal; color: rgba(255, 255, 255, 0.8); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.bf-back { width: 240px; height: 96px; background-color: rgba(30, 31, 38, 0.95); }
+.bf-back .k-card-title { font-size: 26px; }
+.bf-back .k-card-shade { height: 100%; }
+
+/* ---------- 2026-11-21 the rulebook's shot puzzle (PuzzleScreen) ---------- */
+.pz2-stage { flex-direction: row; align-items: flex-end; flex-grow: 1; margin-bottom: 8px; }
+.pz2-look { width: 470px; margin-right: 24px; padding: 20px 22px; background-color: rgba(10, 11, 14, 0.9); border-radius: 18px; border-width: 2px; border-color: rgba(255, 255, 255, 0.12); }
+.pz2-pic { height: 420px; margin-top: 10px; }
+.pz2-pic .k-rule-pic { width: 100%; height: 100%; }
+.pz2-pic--page { height: 330px; }
+.pz2-key { flex-direction: row; justify-content: center; margin-top: 8px; }
+.pz2-key-you { color: rgb(64, 140, 255); margin: 0 10px; font-size: 13px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pz2-key-them { color: rgb(255, 140, 40); margin: 0 10px; font-size: 13px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pz2-key-ball { color: rgb(250, 250, 240); margin: 0 10px; font-size: 13px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pz2-look-text { margin-top: 12px; font-size: 22px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz2-choices { flex-direction: row; flex-wrap: wrap; width: 740px; }
+.pz2-card { width: 352px; height: 250px; margin: 0 16px 16px 0; }
+.pz2-card .k-card-title { font-size: 28px; }
+.pz2-note { width: 520px; padding: 20px 24px; background-color: rgba(10, 11, 14, 0.88); border-radius: 16px; }
+.pz2-note-text { margin: 8px 0; font-size: 20px; white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz2-verdict { width: 760px; margin-right: 24px; padding: 20px 24px; background-color: rgba(10, 11, 14, 0.9); border-radius: 18px; }
+.pz2-list { margin-top: 6px; }
+.pz2-row { margin-bottom: 8px; padding: 10px 14px; border-radius: 12px; background-color: rgba(255, 255, 255, 0.05); border-left-width: 6px; }
+.pz2-row--best { border-left-color: rgb(200, 255, 61); }
+.pz2-row--ok { border-left-color: rgb(255, 204, 64); }
+.pz2-row--wrong { border-left-color: rgb(255, 90, 74); }
+.pz2-row--you { background-color: rgba(255, 255, 255, 0.12); }
+.pz2-row-head { flex-direction: row; align-items: center; }
+.pz2-chip { width: 74px; font-size: 13px; letter-spacing: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pz2-row--best .pz2-chip { color: rgb(200, 255, 61); }
+.pz2-row--ok .pz2-chip { color: rgb(255, 204, 64); }
+.pz2-row--wrong .pz2-chip { color: rgb(255, 90, 74); }
+.pz2-row-name { font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz2-row-why { margin-top: 2px; font-size: 13px; white-space: normal; color: rgba(255, 255, 255, 0.75); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.pz2-page { width: 520px; padding: 20px 24px; background-color: rgba(246, 242, 232, 0.97); border-radius: 18px; }
+.pz2-page .k-card-kicker { color: rgb(60, 90, 20); }
+.pz2-page-title { margin-top: 4px; font-size: 30px; white-space: normal; color: rgb(20, 20, 24); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pz2-page-words { margin-top: 10px; font-size: 18px; white-space: normal; color: rgb(40, 40, 46); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
