@@ -13,6 +13,7 @@ namespace SquashGame.UI
 {
     public sealed class RulesBookScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Training; } }   // 2026-11-21 the screen sweep: its world, not the court
         protected override string Kicker { get { return "LEARN TO PLAY  ·  WHERE TO HIT THE BALL"; } }
         protected override string Title { get { return "How to win"; } }
         protected override bool ShowChip { get { return false; } }

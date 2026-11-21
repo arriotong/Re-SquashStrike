@@ -122,6 +122,7 @@ namespace SquashGame.UI
 
     public sealed class GoldPlateScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Store; } }   // 2026-11-21 the screen sweep: its world, not the court
         protected override string Kicker { get { return "PRO SHOP  ·  " + GearUi.Wallet(); } }
         protected override string Title { get { return "Make it gold"; } }
         protected override bool ShowChip { get { return false; } }

@@ -755,7 +755,7 @@
 .k-set-row > .k-sel, .k-set-row > .k-carousel { margin-bottom: 4px; }
 .k-set-row > .k-carousel { width: auto; height: 76px; }
 .k-set-row .k-car-value { width: 340px; font-size: 34px; }
-.k-set-hint { font-size: 12px; margin-left: 18px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
+.k-set-hint { font-size: 12px; margin-left: 18px; margin-right: 18px; white-space: normal; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Medium"); }
 .k-set-panel > .k-action { width: 360px; margin-top: 10px; }
 .k-set-preview { flex-grow: 1; margin: 0; }
 .k-set-pv-row { flex-direction: row; justify-content: space-around; margin: 20px 0 30px 0; }
@@ -768,10 +768,10 @@
 
 /* ---------- controls ---------- */
 .k-ctl-grid { flex-direction: row; flex-wrap: wrap; }
-.k-ctl { width: 846px; flex-direction: row; align-items: center; height: 58px; margin: 0 18px 10px 0; padding: 0 18px; border-radius: 10px; background-color: rgba(16, 18, 22, 0.88); }
-.k-ctl-action { width: 280px; font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
-.k-ctl-keys { flex-direction: row; align-items: center; flex-shrink: 1; }
-.k-ctl-key { padding: 4px 10px; border-radius: 6px; font-size: 13px; color: rgb(14, 15, 18); background-color: rgb(220, 222, 226); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-ctl { width: 846px; flex-direction: row; align-items: center; min-height: 58px; margin: 0 18px 10px 0; padding: 8px 18px; border-radius: 10px; background-color: rgba(16, 18, 22, 0.88); }
+.k-ctl-action { width: 260px; flex-shrink: 0; white-space: normal; font-size: 22px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-ctl-keys { flex-direction: row; flex-wrap: wrap; align-items: center; flex-shrink: 1; flex-grow: 1; }
+.k-ctl-key { flex-shrink: 1; white-space: normal; margin: 2px 0; padding: 4px 10px; border-radius: 6px; font-size: 13px; color: rgb(14, 15, 18); background-color: rgb(220, 222, 226); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .k-ctl-key--pad { background-color: rgb(200, 255, 61); }
 .k-ctl-or { margin: 0 10px; color: rgba(255, 255, 255, 0.4); }
 

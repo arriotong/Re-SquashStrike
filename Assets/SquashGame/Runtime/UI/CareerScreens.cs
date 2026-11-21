@@ -345,6 +345,7 @@ namespace SquashGame.UI
 
     public sealed class CreatePlayerScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-21 the screen sweep: its world, not the court
         protected override string Kicker { get { return "NEW CAREER"; } }
         protected override string Title { get { return "Create your player"; } }
         protected override bool ShowChip { get { return false; } }

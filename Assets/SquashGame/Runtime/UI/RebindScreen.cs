@@ -35,6 +35,8 @@ namespace SquashGame.UI
         {
             _tabs = new TabBar("KEYBOARD", "PAD");
             _tabs.Changed += Page;
+            _tabs.style.position = Position.Relative; _tabs.style.left = StyleKeyword.Auto; _tabs.style.top = StyleKeyword.Auto;   // 2026-11-21 in the side panel's flow (it sat over the first rows)
+            _tabs.style.marginBottom = 12;
             Content.Add(_tabs);
             for (int p = 0; p < 2; p++)
             {

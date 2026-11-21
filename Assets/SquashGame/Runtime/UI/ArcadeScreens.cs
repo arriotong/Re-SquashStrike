@@ -229,12 +229,7 @@ namespace SquashGame.UI
             var hero = AddTo(free, new CardItem("FREE PRACTICE", "THE COURT", () => Briefing.FreePractice(Fe), CardSize.Hero).Vignette("court")
                 .Line("Just you, the ball and the wall."));
             hero.Root.AddToClassList("k-card--free");
-            // 2026-10-30 (the kid test): three plain steps, not an eight-row table of the coach tray's settings
-            var tray = Kit.Panel(free, "HOW IT WORKS");
-            tray.AddToClassList("k-ta-traypanel");
-            Line(tray, "1", "Drop the ball and hit it at the front wall.");
-            Line(tray, "2", "Missed it? The ball comes back to your hand.");
-            Line(tray, "3", "Want someone to throw you balls? Press Tab (or View on a pad) and pick the feeder. Slow motion is in there too.");
+            // (2026-11-21 the screen sweep: its how-it-works steps live on the get-ready screen now - Briefing.FreePractice)
 
             // ---- DRILLS ----
             var drills = Kit.Box(Page("DRILLS"), "k-row");

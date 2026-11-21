@@ -22,6 +22,7 @@ namespace SquashGame.UI
 {
     public sealed class EquipmentScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.Career; } }   // 2026-11-21 the screen sweep: its world, not the court
         static readonly GearSlot[] Slots = { GearSlot.Racket, GearSlot.Shoes, GearSlot.Kit };
         static readonly string[] TabNames = { "RACKET", "SHOES", "KIT" };
         static readonly string[] Stats = { "Speed", "Power", "Accuracy", "Stamina", "Stability" };

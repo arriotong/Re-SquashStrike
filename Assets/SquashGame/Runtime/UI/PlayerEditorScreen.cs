@@ -16,6 +16,7 @@ namespace SquashGame.UI
 {
     public sealed class PlayerEditorScreen : GameScreen
     {
+        public override MenuWorld Backdrop { get { return MenuWorld.You; } }   // 2026-11-21 the screen sweep: its world, not the court
         protected override string Kicker { get { return "YOUR PROFILE"; } }
         protected override string Title { get { return "Player names"; } }
         protected override bool ShowChip { get { return false; } }

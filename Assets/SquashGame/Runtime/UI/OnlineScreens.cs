@@ -333,7 +333,7 @@ namespace SquashGame.UI
             var b = OnlineService.LastBoard;
             _note.text = OnlineService.BoardLoading ? "Loading..." : OnlineService.BoardError ?? (b != null && b.players.Length == 0 ? "Nobody has played a ranked match yet." : "");
             bool ranked = b != null && b.you != null && b.you.rank > 0;
-            _rank.text = ranked ? "#" + b.you.rank : "-";
+            _rank.text = ranked ? "#" + b.you.rank : "NEW";   // (unranked: a word, not a lone dash)
             _you = ranked ? b.you.rating + " points  ·  " + b.you.wins + " W  " + (b.you.games - b.you.wins) + " L" : OnlineText.Rating();
             if (b == _drawn) return;
             _drawn = b;

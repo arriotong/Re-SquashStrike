@@ -134,7 +134,7 @@ namespace SquashGame.UI
         public static void FreePractice(FrontEnd fe)
         {
             fe.Push(new BriefingScreen(MenuWorld.Training, "PRACTICE COURT", "Free practice", "Just you, a ball and the court.", "corner", new Color32(20, 32, 28, 255), new Color32(200, 255, 61, 255),
-                new[] { "Hit the ball anywhere you like.", "Try every shot: drives, drops, lobs, boasts.", "Stop any time with Esc." },
+                new[] { "Drop the ball and hit it at the front wall. Missed? It comes back to your hand.", "Want balls thrown to you? Press Tab (View on a pad) for the feeder - and slow motion.", "Stop any time with Esc." },
                 "No score here - practise until it feels easy.", PlayKeys, () => FrontEnd.LaunchFreePractice()));
         }
 
