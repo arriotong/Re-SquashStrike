@@ -48,7 +48,7 @@ namespace SquashSim.Tests
             {
                 int before = m.WarmUpShots, owner = m.WarmUpOwner;
                 m.Step(Dt);
-                if (m.WarmUpShots > before) { shots[owner]++; Assert.That(m.WarmUpOwner, Is.EqualTo(1 - owner), "every shot makes it the other one's ball"); }
+                if (m.WarmUpShots > before) { shots[owner]++; Assert.That(m.CanStrike(owner), Is.False, "2026-11-21: not again before the front wall (it stays yours until it crosses)"); }
                 Assert.That(m.CanStrike(1 - m.WarmUpOwner), Is.False, "only the player whose ball it is may strike");
             }
             Assert.That(shots[0], Is.GreaterThan(8), "both knock up");
@@ -96,6 +96,31 @@ namespace SquashSim.Tests
             Assert.That(yours, Is.GreaterThan(3), "you hit from your hand");
             Assert.That(theirs, Is.GreaterThan(3), "and they hit it back");
             Assert.That(m.WarmUpFeeds, Is.EqualTo(backInHand + 1), "never fed by the machine");
+        }
+
+        [Test] public void EachKnocksUpOnTheirOwnSideThenCrossesIt()
+        {
+            // 2026-11-21 (the user): hit to yourself a couple of times, then cross-court it - nobody runs to the other's side
+            var m = AiMatch(true, 1);
+            var mods = RunMods.From(new[] { new RunMod { Id = "special", Level = 1 } });
+            m.Players[1].Player.Mods = mods;
+            int owner = m.WarmUpOwner, crosses = 0, selfRun = 0, onTheirSide = 0, steps = 0;
+            var runs = new System.Collections.Generic.List<int>();
+            int shotsBefore = m.WarmUpShots;
+            while (m.Phase == MatchPhase.WarmUp && m.Time < 80)
+            {
+                m.Step(Dt);
+                if (m.WarmUpShots > shotsBefore) { shotsBefore = m.WarmUpShots; selfRun++; }
+                if (m.WarmUpOwner != owner && !m.WarmUpInHand) { crosses++; runs.Add(selfRun); selfRun = 0; owner = m.WarmUpOwner; }
+                for (int i = 0; i < 2; i++) if (m.Players[i].Player.Pos.X * MatchSimulation.WarmSide(i) < -0.8) onTheirSide++;
+                steps += 2;
+            }
+            UnityEngine.Debug.Log("[KnockUp] crosses " + crosses + ", hits before each cross " + string.Join(",", runs) + ", steps on the other side " + onTheirSide + " of " + steps);
+            Assert.That(crosses, Is.GreaterThan(3), "the ball goes across, again and again");
+            int inRange = runs.FindAll(r => r >= 2 && r <= 5).Count;
+            Assert.That(inRange, Is.GreaterThanOrEqualTo(runs.Count / 2), "mostly a few hits to yourself first");
+            Assert.That(onTheirSide, Is.LessThan(steps / 10), "each stays on their own side");
+            Assert.That(mods.Power, Is.EqualTo(0.0), "the knock-up charges no special meter");
         }
 
         [Test] public void KnockUpCanBeSkipped()

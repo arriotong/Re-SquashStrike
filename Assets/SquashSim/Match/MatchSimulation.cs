@@ -94,7 +94,7 @@ namespace SquashSim
         /// <summary>May player i touch the ball right now?</summary>
         public bool CanStrike(int i)
         {
-            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !WarmUpInHand && !Ball.Asleep;
+            if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !WarmUpInHand && !Ball.Asleep && (_warmHitter != i || _warmFront);
             return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i;
         }
         /// <summary>Is player i the one going for this ball?</summary>
@@ -130,6 +130,50 @@ namespace SquashSim
         // every shot makes it the other one's ball. It starts in your hand: drop it and hit (the serve's tap / hold). A
         // dead ball comes back to a person's hand (the AI, with nobody to give it to, is fed off the front wall).
 
+        // 2026-11-21 (the user: "the ai tries to run to your side to hit your ball - make it like we hit it to ourselves a couple
+        // times and then cross court it"): each player knocks up down their own side. A shot stays yours until it comes off the
+        // front wall heading for the other half - then it's theirs. The AI hits to itself 2-4 times (seeded), then crosses.
+
+        int _warmHitter = -1, _warmImpactsAt, _warmSelfLeft;
+        bool _warmFront;
+        /// <summary>The side of the court player i knocks up on (sim X sign).</summary>
+        public static double WarmSide(int i) { return WarmUpSpots[i].X >= 0 ? 1 : -1; }
+        /// <summary>The AI's next knock-up shot goes across to the other player (its hits to itself are done).</summary>
+        public bool WarmUpCrossNext(int i) { return Phase == MatchPhase.WarmUp && WarmUpOwner == i && _warmSelfLeft <= 0; }
+        /// <summary>The AI's hits to itself left this turn (tests).</summary>
+        public int WarmUpSelfLeft { get { return _warmSelfLeft; } }
+        /// <summary>Over this far into the other half, a knock-up shot is theirs.</summary>
+        public const double WarmCrossX = 0.3;
+
+        /// <summary>A new knock-up turn for player i: the AI's 2-4 hits to itself (seeded on the knock-up so far).</summary>
+        void NewWarmTurn(int i)
+        {
+            uint h = (uint)(WarmUpShots * 7919 + WarmUpFeeds * 104729 + i * 31 + 17);
+            h ^= h >> 16; h *= 0x7feb352d; h ^= h >> 15; h *= 0x846ca68b; h ^= h >> 16;
+            _warmSelfLeft = 2 + (int)(h % 3);
+        }
+
+        /// <summary>Each step of the knock-up: once the shot is off the front wall, whose it is - the hitter's if it comes back down
+        /// their side, the other player's if it's heading across.</summary>
+        void WarmUpWhose()
+        {
+            if (_warmHitter < 0 || _warmFront || WarmUpInHand) return;
+            var hist = Ball.ImpactHistory;
+            bool front = false;
+            for (int k = _warmImpactsAt; k < hist.Count; k++) if (hist[k].SurfaceClass == "frontWall") { front = true; break; }
+            if (!front) return;
+            _warmFront = true;
+            int other = 1 - _warmHitter;
+            double x = Ball.Pos.X;
+            if (Ball.Vel.Z > 0.1) x += Ball.Vel.X / Ball.Vel.Z * System.Math.Max(0, 6.0 - Ball.Pos.Z);   // where it's going, at the players' depth
+            x = System.Math.Max(-HALF_W, System.Math.Min(HALF_W, x));
+            if (x * WarmSide(other) > WarmCrossX)
+            {
+                WarmUpOwner = other;
+                NewWarmTurn(other);
+            }
+        }
+
         /// <summary>Where the players stand to knock up (and where the walk-on brings them).</summary>
         public static readonly V3[] WarmUpSpots = { new V3(1.4, 0, 6.0), new V3(-1.4, 0, 6.3) };
 
@@ -153,6 +197,8 @@ namespace SquashSim
             _warmUpLast = h;                                       // a feed reads to the AI as its own last shot (as before)
             _deadFor = 0;
             Players[h].Arcade.CancelServe();
+            _warmHitter = -1; _warmFront = false;
+            NewWarmTurn(h);
             if (Bots[h] != null) { WarmUpInHand = false; Feed(); return; }
             _warmUpLast = 1 - h;
             WarmUpInHand = true;
@@ -199,11 +245,16 @@ namespace SquashSim
             BallPhysics.Wake(Ball);
         }
 
-        /// <summary>A knock-up shot by <paramref name="i"/>: the next one is the other player's.</summary>
+        /// <summary>A knock-up shot by <paramref name="i"/>: theirs until it comes off the front wall (WarmUpWhose); one of the AI's
+        /// hits to itself used.</summary>
         void WarmUpHit(int i)
         {
             _warmUpLast = i;
-            WarmUpOwner = 1 - i;
+            WarmUpOwner = i;
+            _warmHitter = i;
+            _warmFront = false;
+            _warmImpactsAt = Ball.ImpactHistory.Count;
+            if (_warmSelfLeft > 0) _warmSelfLeft--;
             _deadFor = 0;
         }
 
@@ -291,6 +342,7 @@ namespace SquashSim
             if (PhaseTime >= 2 * m.WarmUpSecondsEach) { SetUpServe(); return; }
             if (WarmUpInHand && Bots[WarmUpOwner] != null) BallBack(WarmUpOwner);   // the bots arrive after the knock-up starts
             if (WarmUpInHand) { WarmUpHand(dt); return; }
+            WarmUpWhose();
             // Dead ball (parked, second bounce, or out of court): back in a hand shortly.
             bool dead = Ball.Asleep || Ball.FloorSinceFrontWall >= 2 || Ball.Pos.Z > CourtDimensions.LENGTH;
             _deadFor = dead ? _deadFor + dt : 0;
@@ -741,7 +793,7 @@ namespace SquashSim
                 if (mm.FreezeSeconds > 0) { ModsOf(op).FreezeTimer = mm.FreezeSeconds; Note(1 - i, "freeze", 0); }
             }
             mm.UltNow = false;
-            mm.MeterShot();
+            if (Phase != MatchPhase.WarmUp) mm.MeterShot();                  // 2026-11-21 (the user): the knock-up charges nothing
             if (mm.SlowFieldSeconds > 0) { var o = ModsOf(op); o.SlowTimer = mm.SlowFieldSeconds; o.SlowScale = mm.SlowFieldScale; }
             if (mm.HasteSeconds > 0) mm.HasteTimer = mm.HasteSeconds;
             if (mm.HeavyCut > 0 && (contact.Technique == "drive" || contact.Technique == "kill")) ModsOf(op).ReachCut = mm.HeavyCut;

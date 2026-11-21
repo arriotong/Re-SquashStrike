@@ -453,7 +453,10 @@ namespace SquashSim
             }
             else if (warmUp)
             {
-                move = false;                                    // the other half of the knock-up: wait in the corner
+                // the other half of the knock-up: back to my own side and wait (2026-11-21: never on theirs)
+                tx = MatchSimulation.WarmUpSpots[me].X; tz = MatchSimulation.WarmUpSpots[me].Z;
+                double ddx = tx - p.Pos.X, ddz = tz - p.Pos.Z;
+                move = ddx * ddx + ddz * ddz > 0.5 * 0.5;
             }
             else if (live)
             {
@@ -1129,8 +1132,12 @@ namespace SquashSim
             // Knock-up: easy to reach again (low "pressure" on yourself), a good length, safe.
             if (_knockUp)
             {
-                double offLine = Clamp(System.Math.Abs(x2 - opp.Pos.X) / HALF_W, 0, 1);   // to where they stand
-                return -2.0 * pressure - 1.5 * offLine + 0.5 * length - risk;
+                // 2026-11-21: straight down my own side to myself (2-4 times), then across to where they wait
+                int meI = ctrl == m.Players[0] ? 0 : 1;
+                bool cross = m.WarmUpCrossNext(meI);
+                double aimX = cross ? MatchSimulation.WarmUpSpots[1 - meI].X : MatchSimulation.WarmSide(meI) * 1.9;
+                double offLine = Clamp(System.Math.Abs(x2 - aimX) / HALF_W, 0, 1);
+                return -2.0 * pressure - 2.5 * offLine + 0.5 * length - risk;
             }
 
             double score = Profile.WPressure * pressure + Profile.WLength * length + Profile.WWidth * width +
