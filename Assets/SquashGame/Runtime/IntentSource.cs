@@ -12,7 +12,9 @@
 //   Boast  tap E / pad RB to arm a boast for your next shot (tap again to
 //          cancel): off the side wall by the ball, landing on the reticle.
 //   Hit    LMB / pad South: hold to charge, let go as the ball arrives
-//   Dive   Space / pad East     Sprint  Shift / pad LB
+//   Focus  Space / pad RT, held: slow motion when their shot comes to you;
+//          let go with the ball out of reach: a dive (2026-11-22 evening -
+//          F and the old dive buttons are gone)    Sprint  Shift / pad LB
 //   Let    RMB / Q / pad Y: "Let, please"   Touch  pad West
 //   Focus  pad LT: split-step, timed to the opponent's contact
 //   Pause  Esc / Start
@@ -106,8 +108,8 @@ namespace SquashGame
         // ---------------- rebinding (Settings > Controls > Change keys) ----------------
 
         /// <summary>The actions a player may rebind, and their names on screen.</summary>
-        public static readonly string[] Rebindable = { "Hit", "Boast", "Dive", "Sprint", "Appeal" };
-        public static readonly string[] RebindableNames = { "Hit", "Boast", "Dive", "Sprint", "Ask for a let" };
+        public static readonly string[] Rebindable = { "Hit", "Boast", "Focus", "Sprint", "Appeal" };
+        public static readonly string[] RebindableNames = { "Hit", "Boast", "Focus / dive", "Sprint", "Ask for a let" };
         static readonly List<IntentSource> _live = new List<IntentSource>();
         static string _overrides = "";
         /// <summary>Raised when a binding changes (the profile saves it; labels refresh).</summary>
@@ -229,16 +231,14 @@ namespace SquashGame
 
             // P5: the Gauntlet's Focus (slow motion) - F / pad RT
             _slowmo = _map.AddAction("Focus", InputActionType.Button);
-            _slowmo.AddBinding("<Keyboard>/f");
+            _slowmo.AddBinding("<Keyboard>/space");                          // 2026-11-22 evening: Space (was F) - hold to focus, let go to dive
             _slowmo.AddBinding("<Gamepad>/rightTrigger");
             // 2026-11-22 the Special Shot: its own key (Q / D-pad up)
             _special = _map.AddAction("Special", InputActionType.Button);
             _special.AddBinding("<Keyboard>/q");
             _special.AddBinding("<Gamepad>/dpad/up");
 
-            _dive = _map.AddAction("Dive", InputActionType.Button);
-            _dive.AddBinding("<Keyboard>/space");
-            _dive.AddBinding("<Gamepad>/buttonEast");
+            _dive = _map.AddAction("Dive", InputActionType.Button);          // 2026-11-22 evening: no buttons - the dive is Focus let go
 
             _sprint = _map.AddAction("Sprint", InputActionType.Button);
             _sprint.AddBinding("<Keyboard>/leftShift");
@@ -391,6 +391,7 @@ namespace SquashGame
             if (_focus.WasPressedThisFrame()) Intent.SplitStepPressed = true;   // consumed by the next fixed step
             if (_slowmo.WasPressedThisFrame()) _slowmoPressed = true;
             Intent.FocusHeld = _slowmo.IsPressed();                                    // 2026-11-22 Focus, held (the sim's, with the Special card)
+            if (SpaceDives && _slowmo.WasPressedThisFrame()) Intent.DivePressed = true;   // 2026-11-22 evening: off the match, Space dives at once
             if (_special.WasPressedThisFrame()) Intent.SpecialPressed = true;          // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
@@ -424,7 +425,9 @@ namespace SquashGame
 
         /// <summary>Did the pause binding fire? Consumes it.</summary>
         /// <summary>P5: what to press for Focus.</summary>
-        public const string FocusKey = "F / RT";
+        public const string FocusKey = "SPACE / RT";
+        /// <summary>Off the match (practice, lessons, drills): Space / RT dives at once (SimRunnerBase.SpaceDives).</summary>
+        public bool SpaceDives;
         /// <summary>2026-11-22 what to press for the Special Shot.</summary>
         public const string SpecialKey = "Q / D-pad up";
         /// <summary>P5: the Focus key since the last call (the Gauntlet's slow motion).</summary>

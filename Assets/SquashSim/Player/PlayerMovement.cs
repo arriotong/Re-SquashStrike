@@ -12,6 +12,10 @@ namespace SquashSim
 {
     public static class PlayerMovement
     {
+        /// <summary>2026-11-22 evening (the user: "make the ai opponent players go slower as in running speed, meaning they need to
+        /// use focus or dive when ball is too far away"): every computer player runs this much of its speed (its Speed stat still
+        /// ranks them - the fast pros stay the quickest).</summary>
+        public const double AiRunScale = 0.88;
         public static void Step(TestPlayer player, InputIntent intent, MovementAssist assist, double dt)
         {
             var cfg = PhysicsConfig.Current.Player;
@@ -30,6 +34,7 @@ namespace SquashSim
             double attrSpeed = player.Attributes.SpeedScale;                  // P3-C1: exactly 1 when neutral
             if (attrSpeed != 1.0) maxSpeed *= attrSpeed;
             if (player.Mods != null) { double ms = player.Mods.MoveScale; if (ms != 1.0) maxSpeed *= ms; }   // P5 / chaos: Matador, Slow Field, Time Stop, Haste
+            if (player.AiPaced) maxSpeed *= AiRunScale;                       // 2026-11-22 evening: the computer runs slower
 
             // Match-only modifiers. All timers are zero in the lab, so this block
             // never runs there and the lab's arithmetic is exactly unchanged.

@@ -373,7 +373,10 @@ namespace SquashSim
             _lastStriker = -1; _nickBy = -1;                                  // P5
             _chaosStriker = -1; _curveT = 0; _curveArmed = false;               // chaos: a new rally - no freeze or haste carried over
             SpecialReset();
-            for (int i = 0; i < 2; i++) { var cm = Players[i].Player.Mods; if (cm != null) { cm.FreezeTimer = 0; cm.HasteTimer = 0; } }
+            // 2026-11-22 (the user: "the point after the special shot ... i can not hit their serve at all"): the cuts a Special
+            // Shot, a Heavy Ball or a Knuckleball put on you end with the rally - before, they lasted until your next stroke
+            for (int i = 0; i < 2; i++) { var cm = Players[i].Player.Mods; if (cm != null) { cm.FreezeTimer = 0; cm.HasteTimer = 0; cm.ReachCut = 0; cm.GraceCut = 0; cm.FocusBoost = 1; } }
+            _struckAt[0] = _struckAt[1] = -1e9;
             if (!_gameInit) { _gameInit = true; for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.NewGame(); }
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
             HoldBallForServe(keepTemperature: true);
@@ -446,6 +449,7 @@ namespace SquashSim
 
             for (int i = 0; i < 2; i++)
                 if (Bots[i] != null) Bots[i].Fill(Intents[i], this, i, dt);
+            for (int i = 0; i < 2; i++) Players[i].Player.AiPaced = Bots[i] != null && Players[i].ArcadeHitEnabled;   // 2026-11-22 evening
             for (int i = 0; i < 2; i++)                                       // P5: Matador's slow wears off (chaos: freeze, haste)
             {
                 var mm = Players[i].Player.Mods;
@@ -593,6 +597,9 @@ namespace SquashSim
                 if (_chaosStriker >= 0) ChaosBall(before);
                 for (int i = 0; i < 2; i++)
                 {
+                    // 2026-11-22 (the user's playtest: "Ball hit the striker" - a quick shot taken with the ball just behind you
+                    // flew back through your own body): your own shot leaves your body alone for a moment after you strike it
+                    if (Time - _struckAt[i] < OwnShotGrace) continue;
                     SimEvent bh = BodyCollision.BallVsBody(Ball, _prevBall, Players[i].Player, i, Time);
                     if (bh != null) StepEvents.Add(bh);
                 }
@@ -695,6 +702,9 @@ namespace SquashSim
         // ---------------- P5: the Gauntlet run's abilities at a rally's end ----------------
 
         int _lastStriker = -1, _nickBy = -1;
+        /// <summary>When each player last struck the ball; their own shot passes their body for OwnShotGrace seconds.</summary>
+        readonly double[] _struckAt = { -1e9, -1e9 };
+        public const double OwnShotGrace = 0.3;
         /// <summary>2026-11-21 (the Gauntlet's floors): who nicked the ball this rally (-1: nobody), who struck it last.</summary>
         public int NickBy { get { return _nickBy; } }
         public int LastStriker { get { return _lastStriker; } }
@@ -873,6 +883,7 @@ namespace SquashSim
 
         void OnRacketContact(int i, SimEvent contact)
         {
+            _struckAt[i] = Time;                                              // 2026-11-22: the striker's own body lets its shot go
             var rec = PhysicsConfig.Current.Recovery;
             double t;
             switch (contact.ReachState)

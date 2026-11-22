@@ -171,6 +171,8 @@ namespace SquashGame
             _floorBar.style.display = DisplayStyle.None; Add(_floorBar);
             // 2026-11-21 the polish pass: the callouts (3 IN A ROW, COMEBACK), the match won's title, the confetti
             _callout.AddToClassList("hud-callout"); _callout.pickingMode = PickingMode.Ignore; _callout.style.display = DisplayStyle.None; Add(_callout);
+            // 2026-11-22 evening (the user: "a NICK! pop up when getting one"): a gold stamp that slams in over the court
+            _nick.AddToClassList("hud-nick"); _nick.pickingMode = PickingMode.Ignore; _nick.style.display = DisplayStyle.None; Add(_nick);
             _confetti.AddToClassList("hud-confetti"); _confetti.pickingMode = PickingMode.Ignore; Add(_confetti);
             _win.AddToClassList("hud-win"); _win.pickingMode = PickingMode.Ignore; _win.style.display = DisplayStyle.None;
             _winTitle.AddToClassList("hud-win-title"); _winSub.AddToClassList("hud-win-sub");
@@ -190,6 +192,20 @@ namespace SquashGame
         // ---------------- 2026-11-21 the polish pass ----------------
         readonly Label[] _plus = new Label[2];
         readonly VisualElement[] _side = new VisualElement[2];
+        readonly Label _nick = new Label("NICK!");
+        float _nickLeft;
+        /// <summary>The NICK! stamps shown so far (tests).</summary>
+        public int NickStamps { get; private set; }
+        public bool NickShowing { get { return _nick.style.display == DisplayStyle.Flex; } }
+        void NickStamp(string who)
+        {
+            NickStamps++;
+            _nick.text = who + "NICK!";
+            _nick.style.display = DisplayStyle.Flex;
+            _nick.RemoveFromClassList("hud-nick--in");
+            _nick.schedule.Execute(() => _nick.AddToClassList("hud-nick--in")).StartingIn(16);
+            _nickLeft = 1.4f;
+        }
         readonly Label _callout = new Label(), _winTitle = new Label(), _winSub = new Label();
         readonly VisualElement _confetti = new VisualElement(), _win = new VisualElement();
         float _calloutLeft;
@@ -225,6 +241,7 @@ namespace SquashGame
             if (w == _streakWho) _streak++; else { _streak = 1; _streakWho = w; }
             bool you = !r.Settings.TwoPlayer && w == r.HumanIndex;
             string who = you ? "" : names[w].ToUpperInvariant() + ":  ";
+            if (m.NickBy == w && o.Kind == RallyEnd.NotUp) NickStamp(who);
             if (m.Phase == MatchPhase.MatchOver || m.Phase == MatchPhase.GameOver) return;
             // (this game's points: down by 4 or more, then level or ahead - a comeback)
             for (int p = 0; p < 2; p++) _down[p] = Mathf.Max(_down[p], s.Points[1 - p] - s.Points[p]);
@@ -409,6 +426,7 @@ namespace SquashGame
             if (strip) { _prompt.text = prompt; _promptKey.text = key ?? ""; _promptKey.style.display = key != null ? DisplayStyle.Flex : DisplayStyle.None; }
             _banner.style.fontSize = 40 * CallTextScale;
             Callouts(r, m, s, names);
+            if (_nickLeft > 0) { _nickLeft -= Time.unscaledDeltaTime; if (_nickLeft <= 0) { _nick.style.display = DisplayStyle.None; _nick.RemoveFromClassList("hud-nick--in"); } }
             if (_calloutLeft > 0) { _calloutLeft -= Time.unscaledDeltaTime; if (_calloutLeft <= 0) { _callout.style.display = DisplayStyle.None; _callout.RemoveFromClassList("hud-callout--in"); } }
             Celebrate(r, m, s, names);
             if (_win.style.display == DisplayStyle.Flex) { _centre.style.display = DisplayStyle.None; _meta.style.display = DisplayStyle.None; }

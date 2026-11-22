@@ -43,6 +43,8 @@ namespace SquashSim
         public double Stamina = 1.0;
         /// <summary>Game only: sprint / dive-recovery speed scale (exactly 1 in the lab: no effect).</summary>
         public double SpeedScale = 1.0;
+        /// <summary>Game only: an AI plays this athlete (PlayerMovement.AiRunScale). False in the lab and for a person.</summary>
+        public bool AiPaced;
         /// <summary>Game only (local players on the simple hitting system): full speed always - no near-ball
         /// "adjust" cap, no post-stroke recovery, split-step plant or fatigue slowdown. False in the lab.</summary>
         public bool ArcadeMovement;

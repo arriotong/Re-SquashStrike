@@ -248,6 +248,8 @@ namespace SquashSim
         public double RiskWeight = 3.0;      // score lost per unit of tin / out risk, times (1 - RiskAppetite)
         public double LowBias = 0.25, LowBiasVolley = 0.5;   // MatchBench --calibrate: actual front-wall height minus predicted
         public double TossDelay = 0.9;
+        /// <summary>A hard serve's pace kept off the front wall (its sideways speed all kept): measured 0.47-0.49.</summary>
+        public const double HardServeWallKeep = 0.48;
         public double ServeStrikeDelay = 0.26;  // after the toss: strike near its top
         public double ServeAimX = 0.55, ServeAimY = 0.85;
         public const double ServePace = GameTuning.Serve.AiPace / GameTuning.Ball.Pace;   // the serve keeps its tuned pace
@@ -350,6 +352,36 @@ namespace SquashSim
         /// <summary>How long the AI takes to Focus against a Special Shot coming at it.</summary>
         public const double SpecialReaction = 0.12;
 
+        // ---- 2026-11-22 evening: the computer's dive (it runs slower now - PlayerMovement.AiRunScale - so a far ball needs one) ----
+        /// <summary>It dives (Focus held a step, then let go: the match's smart dive) once a ball it can't run down comes within this
+        /// many metres; it looks again every DiveLookEvery seconds.</summary>
+        public const double DiveRange = 2.6, DiveLookEvery = 0.06;
+        int _diveShot = -1; bool _diveHeld, _diveWanted; double _diveLooked = -1;
+        /// <summary>Dives it chose (tests, the bench).</summary>
+        public int DivesChosen { get; private set; }
+
+        void DiveIfOutOfReach(InputIntent intent, MatchSimulation m, int me, double t)
+        {
+            if (_diveHeld) { _diveHeld = false; return; }                     // (this step it lets go: the match dives, or not)
+            var ctrl = m.Players[me];
+            if (!ctrl.ArcadeHitEnabled || !m.BallComing(me) || !ctrl.Arcade.CanDive) return;
+            int shot = m.Referee.Shots;
+            if (shot != _diveShot)
+            {
+                _diveShot = shot;
+                _diveWanted = Uniform() < 0.45 + 0.55 * Profile.Skill;             // a weaker player doesn't always go for it
+                _diveLooked = -1;
+            }
+            if (!_diveWanted || t - _diveLooked < DiveLookEvery) return;
+            _diveLooked = t;
+            var p = ctrl.Player; var b = m.Ball;
+            double near = DMath.Hypot(b.Pos.X - p.Pos.X, b.Pos.Z - p.Pos.Z);
+            if (near > DiveRange || m.Reachable(me)) return;
+            var mm = p.Mods;
+            if (mm != null && mm.Level("special") > 0 && mm.Power < MatchSimulation.DiveMeterCost) return;
+            intent.FocusHeld = true; _diveHeld = true; _diveWanted = false; DivesChosen++;
+        }
+
         double Uniform()
         {
             _seed = unchecked(_seed * 1664525u + 1013904223u);
@@ -416,6 +448,7 @@ namespace SquashSim
             else _specialSeen = -1;
             // the Special Shot: a full meter - soon after their shot comes off the front wall
             if (sm != null && m.CanSpecial(me) && Uniform() < 0.04) intent.SpecialPressed = true;
+            DiveIfOutOfReach(intent, m, me, t);
 
             // ---- new rally / new shot bookkeeping ----
             if (m.History.Count != _lastRally)
@@ -695,8 +728,13 @@ namespace SquashSim
                     // the hard serve: the front-wall point on the line from where it's struck (a little right of the server) to the
                     // receiver's back corner - each box has its own angle
                     var sp = ctrl.Player.Pos;
-                    double cx = sp.X + 0.35, cz = sp.Z, landX = -side * (2.3 + 0.3 * Uniform()), landZ = 9.6;
-                    double wallX = cx + (landX - cx) * cz / (cz + landZ);
+                    // 2026-11-22 evening (the user: "still serves out pretty frequently"): the front wall keeps the ball's sideways
+                    // speed but only about half its pace back (HardServeWallKeep), so it comes off twice as steep as a mirror
+                    // would - aimed by the mirror, it clipped the far side wall and came back to the server's own half. Aimed
+                    // for the steeper rebound now: the front-wall point where (landX - x) = (x - cx) * landZ / (cz * keep)
+                    double cx = sp.X + 0.35, cz = sp.Z, landX = -side * (2.0 + 0.3 * Uniform()), landZ = 9.6;
+                    double k = landZ / (cz * HardServeWallKeep);
+                    double wallX = (landX + k * cx) / (1 + k);
                     _aimPX = hard ? wallX + noise : side * (0.35 + 0.2 * Uniform()) + noise;
                     _aimPY = hard ? 2.05 + 0.3 * Uniform() : 2.3 + 0.7 * Profile.Skill * Uniform();       // a weaker player serves lower, shorter
                     _aChargeFor = hard ? 0.45 + 0.45 * Uniform() : 0.04;

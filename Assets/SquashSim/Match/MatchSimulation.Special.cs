@@ -112,7 +112,12 @@ namespace SquashSim
             // Focus, held: the meter drains; against a Special Shot, it slows it (once)
             for (int i = 0; i < 2; i++)
             {
-                bool want = Intents[i].FocusHeld && CanFocus(i);
+                // 2026-11-22 evening (the user: "both of them in space bar ... if your slow mo ends you release and then your character
+                // dives"): Focus let go - a dive, but only with the ball out of your reach (the smart dive)
+                bool held = Intents[i].FocusHeld;
+                if (_heldWas[i] && !held) TrySmartDive(i);
+                _heldWas[i] = held;
+                bool want = held && CanFocus(i);
                 if (want && SpecialIncoming(i)) DefendSpecial(i);
                 var fm = M(Players[i]);
                 if (want) fm.Power = System.Math.Max(0, fm.Power - dt / FocusDrainSeconds);
@@ -249,6 +254,63 @@ namespace SquashSim
             Note(j, "defend", 0);
         }
 
+        // ---------------- 2026-11-22 evening: the smart dive (Space / RT, let go) ----------------
+
+        /// <summary>A dive's price from the Special meter (the Special card); without the card it costs stamina, as it always did.</summary>
+        public const double DiveMeterCost = 0.2;
+        readonly bool[] _heldWas = new bool[2];
+        /// <summary>Dives the smart dive started, and the let-gos it turned down (the ball was in reach, or no meter) - tests.</summary>
+        public int SmartDives { get; private set; }
+        public int DivesDeclined { get; private set; }
+
+        /// <summary>Focus let go: dive towards the stick if the ball is coming to you and out of your reach running, and you can pay.</summary>
+        void TrySmartDive(int i)
+        {
+            var c = Players[i];
+            if (!c.ArcadeHitEnabled || !BallComing(i) || !c.Arcade.CanDive) return;
+            if (Reachable(i)) { DivesDeclined++; return; }
+            var mm = M(c);
+            bool meter = mm != null && mm.Level("special") > 0;
+            if (meter)
+            {
+                if (mm.Power < DiveMeterCost) { DivesDeclined++; return; }
+                mm.Power = System.Math.Max(0, mm.Power - DiveMeterCost);
+            }
+            c.Arcade.DiveRequest = true; c.Arcade.DivePaid = meter;
+            SmartDives++;
+            Note(i, "dive", 0);
+        }
+
+        static readonly BallState _reachBall = new BallState();
+        static readonly System.Collections.Generic.List<SimEvent> _reachEvents = new System.Collections.Generic.List<SimEvent>();
+
+        /// <summary>Can player i get to the ball running (no dive) before it's dead: some moment, before its second bounce, where
+        /// the ball is at a playable height within reach of where they can have run to by then.</summary>
+        public bool Reachable(int i)
+        {
+            var p = Players[i].Player;
+            var cfg = PhysicsConfig.Current;
+            double speed = cfg.Player.MaxSpeed * p.Attributes.SpeedScale * (p.Mods != null ? p.Mods.MoveScale : 1) * (p.AiPaced ? PlayerMovement.AiRunScale : 1);
+            double reach = cfg.Reach.Stretch;
+            double minH = cfg.Ball.Radius * 0.9, maxH = cfg.Racket.MaxContactHeight;
+            var b = _reachBall;
+            b.Pos.CopyFrom(Ball.Pos); b.Vel.CopyFrom(Ball.Vel); b.Omega.CopyFrom(Ball.Omega);
+            b.Temperature = Ball.Temperature; b.DipOffFrontWall = Ball.DipOffFrontWall; b.Resting = Ball.Resting; b.Asleep = Ball.Asleep;
+            b.SimTime = 0; b.FloorBounces = 0; b.LastCollisionSurface = Ball.LastCollisionSurface; b.ImpactHistory.Clear();
+            double dt = 0.01;
+            int floors = Ball.FloorSinceFrontWall;
+            for (int k = 1; k <= 200; k++)
+            {
+                _reachEvents.Clear();
+                BallPhysics.Step(b, Surfaces, dt, _reachEvents);
+                if (floors + b.FloorBounces > 1) return false;                      // dead before you got there
+                if (b.Pos.Y < minH || b.Pos.Y > maxH) continue;
+                double d = DMath.Hypot(b.Pos.X - p.Pos.X, b.Pos.Z - p.Pos.Z) - reach;
+                if (d <= speed * k * dt * 0.9) return true;                         // (a little short of flat-out: a run is never perfect)
+            }
+            return false;
+        }
+
         /// <summary>A stroke by someone: a Special Shot in flight is over (the striker's own one has just begun).</summary>
         void SpecialAtContact(int i) { if (SpecialBy >= 0 && SpecialBy != i) { SpecialBy = -1; SpecialDefended = false; } }
 
@@ -257,6 +319,7 @@ namespace SquashSim
             ZoneBy = -1; SpecialBy = -1; SpecialDefended = false; _focusing[0] = _focusing[1] = false;
             WindupBy = -1; _landBy = -1;
             for (int i = 0; i < 2; i++) Players[i].Player.Pos.Y = 0;
+            _heldWas[0] = _heldWas[1] = false;
         }
 
     }

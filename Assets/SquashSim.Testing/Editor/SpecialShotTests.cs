@@ -40,7 +40,7 @@ namespace SquashSim.Tests
             var plain = RunMods.From(new[] { new RunMod { Id = "inferno", Level = 1 } });
             var special = RunMods.From(new[] { new RunMod { Id = "special", Level = 1 } });
             plain.MeterShot(); special.MeterShot();
-            Assert.That(special.Power, Is.EqualTo(plain.Power / 3).Within(1e-9), "a third as fast");
+            Assert.That(special.Power, Is.EqualTo(plain.Power * RunMods.SpecialMeterRate).Within(1e-9), "two thirds as fast (2026-11-22 evening: 2x the third)");
             special.Power = 0.5;
             special.MeterPenalty(RunMods.ErrorPenalty);
             Assert.That(special.Power, Is.EqualTo(0.5 - RunMods.ErrorPenalty).Within(1e-9));

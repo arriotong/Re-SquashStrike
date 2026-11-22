@@ -318,7 +318,8 @@ namespace SquashSim.Tests
 
         [Test] public void TheSurveyIsWithinItsTargets()
         {
-            var s = LetSurvey.Run(12);
+            // 2026-11-22 evening: 24 games - the 12-game sample swung 13.9% -> 16.0% on a serve-aim change (the full 48: 13.0%)
+            var s = LetSurvey.Run(24);
             UnityEngine.Debug.Log("[P2M7] " + s);
             // 2026-11-20 0.10 -> 0.13: time buys pace (GameTuning.Hit.SetPace*) - a rushed shot is weak and sits up mid-court
             // near its striker, so the traffic (and the referee's watching) grows: 6.6% before, ~11.5% after. The calls
@@ -331,7 +332,7 @@ namespace SquashSim.Tests
             int notTrying = 0;
             foreach (var kv in s.Calls) if (kv.Key.StartsWith("NoLet:") && kv.Key.Contains("every effort")) notTrying += kv.Value;
             Assert.That(notTrying, Is.EqualTo(0), "the AI never asks when it was not trying");
-            Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(12), "at most one appeal for nothing a game (12 games)");
+            Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(24), "at most one appeal for nothing a game (24 games)");
             Assert.That(s.Count("NoLet"), Is.LessThanOrEqualTo(System.Math.Max(1, s.Count("Let"))), "and fewer than the good ones");
             // P6: the AI keeps to its own side of the striker's line now - 1.0% on the full 48-game survey, so 12 games may see none
             Assert.That(s.CallShare, Is.InRange(0.0, 0.06), "calls: rare (about 1% on the full survey)");

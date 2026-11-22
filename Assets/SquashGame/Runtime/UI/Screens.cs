@@ -144,22 +144,22 @@ namespace SquashGame.UI
         public static string Line(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  ·  " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style); }
         /// <summary>Batch 2 (2026-10-26, the user: "make the special ability things available in quick play, optional"): Quick
         /// Match's arcade kit - no choosing, the same every time. You: Focus twice a game and four shot techniques; both of
-        /// you: aces and nicks score 2 (the opponent keeps its own signature shots).</summary>
+        /// you: aces score 2 - nicks 1 since 2026-11-22 (the opponent keeps its own signature shots).</summary>
         public const int AbilityFocus = 2;
         public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKit()
         {
             SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
-            return new System.Collections.Generic.List<SquashSim.RunMod> { M("nick", 2), M("rail", 2), M("wide", 2), M("hlob", 2), M("ace", 1), M("nickbank", 1), M("special", 1) };
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("nick", 2), M("rail", 2), M("wide", 2), M("hlob", 2), M("ace", 1), M("special", 1) };   // 2026-11-22 evening (the user): a nick is 1 point - no Nick Bank
         }
         public static System.Collections.Generic.List<SquashSim.RunMod> AbilityKitForThem()
         {
             SquashSim.RunMod M(string id, int l) { return new SquashSim.RunMod { Id = id, Level = l }; }
-            return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("nickbank", 1), M("special", 1) };   // 2026-11-22: the Special Shot only (its own button; Time Stop gone)
+            return new System.Collections.Generic.List<SquashSim.RunMod> { M("ace", 1), M("special", 1) };   // 2026-11-22: the Special Shot only; evening: no Nick Bank (a nick is 1) (its own button; Time Stop gone)
         }
         /// <summary>Quick Match's Abilities row (batch 2). Off for now (2026-10-28: "remove special ability from quick play
         /// until we get them all figured out"): the row is hidden and a saved "On" is not played. True brings it back.</summary>
         public const bool QuickMatchAbilities = true;            // 2026-11-20 back on Quick Match, Off by default (the user: "so it's easy for me to test it")
-        public const string AbilityHint = "Abilities: a Special meter fills slowly as you play (mistakes cost some). Hold " + IntentSource.FocusKey + " to Focus (slow motion, drains it) when their shot comes off the wall. Full: " + IntentSource.SpecialKey + " - you jump to the ball, time stops, aim anywhere, then Hit. Focus slows their Special Shot. Aces and nicks score 2.";
+        public const string AbilityHint = "Abilities: a Special meter fills slowly as you play (mistakes cost some). Hold " + IntentSource.FocusKey + " to Focus (slow motion, drains it) when their shot comes off the wall; let go with the ball out of reach to dive (costs meter). Full: " + IntentSource.SpecialKey + " - you jump to the ball, time stops, aim anywhere, then Hit. Focus slows their Special Shot. Aces score 2.";
 
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };
@@ -344,7 +344,7 @@ namespace SquashGame.UI
                     { "Pick your shot", "aim high = a high, slow lob  ·  middle = a hard drive  ·  low = a short drop", "" },
                     { "Straight or across", "aim at your side of the wall = straight  ·  the other side = across", "" },
                     { "Hit the side wall first (a boast)", "tap " + K("Boast"), P("Boast") },
-                    { "Dive for the ball", K("Dive"), P("Dive") },
+                    { "Focus (slow motion) - let go to dive", "hold " + K("Focus") + " as their shot comes  ·  let go: a dive if it's out of reach", "hold " + P("Focus") + ", let go" },
                     { "Run faster", K("Sprint"), P("Sprint") },
                     { "Serve", "tap = high and slow  ·  hold = hard and fast", "" },
                     { "Ask to play the point again (a let)", K("Appeal") + " when LET? shows", P("Appeal") },

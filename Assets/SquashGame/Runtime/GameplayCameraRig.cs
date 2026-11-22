@@ -48,6 +48,11 @@ namespace SquashGame
         /// Each match opens on it and flies down to the match camera.</summary>
         public static readonly Vector3 EstablishingPos = new Vector3(0f, 12.5f, 30f), EstablishingLook = new Vector3(0f, 0.6f, 4.2f);
         public const float EstablishingFov = 58f, FlySeconds = 3.4f;
+        /// <summary>Focus: the field of view narrows by this share (a zoom in), easing over FocusZoomSeconds (real time).</summary>
+        public const float FocusZoom = 0.12f, FocusZoomSeconds = 0.18f;
+        float _focusZoom;
+        /// <summary>How far into the Focus zoom (0..1; tests).</summary>
+        public float FocusZoomNow { get { return _focusZoom; } }
         object _flyFor;
         float _flyT = 99f;
         public bool FlyingIn { get; private set; }
@@ -213,6 +218,10 @@ namespace SquashGame
                 float refTan = Mathf.Tan(fov * Mathf.Deg2Rad / 2f);
                 fov = Mathf.Min(2f * Mathf.Atan(refTan * REFERENCE_ASPECT / aspect) * Mathf.Rad2Deg, MAX_V_FOV);
             }
+            // 2026-11-22 evening (the user: "when you hold you get into focus mode the screen zooms in a bit"): eased in and out
+            bool focusing = Runner is MatchRunner fr && fr.Focusing;
+            _focusZoom = Mathf.MoveTowards(_focusZoom, focusing ? 1f : 0f, Time.unscaledDeltaTime / FocusZoomSeconds);
+            fov *= 1f - FocusZoom * Mathf.SmoothStep(0f, 1f, _focusZoom);
             _cam.fieldOfView = fov;
 
             // Drift a little toward the action, midway between player and ball (sim x).

@@ -367,6 +367,9 @@ namespace SquashGame
         }
 
         protected abstract void CreateSimulation();
+        /// <summary>2026-11-22 evening: off the match (practice, lessons, drills) Space still dives at once - in a match it's Focus,
+        /// and the dive is Focus let go (MatchSimulation's smart dive).</summary>
+        protected virtual bool SpaceDives { get { return false; } }
 
         /// <summary>Sample any further local players before the clock runs. Returns true if one pressed pause.</summary>
         protected virtual bool SampleExtraInput(float dt) { return false; }
@@ -382,6 +385,7 @@ namespace SquashGame
         {
             Profile.ProfileStore.Apply(Profile.ProfileStore.Current.Settings);   // P2-M1: settings live in the profile
             Input = new IntentSource();
+            Input.SpaceDives = SpaceDives;
             Clock = new SimulationClock(OnFixedStep);
             CreateSimulation();
             Clock.TimeScale = GameSpeed;

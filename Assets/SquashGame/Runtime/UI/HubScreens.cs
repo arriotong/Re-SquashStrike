@@ -358,6 +358,7 @@ namespace SquashGame.UI
         protected abstract bool TwoPlayer { get; }
         protected override bool ShowChip { get { return false; } }
         public override bool Spatial { get { return true; } }                 // 2026-11-22 the summary's rows and PLAY: move by direction
+        public override MenuWorld Backdrop { get { return MenuWorld.Play; } }   // 2026-11-22 evening: the setup's one world, to the end
         protected static MenuChoices C { get { return ProfileStore.Current.Choices; } }
         protected static GameSettings S { get { return ProfileStore.Current.Settings; } }
         Label _oppName, _oppStyle, _oppLines, _youName, _youMeta, _abilityHint, _tier;

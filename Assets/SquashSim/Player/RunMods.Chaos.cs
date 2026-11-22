@@ -91,8 +91,10 @@ namespace SquashSim
 
         /// <summary>Has an ultimate card (Time Stop, Inferno, Jackpot - or an evolution of one).</summary>
         public bool HasUltimate { get { return Level("freeze") > 0 || Level("inferno") > 0 || Level("jackpot") > 0 || Level("world") > 0 || Level("allin") > 0 || Level("special") > 0; } }
-        /// <summary>2026-11-22 (the user: "too fast to charge up a special"): the Special card's meter fills 3x slower.</summary>
-        double MeterRate { get { return (1 + 0.2 * Level("overclock")) * (Level("special") > 0 ? 1.0 / 3.0 : 1.0); } }
+        /// <summary>2026-11-22 (the user: "too fast to charge up a special"): the Special card's meter fills 3x slower; that evening
+        /// (the user: "getting them is 2x faster") twice that - 2/3 of the old rate.</summary>
+        double MeterRate { get { return (1 + 0.2 * Level("overclock")) * (Level("special") > 0 ? SpecialMeterRate : 1.0); } }
+        public const double SpecialMeterRate = 2.0 / 3.0;
         /// <summary>2026-11-22 the meter a mistake costs (Special card only): your error or fault, a stroke against you.</summary>
         public const double ErrorPenalty = 0.12, StrokePenalty = 0.08;
         public void MeterPenalty(double amount) { if (amount > 0 && Level("special") > 0) Power = System.Math.Max(0, Power - amount); }

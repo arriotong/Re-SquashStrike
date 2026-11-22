@@ -29,6 +29,7 @@ namespace SquashGame
 
     public sealed class ArcadeRunner : SimRunnerBase
     {
+        protected override bool SpaceDives { get { return true; } }   // 2026-11-22 evening: Space dives here (no match)
         /// <summary>The Target Arcade is about hitting the exact spot: no shot lines here.</summary>
         protected override bool ShotLines { get { return false; } }
 

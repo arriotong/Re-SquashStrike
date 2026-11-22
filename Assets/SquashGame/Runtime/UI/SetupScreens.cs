@@ -111,6 +111,9 @@ namespace SquashGame.UI
     {
         protected override bool ShowChip { get { return false; } }
         public override bool Spatial { get { return true; } }
+        /// <summary>2026-11-22 evening (the user: "give the selection page a world background or else when you pick things the
+        /// background keep changing especially when picking courts that makes it very laggy"): every step, Versus Night.</summary>
+        public override MenuWorld Backdrop { get { return MenuWorld.Play; } }
         protected readonly List<(MenuItem item, string id)> Tiles = new List<(MenuItem, string)>();
         /// <summary>2026-11-22 opened on its own (not a step): the pick is handed here and the screen closes.</summary>
         public Action<string> Done;
@@ -350,7 +353,20 @@ namespace SquashGame.UI
         protected override string Current { get { var p = Courts.Pickable; int i = Mathf.Clamp(_two ? C.VsCourt : C.Court, 0, p.Length - 1); return p[i].Id; } }
         protected override void Choose(string id) { int i = Mathf.Max(0, Index(id)); if (_two) C.VsCourt = i; else C.Court = i; Courts.CurrentId = id; }
         protected override string Shot(string id) { return "court"; }
-        protected override void Hover(string id) { Courts.CurrentId = id; }
+        // 2026-11-22 evening: the court behind the preview is rebuilt only once the focus rests on it (HoverRest) - every step
+        // of the arrows rebuilt a whole venue, the lag the user saw
+        public const float HoverRest = 0.3f;
+        string _pending; float _restFor;
+        protected override void Hover(string id) { _pending = id; _restFor = 0; }
+        public override void Tick(float dt)
+        {
+            base.Tick(dt);
+            if (_pending == null) return;
+            _restFor += Time.unscaledDeltaTime;
+            if (_restFor >= HoverRest) { if (Courts.CurrentId != _pending) { Courts.CurrentId = _pending; CourtRebuilds++; } _pending = null; }
+        }
+        /// <summary>The courts built for the preview (tests: one for a quick run along the grid).</summary>
+        public static int CourtRebuilds;
 
         protected override void Describe(string id, VisualElement into)
         {

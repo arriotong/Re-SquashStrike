@@ -120,6 +120,10 @@ namespace SquashSim
         /// <summary>Seconds of post-dive recovery left (slower, a little less accurate).</summary>
         public double DiveRecovery { get { return _diveRecover; } }
         public int DiveCount { get; private set; }
+        /// <summary>2026-11-22 evening: a dive asked for by the match (the smart dive), this step; paid from the meter (no stamina).</summary>
+        public bool DiveRequest, DivePaid;
+        /// <summary>Can dive now (not diving, not getting up).</summary>
+        public bool CanDive { get { return _diveT <= 0 && _diveRecover <= 0; } }
 
         /// <summary>Sprint and dive recovery as a top-speed scale; sprinting costs stamina.</summary>
         public double SpeedScaleFor(TestPlayer p, InputIntent intent, double dt)
@@ -141,13 +145,17 @@ namespace SquashSim
             var c = PhysicsConfig.Current.ArcadeHit;
             var p = ctrl.Player;
             if (_diveRecover > 0) _diveRecover = System.Math.Max(0, _diveRecover - dt);
-            if (intent.DivePressed && _diveT <= 0 && _diveRecover <= 0 && p.Stamina >= c.DiveMinStamina)
+            // 2026-11-22 evening: the smart dive (MatchSimulation: Focus let go with the ball out of reach) asks here; paid for from
+            // the Special meter it costs no stamina
+            bool asked = DiveRequest, paid = DivePaid;
+            DiveRequest = false; DivePaid = false;
+            if ((intent.DivePressed || asked) && _diveT <= 0 && _diveRecover <= 0 && (paid || p.Stamina >= c.DiveMinStamina))
             {
                 double mx = intent.Move.X, mz = intent.Move.Z, m = System.Math.Sqrt(mx * mx + mz * mz);
                 if (m < 0.1) { mx = DMath.Sin(p.Facing); mz = -DMath.Cos(p.Facing); m = 1; }
                 _diveX = mx / m; _diveZ = mz / m;
                 _diveT = c.DiveSeconds;
-                p.Stamina = System.Math.Max(0, p.Stamina - c.DiveStamina * p.Attributes.DrainScale);   // (x1 when neutral: exact)
+                if (!paid) p.Stamina = System.Math.Max(0, p.Stamina - c.DiveStamina * p.Attributes.DrainScale);   // (x1 when neutral: exact)
                 DiveCount++;
             }
             if (_diveT <= 0) return false;

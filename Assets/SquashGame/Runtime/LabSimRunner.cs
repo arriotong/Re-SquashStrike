@@ -15,6 +15,7 @@ namespace SquashGame
 {
     public sealed class LabSimRunner : SimRunnerBase
     {
+        protected override bool SpaceDives { get { return true; } }   // 2026-11-22 evening: Space dives here (no match)
         [Tooltip("Preset selected on start (lab TestPresets id).")]
         public string StartPreset = "free";
         [Tooltip("Start with the repeat feed running.")]

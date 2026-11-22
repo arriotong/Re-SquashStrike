@@ -57,7 +57,7 @@ namespace SquashSim.Tests
             return (serves, faults, string.Join(", ", parts));
         }
 
-        static readonly string[] Kit = { "ace", "nickbank", "special" };   // Quick Match's Abilities kit for the computer
+        static readonly string[] Kit = { "ace", "special" };   // Quick Match's Abilities kit for the computer
 
         /// <summary>As Quick Match builds it (ReplayMatch: the star's athlete, signature shots, the Abilities kit); the computer's serves.</summary>
         static (int serves, int faults, string why) GameServes(string opp, float diff, uint seed, bool abilities, int rallies)
@@ -92,6 +92,55 @@ namespace SquashSim.Tests
             double rate = all == 0 ? 0 : (double)bad / all;
             UnityEngine.Debug.Log("[GameServe] all: " + bad + " / " + all + " = " + rate.ToString("0.000"));
             Assert.That(rate, Is.LessThan(0.01), "fewer than 1 serve in 100 a fault");
+        }
+
+        /// <summary>2026-11-22 evening (the user: "still serves out pretty frequently"; their replay: a hard serve off the front wall
+        /// at twice the mirror's angle, the far side wall, back down on the server's half): the hard serve lands well over the half
+        /// line, and the cuts a Special Shot put on the receiver are gone by the next serve.</summary>
+        [Test] public void HardServesLandWellOverTheLineAndNoCutOutlivesItsRally()
+        {
+            int hard = 0, side = 0, awaits = 0, landed = 0; bool watching = false; double worst = 9;
+            for (uint seed = 77; seed < 77 + 6 * 13 && landed < 5; seed += 13)
+            {
+            var setup = new SquashSim.Replays.ReplaySetup { Opponent = "star:s01", Difficulty = 1f, Scoring = "par", GamesToWin = 3, BotSeed = seed, Opponent0 = "retriever", Difficulty0 = 0.2f, Lets = true };
+            setup.Mods0 = new List<RunMod>(); setup.Mods1 = new List<RunMod>();
+            foreach (var k in Kit) { setup.Mods0.Add(new RunMod { Id = k, Level = 1 }); setup.Mods1.Add(new RunMod { Id = k, Level = 1 }); }
+            SquashSim.Replays.ReplayMatch.Configure(setup);
+            var m = SquashSim.Replays.ReplayMatch.Build(setup);
+            for (int i = 0; i < 2; i++) { m.Players[i].ArcadeHitEnabled = true; m.Players[i].WallAimEnabled = true; }
+            // the receiver: every other game, a player who lets the serve land (an AI volleys every hard one)
+            var keep = m.Bots[0];
+            watching = false;
+            while (m.Phase != MatchPhase.MatchOver && m.Time < 3600)
+            {
+                var before = m.Phase;
+                m.Step(Dt);
+                if (m.Phase == MatchPhase.GameOver) m.NextGame();
+                if (m.Phase == MatchPhase.AwaitToss && before != MatchPhase.AwaitToss)
+                {
+                    awaits++;
+                    bool still = m.Score.Server == 1 && (m.Score.Games[0] + m.Score.Games[1]) % 2 == 1;
+                    m.Bots[0] = still ? null : keep;
+                    if (still) m.Intents[0] = new InputIntent();
+                    for (int i = 0; i < 2; i++)
+                    {
+                        var mm = m.Players[i].Player.Mods;
+                        Assert.That(mm.ReachCut, Is.EqualTo(0), "no reach cut carried into the serve");
+                        Assert.That(mm.GraceCut, Is.EqualTo(0), "no timing cut carried into the serve");
+                    }
+                }
+                foreach (var ev in m.StepEvents)
+                {
+                    if (ev.Type == SimEventType.RacketContact && m.Referee.Shots == 1 && V3.Length(m.Ball.Vel) > 30) { hard++; watching = true; side = m.Score.ServeSide; }
+                    if (watching && m.Referee.Shots > 1) watching = false;
+                    if (watching && ev.Type == SimEventType.Impact && ev.SurfaceId == "floor") { watching = false; landed++; worst = System.Math.Min(worst, -side * ev.Point.X); }
+                }
+            }
+            PhysicsConfig.UseGameProfile();
+            }
+            UnityEngine.Debug.Log("[HardServe] " + hard + " hard serves, " + landed + " landed, the closest " + worst.ToString("0.00") + " m over the half line; " + awaits + " serves");
+            Assert.That(landed, Is.GreaterThanOrEqualTo(3), "some hard serves landed");
+            Assert.That(worst, Is.GreaterThan(1.2), "every hard serve lands well over the half line");
         }
 
         [Test] public void TheComputerRarelyFaultsItsServe()

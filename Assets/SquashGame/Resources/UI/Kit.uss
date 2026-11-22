@@ -1712,6 +1712,11 @@
     background-color: rgb(200, 255, 61); border-top-right-radius: 14px; border-bottom-right-radius: 14px; translate: -110% 0;
     -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); transition-property: translate; transition-duration: 0.28s; transition-timing-function: ease-out-back; }
 .hud-callout--in { translate: 0 0; }
+.hud-nick { position: absolute; left: 0; right: 0; top: 22%; -unity-text-align: middle-center; font-size: 150px; letter-spacing: 10px;
+    color: rgb(255, 214, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 8px 30px rgba(0, 0, 0, 0.9);
+    -unity-text-outline-width: 3px; -unity-text-outline-color: rgb(120, 60, 0); opacity: 0; scale: 3 3; rotate: -8deg;
+    transition-property: scale, opacity, rotate; transition-duration: 0.22s; transition-timing-function: ease-out-back; }
+.hud-nick--in { opacity: 1; scale: 1 1; rotate: -4deg; }
 .hud-confetti { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
 .hud-confetti-bit { position: absolute; border-radius: 2px; }
 .hud-win { position: absolute; left: 0; right: 0; top: 3%; align-items: center; opacity: 0; scale: 2.4 2.4;

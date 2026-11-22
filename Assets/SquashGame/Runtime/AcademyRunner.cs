@@ -12,6 +12,7 @@ namespace SquashGame
 {
     public sealed class AcademyRunner : SimRunnerBase
     {
+        protected override bool SpaceDives { get { return true; } }   // 2026-11-22 evening: Space dives here (no match)
         public Lesson Lesson { get; private set; }
         public AcademySession Session { get; private set; }
         TestPlayerController[] _athletes, _staged;

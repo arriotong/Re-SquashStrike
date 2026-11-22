@@ -279,10 +279,18 @@ namespace SquashGame.Tests
             var cp = (CourtPickScreen)fe.Top;
             var tiles = cp.Reachable().FindAll(i => i is CardItem);
             Assert.That(tiles.Count, Is.EqualTo(Courts.Pickable.Length), "every court in it");
+            // 2026-11-22 evening (the user: "when picking courts that makes it very laggy"): a quick run along the grid builds no
+            // court until the focus rests - then just the one it rests on
+            Assert.That(cp.Backdrop, Is.EqualTo(MenuWorld.Play), "the setup's own world behind every step");
+            int built = CourtPickScreen.CourtRebuilds;
+            for (int k = 1; k < 6 && k < tiles.Count; k++) { cp.Focus(tiles[k]); yield return null; }
+            Assert.That(CourtPickScreen.CourtRebuilds, Is.EqualTo(built), "nothing built while the arrows run");
             var last = (CardItem)tiles[tiles.Count - 1];
             cp.Focus(last);
-            yield return null; yield return null;
-            Assert.That(Courts.CurrentId, Is.EqualTo(Courts.Pickable[Courts.Pickable.Length - 1].Id), "the court behind follows the tile");
+            float until = Time.unscaledTime + CourtPickScreen.HoverRest + 0.3f;
+            while (Time.unscaledTime < until) yield return null;
+            Assert.That(Courts.CurrentId, Is.EqualTo(Courts.Pickable[Courts.Pickable.Length - 1].Id), "the court behind follows the tile it rests on");
+            Assert.That(CourtPickScreen.CourtRebuilds, Is.EqualTo(built + 1), "one court built");
             last.Submit();
             yield return null;
             Assert.That(ProfileStore.Current.Choices.Court, Is.EqualTo(Courts.Pickable.Length - 1), "picked in one go");
