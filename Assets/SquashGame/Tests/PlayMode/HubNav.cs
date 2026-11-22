@@ -57,7 +57,15 @@ namespace SquashGame.Tests
         public static IEnumerator ToPrimary(FrontEnd fe, ButtonControl down, ButtonControl right, Func<ButtonControl, IEnumerator> tap)
         {
             var seen = new System.Collections.Generic.List<string>();
-            for (int i = 0; i < 12 && !(fe.Top.Focused is PrimaryItem); i++) { yield return tap(i % 3 == 2 ? right : down); seen.Add(fe.Top.Focused != null ? fe.Top.Focused.Name : "-"); }
+            // (down until it stops moving, then right - a fixed down-down-right loop can circle a 4-row list forever)
+            bool useRight = false;
+            for (int i = 0; i < 16 && !(fe.Top.Focused is PrimaryItem); i++)
+            {
+                var before = fe.Top.Focused;
+                yield return tap(useRight ? right : down);
+                seen.Add(fe.Top.Focused != null ? fe.Top.Focused.Name : "-");
+                useRight = fe.Top.Focused == before && !useRight;
+            }
             Assert.That(fe.Top.Focused, Is.InstanceOf<PrimaryItem>(), "the primary action (" + fe.Top.GetType().Name + ": " + string.Join(" > ", seen) + " | items " + string.Join(", ", fe.Top.Reachable().ConvertAll(x => x.GetType().Name + ":" + x.Name)) + ")");
         }
     }

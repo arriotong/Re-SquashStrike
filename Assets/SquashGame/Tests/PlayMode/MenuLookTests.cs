@@ -51,7 +51,7 @@ namespace SquashGame.Tests
             // court (the slow-motion rally still plays: the title, the match setup and the studio still show it)
             var cam = Camera.main.transform;
             yield return null; yield return null;
-            Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Home), "the park island behind PLAY");
+            Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Play), "Versus Night behind PLAY (2026-11-22: the park island is the home page's)");
             Vector3 a = cam.position;
             yield return Wait(MenuCinematics.CutSeconds + 0.5f);
             Assert.That(Vector3.Distance(a, cam.position), Is.LessThan(0.01f), "held still: a background, not a film");

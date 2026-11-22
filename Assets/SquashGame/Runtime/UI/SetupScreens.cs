@@ -238,6 +238,7 @@ namespace SquashGame.UI
     public abstract class FormatScreen : GameScreen
     {
         protected abstract bool TwoPlayer { get; }
+        public override MenuWorld Backdrop { get { return MenuWorld.Play; } }       // 2026-11-22 Versus Night behind step 1
         protected override string Kicker { get { return "PLAY  ·  STEP 1  ·  THE MATCH"; } }
         protected override bool ShowChip { get { return false; } }
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }

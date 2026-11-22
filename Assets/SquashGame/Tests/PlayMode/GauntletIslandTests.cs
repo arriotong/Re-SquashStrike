@@ -124,6 +124,7 @@ namespace SquashGame.Tests
                 yield return null; yield return null;
             }
             Assert.That(seen.Count, Is.EqualTo(9), "nine tabs, nine worlds (2026-11-21: PACKS off the Play hub)");
+            Assert.That(seen.Contains(MenuWorld.Home), Is.False, "2026-11-22: the home page's park island is its own - PLAY has Versus Night");
             fe.Push(new SettingsScreen());
             yield return Wait(0.6f, () => false);
             Assert.That(Dioramas.Current, Is.EqualTo(MenuWorld.Settings), "Settings: the snowy workshop");

@@ -41,7 +41,7 @@ namespace SquashGame.UI
                     case "CAREER": return MenuWorld.Career;
                     case "CHALLENGES": return MenuWorld.Challenges;
                     case "TRAINING": return MenuWorld.Training;
-                    case "PLAY": return MenuWorld.Home;
+                    case "PLAY": return MenuWorld.Play;                     // 2026-11-22 its own: Versus Night (was the home page's)
                     case "MODES": return MenuWorld.Modes;
                     case "ONLINE": return MenuWorld.Online;
                     case "STORE": return MenuWorld.Store;
