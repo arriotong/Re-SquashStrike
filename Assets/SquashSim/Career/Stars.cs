@@ -102,27 +102,28 @@ namespace SquashSim.Career
             }
             RunMod Sg(string id, int l) { return new RunMod { Id = id, Level = Math.Min(MaxLevel(id), l) }; }
 
-            // ---- the top 10: each their own ----
-            Top("Zayn", "Mahrous", "EGY", 24, 'R', "powerhouse", 99, Attr(10, 9, 10, 9), new List<RunMod> { Sg("nick", 5), Sg("thunder", 4), Sg("rail", 3) },
-                0.15, 0.45, 0.45, 1.0, "The Hammer", "The world No. 1. Hits harder than anyone alive - then drops it dead from the back corner. Has not lost in a year.");
-            Top("Tomas", "Arriaga", "PER", 29, 'R', "magician", 97, Attr(9, 8, 7, 10), new List<RunMod> { Sg("trickle", 4), Sg("vdrop", 4), Sg("sniper", 2) },
-                -0.2, -0.1, 0.25, 0.95, "The Illusionist", "Holds the ball until you've moved, then puts it where you aren't. The best hands on tour.");
-            Top("Oskar", "Lindqvist", "SWE", 30, 'R', "grinder", 96, Attr(9, 10, 7, 9), new List<RunMod> { Sg("rail", 5), Sg("hlob", 3) },
-                0, 0, 0, 1.0, "The Iceman", "Never misses a length and never looks tired. Matches against him last an hour and a half.");
-            Top("Hazem", "Rafik", "EGY", 27, 'R', "retriever", 95, Attr(10, 9, 7, 8), new List<RunMod> { Sg("hlob", 4), Sg("vdrop", 2) },
-                0, 0.1, 0.05, 1.0, "The Wall", "The fastest man on tour. You will hit three winners to win one point.");
-            Top("Callum", "Brereton", "ENG", 28, 'R', "volleyer", 94, Attr(8, 8, 8, 9), new List<RunMod> { Sg("sniper", 3), Sg("rail", 3) },
-                0, 0, 0.05, 1.0, "The Machine", "Owns the T and volleys everything. Lob him or he'll take your time away.");
-            Top("Kai", "Teoh", "MAS", 25, 'L', "counter", 93, Attr(9, 9, 6, 9), new List<RunMod> { Sg("vdrop", 3), Sg("wide", 3) },
-                0, 0.1, 0.1, 0.95, "The Ghost", "A left-hander who soaks up everything and kills off your first short ball.");
-            Top("Rafael", "Montoya", "COL", 26, 'R', "attacker", 92, Attr(8, 7, 9, 8), new List<RunMod> { Sg("nick", 4) },
-                0.1, 0, 0.1, 0.9, "The Matador", "Goes for the nick from anywhere. Spectacular - and beatable on a bad day.");
-            Top("Omar", "Tantawy", "EGY", 23, 'R', "shotmaker", 91, Attr(8, 7, 7, 9), new List<RunMod> { Sg("trickle", 3), Sg("vdrop", 3) },
-                0.05, 0.1, 0.2, 0.9, "The Artist", "Twenty-three and already the most creative player alive. Boasts you won't see coming.");
-            Top("Jules", "Marchetti", "FRA", 27, 'R', "powerhouse", 90, Attr(8, 8, 9, 7), new List<RunMod> { Sg("wide", 4), Sg("thunder", 2) },
-                0.05, 0, 0, 0.9, "The Bulldozer", "Pure power off both sides. Make him bend down and he gets frustrated.");
-            Top("Rhys", "Penhallow", "WAL", 31, 'R', "grinder", 90, Attr(8, 10, 7, 8), new List<RunMod> { Sg("rail", 4) },
-                0, 0, 0, 1.0, "The Grind", "Never beaten in a match that went past an hour. Bring your legs.");
+            // ---- the top 10: each their own (2026-11-22: their game from public match reports and features - ProPersonas;
+            // the names here are the game's own: a player's own names come from the local players.json) ----
+            Top("Zayn", "Mahrous", "EGY", 24, 'R', "powerhouse", 99, Attr(10, 9, 10, 9), new List<RunMod> { Sg("nick", 5), Sg("thunder", 4), Sg("wide", 3) },
+                0.2, 0.3, 0.2, 1.0, "The Storm", "The world No. 1. Charges the T, takes everything early and hits straight through you - then drops it dead from the back.");
+            Top("Tomas", "Arriaga", "NZL", 31, 'R', "retriever", 97, Attr(10, 10, 7, 8), new List<RunMod> { Sg("hlob", 4), Sg("vdrop", 2) },
+                -0.1, 0, 0.05, 1.0, "The Flyer", "The fittest man on tour. Dives for everything and makes you hit one more - then one more.");
+            Top("Oskar", "Lindqvist", "PER", 28, 'R', "volleyer", 96, Attr(9, 9, 8, 10), new List<RunMod> { Sg("vdrop", 4), Sg("sniper", 3), Sg("rail", 2) },
+                0, 0.2, 0.15, 1.0, "The Smooth", "Owns the T with precise volleys and the softest drop on tour. Makes it look easy.");
+            Top("Hazem", "Rafik", "EGY", 22, 'R', "shotmaker", 95, Attr(9, 8, 8, 9), new List<RunMod> { Sg("trickle", 3), Sg("nick", 3) },
+                0.1, 0.1, 0.15, 0.95, "The Angle", "Three-time junior world champion. Awkward angles and low, hard kills from the front of the court.");
+            Top("Callum", "Brereton", "EGY", 34, 'R', "magician", 94, Attr(8, 8, 8, 10), new List<RunMod> { Sg("trickle", 4), Sg("vdrop", 3), Sg("knuckle", 1) },
+                0.05, 0.3, 0.3, 0.9, "The Artist", "A former world champion who never looks hurried. Straight drops from any corner of the court.");
+            Top("Kai", "Teoh", "FRA", 27, 'R', "volleyer", 93, Attr(9, 9, 8, 9), new List<RunMod> { Sg("knuckle", 2), Sg("rail", 3) },
+                0, 0.1, 0.4, 1.0, "The Marshal", "Calm and fluid. His signature: shows you the straight drive, then plays it across.");
+            Top("Rafael", "Montoya", "WAL", 31, 'R', "grinder", 92, Attr(9, 10, 7, 8), new List<RunMod> { Sg("rail", 5), Sg("hlob", 2) },
+                -0.2, -0.1, 0, 1.0, "The Engine", "Length rally after length rally. Very few winners - and nobody is fitter.");
+            Top("Omar", "Tantawy", "ENG", 31, 'R', "attacker", 91, Attr(8, 8, 8, 9), new List<RunMod> { Sg("rail", 3), Sg("wide", 2), Sg("vdrop", 2) },
+                0, 0.1, 0.1, 1.0, "The Viper", "One of the most tactically astute players on tour. Strong off both wings, always the right shot.");
+            Top("Jules", "Marchetti", "EGY", 26, 'L', "attacker", 90, Attr(8, 8, 10, 7), new List<RunMod> { Sg("nick", 4), Sg("thunder", 2) },
+                0.25, 0.1, 0.1, 0.85, "The Lefty", "A left-hander who goes for winners from almost anywhere, on instinct.");
+            Top("Rhys", "Penhallow", "EGY", 29, 'R', "counter", 90, Attr(10, 8, 7, 8), new List<RunMod> { Sg("vdrop", 4), Sg("hlob", 2) },
+                0, 0.1, 0.05, 1.0, "The Hare", "Quick, patient and consistent - waits for the short ball, then the backhand volley drop.");
 
             // ---- 11..50: a style each, the rating falling, a signature by style ----
             (string f, string l, string n, char h)[] rest =

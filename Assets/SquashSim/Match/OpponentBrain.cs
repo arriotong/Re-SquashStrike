@@ -54,6 +54,8 @@ namespace SquashSim
         public int Book = CurrentBook;
         public const int CurrentBook = 1;
         public double Sense = 0.5;        // 0..1: how strictly it follows the book (rises with rating)
+        /// <summary>2026-11-22 a top-10 pro's own game (ProPersonas): the lean on each shot, attacking from deep, patterns. Null: the style alone.</summary>
+        public ProPersona Persona;
         public double BookSafe = 1, BookAttack = 1, BookPatience = 1, BookVolley = 1;   // its style's leaning on each kind of rule
 
         /// <summary>Squash sense from a rating: a 58 club player breaks the rules often, the No. 1 (99) almost never.</summary>
@@ -213,6 +215,8 @@ namespace SquashSim
                 p.DeceptionChance = Clamp01(p.DeceptionChance + star.Deception);
                 if (star.Discipline > 0) p.Discipline = star.Discipline;
                 p = p.WithDifficulty(difficulty);
+                p.Persona = ProPersonas.For(star.Id);                              // 2026-11-22 the top 10 play like themselves
+                if (p.Persona != null) p.BookVolley *= p.Persona.Volley;
                 p.Name = Career.Stars.FullName(star);
                 p.Sense = SenseForRating(star.Rating);
                 return p;
@@ -339,6 +343,8 @@ namespace SquashSim
 
         // ---------------- randomness (deterministic) ----------------
 
+        string _lastOwnShot = "";
+        int _lengthRun;
         bool _zoneAimed;
         double _zoneX, _zoneY, _zoneHold, _specialSeen = -1;
         /// <summary>How long the AI takes to Focus against a Special Shot coming at it.</summary>
@@ -771,6 +777,24 @@ namespace SquashSim
                 ("kill", side * 2.4, 0.95, c.ChargeFull * 0.5, false, side * 2.6, 3.0, 0.2 + Profile.WLow + 0.5 * Profile.WPressure - (deep ? 1.0 * risk : 0) + (front ? 0.4 : 0)),
                 ("boast", -side * 1.5, 1.2, 0.0, true, -side * 2.6, 1.6, 0.1 + 0.8 * Profile.WShort - (front ? 0.5 : 0)),
             };
+            // 2026-11-22 a pro's own game: their lean on each shot; winners from deep; the drop after their drive; an attack
+            // due after a run of lengths; a power player loads the drive
+            var pp = Profile.Persona;
+            if (pp != null)
+            {
+                bool attackDue = pp.LengthRun > 0 && _lengthRun >= pp.LengthRun;
+                bool afterDrive = (_lastOwnShot == "straight" || _lastOwnShot == "cross") && opp.Z > 6.0;
+                for (int i = 0; i < o.Length; i++)
+                {
+                    o[i].w += pp.Bias[i];
+                    if (deep && (o[i].n == "drop")) o[i].w += 1.2 * risk * pp.DeepAttack;
+                    if (deep && (o[i].n == "kill")) o[i].w += 1.0 * risk * pp.DeepAttack;
+                    if (attackDue && (o[i].n == "drop" || o[i].n == "kill")) o[i].w += 0.8;
+                    if (attackDue && (o[i].n == "straight" || o[i].n == "cross" || o[i].n == "lob")) o[i].w -= 0.3;
+                    if (afterDrive && o[i].n == "drop") o[i].w += pp.DropAfterDrive;
+                    if (pp.Charge > 1 && (o[i].n == "straight" || o[i].n == "cross" || o[i].n == "kill")) o[i].ch = System.Math.Max(o[i].ch, c.ChargeFull * 0.5 * (pp.Charge - 1) * 2);
+                }
+            }
             if (ForceAim.HasValue)
             {
                 var f = ForceAim.Value; ForceAim = null; _forcedTurn = true;
@@ -829,6 +853,11 @@ namespace SquashSim
             }
             var s = o[pick];
             ArcadeShot = s.n;
+            if (!late)
+            {
+                _lastOwnShot = s.n;
+                _lengthRun = s.n == "straight" || s.n == "cross" || s.n == "lob" ? _lengthRun + 1 : 0;
+            }
             double noise = Profile.AimNoise * ArcadeAimNoiseScale;
             _aimPX = Clamp(s.x + Gauss() * noise, -CourtDimensions.HALF_W + 0.15, CourtDimensions.HALF_W - 0.15);
             _aimPY = Clamp(s.y + Gauss() * noise * 0.45, 0.65, CourtDimensions.FRONT_WALL_OUT_H - 0.5);

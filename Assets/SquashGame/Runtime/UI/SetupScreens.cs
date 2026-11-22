@@ -82,6 +82,8 @@ namespace SquashGame.UI
         /// <summary>An opponent's class: a star's from their athlete and shots; a club player's from their style.</summary>
         public static string OpponentClass(string id)
         {
+            var pp = ProPersonas.For(id);
+            if (pp != null && PlayerClasses.Find(pp.Class) != null) return pp.Class;          // the top 10: their own
             var star = SquashSim.Career.Stars.Find(id);
             if (star != null) return PlayerClasses.ReadAs(star.Attributes, star.Signature);
             string style = SquashSim.Career.Stars.Describe(id).style;
@@ -307,7 +309,10 @@ namespace SquashGame.UI
             badge.style.backgroundColor = SetupFlow.ClassColour(cls);
             int at = MatchChoices.LadderIndex(id), n = MatchChoices.Ladder.Length;
             Kit.L(into, "DIFFICULTY  ·  " + VersusScreen.TierNames[VersusScreen.Tier(at, n)], "pk-line");
-            foreach (var line in SquashSim.Career.Roster.StyleLines(d.style)) Kit.L(into, line, "pk-text");
+            var persona = ProPersonas.For(id);
+            if (persona != null) Kit.L(into, persona.Summary, "pk-perk");                         // 2026-11-22 their own game
+            if (star != null && !string.IsNullOrEmpty(star.Bio)) Kit.L(into, star.Bio, "pk-text");
+            else foreach (var line in SquashSim.Career.Roster.StyleLines(d.style)) Kit.L(into, line, "pk-text");
             if (star != null && star.Signature.Count > 0)
                 Kit.L(into, "Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "pk-text");
             var a2 = star != null ? star.Attributes : new AthleteAttributes();
