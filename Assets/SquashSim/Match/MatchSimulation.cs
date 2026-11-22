@@ -95,7 +95,7 @@ namespace SquashSim
         public bool CanStrike(int i)
         {
             if (Phase == MatchPhase.WarmUp) return i == WarmUpOwner && !WarmUpInHand && !Ball.Asleep && (_warmHitter != i || _warmFront);
-            return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i;
+            return Phase == MatchPhase.Rally && Referee.Outcome == null && Referee.ExpectedStriker == i && ZoneBy != i && WindupBy != i;
         }
         /// <summary>Is player i the one going for this ball?</summary>
         public bool GoingForBall(int i)
@@ -625,6 +625,7 @@ namespace SquashSim
                 Interference.Update(this, dt);
                 Referee_Observe();
             }
+            SpecialEndStep(dt);                                                 // 2026-11-22 the Special Shot's wind-up held, the fall
         }
 
         void Referee_Observe()

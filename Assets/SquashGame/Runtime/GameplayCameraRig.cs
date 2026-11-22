@@ -105,26 +105,29 @@ namespace SquashGame
         /// at the front wall - the aiming screen. True: filmed.</summary>
         public bool ZoneCam { get; private set; }
         float _zoneBlend;
+        Vector3 _zoneLook; bool _zoneLookSet;
         bool FilmZone(MatchRunner m)
         {
-            bool on = m != null && !m.Demo && m.Sim != null && m.Sim.ZoneBy >= 0 && (m.Sim.ZoneBy == m.HumanIndex || m.Settings.TwoPlayer) && !m.ReplayActive;
+            int z = m != null && m.Sim != null ? (m.Sim.ZoneBy >= 0 ? m.Sim.ZoneBy : m.Sim.WindupBy) : -1;     // (the wind-up too)
+            bool on = m != null && !m.Demo && m.Sim != null && z >= 0 && (z == m.HumanIndex || m.Settings.TwoPlayer) && !m.ReplayActive;
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
             _zoneBlend = on ? Mathf.MoveTowards(_zoneBlend, 1f, dt / 0.25f) : 0f;
             ZoneCam = on;
-            if (!on) return false;
+            if (!on) { _zoneLookSet = false; return false; }
             var b = m.Sim.Ball.Pos;
-            var aim = m.Sim.Players[m.Sim.ZoneBy].Aim;
-            double ax = aim.HasWallTarget && aim.TargetWall == 0 ? aim.WallTarget.X : b.X, ay = aim.HasWallTarget && aim.TargetWall == 0 ? aim.WallTarget.Y : 1.2;
-            // up and to the ball's side, away from the player (who stands beside it), so the front wall and the aim are in view
-            var pl = m.Sim.Players[m.Sim.ZoneBy].Player.Pos;
-            double side = b.X >= pl.X ? 1 : -1;
-            double cx = System.Math.Max(-2.9, System.Math.Min(2.9, b.X + side * 1.0));
-            Vector3 pos = SimToWorld.Pos(cx, b.Y + 1.6, System.Math.Min(CourtDimensions.LENGTH + 0.5, b.Z + 3.4));
-            Vector3 look = Vector3.Lerp(SimToWorld.Pos(b.X * 0.5, 1.6, 0.0), SimToWorld.Pos(ax, ay, 0.0), 0.5f);
+            double ax = m.Sim.SpecialAimX, ay = m.Sim.SpecialAimY > 0 ? m.Sim.SpecialAimY : 1.2;
+            // 2026-11-22 (the user: "make it first person aiming"): through the striker's eyes, up in the air above the T - just in
+            // front of the head (so the body isn't in the way), turning to follow the aim on the front wall
+            var pl = m.Sim.Players[z].Player.Pos;
+            Vector3 pos = SimToWorld.Pos(pl.X, pl.Y + 1.62, pl.Z - 0.32);
+            Vector3 aimAt = SimToWorld.Pos(ax, ay, 0.0);
+            if (!_zoneLookSet) { _zoneLook = Vector3.Lerp(SimToWorld.Pos(0, 1.5, 0.0), aimAt, 0.5f); _zoneLookSet = true; }
+            _zoneLook = Vector3.Lerp(_zoneLook, aimAt, 1f - Mathf.Exp(-12f * dt));
+            Vector3 look = Vector3.Lerp(aimAt, _zoneLook, 0.6f);
             float e = _zoneBlend * _zoneBlend * (3f - 2f * _zoneBlend);
             transform.position = Vector3.Lerp(transform.position, pos, e);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look - pos, Vector3.up), e);
-            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 50f, e);
+            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 64f, e);
             return true;
         }
 

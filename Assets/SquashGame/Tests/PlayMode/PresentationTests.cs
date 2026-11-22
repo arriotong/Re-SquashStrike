@@ -218,15 +218,17 @@ namespace SquashGame.Tests
             for (int i = 0; i < 30 && !intro; i++) { yield return null; intro = fe.Hud.IntroShown; }
             Assert.That(intro, Is.True, "the walk-on card should show as the match starts");
             r.SetAutopilot(new SquashSim.OpponentBrain(SquashSim.AiProfile.ByName("attacker").WithDifficulty(0.8), 3));
+            r.SetTimeScale(SimRunnerBase.GameSpeed * 3);                     // 2026-11-22: the computer's serve no longer faults - rallies run on
             float inRally = -1f, maxBetween = 0f;
             float t0 = Time.realtimeSinceStartup;
-            while (Time.realtimeSinceStartup - t0 < 40f && !crowd.Played.ContainsKey("applause"))
+            while (Time.realtimeSinceStartup - t0 < 60f && !crowd.Played.ContainsKey("applause"))
             {
                 yield return null;
-                if (r.Sim.Phase == SquashSim.MatchPhase.Rally && r.Sim.Referee.Shots >= 2) inRally = crowd.BedLevel;
+                if (r.Sim.Phase == SquashSim.MatchPhase.Rally && r.Sim.Referee.Shots >= 2) inRally = inRally < 0 ? crowd.BedLevel : Mathf.Min(inRally, crowd.BedLevel);   // (2026-11-21: a long rally's murmur grows - the hush is its quietest)
                 else maxBetween = Mathf.Max(maxBetween, crowd.BedLevel);
             }
-            Assert.That(crowd.Played.ContainsKey("applause"), Is.True, "no applause after a rally in 40 s");
+            r.SetTimeScale(SimRunnerBase.GameSpeed);
+            Assert.That(crowd.Played.ContainsKey("applause"), Is.True, "no applause after a rally in 60 s");
             Assert.That(inRally, Is.GreaterThanOrEqualTo(0f), "never saw a rally");
             Assert.That(inRally, Is.LessThan(0.15f), "the crowd should hush while the ball is in play");
             Debug.Log("[PR4] bed in rally " + inRally.ToString("0.00") + ", between " + maxBetween.ToString("0.00"));

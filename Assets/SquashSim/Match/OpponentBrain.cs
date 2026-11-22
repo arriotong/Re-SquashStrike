@@ -383,6 +383,7 @@ namespace SquashSim
             // ---- 2026-11-22 the Special Shot: aim it (low, away from them - the nick), fire; defend one with Focus ----
             intent.SpecialPressed = false;
             intent.FocusHeld = false;
+            if (m.WindupBy == me) { intent.Move.X = 0; intent.Move.Z = 0; intent.MoveMagnitude = 0; return; }   // (winding up a Special)
             if (m.ZoneBy == me)
             {
                 if (!_zoneAimed)

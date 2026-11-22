@@ -80,6 +80,11 @@ namespace SquashGame
             landing.transform.SetParent(transform, false);
             landing.Build(Runner, Palette);
 
+            // 2026-11-22 the Special Shot's show: the aura, the wind-up's spark, the target warning, the lightning, the wall's flash
+            var sfx = new GameObject("SpecialFx").AddComponent<SpecialFx>();
+            sfx.transform.SetParent(transform, false);
+            sfx.Build(Runner, Palette);
+
             // 2026-11-21 the polish pass: rings where a big shot dies
             var burst = new GameObject("ImpactBurst").AddComponent<ImpactBurst>();
             burst.transform.SetParent(transform, false);

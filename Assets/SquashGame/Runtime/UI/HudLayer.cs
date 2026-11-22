@@ -444,11 +444,11 @@ namespace SquashGame
                 if (them != null) { float t = Mathf.Clamp01((float)them.Power); _spThem.Set(t, "THEIR SPECIAL", t >= 1f ? "READY - LOOK OUT" : ""); }
             }
             float dtF = Time.unscaledDeltaTime;
-            bool dimOn = r.Focusing || m.ZoneBy >= 0;                                 // 2026-11-22: aiming a Special Shot - time stands still
+            bool dimOn = r.Focusing || m.ZoneBy >= 0 || m.WindupBy >= 0;                                 // 2026-11-22: aiming a Special Shot - time stands still
             _dimLevel = Mathf.MoveTowards(_dimLevel, dimOn ? 1f : 0f, dtF * (dimOn ? 5f : 2.5f));
             _focusDim.style.opacity = _dimLevel;
             if (_flashLeft > 0) { _flashLeft -= dtF; _flash.style.opacity = Mathf.Clamp01(_flashLeft / 0.35f) * (Juice.ReduceMotion ? 0.12f : 0.3f); }
-            _focusWord.text = m.ZoneBy >= 0 ? (m.ZoneBy == me ? "AIM" : "") : "FOCUS";
+            _focusWord.text = m.ZoneBy >= 0 ? (m.ZoneBy == me ? "AIM" : "") : m.WindupBy >= 0 ? "" : "FOCUS";
             bool meter = mine != null && mine.HasUltimate && !special && !r.ReplayActive;
             _power.style.display = meter ? DisplayStyle.Flex : DisplayStyle.None;
             if (meter)
@@ -467,6 +467,10 @@ namespace SquashGame
                 var pm = n.Player >= 0 && n.Player < 2 ? m.Players[n.Player].Player.Mods : null;
                 switch (n.Kind)
                 {
+                    case "windup":
+                        Pop(mineNote ? "SPECIAL SHOT!" : "SPECIAL INCOMING!  get ready to " + IntentSource.FocusKey, true);
+                        VenueView.Excite(0.9f);
+                        break;
                     case "zone":
                         Pop(mineNote ? "SPECIAL SHOT  ·  AIM!" : "THEIR SPECIAL SHOT!", true);
                         if (mineNote) _flashLeft = 0.15f;

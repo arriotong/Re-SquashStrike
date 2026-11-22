@@ -612,6 +612,7 @@ namespace SquashGame
                 if (n.Kind == "ult" && !SlowMoActive) { SlowMo(SpecialSlowSeconds, SpecialSlowScale); _focusing = false; }
                 if (n.Kind == "special") { GameplayCameraRig.Kick(0.22f); UI.Juice.Rumble(0.9f, 0.9f, 0.3f); }
                 if (n.Kind == "zone" && n.Player == hi) UI.Juice.Rumble(0.3f, 0.6f, 0.15f);
+                if (n.Kind == "windup") UI.Juice.Rumble(0.2f, 0.5f, 0.5f);
             }
 
             // Ready (Enter / pad Y) from either player. Consumed every frame so a Y pressed

@@ -151,11 +151,27 @@ namespace SquashGame.Tests
             var held = r.Sim.Ball.Pos.Clone();
             yield return null; yield return null;
             Assert.That(r.Sim.Ball.Pos.Z, Is.EqualTo(held.Z).Within(1e-9), "the ball hangs");
+            Assert.That(r.Sim.InAir(0), Is.True, "2026-11-22: up in the air above the T");
+            var fx = Object.FindFirstObjectByType<SpecialFx>();
+            Assert.That(rig.ZoneCam, Is.True, "first person: through your eyes");
+            Assert.That(fx.AuraShown, Is.False, "(your own aura isn't drawn across your eyes)");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Aim.png");
+            // the wind-up: 0.5 s, the world moving, the spark and the target warning
+            yield return Wait(4f, () => r.Sim.WindupBy == 0);
+            Assert.That(r.Sim.WindupBy, Is.EqualTo(0), "the wind-up");
+            yield return null; yield return null;
+            Assert.That(fx.SparkShown && fx.TargetShown, Is.True, "the spark and the target on the front wall");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Windup.png");
             yield return Wait(4f, () => r.Sim.SpecialBy == 0);
             Assert.That(r.Sim.SpecialBy, Is.EqualTo(0), "fired");
             Assert.That(mine.Power, Is.LessThan(0.1), "the meter spent (a shot since may have added a sliver)");
+            yield return Wait(0.05f, () => false);
+            Assert.That(fx.TrailShown, Is.True, "the lightning trail");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Shot.png");
+            yield return Wait(1f, () => fx.WallFlashes > 0);
+            Assert.That(fx.WallFlashes, Is.GreaterThan(0), "the front wall's flash");
+            yield return Wait(0.6f, () => !r.Sim.InAir(0));
+            Assert.That(r.Sim.InAir(0), Is.False, "back down on the floor");
 
             // the computer's: it jumps to the ball and fires too
             yield return Wait(8f, () => r.Sim.Phase == SquashSim.MatchPhase.Rally && r.Sim.SpecialBy < 0);
