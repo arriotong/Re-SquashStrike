@@ -357,6 +357,7 @@ namespace SquashGame.UI
     {
         protected abstract bool TwoPlayer { get; }
         protected override bool ShowChip { get { return false; } }
+        public override bool Spatial { get { return true; } }                 // 2026-11-22 the summary's rows and PLAY: move by direction
         protected static MenuChoices C { get { return ProfileStore.Current.Choices; } }
         protected static GameSettings S { get { return ProfileStore.Current.Settings; } }
         Label _oppName, _oppStyle, _oppLines, _youName, _youMeta, _abilityHint, _tier;
@@ -377,34 +378,21 @@ namespace SquashGame.UI
             var mid = Kit.Box(stage, "k-vs-mid");
             mid.AddToClassList("k-vs-board");
             Kit.L(mid, "VS", "k-vs-vs");
+            // 2026-11-22 the last step (the user: "spread the clicking process into a few tabs"): what you chose, each a jump back
             if (!TwoPlayer)
             {
-                // P6: who (easiest to the world No. 1: the rating is the difficulty), how long, the scoring, where.
-                // Controls are in Settings > Controls.
-                var ladder = System.Array.ConvertAll(MatchChoices.Ladder, MatchChoices.Label);
-                var opp = AddTo(mid, new CarouselItem("Opponent", ladder, () => MatchChoices.LadderIndex(C.OpponentId), v => { C.OpponentId = MatchChoices.Ladder[v]; UpdateOpponent(); }));
+                AddTo(mid, new ActionItem("Match: " + FormatLine(C.Length, C.Scoring) + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  ABILITIES" : ""), () => SetupFlow.BackTo<QuickMatchScreen>(Fe), "CHANGE"));
+                var opp = AddTo(mid, new ActionItem("Opponent: " + SquashSim.Career.Stars.Describe(C.OpponentId).name, () => SetupFlow.BackTo<OpponentPickScreen>(Fe), "CHANGE"));
                 Meter(opp.Root);
-                AddTo(mid, new SelectorItem("Match", LengthTiles, () => C.Length, v => C.Length = v));
-                AddTo(mid, new SelectorItem("Scoring", ScoringTiles, () => Mathf.Clamp(C.Scoring, 0, 1), v => C.Scoring = v));
-                // batch 2: the arcade abilities, off unless asked for
-                if (MatchChoices.QuickMatchAbilities)
-                {
-                    AddTo(mid, new SelectorItem("Abilities", AbilityTiles, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _abilityHint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
-                    _abilityHint = Kit.L(mid, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
-                }
-                // 2026-10-24: the court (the court behind the menu changes as you choose; Controls are in Settings)
-                var court = AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.Court, v => { C.Court = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
-                court.Sections = Courts.SectionOf;
-                Kit.L(court.Root, CourtHint, "k-car-hint");
+                AddTo(mid, new ActionItem("Court: " + Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Name, () => SetupFlow.BackTo<CourtPickScreen>(Fe), "CHANGE"));
+                AddTo(mid, new ActionItem("Your class: " + SetupFlow.ClassName(SetupFlow.Mine(0)), () => SetupFlow.BackTo<ClassPickScreen>(Fe), "CHANGE"));
             }
             else
             {
-                AddTo(mid, new SelectorItem("Match", LengthTiles, () => C.VsLength, v => C.VsLength = v));
-                AddTo(mid, new SelectorItem("Scoring", ScoringTiles, () => C.VsScoring, v => C.VsScoring = v));
-                var court = AddTo(mid, new CarouselItem("Court", Courts.Names, () => C.VsCourt, v => { C.VsCourt = v; Courts.CurrentId = Courts.Pickable[v].Id; }));
-                court.Sections = Courts.SectionOf;
-                Kit.L(court.Root, CourtHint, "k-car-hint");
-                AddTo(mid, new SelectorItem(MatchChoices.ControlName, AimTiles, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
+                AddTo(mid, new ActionItem("Match: " + FormatLine(C.VsLength, C.VsScoring), () => SetupFlow.BackTo<LocalVersusScreen>(Fe), "CHANGE"));
+                AddTo(mid, new ActionItem("Court: " + Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Name, () => SetupFlow.BackTo<CourtPickScreen>(Fe), "CHANGE"));
+                AddTo(mid, new ActionItem("Player 1: " + SetupFlow.ClassName(SetupFlow.Mine(0)), () => SetupFlow.BackTo<ClassPickScreen>(Fe, c => c.Player == 0), "CHANGE"));
+                AddTo(mid, new ActionItem("Player 2: " + SetupFlow.ClassName(SetupFlow.Mine(1)), () => SetupFlow.BackTo<ClassPickScreen>(Fe, c => c.Player == 1), "CHANGE"));
             }
             // them
             var them = Kit.Box(stage, "k-vs-side");
@@ -417,6 +405,12 @@ namespace SquashGame.UI
             var go = AddTo(Root, new PrimaryItem(TwoPlayer ? "Start" : "Play", Start));
             if (TwoPlayer) go.Enabled = () => MatchRunner.CanPlayTwoPlayer;
             UpdateOpponent();
+        }
+
+        static string FormatLine(int length, int scoring)
+        {
+            string[] len = { "ONE GAME", "BEST OF 3", "BEST OF 5" };
+            return len[Mathf.Clamp(length, 0, 2)] + "  ·  " + (Mathf.Clamp(scoring, 0, 1) == 0 ? "TO 11" : "TO 9");
         }
 
         // 2026-11-20 the tiles: a big number or word, what it means in plain words under it
@@ -470,10 +464,10 @@ namespace SquashGame.UI
             var p = ProfileStore.Current.Progress;
             _youName.text = PlayerName.Shown();
             var title = Cosmetics.Find(p.Loadout.Title);
-            _youMeta.text = "LEVEL " + Rewards.LevelOf(p.Xp) + "  ·  " + (title != null ? title.Name.ToUpperInvariant() : "ROOKIE") + (S.Assisted ? "  ·  EXTRA AIM HELP" : "");
+            _youMeta.text = SetupFlow.ClassName(SetupFlow.Mine(0)).ToUpperInvariant() + "  ·  LEVEL " + Rewards.LevelOf(p.Xp) + "  ·  " + (title != null ? title.Name.ToUpperInvariant() : "ROOKIE") + (S.Assisted ? "  ·  EXTRA AIM HELP" : "");
             if (TwoPlayer)
             {
-                _oppName.text = "Player 2";
+                _oppName.text = "Player 2  ·  " + SetupFlow.ClassName(SetupFlow.Mine(1));
                 int pads = UnityEngine.InputSystem.Gamepad.all.Count;
                 _oppStyle.text = pads == 0 ? "CONNECT A PAD TO PLAY" : pads == 1 ? "THE PAD  ·  PLAYER 1 ON KEYBOARD" : "PAD 2";
                 _oppLines.text = "";
@@ -484,7 +478,7 @@ namespace SquashGame.UI
             var d = SquashSim.Career.Stars.Describe(id);
             var star = SquashSim.Career.Stars.Find(id);
             _oppName.text = d.name;
-            _oppStyle.text = "RATED " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant() + (star != null ? "  ·  WORLD No. " + star.Rank : "  ·  CLUB PLAYER");
+            _oppStyle.text = SetupFlow.ClassName(SetupFlow.OpponentClass(id)).ToUpperInvariant() + "  ·  RATED " + d.rating + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant() + (star != null ? "  ·  WORLD No. " + star.Rank : "  ·  CLUB PLAYER");
             var lines = new List<string>(SquashSim.Career.Roster.StyleLines(d.style));
             if (star != null) lines.Add("Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })));
             _oppLines.text = string.Join("\n", lines);
@@ -500,7 +494,8 @@ namespace SquashGame.UI
             KitDirector.OpponentPreview = null;
             if (TwoPlayer)
                 Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = S.WarmUp,
-                                                  Court = Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Id });
+                                                  Court = Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Id,
+                                                  Class = SetupFlow.Mine(0), Class2 = SetupFlow.Mine(1) });   // 2026-11-22 the classes
             else
             {
                 var s = new MatchSettings
@@ -508,7 +503,8 @@ namespace SquashGame.UI
                     TwoPlayer = false, Opponent = C.OpponentId,
                     Prestige = C.OpponentId == "star:" + SquashSim.Career.Stars.No1.Id ? "THE WORLD No. 1" : null,       // camera work
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
-                    Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id
+                    Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id,
+                    Class = SetupFlow.Mine(0),                                          // 2026-11-22 your class
                 }.Dressed();
                 if (MatchChoices.QuickMatchAbilities && C.Abilities)
                 {
@@ -535,19 +531,6 @@ namespace SquashGame.UI
         }
     }
 
-    public sealed class QuickMatchScreen : VersusScreen
-    {
-        protected override bool TwoPlayer { get { return false; } }
-        protected override string Kicker { get { return "PLAY"; } }
-        protected override string Title { get { return "Quick Match"; } }
-    }
-
-    public sealed class LocalVersusScreen : VersusScreen
-    {
-        protected override bool TwoPlayer { get { return true; } }
-        protected override string Kicker { get { return "PLAY"; } }
-        protected override string Title { get { return "Local Versus"; } }
-    }
 
     // ---------------- pause ----------------
 

@@ -1727,3 +1727,33 @@
 .fe-fade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgb(6, 7, 9); justify-content: flex-end; align-items: flex-end; padding: 48px 64px; }
 .fe-fade-ball { width: 44px; height: 44px; border-radius: 22px; background-color: rgb(20, 20, 24); border-width: 4px; border-color: rgb(200, 255, 61); }
 .fe-fade-dot { position: absolute; left: 7px; top: 7px; width: 9px; height: 9px; border-radius: 5px; background-color: rgb(255, 214, 90); }
+
+/* ================= 2026-11-22 the setup steps: pick screens (the grid left, the preview right) ================= */
+.pk { flex-direction: row; flex-grow: 1; align-items: stretch; margin-top: 6px; }
+.pk-left { width: 56%; margin-right: 22px; }
+.pk-scroll { flex-grow: 1; }
+.pk-grid { flex-direction: row; flex-wrap: wrap; align-content: flex-start; padding: 8px 4px 40px 4px; }
+.k-card.pk-tile { width: 178px; height: 150px; margin: 0 12px 12px 0; }
+.pk-tile .k-card-title { font-size: 20px; }
+.pk-tile .k-card-kicker { font-size: 10px; letter-spacing: 1px; }
+.pk-right { flex-grow: 1; border-radius: 16px; background-color: rgba(12, 13, 18, 0.88); border-width: 1px; border-color: rgba(255, 255, 255, 0.1);
+    padding: 18px 22px; overflow: hidden; }
+.pk-pic { height: 46%; border-radius: 12px; overflow: hidden; background-color: rgb(20, 22, 28); margin-bottom: 14px; -unity-background-scale-mode: scale-and-crop; }
+.pk-details { flex-grow: 1; transition-property: opacity; transition-duration: 0.18s; }
+.pk-kicker { font-size: 12px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pk-name { font-size: 44px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); margin-top: -2px; }
+.pk-class { align-self: flex-start; padding: 3px 12px; border-radius: 8px; font-size: 14px; letter-spacing: 2px; color: rgb(14, 14, 18); margin: 2px 0 10px 0;
+    -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pk-line { font-size: 13px; letter-spacing: 2px; color: rgb(255, 196, 64); margin-bottom: 6px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pk-text { font-size: 17px; color: rgba(255, 255, 255, 0.82); white-space: normal; margin-bottom: 3px; }
+.pk-good { font-size: 18px; color: rgb(200, 255, 61); white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pk-bad { font-size: 18px; color: rgb(255, 120, 100); white-space: normal; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pk-perk { font-size: 16px; color: rgb(255, 214, 90); white-space: normal; margin-top: 8px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pk-bars { margin-top: 12px; }
+.pk-bar-row { flex-direction: row; align-items: center; margin-bottom: 5px; }
+.pk-bar-name { width: 96px; font-size: 12px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.7); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.pk-bar { flex-grow: 1; height: 10px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.pk-bar-fill { height: 100%; }
+.pk-format { align-self: center; width: 760px; }
+.pk-tile .k-card-glyph { position: absolute; top: 8px; left: 14px; font-size: 46px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.pk-tile .k-card-shade { height: 46%; }

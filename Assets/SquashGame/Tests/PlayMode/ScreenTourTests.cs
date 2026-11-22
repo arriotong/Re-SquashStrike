@@ -104,6 +104,8 @@ namespace SquashGame.Tests
             var screens = new List<(string, Func<MenuScreen>)>
             {
                 ("Quick Match", () => new QuickMatchScreen()), ("Local Versus", () => new LocalVersusScreen()),
+                ("Opponent pick", () => new OpponentPickScreen()), ("Court pick", () => new CourtPickScreen(false)), ("Class pick", () => new ClassPickScreen(0, false)),
+                ("Quick Match ready", () => new QuickMatchReadyScreen()), ("Local Versus ready", () => new LocalVersusReadyScreen()),
                 ("Target Arcade", () => new TargetArcadeScreen()), ("Levels", () => new LevelScreen(SquashSim.Arcade.ArcadeMode.TimeAttack)),
                 ("Practice", () => new PracticeScreen()), ("Academy", () => new AcademyScreen()), ("Challenges", () => new ChallengesScreen()),
                 ("Scenarios", () => new ScenarioScreen()), ("Gauntlet", () => new GauntletScreen()), ("Deck", () => new DeckScreen()),

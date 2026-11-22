@@ -80,6 +80,16 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<LocalVersusScreen>());
             Capture("P2M1_LocalVersus.png");
             yield return HubNav.ToPrimary(fe, pad1.dpad.down, pad1.dpad.right, Tap);
+            yield return Tap(pad1.buttonSouth);                     // 2026-11-22: next - the court, player 1's class, player 2's
+            Assert.That(fe.Top, Is.InstanceOf<CourtPickScreen>());
+            yield return Tap(pad1.buttonSouth);
+            Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>());
+            yield return Tap(pad1.buttonSouth);
+            Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>(), "player 2's class");
+            yield return Tap(pad1.buttonSouth);
+            Assert.That(fe.Top, Is.InstanceOf<LocalVersusReadyScreen>());
+            yield return null; yield return null;
+            yield return HubNav.ToPrimary(fe, pad1.dpad.down, pad1.dpad.down, Tap);      // (down the summary to START)
             yield return Tap(pad1.buttonSouth);                     // start
             Assert.That(fe.Top, Is.Null, "the menus close");
             Assert.That(r.Demo, Is.False);
@@ -154,6 +164,10 @@ namespace SquashGame.Tests
             yield return Tap(kb.enterKey);                          // Quick Match
             Assert.That(fe.Top, Is.InstanceOf<QuickMatchScreen>());
             Capture("P2M1_QuickMatch.png");
+            yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
+            yield return Tap(kb.enterKey);                          // 2026-11-22: next - your opponent, the court, your class (Enter keeps each)
+            for (int step = 0; step < 3; step++) yield return Tap(kb.enterKey);
+            Assert.That(fe.Top, Is.InstanceOf<QuickMatchReadyScreen>());
             yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Play"));
             yield return Tap(kb.enterKey);

@@ -1,0 +1,415 @@
+// ===========================================================
+// Assets/SquashGame/Runtime/UI/SetupScreens.cs
+// 2026-11-22 a match set up in steps (the user: "spread the clicking
+// process into a few tabs ... quick match, choose the par 11 or 9, then
+// the court, then the classes"; and the pick screens like a fighting
+// game's select: "the list grid on the left and a visual look of what you
+// are picking and the details on the right"):
+//
+//   Quick Match     Format -> Opponent -> Court -> Class -> Ready (PLAY)
+//   Local Versus    Format -> Court -> Class (P1) -> Class (P2) -> Ready
+//
+//   PickScreen      the grid (left) and the preview (right): a 3D look,
+//                   the name, what it is in plain words. Moving over a tile
+//                   shows it; Enter picks it and goes on. Back: one step.
+//   OpponentPick    the ladder (club players to the world No. 1), each
+//                   with their class and style
+//   CourtPick       every court, the court itself behind the menu
+//   ClassPick       the five classes: strengths, weakness, perk, the bars
+//
+// Plan: SQUASH FRONTEND MODIFIED/RE_SQUASHSTRIKE_PROS_CLASSES_PLAN.md.
+// ===========================================================
+
+using System;
+using System.Collections.Generic;
+using SquashGame.Profile;
+using SquashGame.Progression;
+using SquashSim;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace SquashGame.UI
+{
+    /// <summary>The steps, in order, and the jumps back to one.</summary>
+    public static class SetupFlow
+    {
+        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
+
+        /// <summary>The next step after <paramref name="from"/> (Quick Match or Local Versus).</summary>
+        public static void Next(FrontEnd fe, MenuScreen from, bool two)
+        {
+            ProfileStore.Save();
+            if (!two)
+            {
+                if (from is QuickMatchScreen) fe.Push(new OpponentPickScreen());
+                else if (from is OpponentPickScreen) fe.Push(new CourtPickScreen(false));
+                else if (from is CourtPickScreen) fe.Push(new ClassPickScreen(0, false));
+                else fe.Push(new QuickMatchReadyScreen());
+            }
+            else
+            {
+                if (from is LocalVersusScreen) fe.Push(new CourtPickScreen(true));
+                else if (from is CourtPickScreen) fe.Push(new ClassPickScreen(0, true));
+                else if (from is ClassPickScreen cp && cp.Player == 0) fe.Push(new ClassPickScreen(1, true));
+                else fe.Push(new LocalVersusReadyScreen());
+            }
+        }
+
+        /// <summary>Back to the step of this kind (the Ready screen's "change"): the ones after it closed.</summary>
+        public static void BackTo<T>(FrontEnd fe, Func<T, bool> which = null) where T : MenuScreen
+        {
+            for (int guard = 0; guard < 8 && fe.Top != null; guard++)
+            {
+                if (fe.Top is T t && (which == null || which(t))) return;
+                fe.Pop();
+            }
+        }
+
+        // ---- the classes' colours and names (the pros' too) ----
+        public static Color ClassColour(string id)
+        {
+            switch (id)
+            {
+                case "power": return new Color32(255, 90, 74, 255);
+                case "accuracy": return new Color32(60, 200, 255, 255);
+                case "speed": return new Color32(200, 255, 61, 255);
+                case "touch": return new Color32(190, 110, 255, 255);
+                default: return new Color32(255, 196, 64, 255);
+            }
+        }
+        public static string ClassName(string id) { var d = PlayerClasses.Find(id); return d != null ? d.Name : "All-rounder"; }
+
+        /// <summary>An opponent's class: a star's from their athlete and shots; a club player's from their style.</summary>
+        public static string OpponentClass(string id)
+        {
+            var star = SquashSim.Career.Stars.Find(id);
+            if (star != null) return PlayerClasses.ReadAs(star.Attributes, star.Signature);
+            string style = SquashSim.Career.Stars.Describe(id).style;
+            switch (style)
+            {
+                case "attacker": case "powerhouse": return "power";
+                case "retriever": case "counter-puncher": return "speed";
+                case "shotmaker": case "magician": return "touch";
+                case "volleyer": return "accuracy";
+                default: return "allround";
+            }
+        }
+
+        /// <summary>Your class now (a saved id that's gone: the All-rounder).</summary>
+        public static string Mine(int player = 0)
+        {
+            string id = player == 0 ? C.Class : C.VsClass2;
+            return PlayerClasses.Find(id) != null ? id : PlayerClasses.Default;
+        }
+    }
+
+    // ---------------- the pick screen: the grid and the preview ----------------
+
+    public abstract class PickScreen : GameScreen
+    {
+        protected override bool ShowChip { get { return false; } }
+        public override bool Spatial { get { return true; } }
+        protected readonly List<(MenuItem item, string id)> Tiles = new List<(MenuItem, string)>();
+        ScrollView _scroll;
+        protected VisualElement Preview, Details, Pic;
+        MenuItem _shown;
+        protected abstract bool TwoPlayer { get; }
+        /// <summary>The ids in the grid (in order), their tile's name, kicker and colour.</summary>
+        protected abstract IEnumerable<string> Ids { get; }
+        protected abstract string TileName(string id);
+        protected abstract string TileKicker(string id);
+        protected abstract Color TileColour(string id);
+        protected virtual string TileBadge(string id) { return ""; }
+        /// <summary>The tile's big letters (initials).</summary>
+        protected virtual string TileGlyph(string id)
+        {
+            var words = TileName(id).Split(' ');
+            string g = "";
+            foreach (var w in words) if (w.Length > 0 && char.IsLetter(w[0]) && g.Length < 2) g += char.ToUpperInvariant(w[0]);
+            return g;
+        }
+        /// <summary>The id picked now (focused at the start).</summary>
+        protected abstract string Current { get; }
+        protected abstract void Choose(string id);
+        /// <summary>The preview's picture: the vignette shot ("them", "you", "court"), or null.</summary>
+        protected abstract string Shot(string id);
+        protected abstract void Describe(string id, VisualElement into);
+        /// <summary>The look follows the tile in focus (the opponent's kit, the court behind).</summary>
+        protected virtual void Hover(string id) { }
+
+        protected override void Compose()
+        {
+            var wrap = Kit.Box(Content, "pk");
+            var left = Kit.Box(wrap, "pk-left");
+            _scroll = new ScrollView(ScrollViewMode.Vertical);
+            _scroll.AddToClassList("pk-scroll");
+            _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            left.Add(_scroll);
+            var grid = Kit.Box(_scroll, "pk-grid");
+            foreach (var id in Ids)
+            {
+                string pick = id;
+                // a portrait-like tile: its colour (the class, the walls), big initials, the name under
+                Color col = TileColour(id);
+                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
+                    .Glyph(TileGlyph(id))
+                    .Badge(() => TileBadge(pick), false));
+                item.Root.AddToClassList("pk-tile");
+                item.Art.style.backgroundColor = new Color(col.r * 0.32f, col.g * 0.32f, col.b * 0.32f, 1f);
+                item.Root.style.borderTopColor = col; item.Root.style.borderTopWidth = 4;
+                item.Art.Q<Label>(className: "k-card-glyph").style.color = col;
+                Tiles.Add((item, id));
+            }
+            Preview = Kit.Box(wrap, "pk-right");
+            Pic = Kit.Box(Preview, "pk-pic");
+            Details = Kit.Box(Preview, "pk-details");
+        }
+
+        public override void OnShow()
+        {
+            base.OnShow();
+            MenuCinematics.Scene = TwoPlayer ? 1 : 0;
+            MatchRunner.Showcase = true; MatchRunner.Studio = true; MatchRunner.StudioPair = true; KitStudio.Show(true);
+            string cur = Current;
+            foreach (var t in Tiles) if (t.id == cur) { Focus(t.item); break; }
+            _shown = null;
+        }
+
+        public override void OnHide()
+        {
+            ProfileStore.Save();
+            MatchRunner.Showcase = false; MatchRunner.Studio = false; MatchRunner.StudioPair = false; KitStudio.Show(false);
+        }
+
+        string _picShot;
+        public override void Tick(float dt)
+        {
+            if (Focused == null || Focused == _shown) return;
+            _shown = Focused;
+            _scroll.ScrollTo(_shown.Root);
+            string id = null;
+            foreach (var t in Tiles) if (t.item == _shown) id = t.id;
+            if (id == null) return;
+            Hover(id);
+            string shot = Shot(id);
+            if (shot != _picShot) { Pic.Clear(); _picShot = shot; if (shot != null) Vignettes.Attach(Pic, shot, 640, 520); }
+            Details.Clear();
+            Describe(id, Details);
+            Juice.FadeIn(Details);
+        }
+
+        /// <summary>The id in focus now (tests).</summary>
+        public string FocusedId { get { foreach (var t in Tiles) if (t.item == Focused) return t.id; return null; } }
+
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Choose"), (PromptBar.Btn.A, "Pick"), (PromptBar.Btn.B, "Back")); }
+
+        /// <summary>A stat bar (0..10) with its word.</summary>
+        protected static void Bar(VisualElement into, string name, double v, Color c)
+        {
+            var row = Kit.Box(into, "pk-bar-row");
+            Kit.L(row, name, "pk-bar-name");
+            var track = Kit.Box(row, "pk-bar");
+            var fill = Kit.Box(track, "pk-bar-fill");
+            fill.style.width = Length.Percent(Mathf.Clamp01((float)v / 10f) * 100f);
+            fill.style.backgroundColor = c;
+        }
+    }
+
+    // ---------------- the steps ----------------
+
+    /// <summary>Quick Match, step 1: how long, the scoring, the abilities.</summary>
+    public sealed class QuickMatchScreen : FormatScreen
+    {
+        protected override bool TwoPlayer { get { return false; } }
+        protected override string Title { get { return "Quick Match"; } }
+    }
+
+    /// <summary>Local Versus, step 1.</summary>
+    public sealed class LocalVersusScreen : FormatScreen
+    {
+        protected override bool TwoPlayer { get { return true; } }
+        protected override string Title { get { return "Local Versus"; } }
+    }
+
+    public abstract class FormatScreen : GameScreen
+    {
+        protected abstract bool TwoPlayer { get; }
+        protected override string Kicker { get { return "PLAY  ·  STEP 1  ·  THE MATCH"; } }
+        protected override bool ShowChip { get { return false; } }
+        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
+        static GameSettings S { get { return ProfileStore.Current.Settings; } }
+        Label _hint;
+
+        protected override void Compose()
+        {
+            var board = Kit.Box(Content, "k-vs-mid");
+            board.AddToClassList("k-vs-board"); board.AddToClassList("pk-format");
+            if (!TwoPlayer)
+            {
+                AddTo(board, new SelectorItem("Match", VersusScreen.LengthTiles, () => C.Length, v => C.Length = v));
+                AddTo(board, new SelectorItem("Scoring", VersusScreen.ScoringTiles, () => Mathf.Clamp(C.Scoring, 0, 1), v => C.Scoring = v));
+                if (MatchChoices.QuickMatchAbilities)
+                {
+                    AddTo(board, new SelectorItem("Abilities", VersusScreen.AbilityTiles, () => C.Abilities ? 1 : 0, v => { C.Abilities = v == 1; _hint.text = C.Abilities ? MatchChoices.AbilityHint : ""; }));
+                    _hint = Kit.L(board, C.Abilities ? MatchChoices.AbilityHint : "", "k-vs-hint");
+                }
+            }
+            else
+            {
+                AddTo(board, new SelectorItem("Match", VersusScreen.LengthTiles, () => C.VsLength, v => C.VsLength = v));
+                AddTo(board, new SelectorItem("Scoring", VersusScreen.ScoringTiles, () => C.VsScoring, v => C.VsScoring = v));
+                AddTo(board, new SelectorItem(MatchChoices.ControlName, VersusScreen.AimTiles, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
+            }
+            AddTo(Root, new PrimaryItem(TwoPlayer ? "Next: the court" : "Next: your opponent", () => SetupFlow.Next(Fe, this, TwoPlayer)));
+        }
+
+        public override void OnHide() { ProfileStore.Save(); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Change"), (PromptBar.Btn.A, "Next"), (PromptBar.Btn.B, "Back")); }
+    }
+
+    /// <summary>Quick Match, step 2: who you play - the ladder, the pro in 3D, their class and style.</summary>
+    public sealed class OpponentPickScreen : PickScreen
+    {
+        protected override bool TwoPlayer { get { return false; } }
+        protected override string Kicker { get { return "QUICK MATCH  ·  STEP 2  ·  YOUR OPPONENT"; } }
+        protected override string Title { get { return "Choose your opponent"; } }
+        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
+
+        protected override IEnumerable<string> Ids { get { return MatchChoices.Ladder; } }
+        protected override string TileName(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name; }
+        protected override string TileKicker(string id)
+        {
+            var star = SquashSim.Career.Stars.Find(id);
+            var d = SquashSim.Career.Stars.Describe(id);
+            return (star != null ? "No. " + star.Rank : "CLUB") + "  ·  " + d.rating;
+        }
+        protected override Color TileColour(string id) { return SetupFlow.ClassColour(SetupFlow.OpponentClass(id)); }
+        protected override string TileBadge(string id) { return SetupFlow.ClassName(SetupFlow.OpponentClass(id)).ToUpperInvariant(); }
+        protected override string Current { get { return C.OpponentId; } }
+        protected override void Choose(string id) { C.OpponentId = id; }
+        protected override string Shot(string id) { return "them"; }
+
+        protected override void Hover(string id)
+        {
+            var star = SquashSim.Career.Stars.Find(id);
+            var d = SquashSim.Career.Stars.Describe(id);
+            KitDirector.OpponentPreview = star != null ? Cosmetics.AiKit(star.KitSeed) : Cosmetics.Signature(d.style);
+        }
+
+        protected override void Describe(string id, VisualElement into)
+        {
+            var star = SquashSim.Career.Stars.Find(id);
+            var d = SquashSim.Career.Stars.Describe(id);
+            string cls = SetupFlow.OpponentClass(id);
+            Kit.L(into, star != null ? "WORLD No. " + star.Rank + "  ·  RATED " + d.rating : "CLUB PLAYER  ·  RATED " + d.rating, "pk-kicker");
+            Kit.L(into, d.name, "pk-name");
+            var badge = Kit.L(into, SetupFlow.ClassName(cls).ToUpperInvariant() + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant(), "pk-class");
+            badge.style.backgroundColor = SetupFlow.ClassColour(cls);
+            int at = MatchChoices.LadderIndex(id), n = MatchChoices.Ladder.Length;
+            Kit.L(into, "DIFFICULTY  ·  " + VersusScreen.TierNames[VersusScreen.Tier(at, n)], "pk-line");
+            foreach (var line in SquashSim.Career.Roster.StyleLines(d.style)) Kit.L(into, line, "pk-text");
+            if (star != null && star.Signature.Count > 0)
+                Kit.L(into, "Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "pk-text");
+            var a2 = star != null ? star.Attributes : new AthleteAttributes();
+            var bars = Kit.Box(into, "pk-bars");
+            Color c = SetupFlow.ClassColour(cls);
+            Bar(bars, "SPEED", a2.Speed, c); Bar(bars, "POWER", a2.Power, c); Bar(bars, "CONTROL", a2.Control, c); Bar(bars, "STAMINA", a2.Stamina, c);
+        }
+
+        public override void OnHide() { base.OnHide(); KitDirector.OpponentPreview = null; }
+    }
+
+    /// <summary>The court: every one in the grid, the court itself behind and in the preview.</summary>
+    public sealed class CourtPickScreen : PickScreen
+    {
+        readonly bool _two;
+        public CourtPickScreen(bool two) { _two = two; }
+        protected override bool TwoPlayer { get { return _two; } }
+        protected override string Kicker { get { return (_two ? "LOCAL VERSUS  ·  STEP 2" : "QUICK MATCH  ·  STEP 3") + "  ·  THE COURT"; } }
+        protected override string Title { get { return "Choose the court"; } }
+        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
+
+        protected override IEnumerable<string> Ids { get { foreach (var c in Courts.Pickable) yield return c.Id; } }
+        static int Index(string id) { return Array.FindIndex(Courts.Pickable, c => c.Id == id); }
+        protected override string TileName(string id) { var i = Index(id); return i >= 0 ? Courts.Pickable[i].Name : id; }
+        protected override string TileKicker(string id) { var i = Index(id); return i >= 0 ? Courts.SectionOf(i).ToUpperInvariant() : ""; }
+        protected override Color TileColour(string id)
+        {
+            var i = Index(id); if (i < 0) return Color.white;
+            var t = Courts.Pickable[i];
+            return t.Walls == WallStyle.Plaster ? new Color32(230, 230, 236, 255) : t.Walls == WallStyle.Glass ? new Color32(120, 200, 255, 255) : new Color32(70, 110, 255, 255);
+        }
+        protected override string Current { get { var p = Courts.Pickable; int i = Mathf.Clamp(_two ? C.VsCourt : C.Court, 0, p.Length - 1); return p[i].Id; } }
+        protected override void Choose(string id) { int i = Mathf.Max(0, Index(id)); if (_two) C.VsCourt = i; else C.Court = i; Courts.CurrentId = id; }
+        protected override string Shot(string id) { return "court"; }
+        protected override void Hover(string id) { Courts.CurrentId = id; }
+
+        protected override void Describe(string id, VisualElement into)
+        {
+            int i = Index(id);
+            if (i < 0) return;
+            var t = Courts.Pickable[i];
+            Kit.L(into, Courts.SectionOf(i).ToUpperInvariant(), "pk-kicker");
+            Kit.L(into, t.Name, "pk-name");
+            var badge = Kit.L(into, t.Walls == WallStyle.Plaster ? "CLUB WALLS" : t.Walls == WallStyle.Glass ? "ALL GLASS" : "GLASS SHOW COURT", "pk-class");
+            badge.style.backgroundColor = TileColour(id);
+            Kit.L(into, t.Blurb ?? "", "pk-text");
+            if (t.Outdoor) Kit.L(into, "Out in the open air", "pk-text");
+        }
+    }
+
+    /// <summary>Your class (player 2's too in local versus): the five, each its strengths, weakness, perk and bars.</summary>
+    public sealed class ClassPickScreen : PickScreen
+    {
+        public readonly int Player;
+        readonly bool _two;
+        public ClassPickScreen(int player, bool two) { Player = player; _two = two; }
+        protected override bool TwoPlayer { get { return _two; } }
+        protected override string Kicker
+        {
+            get { return (_two ? "LOCAL VERSUS  ·  STEP " + (3 + Player) + "  ·  PLAYER " + (Player + 1) : "QUICK MATCH  ·  STEP 4") + "  ·  YOUR CLASS"; }
+        }
+        protected override string Title { get { return _two ? "Player " + (Player + 1) + ": choose a class" : "Choose your class"; } }
+        static MenuChoices C { get { return ProfileStore.Current.Choices; } }
+
+        protected override IEnumerable<string> Ids { get { foreach (var c in PlayerClasses.All) yield return c.Id; } }
+        protected override string TileName(string id) { return SetupFlow.ClassName(id); }
+        protected override string TileKicker(string id) { var d = PlayerClasses.Find(id); return d != null ? d.Short.ToUpperInvariant() : ""; }
+        protected override Color TileColour(string id) { return SetupFlow.ClassColour(id); }
+        protected override string Current { get { return SetupFlow.Mine(Player); } }
+        protected override void Choose(string id) { if (Player == 0) C.Class = id; else C.VsClass2 = id; }
+        protected override string Shot(string id) { return Player == 0 ? "you" : "them"; }
+
+        protected override void Describe(string id, VisualElement into)
+        {
+            var d = PlayerClasses.Find(id);
+            if (d == null) return;
+            Color c = SetupFlow.ClassColour(id);
+            Kit.L(into, "CLASS", "pk-kicker");
+            Kit.L(into, d.Name, "pk-name");
+            var badge = Kit.L(into, d.Short.ToUpperInvariant(), "pk-class"); badge.style.backgroundColor = c;
+            foreach (var s in d.Strengths) Kit.L(into, "+  " + s, "pk-good");
+            Kit.L(into, (d.Weakness == "None" ? "·  No weakness" : "-  " + d.Weakness), d.Weakness == "None" ? "pk-text" : "pk-bad");
+            Kit.L(into, "PERK  ·  " + d.Perk.ToUpperInvariant() + ":  " + d.PerkText, "pk-perk");
+            var a = PlayerClasses.Attributes(new AthleteAttributes(), id);
+            var bars = Kit.Box(into, "pk-bars");
+            Bar(bars, "SPEED", a.Speed, c); Bar(bars, "POWER", a.Power, c); Bar(bars, "CONTROL", a.Control, c); Bar(bars, "STAMINA", a.Stamina, c);
+        }
+    }
+
+    // ---------------- the last step: ready ----------------
+
+    public sealed class QuickMatchReadyScreen : VersusScreen
+    {
+        protected override bool TwoPlayer { get { return false; } }
+        protected override string Kicker { get { return "QUICK MATCH  ·  READY"; } }
+        protected override string Title { get { return "Quick Match"; } }
+    }
+
+    public sealed class LocalVersusReadyScreen : VersusScreen
+    {
+        protected override bool TwoPlayer { get { return true; } }
+        protected override string Kicker { get { return "LOCAL VERSUS  ·  READY"; } }
+        protected override string Title { get { return "Local Versus"; } }
+    }
+}

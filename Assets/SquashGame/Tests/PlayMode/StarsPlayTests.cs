@@ -62,8 +62,9 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
-        public IEnumerator QuickMatchIsThreeRowsUpToTheWorldNo1()
+        public IEnumerator QuickMatchInStepsUpToTheWorldNo1()
         {
+            // 2026-11-22 (the user: "spread the clicking process into a few tabs"): the match, the opponent, the court, your class, ready
             InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
             FrontEnd fe = null;
             yield return Boot(f => fe = f);
@@ -71,25 +72,67 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var qm = (QuickMatchScreen)fe.Top;
             var rows = qm.Reachable().FindAll(i => !(i is PrimaryItem));
-            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Opponent", "Match", "Scoring", "Abilities", "Court" }), "who, how long, the scoring, abilities, where (2026-11-20)");
+            Assert.That(rows.ConvertAll(i => i.Name), Is.EqualTo(new[] { "Match", "Scoring", "Abilities" }), "step 1: the match");
             Assert.That(ProfileStore.Current.Choices.OpponentId, Is.EqualTo(MatchChoices.Ladder[0]), "a new player starts at the bottom");
-
-            var opp = (CarouselItem)rows[0];
-            for (int k = 0; k < MatchChoices.Ladder.Length - 1; k++) opp.Change(1);
-            Assert.That(ProfileStore.Current.Choices.OpponentId, Is.EqualTo("star:s01"), "the top of the ladder: the world No. 1");
-            Assert.That(opp.Value, Does.StartWith(Stars.FullName(Stars.No1)).And.EndWith("99"));
-            yield return CaptureUI(fe, "P6_QuickMatch_No1.png");
-
+            yield return CaptureUI(fe, "SETUP_1_Format.png");
             qm.Reachable().Find(i => i is PrimaryItem).Submit();
+            yield return null; yield return null;
+
+            // step 2: the opponent - the ladder in a grid, the pro on the right
+            Assert.That(fe.Top, Is.InstanceOf<OpponentPickScreen>());
+            var op = (OpponentPickScreen)fe.Top;
+            var tiles = op.Reachable().FindAll(i => i is CardItem);
+            Assert.That(tiles.Count, Is.EqualTo(MatchChoices.Ladder.Length), "everyone on the ladder");
+            Assert.That(op.FocusedId, Is.EqualTo(MatchChoices.Ladder[0]), "on the one you had");
+            var top = (CardItem)tiles[tiles.Count - 1];
+            op.Focus(top);
+            yield return Wait(0.6f, () => false);
+            Assert.That(op.FocusedId, Is.EqualTo("star:s01"), "the top of the ladder: the world No. 1");
+            yield return CaptureUI(fe, "SETUP_2_Opponent.png");
+            top.Submit();
+            yield return null; yield return null;
+            Assert.That(ProfileStore.Current.Choices.OpponentId, Is.EqualTo("star:s01"));
+
+            // step 3: the court
+            Assert.That(fe.Top, Is.InstanceOf<CourtPickScreen>());
+            var cp = (CourtPickScreen)fe.Top;
+            Assert.That(cp.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(Courts.Pickable.Length), "every court");
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "SETUP_3_Court.png");
+            ((CardItem)cp.Focused).Submit();
+            yield return null; yield return null;
+
+            // step 4: your class
+            Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>());
+            var kp = (ClassPickScreen)fe.Top;
+            var classes = kp.Reachable().FindAll(i => i is CardItem);
+            Assert.That(classes.Count, Is.EqualTo(5), "five classes");
+            var power = (CardItem)classes.Find(i => ((CardItem)i).Title == "Power");
+            kp.Focus(power);
+            yield return Wait(0.6f, () => false);
+            yield return CaptureUI(fe, "SETUP_4_Class.png");
+            power.Submit();
+            yield return null; yield return null;
+            Assert.That(ProfileStore.Current.Choices.Class, Is.EqualTo("power"));
+
+            // ready: what you chose; Back goes one step
+            Assert.That(fe.Top, Is.InstanceOf<QuickMatchReadyScreen>());
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "SETUP_5_Ready.png");
+            var ready = fe.Top;
+            ready.Reachable().Find(i => i is PrimaryItem).Submit();
             yield return Wait(2f, () => fe.Top == null);
             var r = fe.Match;
             Assert.That(r.Settings.Opponent, Is.EqualTo("star:s01"));
+            Assert.That(r.Settings.Class, Is.EqualTo("power"), "your class");
+            Assert.That(r.Sim.Players[0].Player.Attributes.Power, Is.EqualTo(8.0).Within(1e-9), "Power: +3 on the athlete");
+            Assert.That(r.Sim.Players[0].Player.Mods.Level("heavyball"), Is.EqualTo(1), "and its perk");
             Assert.That(r.Settings.Difficulty, Is.EqualTo(1f), "the AI at its very best");
             Assert.That(r.Sim.Players[1].Player.Attributes.Power, Is.EqualTo(Stars.No1.Attributes.Power), "their own athlete");
             Assert.That(r.Sim.Players[1].Player.Mods, Is.Not.Null, "and their signature shots");
             Assert.That(r.Names[1], Is.EqualTo(Stars.No1.Last.ToUpperInvariant()), "the score bug");
             Assert.That(r.Settings.FocusCharges, Is.EqualTo(0), "abilities off: no Focus");
-            Assert.That(r.Sim.Players[0].Player.Mods, Is.Null, "and no abilities for you");
+            Assert.That(r.Sim.Players[0].Player.Mods.HasUltimate, Is.False, "and no special for you");
         }
 
         [UnityTest]
@@ -108,7 +151,9 @@ namespace SquashGame.Tests
             Assert.That(row.Index, Is.EqualTo(0), "showing Off");
             row.Change(1);
             Assert.That(ProfileStore.Current.Choices.Abilities, Is.True, "turned on");
-            qm.Reachable().Find(i => i is PrimaryItem).Submit();
+            fe.Push(new QuickMatchReadyScreen());                                    // (2026-11-22: the last step)
+            yield return null; yield return null;
+            fe.Top.Reachable().Find(i => i is PrimaryItem).Submit();
             yield return Wait(2f, () => fe.Top == null);
             var r = fe.Match;
             Assert.That(r.Settings.MeterFocus, Is.True, "Focus from the Special meter");
@@ -127,7 +172,7 @@ namespace SquashGame.Tests
             yield return Boot(f => fe = f);
             ProfileStore.Current.Choices.Abilities = true;
             ProfileStore.Current.Settings.WarmUp = false;                           // (straight to the rally)
-            fe.Push(new QuickMatchScreen());
+            fe.Push(new QuickMatchReadyScreen());                                    // (2026-11-22: the last step)
             yield return null; yield return null;
             fe.Top.Reachable().Find(i => i is PrimaryItem).Submit();
             yield return Wait(2f, () => fe.Top == null);
@@ -196,31 +241,25 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
-        public IEnumerator TheCourtIsPickedFromAPopUpList()
+        public IEnumerator TheCourtIsPickedFromAGrid()
         {
-            // UI redesign 2026-10-28: "a pop up vertical list so players can scroll through" - not 50 presses
+            // 2026-11-22: the courts in a grid (left), the court itself on the right and behind the menu
             InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
             FrontEnd fe = null;
             yield return Boot(f => fe = f);
-            fe.Push(new QuickMatchScreen());
+            fe.Push(new CourtPickScreen(false));
             yield return null; yield return null;
-            var qm = fe.Top;
-            var court = (CarouselItem)qm.Reachable().Find(i => i.Name == "Court");
-            court.Submit();
+            var cp = (CourtPickScreen)fe.Top;
+            var tiles = cp.Reachable().FindAll(i => i is CardItem);
+            Assert.That(tiles.Count, Is.EqualTo(Courts.Pickable.Length), "every court in it");
+            var last = (CardItem)tiles[tiles.Count - 1];
+            cp.Focus(last);
             yield return null; yield return null;
-            Assert.That(fe.Top, Is.InstanceOf<PickListScreen>(), "confirm opens the list");
-            var list = (PickListScreen)fe.Top;
-            Assert.That(list.Count, Is.EqualTo(Courts.Names.Length), "every court in it");
-            Assert.That(list.Focused.Name, Is.EqualTo(court.Value), "the current one focused");
-            Assert.That(qm.Root.style.display.value, Is.Not.EqualTo(UnityEngine.UIElements.DisplayStyle.None), "the screen stays in view below");
-            yield return CaptureUI(fe, "UI_PickList_Court.png");
-            string want = Courts.Names[Courts.Names.Length - 1];
-            list.Pick(want);
-            yield return null; yield return null;
-            Assert.That(fe.Top, Is.SameAs(qm), "picked: back to Quick Match");
-            Assert.That(court.Value, Is.EqualTo(want), "in one go");
-            court.Change(1);
-            Assert.That(court.Index, Is.EqualTo(0), "left / right still step");
+            Assert.That(Courts.CurrentId, Is.EqualTo(Courts.Pickable[Courts.Pickable.Length - 1].Id), "the court behind follows the tile");
+            last.Submit();
+            yield return null;
+            Assert.That(ProfileStore.Current.Choices.Court, Is.EqualTo(Courts.Pickable.Length - 1), "picked in one go");
+            Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>(), "on to your class");
         }
 
         [UnityTest]

@@ -4,7 +4,8 @@
 // on every one of its tabs, shows at most 6 choices at once - besides
 // its one primary action. The draw's matches, the Academy trail's
 // lessons and the world map's pins are maps you browse, not choices,
-// and are not counted.
+// and are not counted; a pick screen's grid (2026-11-22: the opponent, the
+// court, the class) is one choice - pick one.
 // ===========================================================
 
 using System;
@@ -29,6 +30,11 @@ namespace SquashGame.Tests
         static int Choices(MenuScreen s)
         {
             int n = 0;
+            if (s is PickScreen)                                                   // 2026-11-22: a pick screen's grid is one choice (pick one)
+            {
+                foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is CardItem)) n++;
+                return n + 1;
+            }
             foreach (var it in s.Reachable()) if (!(it is PrimaryItem) && !(it is BracketMatchItem) && !(it is TrailNode) && !(it is RallyNode) && !(it is MapPinItem) && !(it is TrophyItem)) n++;
             return n;
         }
@@ -80,6 +86,8 @@ namespace SquashGame.Tests
             var screens = new List<(string, Func<MenuScreen>)>
             {
                 ("Quick Match", () => new QuickMatchScreen()), ("Local Versus", () => new LocalVersusScreen()),
+                ("Opponent pick", () => new OpponentPickScreen()), ("Court pick", () => new CourtPickScreen(false)), ("Class pick", () => new ClassPickScreen(0, false)),
+                ("Quick Match ready", () => new QuickMatchReadyScreen()), ("Local Versus ready", () => new LocalVersusReadyScreen()),
                 ("Target Arcade", () => new TargetArcadeScreen()), ("Levels", () => new LevelScreen(ArcadeMode.TimeAttack)),
                 ("Practice", () => new PracticeScreen()), ("Academy", () => new AcademyScreen()),
                 ("Locker Room", () => new LockerRoomScreen()), ("Stats", () => new StatsScreen()), ("Achievements", () => new AchievementsScreen()),

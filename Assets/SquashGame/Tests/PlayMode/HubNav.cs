@@ -56,8 +56,9 @@ namespace SquashGame.Tests
         /// <summary>Move the focus to the screen's primary action (down / right until it has it).</summary>
         public static IEnumerator ToPrimary(FrontEnd fe, ButtonControl down, ButtonControl right, Func<ButtonControl, IEnumerator> tap)
         {
-            for (int i = 0; i < 12 && !(fe.Top.Focused is PrimaryItem); i++) yield return tap(i % 3 == 2 ? right : down);
-            Assert.That(fe.Top.Focused, Is.InstanceOf<PrimaryItem>(), "the primary action");
+            var seen = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < 12 && !(fe.Top.Focused is PrimaryItem); i++) { yield return tap(i % 3 == 2 ? right : down); seen.Add(fe.Top.Focused != null ? fe.Top.Focused.Name : "-"); }
+            Assert.That(fe.Top.Focused, Is.InstanceOf<PrimaryItem>(), "the primary action (" + fe.Top.GetType().Name + ": " + string.Join(" > ", seen) + " | items " + string.Join(", ", fe.Top.Reachable().ConvertAll(x => x.GetType().Name + ":" + x.Name)) + ")");
         }
     }
 }
