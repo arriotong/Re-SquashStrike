@@ -61,6 +61,9 @@ namespace SquashServer.Tests
         IAthleteBrain _ai;
         public Func<byte[], byte[]> Tamper;
 
+        /// <summary>2026-11-22 the class sent in its hello.</summary>
+        public string Class = "";
+
         public Bot(string name, int seed, string profile = "attacker")
         {
             Name = name; Seed = seed; Profile = profile;
@@ -71,7 +74,7 @@ namespace SquashServer.Tests
         public Bot Connect(Hub hub)
         {
             L = new Link(hub) { Tamper = Tamper };
-            L.Send(NetMessages.Hello(Id, Secret, Name, "{}", "test", SimFingerprint.Current));
+            L.Send(NetMessages.Hello(Id, Secret, Name, "{}", "test", SimFingerprint.Current, Class));
             S = null;
             return this;
         }
@@ -203,6 +206,23 @@ namespace SquashServer.Tests
                 b.Send(NetMessages.Queue(QueueKind.Quick)); c.Send(NetMessages.Queue(QueueKind.Quick)); w.Run(0.1);
                 Check(a.Start != null && b.Start != null && c.Start == null, "Ann and Ben");
                 Check(a.Start.Setup.GamesToWin == 2 && a.Start.Setup.Scoring == "par" && !a.Start.Ranked, "best of 3, PAR, unranked");
+            });
+
+            Test("classes: each player's, the same in both games (2026-11-22)", () =>
+            {
+                var w = new World();
+                var a = w.Add(new Bot("Ann", 1) { Class = "power" }); var b = w.Add(new Bot("Ben", 2) { Class = "nonsense" });
+                w.Run(0.1);
+                a.Send(NetMessages.Queue(QueueKind.Quick)); b.Send(NetMessages.Queue(QueueKind.Quick)); w.Run(0.1);
+                Check(a.Start != null && b.Start != null, "paired");
+                Check(a.Start.Setup.Class0 == b.Start.Setup.Class0 && a.Start.Setup.Class1 == b.Start.Setup.Class1, "both told the same");
+                int annSlot = a.Start.Slot;
+                string annClass = annSlot == 0 ? a.Start.Setup.Class0 : a.Start.Setup.Class1, benClass = annSlot == 0 ? a.Start.Setup.Class1 : a.Start.Setup.Class0;
+                Check(annClass == "power" && benClass == "", "Ann's Power, Ben's unknown class dropped");
+                Check(a.S.Sim.Players[annSlot].Player.Attributes.Power == 8 && b.S.Sim.Players[annSlot].Player.Attributes.Power == 8, "her athlete Power in both games");
+                Check(a.S.Sim.Players[1 - annSlot].Player.Attributes.Power == 5, "his plain");
+                w.Run(20);
+                Check(a.End == null && b.End == null || (a.End != null && a.End.Reason != "desync"), "no desync");
             });
 
             Test("ranked pairs within the band", () =>

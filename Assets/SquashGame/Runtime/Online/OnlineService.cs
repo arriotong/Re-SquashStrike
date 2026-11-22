@@ -159,7 +159,8 @@ namespace SquashGame.Online
                 if (_t.Connected)
                 {
                     var me = Identity();
-                    _t.Send(NetMessages.Hello(me.Id, me.Secret, me.Name, JsonUtility.ToJson(Progression.KitDirector.You()), Application.version, SimFingerprint.Current));
+                    _t.Send(NetMessages.Hello(me.Id, me.Secret, me.Name, JsonUtility.ToJson(Progression.KitDirector.You()), Application.version, SimFingerprint.Current,
+                                              UI.SetupFlow.Mine(0)));                    // 2026-11-22 your class
                     _helloSent = true;
                     _pingAt = now;
                 }

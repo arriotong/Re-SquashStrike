@@ -151,6 +151,7 @@ namespace SquashGame.UI
                 Gauntlet = true, ParPoints = 999,                                    // 2026-11-21: the floor's target decides it, not a game
                 GauntletFloor = Gauntlet.BeginFloor(run, Talents),
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
+                Class = SetupFlow.Mine(0),                                           // 2026-11-22 your class: the base the cards build on
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = CourtFor(run, f), CrowdFill = CrowdFor(f),
                 P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : "FLOOR " + f,
@@ -471,6 +472,8 @@ namespace SquashGame.UI
             Kit.L(next, rallies + " rallies" + (Gauntlet.HeadStart(run) > 0 ? "  ·  you start with " + Gauntlet.HeadStart(run) * 100 + " points" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
             var me = Kit.Panel(col, "YOUR BUILD"); me.AddToClassList("gt-info");
             Kit.L(me, run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins" + (run.Golden ? "  ·  golden racket: one retry" : "") + (run.CanRevive && !run.Revived ? "  ·  second chance ready" : ""), "gt-hearts");
+            AddTo(me, new ActionItem("Class: " + SetupFlow.ClassName(SetupFlow.Mine(0)),
+                () => Fe.Push(new ClassPickScreen("THE GAUNTLET", SetupFlow.Mine(0), id => { ProfileStore.Current.Choices.Class = id; ProfileStore.Save(); Fe.Replace(new GauntletScreen()); })), "CHANGE"));
             Build(me, run);
             var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? Its coins are kept.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
             quit.Root.AddToClassList("k-action--chip");

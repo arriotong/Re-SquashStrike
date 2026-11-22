@@ -58,6 +58,7 @@ namespace SquashSim.Net
         public TickSim(ReplaySetup setup, int delay, string gameVersion = "", long createdTicks = 0)
         {
             setup.TwoPlayer = true;
+            PlayerClasses.ApplyOnline(setup);                                       // 2026-11-22 both classes, the same on every machine
             Delay = Math.Max(1, delay);
             ReplayMatch.Configure(setup);
             Config = PhysicsConfig.Current;

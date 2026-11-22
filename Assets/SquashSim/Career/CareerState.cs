@@ -96,6 +96,8 @@ namespace SquashSim.Career
         public string Name = "", Nat = "ENG";
         public int GamesToWin = 2;          // best of 3
         public bool English;
+        /// <summary>2026-11-22 your career player's class (PlayerClasses id; an older career: the All-rounder).</summary>
+        public string Class = "allround";
         public int Season = 1, Week;        // Week: 0..51 within the season (P7 phase 3; was Month)
         public double Rating = 0.05;        // your strength, from your real rallies (RallyModel)
         public int Earnings, Titles;        // Earnings: everything you have earned (prize money, goals, sponsors)

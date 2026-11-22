@@ -241,6 +241,33 @@ namespace SquashGame.Tests
         }
 
         [UnityTest]
+        public IEnumerator YourClassGoesEverywhere()
+        {
+            // 2026-11-22: the Gauntlet builds on your class; the class picker on its own (the Gauntlet, the career, online) hands it back
+            InputSystem.AddDevice<Keyboard>(); InputSystem.AddDevice<Mouse>();
+            FrontEnd fe = null;
+            yield return Boot(f => fe = f);
+            ProfileStore.Current.Choices.Class = "speed";
+            GauntletFlow.NewRun();
+            var gs = GauntletFlow.Settings(GauntletFlow.Run);
+            Assert.That(gs.Class, Is.EqualTo("speed"), "the Gauntlet: your class under the cards");
+            GauntletFlow.Abandon();
+
+            string got = null;
+            var under = fe.Top;
+            fe.Push(new ClassPickScreen("CAREER", "allround", id => got = id));
+            yield return null; yield return null;
+            var pick = (ClassPickScreen)fe.Top;
+            Assert.That(pick.FocusedId, Is.EqualTo("allround"), "on the class it has");
+            var touch = (CardItem)pick.Reachable().Find(i => i is CardItem c && c.Title == "Touch");
+            touch.Submit();
+            yield return null;
+            Assert.That(got, Is.EqualTo("touch"), "handed back");
+            Assert.That(fe.Top, Is.SameAs(under), "and closed");
+            Assert.That(ProfileStore.Current.Choices.Class, Is.EqualTo("speed"), "on its own it leaves Quick Match's class alone");
+        }
+
+        [UnityTest]
         public IEnumerator TheCourtIsPickedFromAGrid()
         {
             // 2026-11-22: the courts in a grid (left), the court itself on the right and behind the menu

@@ -54,6 +54,8 @@ namespace SquashServer
         public IPeerIo Io;
         public PlayerRec Player;
         public string Name = "", Kit = "";
+        /// <summary>2026-11-22 their class (PlayerClasses id; "" none).</summary>
+        public string Class = "";
         public double LastHeard, LastPing, Rtt = -1;
         public bool Gone;
         public Match Match; public int Slot;
@@ -200,6 +202,8 @@ namespace SquashServer
             int version = r.ReadInt32();
             string id = r.ReadString(), secret = r.ReadString(), name = r.ReadString(), kit = r.ReadString(), game = r.ReadString();
             ulong fingerprint = r.ReadUInt64();
+            string cls = "";
+            try { cls = r.ReadString(); } catch (System.IO.EndOfStreamException) { }       // v3: the class
             if (version != NetMessages.Version || fingerprint != SimFingerprint.Current)
             {
                 Error(p, "Your game is a different version from the server's - update the game to play online.");
@@ -215,6 +219,7 @@ namespace SquashServer
             if (old != null) Drop(old);                                                    // the same player again: the old link is dead
             p.Player = rec; p.Name = rec.Name;
             p.Kit = kit != null && kit.Length <= MaxKit ? kit : "";
+            p.Class = PlayerClasses.Find(cls) != null ? cls : "";
             Send(p, NetMessages.Welcome(rec.Rating, Store.RankOf(rec), rec.Games));
             // back in a match it dropped out of: everything so far, to catch up
             var back = _matches.FirstOrDefault(x => !x.Over && x.Rec[0].Id != x.Rec[1].Id && (x.Rec[0].Id == id && x.P[0] == null || x.Rec[1].Id == id && x.P[1] == null));
@@ -355,6 +360,7 @@ namespace SquashServer
         {
             setup.BotSeed = (uint)_rng.Next();
             setup.Lets = true;
+            setup.Class0 = a.Class; setup.Class1 = b.Class;                                // 2026-11-22 the classes
             var m = new Match { Id = Store.NextMatchId(), Kind = kind, Ranked = ranked, Court = court, Room = room, Setup = setup };
             m.Sim = new TickSim(setup, DelayFor(a, b));
             m.P[0] = a; m.P[1] = b;
@@ -375,7 +381,8 @@ namespace SquashServer
             {
                 MatchId = m.Id, Slot = s, Delay = m.Sim.Delay, Ranked = m.Ranked, Court = m.Court, Resuming = resuming,
                 OppName = m.Names[1 - s], OppKit = m.Kits[1 - s], OppRating = m.Rec[1 - s].Rating, MyRating = m.Rec[s].Rating,
-                Setup = new ReplaySetup { TwoPlayer = true, Scoring = m.Setup.Scoring, GamesToWin = m.Setup.GamesToWin, BotSeed = m.Setup.BotSeed, FirstServer = m.Setup.FirstServer, Lets = m.Setup.Lets, WarmUp = m.Setup.WarmUp },
+                Setup = new ReplaySetup { TwoPlayer = true, Scoring = m.Setup.Scoring, GamesToWin = m.Setup.GamesToWin, BotSeed = m.Setup.BotSeed, FirstServer = m.Setup.FirstServer, Lets = m.Setup.Lets, WarmUp = m.Setup.WarmUp,
+                                         Class0 = m.Setup.Class0, Class1 = m.Setup.Class1 },
             };
         }
 

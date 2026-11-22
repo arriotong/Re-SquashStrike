@@ -112,6 +112,8 @@ namespace SquashGame.UI
         protected override bool ShowChip { get { return false; } }
         public override bool Spatial { get { return true; } }
         protected readonly List<(MenuItem item, string id)> Tiles = new List<(MenuItem, string)>();
+        /// <summary>2026-11-22 opened on its own (not a step): the pick is handed here and the screen closes.</summary>
+        public Action<string> Done;
         ScrollView _scroll;
         protected VisualElement Preview, Details, Pic;
         MenuItem _shown;
@@ -153,7 +155,7 @@ namespace SquashGame.UI
                 string pick = id;
                 // a portrait-like tile: its colour (the class, the walls), big initials, the name under
                 Color col = TileColour(id);
-                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
+                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); if (Done != null) { Fe.Pop(); Done(pick); } else SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
                     .Glyph(TileGlyph(id))
                     .Badge(() => TileBadge(pick), false));
                 item.Root.AddToClassList("pk-tile");
@@ -368,11 +370,14 @@ namespace SquashGame.UI
     {
         public readonly int Player;
         readonly bool _two;
+        readonly string _where, _current;
         public ClassPickScreen(int player, bool two) { Player = player; _two = two; }
+        /// <summary>On its own (Career, the Gauntlet, online): where it's for, the class now, and what to do with the pick.</summary>
+        public ClassPickScreen(string where, string current, Action<string> done) { Player = 0; _where = where; _current = current; Done = done; }
         protected override bool TwoPlayer { get { return _two; } }
         protected override string Kicker
         {
-            get { return (_two ? "LOCAL VERSUS  ·  STEP " + (3 + Player) + "  ·  PLAYER " + (Player + 1) : "QUICK MATCH  ·  STEP 4") + "  ·  YOUR CLASS"; }
+            get { return _where != null ? _where + "  ·  YOUR CLASS" : (_two ? "LOCAL VERSUS  ·  STEP " + (3 + Player) + "  ·  PLAYER " + (Player + 1) : "QUICK MATCH  ·  STEP 4") + "  ·  YOUR CLASS"; }
         }
         protected override string Title { get { return _two ? "Player " + (Player + 1) + ": choose a class" : "Choose your class"; } }
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }
@@ -381,8 +386,8 @@ namespace SquashGame.UI
         protected override string TileName(string id) { return SetupFlow.ClassName(id); }
         protected override string TileKicker(string id) { var d = PlayerClasses.Find(id); return d != null ? d.Short.ToUpperInvariant() : ""; }
         protected override Color TileColour(string id) { return SetupFlow.ClassColour(id); }
-        protected override string Current { get { return SetupFlow.Mine(Player); } }
-        protected override void Choose(string id) { if (Player == 0) C.Class = id; else C.VsClass2 = id; }
+        protected override string Current { get { return _where != null ? (PlayerClasses.Find(_current) != null ? _current : PlayerClasses.Default) : SetupFlow.Mine(Player); } }
+        protected override void Choose(string id) { if (_where != null) return; if (Player == 0) C.Class = id; else C.VsClass2 = id; }
         protected override string Shot(string id) { return Player == 0 ? "you" : "them"; }
 
         protected override void Describe(string id, VisualElement into)

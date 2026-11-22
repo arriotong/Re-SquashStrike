@@ -300,6 +300,7 @@ namespace SquashGame.UI
                 Court = c.S.Current != null && !c.S.Current.Home ? Courts.ForCareerEvent(c.S.Current.Name, c.S.Current.Tier, c.S.Current.City) : CourtFor(0),   // its own venue, else its tier's
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
                 Attributes = c.Effective,                                  // your levels and your gear (P7 phase 5)
+                Class = string.IsNullOrEmpty(c.S.Class) ? SquashSim.PlayerClasses.Default : c.S.Class,   // 2026-11-22 your class, on top
                 GearLooks = GearLooks(c),                                   // bought gear shows (the starters leave your Locker look)
                 Prestige = PrestigeOf(c),                                   // camera work: a final opens with the fly-around
             }.Dressed());
@@ -350,7 +351,8 @@ namespace SquashGame.UI
         protected override string Title { get { return "Create your player"; } }
         protected override bool ShowChip { get { return false; } }
         static readonly string[] StepNames = { "NAME", "NATION", "MATCHES" };
-        int _nat, _length = 1, _scoring;
+        int _nat, _length = 1, _scoring, _class = 4;
+        static readonly string[] ClassNames = System.Array.ConvertAll(SquashSim.PlayerClasses.All, d => d.Name);
         TextItem _name;
         readonly VisualElement[] _steps = new VisualElement[3];
         readonly Label[] _dots = new Label[3];
@@ -381,6 +383,7 @@ namespace SquashGame.UI
             Kit.L(_steps[2], "How long are your matches?", "k-cr-step-q");
             AddTo(_steps[2], new SelectorItem("Match", Career.LengthLabels, () => _length, v => _length = v));
             AddTo(_steps[2], new SelectorItem("Scoring", MatchChoices.ScoringShort, () => _scoring, v => _scoring = v));
+            AddTo(_steps[2], new SelectorItem("Class", ClassNames, () => _class, v => _class = v));                 // 2026-11-22
             Kit.L(_steps[2], "No stats to buy: your skill is the only thing that improves. You can change these from the career hub.", "k-cr-step-hint");
 
             _summary = Kit.L(right, "", "k-cr-summary");
@@ -421,6 +424,7 @@ namespace SquashGame.UI
         void Create()
         {
             CareerStore.New(NameValue, Roster.Nations[_nat], _length + 1, _scoring == 1);
+            if (CareerStore.Current != null) { CareerStore.Current.S.Class = SquashSim.PlayerClasses.All[_class].Id; CareerStore.Save(); }
             Fe.Pop();                                             // this screen
             Fe.Push(new CareerHubScreen());
         }
@@ -1351,6 +1355,8 @@ namespace SquashGame.UI
             var p = Kit.Panel(Content, "CAREER MATCHES"); p.AddToClassList("k-cr-settings");
             AddTo(p, new SelectorItem("Match", Career.LengthLabels, () => System.Math.Max(0, System.Math.Min(2, s.GamesToWin - 1)), v => s.GamesToWin = v + 1));
             AddTo(p, new SelectorItem("Scoring", MatchChoices.ScoringShort, () => s.English ? 1 : 0, v => s.English = v == 1));
+            AddTo(p, new ActionItem("Class: " + SetupFlow.ClassName(string.IsNullOrEmpty(s.Class) ? SquashSim.PlayerClasses.Default : s.Class),
+                () => Fe.Push(new ClassPickScreen("CAREER", s.Class, id => { s.Class = id; CareerStore.Save(); Fe.Replace(new CareerSettingsScreen()); })), "CHANGE"));
             Kit.L(p, "For every career match from now on. Better-ranked players are harder to beat.", "k-cr-step-hint");
             AddTo(Root, new PrimaryItem("Done", () => Fe.Pop()));
         }

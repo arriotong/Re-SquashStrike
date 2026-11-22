@@ -160,10 +160,10 @@ namespace SquashGame.UI
                 var on = Kit.Box(Page("ONLINE"), "k-row");
                 AddTo(on, new CardItem("RANKED", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Ranked)), CardSize.Hero)
                     .Drawn("trophy", new Color32(14, 22, 34, 255), new Color32(111, 184, 255, 255))
-                    .Line(() => "Play people online. Win to go up the table!").Badge(OnlineText.Rating, true));
+                    .Line(() => "Play people online. Win to go up the table!  ·  As " + SetupFlow.ClassName(SetupFlow.Mine(0)) + " (your Quick Match class)").Badge(OnlineText.Rating, true));
                 AddTo(on, new CardItem("QUICK PLAY", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new OnlineSearchScreen(SquashSim.Net.QueueKind.Quick)))
                     .Drawn("split", new Color32(24, 36, 72, 255), new Color32(20, 23, 30, 255))
-                    .Line("Play someone online, just for fun").Badge(OnlineText.Status));
+                    .Line(() => "Play someone online, just for fun  ·  As " + SetupFlow.ClassName(SetupFlow.Mine(0))).Badge(OnlineText.Status));
                 AddTo(on, new CardItem("PRIVATE ROOM", "ONLINE", () => OnlineNameScreen.Go(Fe, () => new PrivateRoomScreen()))
                     .Drawn("bracket", new Color32(26, 30, 14, 255), new Color32(200, 255, 61, 255))
                     .Line("Play a friend: share a secret code"));

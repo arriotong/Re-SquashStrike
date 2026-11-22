@@ -114,15 +114,21 @@ namespace SquashGame.Tests
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Match"));
             yield return Tap(kb.leftArrowKey);                                   // Best of 3 -> One game
             Assert.That(((SelectorItem)fe.Top.Focused).Value, Is.EqualTo("One game"));
+            var cls = (SelectorItem)fe.Top.Find("Class");                       // 2026-11-22 your career's class
+            Assert.That(cls.Value, Is.EqualTo("All-rounder"), "the All-rounder unless you pick");
+            for (int k = 0; k < 6 && cls.Value != "Power"; k++) cls.Change(-1);
+            Assert.That(cls.Value, Is.EqualTo("Power"));
             yield return CaptureUI(fe, "P2M4_UI_1_CreatePlayer.png");
             yield return HubNav.ToPrimary(fe, kb.downArrowKey, kb.rightArrowKey, Tap);
             Assert.That(fe.Top.Focused.Name, Is.EqualTo("Start career"));
+            string wantClass = cls.Value;                                        // (the walk to START may have stepped it)
             yield return Tap(kb.enterKey);
             yield return null; yield return null; yield return null;
 
             Assert.That(fe.Top, Is.InstanceOf<CareerHubScreen>());
             var hub = (CareerHubScreen)fe.Top;
             var c = CareerStore.Current;
+            Assert.That(SetupFlow.ClassName(c.S.Class), Is.EqualTo(wantClass), "the career keeps its class");
             Assert.That(c, Is.Not.Null);
             Assert.That(c.S.Name, Is.EqualTo("Tester"));
             Assert.That(c.S.Nat, Is.EqualTo("SCO"));

@@ -69,7 +69,7 @@ namespace SquashSim.Net
 
     public static class NetMessages
     {
-        public const int Version = 2;            // 2: batch 4 - the warm-up online (either player skips), quick chat
+        public const int Version = 3;            // 2: batch 4 - the warm-up online (either player skips), quick chat; 3: 2026-11-22 the classes
 
         // ---------------- writing ----------------
 
@@ -80,9 +80,10 @@ namespace SquashSim.Net
             return ms.ToArray();
         }
 
-        public static byte[] Hello(string id, string secret, string name, string kitJson, string gameVersion, ulong fingerprint)
+        public static byte[] Hello(string id, string secret, string name, string kitJson, string gameVersion, ulong fingerprint, string playerClass = "")
         {
-            return Build(Msg.Hello, w => { w.Write(Version); w.Write(id ?? ""); w.Write(secret ?? ""); w.Write(name ?? ""); w.Write(kitJson ?? ""); w.Write(gameVersion ?? ""); w.Write(fingerprint); });
+            return Build(Msg.Hello, w => { w.Write(Version); w.Write(id ?? ""); w.Write(secret ?? ""); w.Write(name ?? ""); w.Write(kitJson ?? ""); w.Write(gameVersion ?? ""); w.Write(fingerprint);
+                                           w.Write(playerClass ?? ""); });                                  // v3: your class
         }
 
         public static byte[] Welcome(int rating, int rank, int games) { return Build(Msg.Welcome, w => { w.Write(rating); w.Write(rank); w.Write(games); }); }
@@ -106,6 +107,7 @@ namespace SquashSim.Net
                 w.Write(s.Scoring ?? "par"); w.Write(s.GamesToWin); w.Write(s.BotSeed); w.Write(s.FirstServer); w.Write(s.Lets);
                 w.Write(m.Resuming);
                 w.Write(s.WarmUp);                                                // v2: the knock-up
+                w.Write(s.Class0 ?? ""); w.Write(s.Class1 ?? "");                 // v3: the classes
             });
         }
 
@@ -158,6 +160,7 @@ namespace SquashSim.Net
             i.Setup = new ReplaySetup { TwoPlayer = true, Scoring = r.ReadString(), GamesToWin = r.ReadInt32(), BotSeed = r.ReadUInt32(), FirstServer = r.ReadInt32(), Lets = r.ReadBoolean() };
             i.Resuming = r.ReadBoolean();
             i.Setup.WarmUp = r.ReadBoolean();
+            i.Setup.Class0 = r.ReadString(); i.Setup.Class1 = r.ReadString();
             return i;
         }
 

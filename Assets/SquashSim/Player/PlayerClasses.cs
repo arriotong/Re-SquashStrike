@@ -100,6 +100,17 @@ namespace SquashSim
             return l;
         }
 
+        /// <summary>An online match (both players people, neutral athletes, no cards): each slot's class from the setup's ids, on
+        /// the server and both clients alike (TickSim). An unknown or empty id: the plain athlete.</summary>
+        public static void ApplyOnline(SquashSim.Replays.ReplaySetup s)
+        {
+            if (Find(s.Class0) == null) s.Class0 = "";
+            if (Find(s.Class1) == null) s.Class1 = "";
+            if (s.Class0 == "" && s.Class1 == "") return;
+            s.Attr0 = Attributes(new AthleteAttributes(), s.Class0); s.Mods0 = Mods(null, s.Class0);
+            s.Attr1 = Attributes(new AthleteAttributes(), s.Class1); s.Mods1 = Mods(null, s.Class1);
+        }
+
         static double Clamp(double v) { return v < 0 ? 0 : v > AthleteAttributes.Max ? AthleteAttributes.Max : v; }
 
         /// <summary>The class an athlete's attributes read as (the pros' cards): their biggest edge over the middle.</summary>
