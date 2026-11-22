@@ -469,6 +469,7 @@ namespace SquashGame
             foreach (int s in new[] { -1, 1 }) Greybox.Box("Speaker", c.Venue, c.Dark, W(s * (HW + 0.8), 7.6, -1.0), new Vector3(0.8f, 1.8f, 0.8f), false);
             Screen(c, W(hx - 0.6, 9.5, 4), 9f, 5f, 90f);
             CourtBoards(c, v, "TOURNAMENT OF CHAMPIONS - GRAND CENTRAL", Color.white, Greybox.Hex(0x14306a));
+            GrandCentralMore(c, hx, front, back, wallH);                    // 2026-11-22 evening: the redo (VenueView.GrandCentral.cs)
             Ambient(new Color(0.78f, 0.72f, 0.62f), new Color(0.66f, 0.58f, 0.48f), new Color(0.36f, 0.30f, 0.24f));
             Fog(Greybox.Hex(0xd8c8a6), 46f, 200f);
         }

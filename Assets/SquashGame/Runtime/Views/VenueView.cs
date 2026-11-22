@@ -106,6 +106,8 @@ namespace SquashGame
                     else ShowCourt(c);
                     break;
             }
+            LegacyLife(c, Courts.Current.Id);                                  // 2026-11-22 evening: the legacy courts move (VenueView.LegacyLife.cs)
+            if (Courts.Current.Walls != WallStyle.Plaster) RefereeDesk(c);     // 2026-11-22 evening: the referee behind the back wall
             if (high && Post) Grade(venue);
             NightLook(c, root);
         }
