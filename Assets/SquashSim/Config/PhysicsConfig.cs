@@ -278,6 +278,9 @@ namespace SquashSim
         public double TiredBaseSpread;        // ... plus this much of MaxSpread on every stroke, clean ones too
         public double ChargeCost;             // stamina a fully charged stroke costs
         public double RallyDrain;             // per second while a rally is live, running or not (the effort of the rally itself)
+        // 2026-11-22 evening: the T - off it drains (OffTDrain at OffTFull metres and beyond, nothing inside TRadius), standing on
+        // it in a rally recovers (TOnRecover below TOnSpeed); tired, a shot loses up to TiredPaceLoss of its pace. 0 in the lab
+        public double OffTDrain, TRadius, OffTFull, TOnRecover, TOnSpeed, TiredPaceLoss;
         public bool FreshEachGame;            // a new game starts at full stamina
     }
 
@@ -543,6 +546,8 @@ namespace SquashSim
             f.TiredBaseSpread = GameTuning.Stamina.BaseSpread;
             f.ChargeCost = GameTuning.Stamina.ChargeCost;
             f.RallyDrain = GameTuning.Stamina.RallyDrain;
+            f.OffTDrain = GameTuning.Stamina.OffTDrain; f.TRadius = GameTuning.Stamina.TRadius; f.OffTFull = GameTuning.Stamina.OffTFull;
+            f.TOnRecover = GameTuning.Stamina.TOnRecover; f.TOnSpeed = GameTuning.Stamina.TOnSpeed; f.TiredPaceLoss = GameTuning.Stamina.TiredPaceLoss;
             f.FreshEachGame = true;
         }
 

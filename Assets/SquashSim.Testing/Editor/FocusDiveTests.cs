@@ -75,8 +75,15 @@ namespace SquashSim.Tests
                     m.Step(Dt);
                     if (m.Phase == MatchPhase.GameOver) m.NextGame();
                     if (!m.BallComing(0) || !m.Players[0].Arcade.CanDive || m.Ball.FloorSinceFrontWall > 0) continue;
+                    if (!reachable)
+                    {
+                        // (2026-11-22 evening: the AI keeps the ball from the T now - out of reach is made: player 0 put a dive's
+                        // length behind the ball's path, on the far side)
+                        var pp = m.Players[0].Player; var bb = m.Ball.Pos;
+                        pp.Pos.Set(bb.X >= 0 ? -CourtDimensions.HALF_W + 0.5 : CourtDimensions.HALF_W - 0.5, 0, System.Math.Min(CourtDimensions.LENGTH - 0.5, bb.Z + 1.0));
+                        pp.Vel.Set(0, 0, 0);
+                    }
                     if (m.Reachable(0) != reachable) continue;
-                    if (!reachable && DMath.Hypot(m.Ball.Pos.X - m.Players[0].Player.Pos.X, m.Ball.Pos.Z - m.Players[0].Player.Pos.Z) > 4.5) continue;   // (a dive's length)
                     m.Bots[0] = null;
                     m.Intents[0] = new InputIntent();
                     m.Players[0].Player.Mods.Power = 1;

@@ -39,6 +39,73 @@ namespace SquashGame.Audio
         public int PlayedTotal { get; private set; }
         public string LastSound { get; private set; }
 
+        // ---------------- 2026-11-22 evening: the referee's voice (the user: "when calls are made i think we should get a voice and
+        // actually say it out") - clips recorded once with Windows' text-to-speech (Resources/Audio/Ref), said in turn ----------------
+        /// <summary>The referee speaks (Settings could turn it off).</summary>
+        public static bool RefereeVoice = true;
+        readonly Dictionary<string, AudioClip> _voice = new Dictionary<string, AudioClip>();
+        readonly Queue<(string key, float wait)> _say = new Queue<(string, float)>();
+        AudioSource _voiceSrc;
+        float _sayWait;
+        int _notesRead = -1;
+        /// <summary>What the referee said last, and how many lines so far (tests).</summary>
+        public string LastSaid { get; private set; }
+        public int Said { get; private set; }
+
+        /// <summary>Queue a line (Resources/Audio/Ref/key) after <paramref name="wait"/> seconds (after the line before).</summary>
+        public void Say(string key, float wait = 0f) { if (RefereeVoice && key != null) _say.Enqueue((key, wait)); }
+
+        void TickVoice(float dt)
+        {
+            if (_say.Count == 0) return;
+            if (_voiceSrc == null)
+            {
+                _voiceSrc = gameObject.AddComponent<AudioSource>();
+                _voiceSrc.spatialBlend = 0f; _voiceSrc.playOnAwake = false; _voiceSrc.priority = 10;
+            }
+            if (_voiceSrc.isPlaying) return;
+            var next = _say.Peek();
+            _sayWait += dt;
+            if (_sayWait < next.wait) return;
+            _say.Dequeue(); _sayWait = 0f;
+            if (!_voice.TryGetValue(next.key, out var clip)) { clip = Resources.Load<AudioClip>("Audio/Ref/" + next.key); _voice[next.key] = clip; }
+            if (clip == null) return;
+            _voiceSrc.clip = clip;
+            _voiceSrc.volume = MasterVolume * RefereeVolume;
+            _voiceSrc.Play();
+            LastSaid = next.key; Said++;
+        }
+
+        /// <summary>The line for a rally's end (null: the score is enough - a winner, a ball off a body).</summary>
+        public static string CallLine(RallyOutcome o, bool appealed)
+        {
+            if (o == null) return null;
+            switch (o.Kind)
+            {
+                case RallyEnd.Let: return appealed ? "yeslet" : "let";
+                case RallyEnd.Stroke: return o.Reason != null && o.Reason.Contains("ball hit") ? null : "stroke";
+                case RallyEnd.NoLet: return "nolet";
+                case RallyEnd.Down: return "down";
+                case RallyEnd.Out: return "out";
+                case RallyEnd.Fault: return "fault";
+                case RallyEnd.FootFault: return "footfault";
+                default: return null;
+            }
+        }
+
+        /// <summary>One point from the game (or the match) for either player?</summary>
+        static string BallLine(MatchScore s)
+        {
+            if (s.GameOver || s.MatchOver) return null;
+            for (int p = 0; p < 2; p++)
+            {
+                int me = s.Points[p], them = s.Points[1 - p];
+                bool next = s.System == ScoringSystem.Par ? me + 1 >= s.GameTarget && me + 1 - them >= 2 : me + 1 >= s.GameTarget && p == s.Server;
+                if (next) return s.Games[p] + 1 >= s.GamesToWin ? "matchball" : "gameball";
+            }
+            return null;
+        }
+
         Dictionary<string, AudioClip[]> _clips;
 
         // The synthesised takes are rendered once, off the main thread, from the moment the game starts (they cost about
@@ -231,6 +298,7 @@ namespace SquashGame.Audio
             var mr = Runner as MatchRunner;
             if (mr != null && mr.InSetup) return;
             float dt = Mathf.Max(1e-4f, Time.deltaTime);
+            TickVoice(Time.unscaledDeltaTime);
 
             // ---- shoes: a hard stop squeaks ----
             int count = Runner.View.Count;
@@ -262,10 +330,26 @@ namespace SquashGame.Audio
                 if (m.History.Count > _lastRallies)
                 {
                     _lastRallies = m.History.Count;
-                    if (!(m.Score.GameOver || m.Score.MatchOver)) Play("call", refPos, 0.6f);
+                    var o = m.History[m.History.Count - 1];
+                    string line = mr.Demo ? null : CallLine(o, m.AppealBy >= 0 && m.ReviewOpen);
+                    if (line != null) Say(line);
+                    else if (!(m.Score.GameOver || m.Score.MatchOver)) Play("call", refPos, 0.6f);
+                    if (!mr.Demo) { string ball = BallLine(m.Score); if (ball != null) Say(ball, 0.35f); }
                 }
                 if ((m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver) && _lastPhase != m.Phase)
+                {
                     Play("gameCall", refPos, 0.7f);
+                    if (!mr.Demo) Say("game", 0.2f);
+                }
+                // the video review: announced, then the verdict
+                if (_notesRead < 0 || _notesRead > m.Chaos.Count) _notesRead = m.Chaos.Count;
+                for (; _notesRead < m.Chaos.Count; _notesRead++)
+                {
+                    var n = m.Chaos[_notesRead];
+                    if (n.Kind == "review") Say("review");
+                    else if (n.Kind == "overturned") { Say("overturned"); Say(CallLine(m.LastOutcome, true), 0.15f); }
+                    else if (n.Kind == "upheld") Say("stands");
+                }
                 _lastPhase = m.Phase;
             }
         }

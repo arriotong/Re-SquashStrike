@@ -463,6 +463,9 @@ namespace SquashSim
             if (player.PaceScale > 0 && player.PaceScale != 1.0 && (shot == "drive" || shot == "kill")) speed *= player.PaceScale;
             double power = player.Attributes.PowerScale;                     // P3-C1: the athlete's power (exactly 1 when neutral)
             if (power != 1.0 && (shot == "drive" || shot == "kill")) speed *= power;
+            // 2026-11-22 evening: tired, the shot loses pace (drives, kills, boasts - a drop or a lob keeps its own)
+            double tiredPace = Fatigue.Tiredness(player);
+            if (tiredPace > 0 && !touch && shot != "drop" && shot != "lob") speed *= 1 - PhysicsConfig.Current.Fatigue.TiredPaceLoss * tiredPace;
             if (mods != null && !touch) speed *= mods.Pace(shot, straight, cross, charge);           // P5: the run's shots
             if (mods != null && !touch) speed *= mods.MeteorPace(shot, charge) * (mods.ShotFire ? RunMods.FirePace : 1.0);   // chaos: Meteor, fireballs
 

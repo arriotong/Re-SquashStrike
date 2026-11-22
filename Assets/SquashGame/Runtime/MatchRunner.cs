@@ -125,6 +125,7 @@ namespace SquashGame
         public CallSnapshot LastCall { get; private set; }
         /// <summary>The review on screen is of LastCall (an automatic stroke review, or V after a call).</summary>
         public bool ReviewingCall { get; private set; }
+        int _reviewShown;
         /// <summary>Who was going for the ball when the last call was made (-1: no call).</summary>
         public int LastCallStriker { get; private set; } = -1;
         int _reviewFrames;
@@ -597,6 +598,22 @@ namespace SquashGame
             {
                 StartReplay(ReplaySeconds + 1.5f, ReplaySpeed, CallCaption(Sim.LastOutcome));
                 ReviewingCall = ReplayActive && UI.CallWords.IsCall(Sim.LastOutcome); _reviewFrames = 0;
+            }
+
+            // 2026-11-22 evening, the video review: F / D-pad down challenges the last call (a command - the recording keeps it);
+            // a review plays the moment again, then the verdict
+            bool c0 = Input.ConsumeChallenge(), c1 = Input2 != null && Input2.ConsumeChallenge();
+            if (!ReplayActive && Sim.ReviewOpen && OnlineMatch == null && Puzzle == null)
+            {
+                int hi0 = Settings.TwoPlayer ? 0 : HumanIndex;
+                if (c0 && Sim.Challenge(hi0) && Recorder != null) Recorder.Command(hi0 == 0 ? ReplayCommand.Challenge0 : ReplayCommand.Challenge1);
+                if (c1 && Settings.TwoPlayer && Sim.Challenge(1) && Recorder != null) Recorder.Command(ReplayCommand.Challenge1);
+            }
+            if (Sim.ReviewBy >= 0 && _reviewShown != Sim.Reviews && !ReplayActive)
+            {
+                _reviewShown = Sim.Reviews;
+                StartReplay(ReplaySeconds + 1.5f, ReplaySpeed, "VIDEO REVIEW");
+                ReviewingCall = ReplayActive; _reviewFrames = 0;
             }
 
             // P5 Focus: a charge of slow motion in a rally (charges each game)

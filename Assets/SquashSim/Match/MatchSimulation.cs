@@ -507,6 +507,7 @@ namespace SquashSim
                     Toss();                                    // the physical game: toss, then time the swing
                 }
             }
+            else if (Phase == MatchPhase.RallyOver && ReviewStep(dt)) { }    // 2026-11-22 evening: a video review holds the break
             else if (Phase == MatchPhase.RallyOver && PhaseTime >= PhysicsConfig.Current.Match.BetweenRallySeconds)
             {
                 if (Score.MatchOver) { Phase = MatchPhase.MatchOver; PhaseTime = 0; }
@@ -525,6 +526,7 @@ namespace SquashSim
                     InterferenceDecision d = Interference.Striker == i
                         ? Interference.Decide()
                         : new InterferenceDecision { Call = InterferenceCall.NoLet, Reason = "No let - opponent was clear" };
+                    d = RefereeSees(i, d);                                    // 2026-11-22 evening: a close one can be seen wrong (the review)
                     if (Referee.OnAppeal(i, d, Time)) { FinishRally(); break; }
                 }
             }
@@ -681,6 +683,7 @@ namespace SquashSim
                     StrikerX = s.X, StrikerZ = s.Z, TargetX = Interference.TargetX, TargetZ = Interference.TargetZ, ObstructorX = ob.X, ObstructorZ = ob.Z,
                 };
             }
+            ReviewAtRallyEnd();                                               // 2026-11-22 evening: the call open to a challenge
             int bonus = RunModsAtRallyEnd();                                  // P5 (0, and nothing changed, without a run)
             History.Add(LastOutcome);
             ShotsPerRally.Add(Referee.Shots);
@@ -917,6 +920,7 @@ namespace SquashSim
             Score.NextGame();
             for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.SecondUsed = false;   // P5: a new game, a new second serve
             _gameInit = false;                                                // chaos: shields, rewinds, The World's meter
+            ReviewNewGame();                                                  // 2026-11-22 evening: a review each again
             if (PhysicsConfig.Current.Fatigue.FreshEachGame) { Players[0].Player.Stamina = 1.0; Players[1].Player.Stamina = 1.0; }   // P7: the break restores
             SetUpServe();
         }

@@ -48,6 +48,7 @@ namespace SquashSim.Tests
         static Result Play(double sx, double sz, double ox, double oz, Opp opp, bool runs = true, bool appeal = true, double appealAt = 0.3)
         {
             var m = Match();
+            m.RefereeErrors = false;                                      // (the rules exactly: a human referee's slips are VideoReviewTests')
             m.StageRally(From, Drive, sx, sz, ox, oz);
             if (opp == Opp.Cross) m.Players[1].Player.Vel.Set(0, 0, PhysicsConfig.Current.Player.MaxSpeed);   // already on its way
             var t = Target();

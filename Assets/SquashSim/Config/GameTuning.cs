@@ -72,10 +72,16 @@ namespace SquashSim
         /// <summary>P7 phase 1 (2026-10-26): stamina in the game. Tuned with MatchBench --stars --stamina: a normal rally
         /// ends about 0.85, a 10 s rally about 0.65, a 20 s one about 0.45; tired below 0.6 - up to 12% slower and a wider
         /// spray at the floor (0.2). Recovery between rallies is partial, a new game is fresh.</summary>
+        // 2026-11-22 evening (the user: "recover faster and actually make it matter through lowering shot speed and running speed
+        // and a little more chance of mistaking ... if you play like aggressive and stays on the t more giving all the running to
+        // opponent your stemina goes down slower"; answers: drained by running far and time off the T; back between points, on
+        // the T and between games; noticeable): the flat rally drain is gone - away from the T drains (OffTDrain, rising from
+        // TRadius to OffTFull metres), standing on it recovers (TOnRecover); tired, a shot loses pace too (TiredPaceLoss).
         public static class Stamina
         {
-            public const double DrainRate = 0.011, RallyDrain = 0.008, RecoverStanding = 0.0, RecoverBetweenRallies = 0.08;   // the rally's own effort, the same for both: fair - a keyboard runs flat out, the AI eases into its spots
-            public const double TiredBelow = 0.6, SpeedLoss = 0.12, SpreadGain = 0.4, BaseSpread = 0.12, ChargeCost = 0.02;
+            public const double DrainRate = 0.022, RallyDrain = 0.0, RecoverStanding = 0.0, RecoverBetweenRallies = 0.14;
+            public const double OffTDrain = 0.03, TRadius = 1.3, OffTFull = 3.5, TOnRecover = 0.006, TOnSpeed = 2.0;
+            public const double TiredBelow = 0.6, SpeedLoss = 0.15, SpreadGain = 0.5, BaseSpread = 0.12, ChargeCost = 0.02, TiredPaceLoss = 0.15;
         }
 
         public static class Hit

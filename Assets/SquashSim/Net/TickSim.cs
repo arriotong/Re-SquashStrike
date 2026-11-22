@@ -63,6 +63,7 @@ namespace SquashSim.Net
             ReplayMatch.Configure(setup);
             Config = PhysicsConfig.Current;
             Sim = ReplayMatch.Build(setup);
+            Sim.ReviewsEnabled = false;                                          // 2026-11-22 evening: no video reviews online
             Sim.Intents[0] = _fed[0]; Sim.Intents[1] = _fed[1];
             File.Setup = setup;
             File.GameVersion = gameVersion ?? "";

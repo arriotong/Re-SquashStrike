@@ -37,7 +37,17 @@ namespace SquashSim
             if (p.Mods != null) k *= p.Mods.DrainSelf;              // P5: an elite's Tireless
             if (p.OpponentDrain != 1.0) k *= p.OpponentDrain;      // P5: the opponent's Pressure
             if (rallyLive && f.RallyDrain > 0) drain += f.RallyDrain * dt;   // P7 phase 1: the rally's own effort
+            // 2026-11-22 evening: where you stand - off the T drains, on it you get your breath back
+            double onT = 0;
+            if (rallyLive && (f.OffTDrain > 0 || f.TOnRecover > 0))
+            {
+                double d = DMath.Hypot(p.Pos.X, p.Pos.Z - SquashBook.TZ);
+                double off = f.OffTFull > f.TRadius ? (d - f.TRadius) / (f.OffTFull - f.TRadius) : 0;
+                if (off > 0) drain += f.OffTDrain * (off > 1 ? 1 : off) * dt;
+                else if (p.Speed < f.TOnSpeed) onT = f.TOnRecover * dt;
+            }
             s -= k != 1.0 ? drain * k : drain;
+            s += onT;
             if (!rallyLive) s += f.RecoverBetweenRallies * dt;
             else if (p.Speed < f.StandingSpeed) s += f.RecoverStanding * dt;
             p.Stamina = s < f.Floor ? f.Floor : (s > 1 ? 1 : s);

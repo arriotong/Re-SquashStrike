@@ -41,7 +41,8 @@ namespace SquashSim.Academy
         public static InterferenceStage NotTrying() { return new InterferenceStage { Sx = 3.0, Sz = 0.2, Ox = 1.5, Oz = 0.25, Runs = false }; }
         public static InterferenceStage OpponentClear() { return new InterferenceStage { Sx = 1.8, Sz = -2.2, Ox = 3.4, Oz = -1.4 }; }
 
-        static MatchSimulation NewSim() { return ReplayMatch.Build(new ReplaySetup { TwoPlayer = true, GamesToWin = 1 }); }
+        // (2026-11-22 evening: a lesson teaches the rules exactly - no human referee's slip, no review)
+        static MatchSimulation NewSim() { var m = ReplayMatch.Build(new ReplaySetup { TwoPlayer = true, GamesToWin = 1 }); m.RefereeErrors = false; m.ReviewsEnabled = false; return m; }
 
         /// <summary>Set the moment up (again).</summary>
         public void Begin()

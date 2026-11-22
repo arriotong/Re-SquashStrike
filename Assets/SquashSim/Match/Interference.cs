@@ -39,6 +39,10 @@ namespace SquashSim
     {
         public InterferenceCall Call;
         public string Reason;
+        /// <summary>2026-11-22 evening: how close the call was, 0 (clear-cut) .. 1 (on the line) - a referee can get a close one wrong,
+        /// the video review never; and the call it could have gone the other way to.</summary>
+        public double Doubt;
+        public InterferenceCall Other;
     }
 
     /// <summary>Where everyone was when an interference call was made: the striker, where they were going, the obstructor
@@ -96,6 +100,9 @@ namespace SquashSim
         /// pushed by the striker's body does not count): clearing.</summary>
         public double ObstructorClearing { get { return _cleared; } }
         public bool Reachable { get { return _reachableAtObstruction || _reachableNow; } }
+        double _lineMargin = double.MaxValue, _nearMiss = double.MaxValue;
+        /// <summary>A call this close (m, or m/s, or s) is in doubt; at the line, fully.</summary>
+        public const double DoubtSpan = 0.25, DoubtSeconds = 0.08, DoubtSpeed = 0.4;
 
         public void Reset()
         {
@@ -124,6 +131,7 @@ namespace SquashSim
                 _read.Invalidate();
                 _turnTime = 0; _effortSum = 0; _effortTime = 0; _weighedFor = 0;
                 _reachableAtObstruction = false; _reachableNow = false; _distAtObstruction = 0; _cleared = 0;
+                _lineMargin = double.MaxValue; _nearMiss = double.MaxValue;
             }
             _turnTime += dt;
             Striker = striker;
@@ -139,6 +147,17 @@ namespace SquashSim
             TestPlayer s = m.Players[striker].Player;
             TestPlayer o = m.Players[1 - striker].Player;
             Raw = Detect(s.Pos.X, s.Pos.Z, o.Pos.X, o.Pos.Z, TargetX, TargetZ);
+            // 2026-11-22 evening: how close it is to a line call either way, near the strike (the referee's doubt)
+            if (TimeToBall <= StrikeWindow && o.Pos.Z < TargetZ)
+            {
+                double fromT = DMath.Hypot(o.Pos.X - TargetX, o.Pos.Z - TargetZ);
+                if (fromT < LineMaxDistance)
+                {
+                    double gap = System.Math.Abs(System.Math.Abs(o.Pos.X - TargetX) - LineWidthAt(fromT));
+                    if (Raw == ObstructionKind.Line) _lineMargin = System.Math.Min(_lineMargin, gap);
+                    else _nearMiss = System.Math.Min(_nearMiss, gap);
+                }
+            }
 
             // Effort: the striker's speed toward the hitting point.
             double tx = TargetX - s.Pos.X, tz = TargetZ - s.Pos.Z;
@@ -204,6 +223,16 @@ namespace SquashSim
             }
         }
 
+        /// <summary>2026-11-22 evening (the user: "its kind of inaccurate when opponent is far away"; their replay: a stroke given with
+        /// the opponent 2.8 m ahead and 0.5 m off the line - the ball would have missed them): the corridor to the front wall is the
+        /// body and the ball (LineBallMargin) plus a margin for the swing that fades to nothing by LineMaxDistance.</summary>
+        public double LineWidthAt(double fromTarget)
+        {
+            double fade = 1 - fromTarget / LineMaxDistance;
+            return PhysicsConfig.Current.Player.Radius + LineBallMargin + LineHalfWidth * (fade > 0 ? fade : 0);
+        }
+        public const double LineBallMargin = 0.03;
+
         /// <summary>Pure geometry, exposed for tests and for the AI's clearing logic.</summary>
         public ObstructionKind Detect(double sx, double sz, double ox, double oz, double tx, double tz) { return Detect(sx, sz, ox, oz, tx, tz, false); }
 
@@ -216,7 +245,7 @@ namespace SquashSim
             if (!accessOnly)
             {
                 // Line: opponent between the hitting point and the front wall, close to the straight line.
-                if (oz < tz && System.Math.Abs(ox - tx) < LineHalfWidth + R && fromTarget < LineMaxDistance)
+                if (oz < tz && System.Math.Abs(ox - tx) < LineWidthAt(fromTarget) && fromTarget < LineMaxDistance)
                     return ObstructionKind.Line;
                 // Swing: opponent inside the racket arc around the hitting point.
                 if (fromTarget < SwingClearance) return ObstructionKind.Swing;
@@ -237,7 +266,43 @@ namespace SquashSim
         /// <summary>The referee's decision on an appeal by the current striker.</summary>
         public InterferenceDecision Decide()
         {
-            return Judge(ThisTurn, Reachable, StrikerEffort, _distAtObstruction, ObstructedSeconds, ObstructorClearing);
+            var d = Judge(ThisTurn, Reachable, StrikerEffort, _distAtObstruction, ObstructedSeconds, ObstructorClearing);
+            // 2026-11-22 evening: how close it was (the referee may see a close one wrong; the video review sees it right) - each
+            // measure against its own span: metres off the line, metres cleared, seconds in the way, the run's speed
+            double doubt = 0; var other = d.Call;
+            double Near(double margin, double span) { return margin >= span ? 0 : 1 - margin / span; }
+            double clearDoubt = System.Math.Max(Near(System.Math.Abs(ObstructorClearing - ClearMinDistance), DoubtSpan), Near(System.Math.Abs(ObstructedSeconds - ClearGrace), DoubtSeconds));
+            double effortDoubt = _distAtObstruction > EffortCloseEnough && StrikerEffort > 0 ? Near(System.Math.Abs(StrikerEffort - EffortMinSpeed), DoubtSpeed) : 0;
+            switch (d.Call)
+            {
+                case InterferenceCall.Stroke:
+                    if (ThisTurn == ObstructionKind.Line) { doubt = Near(_lineMargin, DoubtSpan); other = InterferenceCall.Let; }
+                    else if (ThisTurn == ObstructionKind.Access) { doubt = clearDoubt; other = InterferenceCall.Let; }
+                    break;
+                case InterferenceCall.Let:
+                    doubt = clearDoubt; other = InterferenceCall.Stroke;
+                    if (effortDoubt > doubt) { doubt = effortDoubt; other = InterferenceCall.NoLet; }
+                    break;
+                case InterferenceCall.NoLet:
+                    if (ThisTurn == ObstructionKind.None) { doubt = Near(_nearMiss, DoubtSpan); other = InterferenceCall.Let; }
+                    else { doubt = effortDoubt; other = InterferenceCall.Let; }
+                    break;
+            }
+            d.Doubt = doubt;
+            d.Other = other;
+            return d;
+        }
+
+        /// <summary>The referee's view of it: a close call (Doubt) can go the other way - deterministically, from <paramref name="roll"/>
+        /// (0..1, the match's own dice). <paramref name="errorRate"/>: the chance at the very line.</summary>
+        public static InterferenceDecision AsSeen(InterferenceDecision exact, double roll, double errorRate)
+        {
+            if (exact.Doubt <= 0 || exact.Other == exact.Call || roll >= exact.Doubt * errorRate) return exact;
+            var seen = exact;
+            seen.Call = exact.Other; seen.Other = exact.Call;
+            seen.Reason = exact.Other == InterferenceCall.Stroke ? "Stroke - opponent did not clear" :
+                          exact.Other == InterferenceCall.Let ? "Let - opponent was clearing" : "No let - opponent was clear";
+            return seen;
         }
 
         /// <summary>The decision itself, from what was observed this turn (pure: unit-tested). clearing: metres the

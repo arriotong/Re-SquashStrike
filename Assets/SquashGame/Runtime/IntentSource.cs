@@ -95,6 +95,12 @@ namespace SquashGame
         const float MOVE_DEADZONE = 0.18f;
 
         readonly InputActionMap _map;
+        InputAction _challenge;
+        bool _challengePressed;
+        /// <summary>What to press to challenge a call.</summary>
+        public const string ChallengeKey = "F / D-pad down";
+        /// <summary>Did this player press Challenge since the last call? Consumes it.</summary>
+        public bool ConsumeChallenge() { bool c = _challengePressed; _challengePressed = false; return c; }
         readonly InputAction _moveKeys, _moveStick, _aimStick, _mouseDelta, _hit, _touch, _focus, _pause, _appeal, _dive, _sprint, _boast, _slowmo, _special;
         bool _slowmoPressed;
 
@@ -234,6 +240,10 @@ namespace SquashGame
             _slowmo.AddBinding("<Keyboard>/space");                          // 2026-11-22 evening: Space (was F) - hold to focus, let go to dive
             _slowmo.AddBinding("<Gamepad>/rightTrigger");
             // 2026-11-22 the Special Shot: its own key (Q / D-pad up)
+            // 2026-11-22 evening: challenge the referee's call (the video review) - F / D-pad down
+            _challenge = _map.AddAction("Challenge", InputActionType.Button);
+            _challenge.AddBinding("<Keyboard>/f");
+            _challenge.AddBinding("<Gamepad>/dpad/down");
             _special = _map.AddAction("Special", InputActionType.Button);
             _special.AddBinding("<Keyboard>/q");
             _special.AddBinding("<Gamepad>/dpad/up");
@@ -392,7 +402,8 @@ namespace SquashGame
             if (_slowmo.WasPressedThisFrame()) _slowmoPressed = true;
             Intent.FocusHeld = _slowmo.IsPressed();                                    // 2026-11-22 Focus, held (the sim's, with the Special card)
             if (SpaceDives && _slowmo.WasPressedThisFrame()) Intent.DivePressed = true;   // 2026-11-22 evening: off the match, Space dives at once
-            if (_special.WasPressedThisFrame()) Intent.SpecialPressed = true;          // consumed by the next fixed step
+            if (_special.WasPressedThisFrame()) Intent.SpecialPressed = true;
+            if (_challenge.WasPressedThisFrame()) _challengePressed = true;          // consumed by the next fixed step
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
             if ((_appeal.WasPressedThisFrame() && !FromMouse(_appeal)) || ReadyKey()) _ready = true;

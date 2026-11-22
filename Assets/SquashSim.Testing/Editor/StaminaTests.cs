@@ -2,8 +2,9 @@
 // Assets/SquashSim.Testing/Editor/StaminaTests.cs
 // P7 phase 1: stamina in the game (every mode, both players):
 //   - fresh: no effect; tired below TiredBelow: slower, wider
-//   - a live rally drains both players, running or not; between rallies
-//     they recover; a new game is fresh
+//   - running drains; 2026-11-22 evening: off the T drains, standing on the
+//     T recovers (no flat rally drain); between rallies they recover
+//     faster; a new game is fresh; tired, shots lose pace
 //   - a charged stroke costs breath; the Stamina attribute scales it
 //   - the lab never tires (its parity traces stay as they were)
 // ===========================================================
@@ -60,9 +61,16 @@ namespace SquashSim.Tests
             ReplayMatch.Configure(s);
             var sim = ReplayMatch.Build(s);
             var a = sim.Players[0].Player; var b = sim.Players[1].Player;
-            Fatigue.Update(a, true, 10.0); Fatigue.Update(b, true, 10.0);      // ten seconds of rally, standing still
-            Assert.That(a.Stamina, Is.LessThan(1.0), "the rally itself tires");
-            Assert.That(a.Stamina, Is.EqualTo(b.Stamina).Within(1e-12), "standing still: the same for both");
+            // 2026-11-22 evening: where you stand - a back corner drains, the T gives breath back (standing still, ten seconds)
+            a.Pos.Set(2.6, 0, 8.8); a.Speed = 0; b.Pos.Set(0, 0, SquashBook.TZ); b.Speed = 0;
+            a.Stamina = 0.8; b.Stamina = 0.8;
+            Fatigue.Update(a, true, 10.0); Fatigue.Update(b, true, 10.0);
+            Assert.That(a.Stamina, Is.LessThan(0.8), "off the T: tiring");
+            Assert.That(b.Stamina, Is.GreaterThan(0.8), "on the T: getting your breath back");
+            // running the same, the one off the T tires more
+            a.Stamina = b.Stamina = 0.9; a.Speed = b.Speed = PhysicsConfig.Current.Player.MaxSpeed; b.Pos.Set(0.6, 0, SquashBook.TZ + 0.5);
+            Fatigue.Update(a, true, 3.0); Fatigue.Update(b, true, 3.0);
+            Assert.That(a.Stamina, Is.LessThan(b.Stamina - 0.03), "running off the T costs more than running round it");
             double after = a.Stamina;
             Fatigue.Update(a, false, 2.0);
             Assert.That(a.Stamina, Is.GreaterThan(after), "between rallies: back");
@@ -75,6 +83,14 @@ namespace SquashSim.Tests
             Assert.That(sim.Phase, Is.EqualTo(MatchPhase.GameOver));
             sim.NextGame();
             Assert.That(a.Stamina, Is.EqualTo(1.0)); Assert.That(b.Stamina, Is.EqualTo(1.0));
+        }
+
+        [Test] public void TiredShotsLosePace()
+        {
+            Game();
+            var f = PhysicsConfig.Current.Fatigue;
+            Assert.That(f.TiredPaceLoss, Is.GreaterThan(0.1), "noticeable");
+            Assert.That(f.ArcadeSpeedLoss, Is.EqualTo(0.15).Within(1e-9), "15% slower at empty");
         }
 
         [Test] public void AChargedStrokeCostsBreathAndStaminaScalesIt()

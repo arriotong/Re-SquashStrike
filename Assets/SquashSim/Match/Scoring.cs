@@ -140,6 +140,23 @@ namespace SquashSim
             }
         }
 
+        /// <summary>2026-11-22 evening (the video review): everything a rally can change, to put a call right afterwards.</summary>
+        public struct State
+        {
+            public int P0, P1, G0, G1, Server, ServeSide, GameTarget, GameWinner, MatchWinner, Rallies;
+            public bool GameOver, MatchOver, SetDecided;
+        }
+        public State Save()
+        {
+            return new State { P0 = Points[0], P1 = Points[1], G0 = Games[0], G1 = Games[1], Server = Server, ServeSide = ServeSide, GameTarget = GameTarget,
+                               GameWinner = GameWinner, MatchWinner = MatchWinner, Rallies = Rallies, GameOver = GameOver, MatchOver = MatchOver, SetDecided = _setDecided };
+        }
+        public void Load(State s)
+        {
+            Points[0] = s.P0; Points[1] = s.P1; Games[0] = s.G0; Games[1] = s.G1; Server = s.Server; ServeSide = s.ServeSide; GameTarget = s.GameTarget;
+            GameWinner = s.GameWinner; MatchWinner = s.MatchWinner; Rallies = s.Rallies; GameOver = s.GameOver; MatchOver = s.MatchOver; _setDecided = s.SetDecided;
+        }
+
         /// <summary>Start the next game: the previous game's winner serves first.</summary>
         public void NextGame()
         {

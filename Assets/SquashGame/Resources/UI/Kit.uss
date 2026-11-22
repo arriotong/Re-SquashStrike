@@ -1734,6 +1734,9 @@
 .hud-duel-ring--now { border-color: rgb(200, 255, 61); border-width: 10px; }
 .hud-duel-word { position: absolute; width: 700px; margin-left: -350px; top: -120px; -unity-text-align: middle-center; font-size: 34px;
     letter-spacing: 3px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 4px 14px rgba(0, 0, 0, 0.9); }
+.hud-review { position: absolute; left: 0; right: 0; top: 16%; -unity-text-align: middle-center; font-size: 30px; letter-spacing: 3px;
+    color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 4px 14px rgba(0, 0, 0, 0.9); }
+.hud-review--hot { font-size: 46px; color: rgb(255, 214, 64); }
 .hud-nick--in { opacity: 1; scale: 1 1; rotate: -4deg; }
 .hud-confetti { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
 .hud-confetti-bit { position: absolute; border-radius: 2px; }

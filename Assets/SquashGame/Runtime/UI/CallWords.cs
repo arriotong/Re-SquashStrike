@@ -18,6 +18,9 @@ namespace SquashGame.UI
     public static class CallWords
     {
         /// <summary>A call on interference (an appeal, the referee's own stop) or on the ball hitting a player.</summary>
+        /// <summary>2026-11-22 evening (the video review's verdict): the call in one word or two.</summary>
+        public static string Short(InterferenceCall c) { return c == InterferenceCall.Stroke ? "STROKE" : c == InterferenceCall.Let ? "LET" : "NO LET"; }
+
         public static bool IsCall(RallyOutcome o)
         {
             return o != null && (o.Kind == RallyEnd.Let || o.Kind == RallyEnd.NoLet || o.Kind == RallyEnd.Stroke);

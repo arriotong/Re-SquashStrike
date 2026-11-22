@@ -239,6 +239,41 @@ namespace SquashGame
             _duelRing.EnableInClassList("hud-duel-ring--now", now);
             _duelWord.text = !m.Focusing(me) ? "HOLD " + IntentSource.FocusKey + "!" : now ? "NOW!  LET GO" : "LET GO OF " + IntentSource.Keys("Hit") + " ON THE RING";
         }
+        // ---------------- 2026-11-22 evening: the video review ----------------
+        readonly Label _review = new Label();
+        float _verdictLeft; string _verdict;
+        /// <summary>The review line now (tests): the challenge prompt, VIDEO REVIEW, or the verdict.</summary>
+        public string ReviewText { get { return _review.style.display == DisplayStyle.Flex ? _review.text : null; } }
+        int _reviewNotes = -1;
+        void ReviewChip(MatchRunner r, MatchSimulation m, bool twoPlayer)
+        {
+            if (_review.parent == null) { _review.AddToClassList("hud-review"); _review.pickingMode = PickingMode.Ignore; Add(_review); }
+            if (_reviewNotes < 0 || _reviewNotes > m.Chaos.Count) _reviewNotes = m.Chaos.Count;
+            for (; _reviewNotes < m.Chaos.Count; _reviewNotes++)
+            {
+                var n = m.Chaos[_reviewNotes];
+                if (n.Kind == "overturned") { _verdict = "DECISION OVERTURNED  ·  " + CallWords.Short(m.CallTrue.Call); _verdictLeft = 2.6f; }
+                else if (n.Kind == "upheld") { _verdict = "DECISION STANDS  ·  " + CallWords.Short(m.CallMade.Call); _verdictLeft = 2.6f; }
+            }
+            string text = null; bool hot = false;
+            int me = twoPlayer ? -1 : r.HumanIndex;
+            if (_verdictLeft > 0) { _verdictLeft -= Time.unscaledDeltaTime; text = _verdict; hot = true; }
+            else if (m.ReviewBy >= 0) { text = "VIDEO REVIEW  ·  " + (_names != null ? _names[m.ReviewBy].ToUpperInvariant() : "") + " CHALLENGES"; hot = true; }
+            else if (r.OnlineMatch == null && m.ReviewOpen && !r.ReplayActive)
+            {
+                bool can0 = twoPlayer ? m.CanChallenge(0) : m.CanChallenge(me), can1 = twoPlayer && m.CanChallenge(1);
+                if (can0 || can1)
+                {
+                    float left = Mathf.Max(0f, (float)(MatchSimulation.ChallengeSeconds - m.PhaseTime));
+                    int who = twoPlayer ? (can0 ? 0 : 1) : me;
+                    text = "CHALLENGE THE CALL?  " + IntentSource.ChallengeKey + "   ·   " + m.ReviewsLeft[who] + " review left   ·   " + left.ToString("0") + " s";
+                }
+            }
+            _review.EnableInClassList("hud-review--hot", hot);
+            if (text != null && _review.text != text) _review.text = text;
+            _review.style.display = text != null ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
         readonly Label _nick = new Label("NICK!");
         float _nickLeft;
         /// <summary>The NICK! stamps shown so far (tests).</summary>
@@ -482,6 +517,7 @@ namespace SquashGame
             NetChip(r);
             Broadcast(r, m, s, names);
             _names = names;
+            ReviewChip(r, m, twoPlayer);
             Chaos(r, m, twoPlayer);
             CutInAndDuel(r, m, twoPlayer ? 0 : r.HumanIndex);
         }

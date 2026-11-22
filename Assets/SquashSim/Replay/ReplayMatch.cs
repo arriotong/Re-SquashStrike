@@ -276,6 +276,8 @@ namespace SquashSim.Replays
                 var c = File.Commands[_cmd++];
                 if (c.Kind == ReplayCommand.NextGame && Sim.Phase == MatchPhase.GameOver) Sim.NextGame();
                 else if (c.Kind == ReplayCommand.SkipWarmUp && Sim.Phase == MatchPhase.WarmUp) Sim.SkipWarmUp();
+                else if (c.Kind == ReplayCommand.Challenge0) Sim.Challenge(0);
+                else if (c.Kind == ReplayCommand.Challenge1) Sim.Challenge(1);
             }
             for (int i = 0; i < 2; i++)
             {

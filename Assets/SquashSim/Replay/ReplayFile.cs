@@ -57,7 +57,7 @@ namespace SquashSim.Replays
         public string Class0 = "", Class1 = "";
     }
 
-    public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
+    public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2, Challenge0 = 3, Challenge1 = 4 }   // 2026-11-22 evening: video reviews
 
     public struct ReplayCmd { public long Step; public ReplayCommand Kind; }
 
