@@ -85,6 +85,8 @@ namespace SquashGame
         /// <summary>P7 phase 5: your career gear's looks (cosmetic ids: a frame, shoes, a shirt) over your loadout.</summary>
         public string[] GearLooks;
         public List<SquashSim.RunMod> Mods, OppMods;
+        /// <summary>2026-11-22 your class (PlayerClasses id; "" none) and player 2's in local versus.</summary>
+        public string Class = "", Class2 = "";
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
 
@@ -242,7 +244,7 @@ namespace SquashGame
         /// <summary>The setup a match is built from (and recorded with).</summary>
         ReplaySetup SetupOf(MatchSettings s)
         {
-            return new ReplaySetup
+            var setup = new ReplaySetup
             {
                 TwoPlayer = s.TwoPlayer && Input2 != null, Opponent = s.Opponent, Difficulty = s.Difficulty, Scoring = s.Scoring,
                 GamesToWin = Mathf.Max(1, s.GamesToWin), WarmUp = s.WarmUp, BotSeed = BotSeed, FirstServer = 0, Lets = Lets,
@@ -252,6 +254,20 @@ namespace SquashGame
                 ParPoints = s.ParPoints, Attr1 = s.OppAttributes != null ? s.OppAttributes.Clone() : null,
                 Mods0 = s.Mods != null ? new List<RunMod>(s.Mods) : null, Mods1 = s.OppMods != null ? new List<RunMod>(s.OppMods) : null,
             };
+            // 2026-11-22 the classes: your class (and player 2's in local versus) as attributes and cards on top of the rest
+            if (!string.IsNullOrEmpty(s.Class))
+            {
+                setup.Attr0 = PlayerClasses.Attributes(setup.Attr0, s.Class);
+                setup.Mods0 = PlayerClasses.Mods(setup.Mods0, s.Class);
+                setup.Class0 = s.Class;
+            }
+            if (setup.TwoPlayer && !string.IsNullOrEmpty(s.Class2))
+            {
+                setup.Attr1 = PlayerClasses.Attributes(setup.Attr1, s.Class2);
+                setup.Mods1 = PlayerClasses.Mods(setup.Mods1, s.Class2);
+                setup.Class1 = s.Class2;
+            }
+            return setup;
         }
 
         void ApplyConfig(MatchSettings s) { ReplayMatch.Configure(SetupOf(s)); }

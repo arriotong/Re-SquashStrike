@@ -53,6 +53,8 @@ namespace SquashSim.Replays
         public List<RunMod> Mods0, Mods1;
         /// <summary>The AI's book (format 7, 2026-11-01): the rules it plays by. Older files: 0, the AI from before the rules.</summary>
         public int Book = AiProfile.CurrentBook;
+        /// <summary>2026-11-22 each player's class (PlayerClasses: already in Attr / Mods - kept to show it); "" none.</summary>
+        public string Class0 = "", Class1 = "";
     }
 
     public enum ReplayCommand : byte { NextGame = 1, SkipWarmUp = 2 }
@@ -116,7 +118,7 @@ namespace SquashSim.Replays
     public sealed class ReplayFile
     {
         public const uint Magic = 0x50525353;      // "SSRP"
-        public const int FormatVersion = 7;      // 4: P3-C1 attributes and start score; 5: P5 game length, opponent attributes, run abilities; 6: P7 Stability; 7: the AI's book
+        public const int FormatVersion = 8;      // 8: 2026-11-22 the classes (to show)      // 4: P3-C1 attributes and start score; 5: P5 game length, opponent attributes, run abilities; 6: P7 Stability; 7: the AI's book
 
         public string GameVersion = "";
         public ulong Fingerprint;
@@ -157,6 +159,7 @@ namespace SquashSim.Replays
                 WriteMods(w, s.Mods0); WriteMods(w, s.Mods1);
                 w.Write(a.Stability); w.Write(s.Attr1 != null ? s.Attr1.Stability : AthleteAttributes.Neutral);   // 6
                 w.Write(s.Book);                                                                                    // 7
+                w.Write(s.Class0 ?? ""); w.Write(s.Class1 ?? "");                                                  // 8
                 w.Write(Commands.Count); foreach (var c in Commands) { w.Write(c.Step); w.Write((byte)c.Kind); }
                 for (int t = 0; t < 2; t++)
                 {
@@ -262,6 +265,7 @@ namespace SquashSim.Replays
                     if (s.Attr1 != null) s.Attr1.Stability = st1;
                 }
                 s.Book = version >= 7 ? r.ReadInt32() : 0;                     // older files: the AI from before the book
+                if (version >= 8) { s.Class0 = r.ReadString(); s.Class1 = r.ReadString(); }
                 n = r.ReadInt32(); for (int i = 0; i < n; i++) f.Commands.Add(new ReplayCmd { Step = r.ReadInt64(), Kind = (ReplayCommand)r.ReadByte() });
                 for (int t = 0; t < 2; t++)
                 {
