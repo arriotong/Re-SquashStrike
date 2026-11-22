@@ -173,6 +173,16 @@ namespace SquashGame
             _callout.AddToClassList("hud-callout"); _callout.pickingMode = PickingMode.Ignore; _callout.style.display = DisplayStyle.None; Add(_callout);
             // 2026-11-22 evening (the user: "a NICK! pop up when getting one"): a gold stamp that slams in over the court
             _nick.AddToClassList("hud-nick"); _nick.pickingMode = PickingMode.Ignore; _nick.style.display = DisplayStyle.None; Add(_nick);
+            // 2026-11-22 evening: the Special Shot's cut-in band, the duel's closing ring
+            _cutIn.AddToClassList("hud-cutin"); _cutIn.pickingMode = PickingMode.Ignore; _cutIn.style.display = DisplayStyle.None;
+            _cutKicker.AddToClassList("hud-cutin-kicker"); _cutName.AddToClassList("hud-cutin-name");
+            _cutKicker.pickingMode = PickingMode.Ignore; _cutName.pickingMode = PickingMode.Ignore;
+            for (int k = 0; k < 7; k++) { var line = new VisualElement(); line.AddToClassList("hud-cutin-line"); line.style.top = Length.Percent(8 + k * 13); line.pickingMode = PickingMode.Ignore; _cutIn.Add(line); }
+            _cutIn.Add(_cutKicker); _cutIn.Add(_cutName); Add(_cutIn);
+            _duel.AddToClassList("hud-duel"); _duel.pickingMode = PickingMode.Ignore; _duel.style.display = DisplayStyle.None;
+            _duelTarget.AddToClassList("hud-duel-target"); _duelRing.AddToClassList("hud-duel-ring"); _duelWord.AddToClassList("hud-duel-word");
+            _duelTarget.pickingMode = PickingMode.Ignore; _duelRing.pickingMode = PickingMode.Ignore; _duelWord.pickingMode = PickingMode.Ignore;
+            _duel.Add(_duelTarget); _duel.Add(_duelRing); _duel.Add(_duelWord); Add(_duel);
             _confetti.AddToClassList("hud-confetti"); _confetti.pickingMode = PickingMode.Ignore; Add(_confetti);
             _win.AddToClassList("hud-win"); _win.pickingMode = PickingMode.Ignore; _win.style.display = DisplayStyle.None;
             _winTitle.AddToClassList("hud-win-title"); _winSub.AddToClassList("hud-win-sub");
@@ -192,6 +202,43 @@ namespace SquashGame
         // ---------------- 2026-11-21 the polish pass ----------------
         readonly Label[] _plus = new Label[2];
         readonly VisualElement[] _side = new VisualElement[2];
+        readonly VisualElement _cutIn = new VisualElement(), _duel = new VisualElement(), _duelTarget = new VisualElement(), _duelRing = new VisualElement();
+        readonly Label _cutKicker = new Label(), _cutName = new Label(), _duelWord = new Label();
+        string[] _names;
+        /// <summary>The cut-in on screen, the duel ring on screen (tests).</summary>
+        public bool CutInShown { get { return _cutIn.style.display == DisplayStyle.Flex; } }
+        public bool DuelRingShown { get { return _duel.style.display == DisplayStyle.Flex; } }
+        /// <summary>The duel ring shows from this long (sim seconds) before the ball arrives; its size then, and at the target.</summary>
+        public const float DuelLead = 0.7f, DuelRingFrom = 420f, DuelRingAt = 120f;
+
+        void CutInAndDuel(MatchRunner r, MatchSimulation m, int me)
+        {
+            bool cut = GameplayCameraRig.CutInShowing;
+            if (cut && _cutIn.style.display != DisplayStyle.Flex)
+            {
+                int who = GameplayCameraRig.CutInWho;
+                bool mine = who == me && !r.Settings.TwoPlayer;
+                _cutKicker.text = mine ? "YOUR SPECIAL SHOT" : "SPECIAL SHOT";
+                _cutName.text = _names != null && who >= 0 && who < _names.Length ? _names[who].ToUpperInvariant() : "";
+                _cutIn.EnableInClassList("hud-cutin--them", !mine);
+                _cutIn.RemoveFromClassList("hud-cutin--in");
+                _cutIn.schedule.Execute(() => _cutIn.AddToClassList("hud-cutin--in")).StartingIn(16);
+            }
+            _cutIn.style.display = cut ? DisplayStyle.Flex : DisplayStyle.None;
+            if (cut) { _pop.style.display = DisplayStyle.None; _popLeft = 0; _popSmall.style.display = DisplayStyle.None; _popSmallLeft = 0; _focusDim.style.opacity = 0; }
+            // the duel: a ring closing on the target as the ball comes; let go of Hit (holding Focus) as it meets it
+            bool duel = me >= 0 && me < 2 && m.SpecialIncoming(me) && m.DuelResult == 0 && !double.IsNaN(m.DuelAt) && !r.ReplayActive;
+            float lead = duel ? (float)(m.DuelAt - m.Time) : 0f;
+            duel &= lead < DuelLead && lead > -(float)MatchSimulation.DuelWindow;
+            _duel.style.display = duel ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!duel) return;
+            float size = Mathf.Max(DuelRingAt, DuelRingAt + (DuelRingFrom - DuelRingAt) * Mathf.Clamp01(lead / DuelLead));
+            _duelRing.style.width = size; _duelRing.style.height = size;
+            _duelRing.style.marginLeft = -size / 2f; _duelRing.style.marginTop = -size / 2f;
+            bool now = Mathf.Abs(lead) <= (float)MatchSimulation.DuelWindow;
+            _duelRing.EnableInClassList("hud-duel-ring--now", now);
+            _duelWord.text = !m.Focusing(me) ? "HOLD " + IntentSource.FocusKey + "!" : now ? "NOW!  LET GO" : "LET GO OF " + IntentSource.Keys("Hit") + " ON THE RING";
+        }
         readonly Label _nick = new Label("NICK!");
         float _nickLeft;
         /// <summary>The NICK! stamps shown so far (tests).</summary>
@@ -434,7 +481,9 @@ namespace SquashGame
             LetChip(r, m, twoPlayer);
             NetChip(r);
             Broadcast(r, m, s, names);
+            _names = names;
             Chaos(r, m, twoPlayer);
+            CutInAndDuel(r, m, twoPlayer ? 0 : r.HumanIndex);
         }
 
         /// <summary>The Gauntlet chaos remake: your POWER meter (with an ultimate card), the pop-ups for what the cards just
@@ -454,7 +503,8 @@ namespace SquashGame
                 float v = Mathf.Clamp01((float)mine.Power);
                 // 2026-11-22: the Special Shot is its own button; aiming, the meter drains
                 string hint = m.ZoneBy == me ? "AIM IT  ·  " + IntentSource.Keys("Hit") + " to fire" :
-                              m.SpecialIncoming(me) ? (v > 0.01f ? "HOLD " + IntentSource.FocusKey + " TO FOCUS!" : "NO METER TO FOCUS") :
+                              m.SpecialIncoming(me) ? (v > 0.01f ? (m.Focusing(me) ? "THE DUEL: LET GO OF " + IntentSource.Keys("Hit") + " ON THE RING" : "HOLD " + IntentSource.FocusKey + " - THEN THE DUEL!") : "NO METER: NO DUEL") :
+                              m.ChargeBy == me ? "CHARGING..." :
                               m.Focusing(me) ? "FOCUS  ·  the meter drains" :
                               v >= 1f ? "READY!  " + IntentSource.SpecialKey + " once it's off the wall" :
                               v > 0.05f ? "HOLD " + IntentSource.FocusKey + " TO FOCUS" : "FILL IT: GOOD SHOTS, WINNERS";
@@ -462,11 +512,11 @@ namespace SquashGame
                 if (them != null) { float t = Mathf.Clamp01((float)them.Power); _spThem.Set(t, "THEIR SPECIAL", t >= 1f ? "READY - LOOK OUT" : ""); }
             }
             float dtF = Time.unscaledDeltaTime;
-            bool dimOn = r.Focusing || m.ZoneBy >= 0 || m.WindupBy >= 0;                                 // 2026-11-22: aiming a Special Shot - time stands still
+            bool dimOn = (r.Focusing || m.ZoneBy >= 0 || m.WindupBy >= 0 || m.ChargeBy >= 0) && !GameplayCameraRig.CutInShowing;                                 // 2026-11-22: aiming a Special Shot - time stands still
             _dimLevel = Mathf.MoveTowards(_dimLevel, dimOn ? 1f : 0f, dtF * (dimOn ? 5f : 2.5f));
             _focusDim.style.opacity = _dimLevel;
             if (_flashLeft > 0) { _flashLeft -= dtF; _flash.style.opacity = Mathf.Clamp01(_flashLeft / 0.35f) * (Juice.ReduceMotion ? 0.12f : 0.3f); }
-            _focusWord.text = m.ZoneBy >= 0 ? (m.ZoneBy == me ? "AIM" : "") : m.WindupBy >= 0 ? "" : "FOCUS";
+            _focusWord.text = m.ZoneBy >= 0 ? (m.ZoneBy == me ? "AIM" : "") : m.WindupBy >= 0 || m.ChargeBy >= 0 ? "" : "FOCUS";
             bool meter = mine != null && mine.HasUltimate && !special && !r.ReplayActive;
             _power.style.display = meter ? DisplayStyle.Flex : DisplayStyle.None;
             if (meter)
@@ -485,21 +535,26 @@ namespace SquashGame
                 var pm = n.Player >= 0 && n.Player < 2 ? m.Players[n.Player].Player.Mods : null;
                 switch (n.Kind)
                 {
+                    case "charge":
+                        Pop(mineNote ? "SPECIAL SHOT  ·  CHARGE!" : "THEIR SPECIAL SHOT!", true);
+                        VenueView.Excite(0.7f);
+                        break;
+                    case "duelmiss": Pop(mineNote ? "MISSED THE TIMING!" : "THEY MISSED IT!", !mineNote); break;
                     case "windup":
-                        Pop(mineNote ? "SPECIAL SHOT!" : "SPECIAL INCOMING!  get ready to " + IntentSource.FocusKey, true);
+                        Pop(mineNote ? "SPECIAL SHOT!" : "SPECIAL INCOMING!  hold " + IntentSource.FocusKey, true);
                         VenueView.Excite(0.9f);
                         break;
                     case "zone":
-                        Pop(mineNote ? "SPECIAL SHOT  ·  AIM!" : "THEIR SPECIAL SHOT!", true);
+                        Pop(mineNote ? "AIM IT!" : "THEY'RE AIMING...", true);
                         if (mineNote) _flashLeft = 0.15f;
                         VenueView.Excite(0.8f);
                         break;
                     case "special":
-                        Pop(mineNote ? "SPECIAL!" : "HOLD " + IntentSource.FocusKey + " TO SAVE IT!", !mineNote);
+                        Pop(mineNote ? "SPECIAL!" : "THE DUEL!  HOLD " + IntentSource.FocusKey, !mineNote);
                         _flashLeft = 0.12f;
                         VenueView.Excite(1f);
                         break;
-                    case "defend": Pop(mineNote ? "FOCUS!  GET IT BACK" : "THEY FOCUSED", false); break;
+                    case "defend": Pop(mineNote ? "DUEL WON!  GET IT BACK" : "THEY WON THE DUEL", !mineNote); break;
                     case "ult" when pm != null && pm.Level("special") > 0:
                         Pop(mineNote ? "SPECIAL SHOT!" : "THEIR SPECIAL!", true);
                         _flashLeft = 0.35f;

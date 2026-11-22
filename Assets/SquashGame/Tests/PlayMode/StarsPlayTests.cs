@@ -187,6 +187,14 @@ namespace SquashGame.Tests
             // 2026-11-22 the Special Shot: a full meter, the ball coming - you (the stand-in) jump to it, time stops, the aiming view
             yield return Wait(3f, () => !r.Focusing);
             mine.Power = 1;
+            // 2026-11-22 evening: first the squat, right where you stand, then the jump - then the aiming
+            yield return Wait(25f, () => r.Sim.ChargeBy == 0);
+            Assert.That(r.Sim.ChargeBy, Is.EqualTo(0), "you're charging a Special Shot");
+            yield return Wait(0.2f, () => false);
+            SquashGame.Athlete.AthleteFigure me0 = null;
+            foreach (var f in Object.FindObjectsByType<SquashGame.Athlete.AthleteFigure>(FindObjectsSortMode.None)) if (f.Index == 0) me0 = f;
+            Assert.That(me0 != null && me0.SquatWeight > 0.3f, Is.True, "the squat");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Squat.png");
             yield return Wait(25f, () => r.Sim.ZoneBy == 0);
             Assert.That(r.Sim.ZoneBy, Is.EqualTo(0), "you're aiming a Special Shot");
             var rig = Camera.main.GetComponent<GameplayCameraRig>();
@@ -196,7 +204,7 @@ namespace SquashGame.Tests
             var held = r.Sim.Ball.Pos.Clone();
             yield return null; yield return null;
             Assert.That(r.Sim.Ball.Pos.Z, Is.EqualTo(held.Z).Within(1e-9), "the ball hangs");
-            Assert.That(r.Sim.InAir(0), Is.True, "2026-11-22: up in the air above the T");
+            Assert.That(r.Sim.InAir(0), Is.True, "up in the air, where you jumped");
             var fx = Object.FindFirstObjectByType<SpecialFx>();
             Assert.That(rig.ZoneCam, Is.True, "first person: through your eyes");
             Assert.That(fx.AuraShown, Is.False, "(your own aura isn't drawn across your eyes)");
@@ -210,10 +218,17 @@ namespace SquashGame.Tests
             yield return Wait(4f, () => r.Sim.SpecialBy == 0);
             Assert.That(r.Sim.SpecialBy, Is.EqualTo(0), "fired");
             Assert.That(mine.Power, Is.LessThan(0.1), "the meter spent (a shot since may have added a sliver)");
+            // the cut-in: your face up close, the world all but stopped, the band across the screen
+            yield return Wait(0.3f, () => false);
+            Assert.That(fe.Hud.CutInShown, Is.True, "the cut-in band");
+            Assert.That(GameplayCameraRig.CutInShowing, Is.True, "the close-up");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_CutIn.png");
+            yield return Wait(2f, () => !GameplayCameraRig.CutInShowing);
+            Assert.That(fe.Hud.CutInShown, Is.False, "and gone");
             yield return Wait(0.05f, () => false);
             Assert.That(fx.TrailShown, Is.True, "the lightning trail");
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Shot.png");
-            yield return Wait(1f, () => fx.WallFlashes > 0);
+            yield return Wait(2f, () => fx.WallFlashes > 0);
             Assert.That(fx.WallFlashes, Is.GreaterThan(0), "the front wall's flash");
             yield return Wait(0.6f, () => !r.Sim.InAir(0));
             Assert.That(r.Sim.InAir(0), Is.False, "back down on the floor");
@@ -222,17 +237,20 @@ namespace SquashGame.Tests
             yield return Wait(8f, () => r.Sim.Phase == SquashSim.MatchPhase.Rally && r.Sim.SpecialBy < 0);
             var theirs = r.Sim.Players[1].Player.Mods;
             theirs.Power = 1;
-            yield return Wait(25f, () => r.Sim.ZoneBy == 1);
-            Assert.That(r.Sim.ZoneBy, Is.EqualTo(1), "their Special Shot");
+            yield return Wait(25f, () => r.Sim.ChargeBy == 1);
+            Assert.That(r.Sim.ChargeBy, Is.EqualTo(1), "their Special Shot");
             yield return null; yield return null;
             Assert.That(fe.Hud.PopText, Is.EqualTo("THEIR SPECIAL SHOT!"));
             yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Theirs.png");
 
             // 2026-11-22 Focus, held, against it: the rally slows, the meter drains (not a chunk), the Special Shot slowed
             mine.Power = 0.6;
-            yield return Wait(6f, () => r.Focusing);
+            yield return Wait(8f, () => r.Focusing);
             Assert.That(r.Focusing, Is.True, "you (the stand-in) focus against it");
-            Assert.That(r.Sim.SpecialDefended, Is.True, "their Special Shot slowed");
+            // 2026-11-22 evening: the duel - a ring closing on the target as the ball comes
+            yield return Wait(3f, () => fe.Hud.DuelRingShown);
+            Assert.That(fe.Hud.DuelRingShown, Is.True, "the duel's ring");
+            yield return FrontEndTests.CaptureUI(fe, "SPECIAL_Duel.png");
             double p0 = mine.Power;
             yield return Wait(0.3f, () => false);
             Assert.That(mine.Power, Is.LessThan(p0).And.GreaterThan(p0 - 0.3), "the meter drains slowly while you focus");

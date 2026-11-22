@@ -159,7 +159,7 @@ namespace SquashGame.UI
         /// <summary>Quick Match's Abilities row (batch 2). Off for now (2026-10-28: "remove special ability from quick play
         /// until we get them all figured out"): the row is hidden and a saved "On" is not played. True brings it back.</summary>
         public const bool QuickMatchAbilities = true;            // 2026-11-20 back on Quick Match, Off by default (the user: "so it's easy for me to test it")
-        public const string AbilityHint = "Abilities: a Special meter fills slowly as you play (mistakes cost some). Hold " + IntentSource.FocusKey + " to Focus (slow motion, drains it) when their shot comes off the wall; let go with the ball out of reach to dive (costs meter). Full: " + IntentSource.SpecialKey + " - you jump to the ball, time stops, aim anywhere, then Hit. Focus slows their Special Shot. Aces score 2.";
+        public const string AbilityHint = "Abilities: a Special meter fills slowly as you play (mistakes cost some). Hold " + IntentSource.FocusKey + " to Focus (slow motion, drains it) when their shot comes off the wall; let go with the ball out of reach to dive (costs meter). Full: " + IntentSource.SpecialKey + " - you squat and jump right where you are, time stops, aim anywhere, then Hit. Their Special Shot: hold Focus and let go of Hit as the ring closes - the duel. Aces score 2.";
 
         /// <summary>Old replays' names (before P6 an opponent was a style at a difficulty).</summary>
         public static readonly string[] DifficultyLabels = { "Easy", "Medium", "Hard" };

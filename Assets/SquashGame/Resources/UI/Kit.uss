@@ -1716,6 +1716,24 @@
     color: rgb(255, 214, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 8px 30px rgba(0, 0, 0, 0.9);
     -unity-text-outline-width: 3px; -unity-text-outline-color: rgb(120, 60, 0); opacity: 0; scale: 3 3; rotate: -8deg;
     transition-property: scale, opacity, rotate; transition-duration: 0.22s; transition-timing-function: ease-out-back; }
+.hud-cutin { position: absolute; left: -8%; right: -8%; top: 64%; height: 24%; background-color: rgba(10, 10, 16, 0.82);
+    border-top-width: 6px; border-bottom-width: 6px; border-top-color: rgb(255, 196, 40); border-bottom-color: rgb(255, 196, 40);
+    rotate: -6deg; translate: -120% 0; justify-content: center; padding-left: 16%; overflow: hidden;
+    transition-property: translate; transition-duration: 0.18s; transition-timing-function: ease-out; }
+.hud-cutin--in { translate: 0 0; }
+.hud-cutin--them { border-top-color: rgb(255, 72, 72); border-bottom-color: rgb(255, 72, 72); }
+.hud-cutin-line { position: absolute; left: -10%; right: -10%; height: 3px; background-color: rgba(255, 255, 255, 0.14); }
+.hud-cutin-kicker { font-size: 34px; letter-spacing: 8px; color: rgb(255, 196, 40); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-cutin--them .hud-cutin-kicker { color: rgb(255, 96, 96); }
+.hud-cutin-name { font-size: 96px; letter-spacing: 4px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 6px 20px rgba(0, 0, 0, 0.9); }
+.hud-duel { position: absolute; left: 50%; top: 76%; width: 0; height: 0; }
+.hud-duel-target { position: absolute; width: 120px; height: 120px; margin-left: -60px; margin-top: -60px; border-radius: 60px;
+    border-width: 6px; border-color: rgba(255, 255, 255, 0.9); background-color: rgba(255, 255, 255, 0.06); }
+.hud-duel-ring { position: absolute; border-radius: 300px; border-width: 5px; border-color: rgb(255, 196, 40); }
+.hud-duel-ring--now { border-color: rgb(200, 255, 61); border-width: 10px; }
+.hud-duel-word { position: absolute; width: 700px; margin-left: -350px; top: -120px; -unity-text-align: middle-center; font-size: 34px;
+    letter-spacing: 3px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); text-shadow: 0 4px 14px rgba(0, 0, 0, 0.9); }
 .hud-nick--in { opacity: 1; scale: 1 1; rotate: -4deg; }
 .hud-confetti { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
 .hud-confetti-bit { position: absolute; border-radius: 2px; }

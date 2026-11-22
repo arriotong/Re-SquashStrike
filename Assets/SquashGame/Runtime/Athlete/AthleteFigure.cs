@@ -136,6 +136,8 @@ namespace SquashGame.Athlete
         }
 
         Transform B(string name) { return Rig.Bones[name]; }
+        /// <summary>Where the head is drawn (the cut-in camera films the face).</summary>
+        public Vector3 HeadPosition { get { return Rig != null && Rig.Bones.ContainsKey("Head") ? B("Head").position : transform.position + Vector3.up * 1.6f; } }
         Transform _patch;
 
         /// <summary>P2-M5: what this athlete wears (polled each frame; re-dressed when it changes). Null = plain.</summary>
@@ -172,7 +174,9 @@ namespace SquashGame.Athlete
             Pose(v, Runner.View.BallPos, dt);
         }
 
-        float _diveW;
+        float _diveW, _squatW;
+        /// <summary>How far into the Special Shot's squat (tests).</summary>
+        public float SquatWeight { get; private set; }
         bool _shown = true;
         /// <summary>P2-M5: the pose of a match moment to hold (the celebration), or null - polled every frame.</summary>
         public System.Func<string> MomentSource;
@@ -380,6 +384,17 @@ namespace SquashGame.Athlete
             }
             else _diveFrom = null;
             DiveWeight = _diveW;
+
+            // ---------------- 2026-11-22 evening: the Special Shot's squat, charging, before the jump straight up ----------------
+            var sqRunner = Runner as MatchRunner;
+            bool squat = sqRunner != null && sqRunner.Sim != null && sqRunner.Sim.Squatting(Index);
+            _squatW = Mathf.MoveTowards(_squatW, squat ? 1f : 0f, (squat ? 7f : 5f) * dt);
+            if (_squatW > 0.001f)
+            {
+                var sq = PoseLibrary.Active.Find("dig_fh");
+                if (sq != null) { _tmp.Set(sq); _out.Blend(_tmp, Ease(_squatW)); }
+            }
+            SquatWeight = _squatW;
 
             // ---------------- P2-M5: a match moment (a won match point: the celebration; lost: dejected) ----------------
             string moment = MomentSource != null ? MomentSource() : null;

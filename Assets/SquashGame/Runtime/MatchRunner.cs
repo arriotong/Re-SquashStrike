@@ -626,7 +626,14 @@ namespace SquashGame
             {
                 var n = Sim.Chaos[_ultRead++];
                 if (n.Kind == "ult" && !SlowMoActive) { SlowMo(SpecialSlowSeconds, SpecialSlowScale); _focusing = false; }
-                if (n.Kind == "special") { GameplayCameraRig.Kick(0.22f); UI.Juice.Rumble(0.9f, 0.9f, 0.3f); }
+                if (n.Kind == "special")
+                {
+                    GameplayCameraRig.Kick(0.22f); UI.Juice.Rumble(0.9f, 0.9f, 0.3f);
+                    // 2026-11-22 evening (the user, after Captain Tsubasa): the strike's cut-in - the striker's face, the world all but
+                    // stopped (offline only: online, both clocks keep step)
+                    if (OnlineMatch == null && !ReplayActive) { SlowMo(CutInSeconds, CutInScale); _focusing = false; GameplayCameraRig.CutIn(n.Player, CutInSeconds); }
+                }
+                if (n.Kind == "charge" && n.Player == hi) UI.Juice.Rumble(0.4f, 0.4f, 0.25f);
                 if (n.Kind == "zone" && n.Player == hi) UI.Juice.Rumble(0.3f, 0.6f, 0.15f);
                 if (n.Kind == "windup") UI.Juice.Rumble(0.2f, 0.5f, 0.5f);
             }
@@ -848,6 +855,9 @@ namespace SquashGame
         public const double SpecialSlowScale = 0.3;
         int _focusGame = -1;
         public const float FocusSeconds = 1.6f;
+        /// <summary>The Special Shot's cut-in: real seconds, and the clock's scale meanwhile (all but stopped).</summary>
+        public const float CutInSeconds = 0.95f;
+        public const double CutInScale = 0.03;
         public const double FocusScale = 0.35;
 
         // ---------------- P2-M8 online ----------------

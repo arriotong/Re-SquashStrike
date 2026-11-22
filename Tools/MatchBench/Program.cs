@@ -73,6 +73,7 @@ public static class Program
         if (Array.IndexOf(args, "--stars") >= 0) { StarBench.Run(Arg(args, "--games") != null ? games : 12, Arg(args, "--only")); return 0; }
         if (Array.IndexOf(args, "--pros") >= 0) { ProBench.Run(Arg(args, "--games") != null ? games : 10, Arg(args, "--opp") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.8", CultureInfo.InvariantCulture)); return 0; }
         if (Arg(args, "--dig") != null) { ReplayDig.Run(Arg(args, "--dig")); return 0; }
+        if (Array.IndexOf(args, "--special") >= 0) { SpecialBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
         if (Array.IndexOf(args, "--serves") >= 0) { ServeBench.DiffArg = float.Parse(Arg(args, "--d1") ?? "0.8", CultureInfo.InvariantCulture); ServeBench.OnlyOpp = Arg(args, "--opp"); ServeBench.Run(Arg(args, "--games") != null ? games : 3); return 0; }
         if (Array.IndexOf(args, "--classes") >= 0) { ClassBench.Run(Arg(args, "--games") != null ? games : 40, Arg(args, "--opp") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.75", CultureInfo.InvariantCulture)); return 0; }
         if (Array.IndexOf(args, "--rogue") >= 0) { RogueBench.DeckMode = Arg(args, "--deck"); RogueBench.Run(Arg(args, "--games") != null ? games : 20, Arg(args, "--policy") ?? "greedy", int.Parse(Arg(args, "--talents") ?? "0")); return 0; }

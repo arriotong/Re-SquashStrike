@@ -106,6 +106,35 @@ namespace SquashGame
             return true;
         }
 
+        // ---------------- 2026-11-22 evening: the Special Shot's cut-in (Captain Tsubasa style) ----------------
+        static int _cutWho = -1;
+        static float _cutLeft, _cutTotal;
+        /// <summary>Film the striker's face, close and low, pushing in, for this long (real seconds) - the strike's cut-in.</summary>
+        public static void CutIn(int who, float seconds) { _cutWho = who; _cutLeft = seconds; _cutTotal = Mathf.Max(0.01f, seconds); }
+        public static bool CutInShowing { get { return _cutLeft > 0f; } }
+        public static int CutInWho { get { return _cutWho; } }
+        bool FilmCutIn(MatchRunner m)
+        {
+            if (_cutLeft <= 0f) return false;
+            if (m == null || m.Sim == null || m.Demo || m.ReplayActive || _cutWho < 0 || _cutWho > 1) { _cutLeft = 0f; return false; }
+            _cutLeft -= Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            float k = 1f - Mathf.Clamp01(_cutLeft / _cutTotal);
+            float push = k * k * (3f - 2f * k);
+            // the face as drawn: in front of it, a little to the side and low - looking up at it, pushing in
+            Athlete.AthleteFigure fig = null;
+            foreach (var f in FindObjectsByType<Athlete.AthleteFigure>(FindObjectsSortMode.None)) if (f.Index == _cutWho) fig = f;
+            Vector3 head, fwd;
+            if (fig != null) { head = fig.HeadPosition; fwd = fig.DrawnForward; }
+            else { var pl = m.Sim.Players[_cutWho].Player.Pos; head = SimToWorld.Pos(pl.X, pl.Y + 1.52, pl.Z); fwd = SimToWorld.Pos(0, 0, -1) - SimToWorld.Pos(0, 0, 0); }
+            fwd.y = 0f; if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward; fwd.Normalize();
+            Vector3 side = Vector3.Cross(Vector3.up, fwd);
+            Vector3 pos = head + fwd * (1.7f - 0.6f * push) + side * (0.55f - 0.25f * push) + Vector3.down * (0.32f - 0.08f * push);
+            transform.position = pos;
+            transform.rotation = Quaternion.LookRotation(head - pos, Vector3.up);
+            _cam.fieldOfView = Mathf.Lerp(40f, 30f, push);
+            return true;
+        }
+
         /// <summary>2026-11-22 aiming a Special Shot (yours, or either local player's): the camera drops in behind the ball, looking
         /// at the front wall - the aiming screen. True: filmed.</summary>
         public bool ZoneCam { get; private set; }
@@ -197,6 +226,7 @@ namespace SquashGame
             _wasCut = false;
 
             if (FilmWinner(Runner as MatchRunner)) return;
+            if (FilmCutIn(Runner as MatchRunner)) return;
             if (FilmZone(Runner as MatchRunner)) return;
 
             // The menus' demo rally: slow-motion cuts from cinematic angles (the old home screen).

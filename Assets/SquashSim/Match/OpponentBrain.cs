@@ -351,6 +351,9 @@ namespace SquashSim
         double _zoneX, _zoneY, _zoneHold, _specialSeen = -1;
         /// <summary>How long the AI takes to Focus against a Special Shot coming at it.</summary>
         public const double SpecialReaction = 0.12;
+        /// <summary>The duel press's timing error (sd, sim seconds): the best players, and how much worse the weakest are.</summary>
+        public const double DuelJitterBest = 0.12, DuelJitterWorst = 0.25;
+        double _duelPress = double.NaN;
 
         // ---- 2026-11-22 evening: the computer's dive (it runs slower now - PlayerMovement.AiRunScale - so a far ball needs one) ----
         /// <summary>It dives (Focus held a step, then let go: the match's smart dive) once a ball it can't run down comes within this
@@ -439,11 +442,17 @@ namespace SquashSim
             }
             _zoneAimed = false;
             var sm = p.Mods;
-            // Focus: held against a Special Shot coming at it (after a moment to see it), until it plays the ball
+            // Focus: held against a Special Shot coming at it (after a moment to see it), until it plays the ball; the duel (2026-11-22
+            // evening): Hit as it arrives - off by a timing error that shrinks with skill
             if (sm != null && (m.SpecialIncoming(me) || (m.SpecialDefended && m.Focusing(me))))
             {
-                if (_specialSeen < 0) _specialSeen = t;
+                if (_specialSeen < 0) { _specialSeen = t; _duelPress = double.NaN; }
                 if (t - _specialSeen > SpecialReaction) intent.FocusHeld = true;
+                if (m.SpecialIncoming(me) && m.DuelResult == 0 && !double.IsNaN(m.DuelAt))
+                {
+                    if (double.IsNaN(_duelPress)) _duelPress = m.DuelAt + Gauss() * (DuelJitterBest + DuelJitterWorst * (1 - Profile.Skill));
+                    if (t >= _duelPress && m.Focusing(me)) { intent.Hit.Released = true; intent.Hit.Held = false; _duelPress = double.PositiveInfinity; }
+                }
             }
             else _specialSeen = -1;
             // the Special Shot: a full meter - soon after their shot comes off the front wall

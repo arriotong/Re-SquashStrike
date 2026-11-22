@@ -1,7 +1,9 @@
 // ===========================================================
 // Assets/SquashSim.Testing/Editor/SpecialShotTests.cs
 // 2026-11-22 the Special Shot (MatchSimulation.Special):
-//   - the meter (the Special card) fills 3x slower; mistakes cost meter
+//   - the meter (the Special card) fills 1.5x slower; mistakes cost meter
+//   - 2026-11-22 evening: a squat and a jump where you stand; the defender's
+//     duel (Focus + let go of Hit on the ring)
 //   - a full meter and your ball: Special teleports you to it, the rally
 //     stands still while you aim, the meter drains, Hit (or empty) fires
 //   - the shot is almost unreturnable; Focus (meter) slows it and the
@@ -57,10 +59,10 @@ namespace SquashSim.Tests
             var m = Match(defend ? 1 : 0);
             int fired = 0, won = 0, wasFired = 0, returned = 0, contactsAt = 0;
             bool frozeSeen = false;
-            int done = 0, matches = 0;
+            int done = 0, matches = 0, defendedSum = 0;
             while (done + m.History.Count < rallies && matches < 20)
             {
-                if (m.Phase == MatchPhase.MatchOver || m.Time > 3600) { done += m.History.Count; matches++; m = Match((defend ? 1 : 0) + 10 * matches); wasFired = 0; continue; }
+                if (m.Phase == MatchPhase.MatchOver || m.Time > 3600) { done += m.History.Count; matches++; defendedSum += m.SpecialsDefended; m = Match((defend ? 1 : 0) + 10 * matches); wasFired = 0; continue; }
                 var a = m.Players[0].Player.Mods; var b = m.Players[1].Player.Mods;
                 if (m.Phase == MatchPhase.Rally && m.Referee.Shots >= 2 && m.ZoneBy < 0 && m.SpecialBy < 0 && wasFired == 0) a.Power = 1;
                 if (m.ZoneBy < 0) b.Power = defend ? 0.6 : 0;                         // enough to defend, never to fire its own
@@ -78,7 +80,84 @@ namespace SquashSim.Tests
             }
             Assert.That(frozeSeen, Is.True, "the rally stood still while aiming");
             UnityEngine.Debug.Log("[Special] defend " + defend + ": fired " + fired + ", returned " + returned + ", won outright " + won);
-            return (fired, won, m.SpecialsDefended);
+            return (fired, won, defendedSum + m.SpecialsDefended);
+        }
+
+        /// <summary>2026-11-22 evening: the Special Shot starts where you stand - a squat, then straight up (no teleport to the T).</summary>
+        [Test] public void ItSquatsAndJumpsRightWhereYouStand()
+        {
+            var m = Match(5);
+            double px = 0, pz = 0; bool seen = false, squat = false, air = false;
+            while (m.Time < 900 && m.Phase != MatchPhase.MatchOver && !(seen && air))
+            {
+                var p0 = m.Players[0].Player.Pos;
+                if (m.ChargeBy < 0) { px = p0.X; pz = p0.Z; }
+                if (m.Phase == MatchPhase.Rally && m.Referee.Shots >= 2 && m.ChargeBy < 0 && m.ZoneBy < 0 && m.SpecialBy < 0) m.Players[0].Player.Mods.Power = 1;
+                bool was = m.ChargeBy == 0;
+                m.Step(Dt);
+                if (m.Phase == MatchPhase.GameOver) m.NextGame();
+                if (!was && m.ChargeBy == 0)
+                {
+                    seen = true;
+                    var at = m.Players[0].Player.Pos;
+                    Assert.That(DMath.Hypot(at.X - px, at.Z - pz), Is.LessThan(0.95), "right where they stood (kept off the walls)");
+                    Assert.That(m.Squatting(0), Is.True, "a squat first");
+                    Assert.That(at.Y, Is.EqualTo(0).Within(1e-9));
+                    squat = true;
+                }
+                if (seen && m.ZoneBy == 0) { air = true; Assert.That(m.Players[0].Player.Pos.Y, Is.EqualTo(MatchSimulation.AirHeight).Within(0.01), "then up in the air, aiming"); }
+            }
+            Assert.That(seen && squat && air, Is.True, "a Special Shot was charged and aimed");
+        }
+
+        /// <summary>The duel: the defender (a person now) holds Focus and lets go of Hit as the ball arrives - won; early - lost.</summary>
+        static MatchSimulation DuelMoment(int seed)
+        {
+            for (int k = 0; k < 6; k++)
+            {
+                var m = Match(seed + 20 * k);
+                while (m.Time < 900 && m.Phase != MatchPhase.MatchOver)
+                {
+                    if (m.Phase == MatchPhase.Rally && m.Referee.Shots >= 2 && m.ChargeBy < 0 && m.ZoneBy < 0 && m.WindupBy < 0 && m.SpecialBy < 0) m.Players[0].Player.Mods.Power = 1;
+                    m.Players[1].Player.Mods.Power = System.Math.Min(m.Players[1].Player.Mods.Power, 0.99);
+                    m.Step(Dt);
+                    if (m.Phase == MatchPhase.GameOver) m.NextGame();
+                    if (m.SpecialBy == 0 && m.WindupBy < 0)
+                    {
+                        m.Bots[1] = null; m.Intents[1] = new InputIntent();
+                        m.Players[1].Player.Mods.Power = 0.8;
+                        m.Intents[1].FocusHeld = true;
+                        return m;
+                    }
+                }
+            }
+            return null;
+        }
+
+        [Test] public void LettingGoOnTheRingWinsTheDuel()
+        {
+            var m = DuelMoment(3);
+            Assert.That(m, Is.Not.Null, "a Special Shot came");
+            for (int k = 0; k < 400 && (double.IsNaN(m.DuelAt) || m.Time < m.DuelAt - Dt * 0.5) && m.SpecialIncoming(1); k++) m.Step(Dt);
+            Assume.That(m.SpecialIncoming(1) && m.Focusing(1), "still coming, focusing");
+            m.Intents[1].Hit.Released = true; m.Step(Dt); m.Intents[1].Hit.Released = false;
+            Assert.That(m.DuelResult, Is.EqualTo(1), "on the ring: the duel won");
+            Assert.That(m.SpecialDefended, Is.True);
+            Assert.That(m.Players[1].Player.Mods.ReachCut, Is.EqualTo(0), "the cut lifted");
+        }
+
+        [Test] public void LettingGoEarlyLosesTheDuel()
+        {
+            var m = DuelMoment(4);
+            Assert.That(m, Is.Not.Null, "a Special Shot came");
+            for (int k = 0; k < 400 && double.IsNaN(m.DuelAt) && m.SpecialIncoming(1); k++) m.Step(Dt);
+            Assume.That(m.SpecialIncoming(1) && m.Focusing(1) && m.DuelAt - m.Time > MatchSimulation.DuelWindow * 2, "time to spare");
+            m.Intents[1].Hit.Released = true; m.Step(Dt); m.Intents[1].Hit.Released = false;
+            Assert.That(m.DuelResult, Is.EqualTo(-1), "too early: lost");
+            Assert.That(m.Players[1].Player.Mods.ReachCut, Is.EqualTo(MatchSimulation.SpecialReachCut), "still cut");
+            int lost = m.DuelsLost;
+            m.Intents[1].Hit.Released = true; m.Step(Dt);
+            Assert.That(m.SpecialDefended, Is.False, "one try only");
         }
 
         [Test] public void ASpecialShotIsAlmostUnreturnableUnlessFocused()

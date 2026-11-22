@@ -1,36 +1,37 @@
 // ===========================================================
 // Assets/SquashSim/Match/MatchSimulation.Special.cs
-// 2026-11-22 the Special Shot (the user, after Mario Tennis: "like
-// sniping ... teleporting to the ball, the screen changes into an aiming
-// screen, the meter slowly goes down because you're in slow mo aiming ...
-// make the shot insanely powerful ... if you use focus the ball gets
-// slower and can be got back easier"):
+// The Special Shot. 2026-11-22 first (after Mario Tennis' sniping); remade
+// that evening (the user: "squat down charging and then high hard jump into
+// the air right where youre standing and then zooms into aiming ... the
+// ball goes to where you are but not you just go to the middle of the
+// court"; "the special shot ... looks like its pretty easy to get back";
+// answers: a Captain-Tsubasa cut-in + a duel, a small chance without Focus):
 //
-//   start     a full meter (the Special card), the ball coming to you:
-//             press Special. (2026-11-22, the user: "teleports you high up
-//             in the middle of the court") You jump up above the T, the
-//             ball pulled up to your racket; time stands still
-//   wind-up   (the user: "a 0.5 sec swinging animation and a little spark
-//             so your opponent knows") Hit starts it: WindupSeconds, the
-//             world moving again - the opponent sees it coming (the game
-//             shows the spark and where it's aimed) - then the strike, and
-//             you drop back to the floor
-//   aim       move the aim (the ring) anywhere on the front wall - a nick,
-//             the tin's edge; the meter drains while you aim
-//             (ZoneSeconds from full); Hit fires, an empty meter fires
-//   the shot  SpecialPace, straight at the aim; the opponent's reach and
-//             timing cut hard (SpecialReachCut, SpecialGraceCut) until
-//             their next stroke - almost unreturnable
-//   focus     (2026-11-22, its own key, held) any time your opponent's shot
-//             is off the front wall and coming to you: slow motion (the
-//             game's clock) while the meter drains (FocusDrainSeconds from
-//             full). Against a Special Shot: you move FocusSpeed times as
-//             fast, with more reach and timing - you can get it back
-//   special   (its own key: Q / D-pad up) any time in that same window
+//   charge    a full meter (the Special card), their shot off the front wall
+//             coming to you: press Special (Q / D-pad up). Time stands; the
+//             ball comes to your racket where you are; you squat
+//             (SquatSeconds), then jump straight up (to AirHeight)
+//   aim       first person (the game): move the aim anywhere on the front
+//             wall; the meter drains (ZoneSeconds from full); Hit fires
+//             (an empty meter fires)
+//   wind-up   WindupSeconds: the world moves again - your opponent sees the
+//             spark and the target and can move - then the strike (the
+//             game plays the cut-in on it), and you drop back down
+//   the shot  SpecialPace, straight at the aim; your opponent's reach and
+//             timing cut (SpecialReachCut, SpecialGraceCut): a small
+//             chance to get it back as it is
+//   the duel  the defender holding Focus (Space / RT) and letting go of Hit
+//             within DuelWindow of the moment the ball reaches them
+//             (DuelAt - the game draws the closing ring): the cuts are
+//             lifted, they move FocusSpeed times as fast - and their return
+//             is weak (DuelReturnPace). One press: early or late, it's lost
+//   focus     held whenever their shot comes to you: slow motion (the
+//             game's clock), the meter drains (FocusDrainSeconds from full);
+//             let go with the ball out of reach: a dive (below)
 //
-// A sim action from the intent (InputIntent.SpecialPressed), so replays
-// and both machines online see the same; the AI uses it too
-// (OpponentBrain). Deterministic, UnityEngine-free.
+// A sim action from the intent (InputIntent.SpecialPressed / FocusHeld /
+// Hit), so replays and both machines online see the same; the AI uses it
+// too (OpponentBrain). Deterministic, UnityEngine-free.
 // ===========================================================
 
 using static SquashSim.CourtDimensions;
@@ -39,9 +40,22 @@ namespace SquashSim
 {
     public sealed partial class MatchSimulation
     {
-        public const double ZoneSeconds = 2.6, SpecialPace = 64.0, SpecialReachCut = 0.7, SpecialGraceCut = 0.8;
-        /// <summary>The jump: this high above the T (feet), the ball at the racket above and beside; the wind-up's length; the fall.</summary>
-        public const double AirHeight = 1.4, WindupSeconds = 0.5, FallSpeed = 6.0;
+        public const double ZoneSeconds = 2.6, SpecialPace = 64.0;
+        /// <summary>The Special Shot's cuts on the defender, unless they win the duel: a small chance to get it back.</summary>
+        public const double SpecialReachCut = 0.68, SpecialGraceCut = 0.78;
+        /// <summary>The jump: this high (feet), right where you stand; the squat before it, the rise; the wind-up; the fall.</summary>
+        public const double AirHeight = 1.4, SquatSeconds = 0.35, RiseSeconds = 0.25, WindupSeconds = 0.5, FallSpeed = 6.0;
+        public const double ChargeSeconds = SquatSeconds + RiseSeconds;
+        /// <summary>The duel: Hit within this many (sim) seconds of the ball reaching you, holding Focus; the return's pace then.</summary>
+        public const double DuelWindow = 0.08, DuelReturnPace = 0.7;
+        /// <summary>Focus speed for the duel's winner.</summary>
+        public const double FocusSpeed = 1.5;
+        /// <summary>Seconds of (sim) time a full meter lasts while focusing - about four seconds on the slowed clock.</summary>
+        public const double FocusDrainSeconds = 1.5;
+
+        /// <summary>Who is charging (squat, jump) a Special Shot (-1: nobody), for how long.</summary>
+        public int ChargeBy { get; private set; } = -1;
+        public double ChargeTime { get; private set; }
         /// <summary>Who is winding up a Special Shot (-1: nobody), for how long; where it's going (the front wall: x, y - locked at the
         /// press, or the aim while aiming).</summary>
         public int WindupBy { get; private set; } = -1;
@@ -49,13 +63,10 @@ namespace SquashSim
         public double SpecialAimX { get; private set; }
         public double SpecialAimY { get; private set; }
         int _landBy = -1;
-        /// <summary>The athlete in the air now (aiming, winding up, or falling back), and how high.</summary>
+        /// <summary>The athlete in the air now (rising, aiming, winding up, or falling back), and how high.</summary>
         public bool InAir(int i) { return i >= 0 && i < 2 && Players[i].Player.Pos.Y > 0.001; }
-        /// <summary>Focus against a Special Shot is time slowed for the defender, not a slower ball (a slowed low kill would only die
-        /// shorter): they move FocusSpeed times as fast, with more reach and a wider timing window (negative cuts) until they play it.</summary>
-        public const double FocusSpeed = 1.5, DefendedReachCut = 0.6, DefendedGraceCut = 0.7;
-        /// <summary>Seconds of (sim) time a full meter lasts while focusing - about four seconds on the slowed clock.</summary>
-        public const double FocusDrainSeconds = 1.5;
+        /// <summary>The squat before the jump (the game crouches them).</summary>
+        public bool Squatting(int i) { return ChargeBy == i && ChargeTime < SquatSeconds; }
         readonly bool[] _focusing = new bool[2];
         /// <summary>Player i is focusing now (the game slows its clock for a local one).</summary>
         public bool Focusing(int i) { return i >= 0 && i < 2 && _focusing[i]; }
@@ -71,18 +82,25 @@ namespace SquashSim
         public bool CanFocus(int i)
         {
             var mm = M(Players[i]);
-            return mm != null && mm.Level("special") > 0 && mm.Power > 0 && ZoneBy < 0 && WindupBy < 0 && BallComing(i);
+            return mm != null && mm.Level("special") > 0 && mm.Power > 0 && ZoneBy < 0 && WindupBy < 0 && ChargeBy < 0 && BallComing(i);
         }
 
         /// <summary>Who is aiming a Special Shot now (-1: nobody) and for how long; who struck the Special Shot in flight (-1: none),
-        /// and whether its target slowed it with Focus.</summary>
+        /// and whether its target won the duel.</summary>
         public int ZoneBy { get; private set; } = -1;
         public double ZoneTime { get; private set; }
         public int SpecialBy { get; private set; } = -1;
         public bool SpecialDefended { get; private set; }
-        /// <summary>The Special Shots fired and defended so far (tests).</summary>
+        /// <summary>The Special Shots fired, the duels won and lost so far (tests).</summary>
         public int SpecialsFired { get; private set; }
         public int SpecialsDefended { get; private set; }
+        public int DuelsLost { get; private set; }
+        /// <summary>The duel: when the ball reaches the defender (sim time; NaN until it's off the front wall); the result (0 none
+        /// yet, 1 won, -1 lost - the one press spent early or late).</summary>
+        public double DuelAt { get; private set; } = double.NaN;
+        public int DuelResult { get; private set; }
+        bool _duelPressed;
+        readonly bool[] _weakReturn = new bool[2];
         readonly V3 _zoneBall = new V3();
 
         static RunMods M(TestPlayerController c) { return c.Player.Mods; }
@@ -92,15 +110,15 @@ namespace SquashSim
         {
             var mm = M(Players[i]);
             if (mm == null || mm.Level("special") <= 0 || mm.Power < 1) return false;
-            if (Phase != MatchPhase.Rally || Referee.Outcome != null || Referee.Shots == 0 || ZoneBy >= 0 || WindupBy >= 0) return false;
-            if (SpecialBy == 1 - i) return false;                                         // (a Special Shot coming: defend it, no counter)
-            return BallComing(i);                                                          // 2026-11-22: any time it's off the wall
+            if (Phase != MatchPhase.Rally || Referee.Outcome != null || Referee.Shots == 0 || ZoneBy >= 0 || WindupBy >= 0 || ChargeBy >= 0) return false;
+            if (SpecialBy == 1 - i) return false;                                         // (a Special Shot coming: duel it, no counter)
+            return BallComing(i);
         }
 
-        /// <summary>A Special Shot is coming at player j, not yet slowed: Focus defends it.</summary>
+        /// <summary>A Special Shot is coming at player j, the duel not yet won.</summary>
         public bool SpecialIncoming(int j) { return SpecialBy == 1 - j && !SpecialDefended && Phase == MatchPhase.Rally && Referee.Outcome == null; }
 
-        /// <summary>Each step, before anyone moves: the Special presses (start, defend), the aiming. True: frozen this step.</summary>
+        /// <summary>Each step, before anyone moves: the Special presses, the duel, Focus, the charge, the aiming. True: frozen this step.</summary>
         bool SpecialStep(double dt)
         {
             for (int i = 0; i < 2; i++)
@@ -109,7 +127,21 @@ namespace SquashSim
                 Intents[i].SpecialPressed = false;
                 if (CanSpecial(i)) StartSpecial(i);
             }
-            // Focus, held: the meter drains; against a Special Shot, it slows it (once)
+            // the duel: when it'll reach the defender (once it's off the front wall); their one let-go of Hit, holding Focus (a
+            // stroke is held to charge and let go as the ball comes - the let-go is the timing)
+            if (SpecialBy >= 0 && !SpecialDefended && DuelResult == 0)
+            {
+                int j = 1 - SpecialBy;
+                if (double.IsNaN(DuelAt) && BallComing(j)) DuelAt = Time + ArrivalIn(j);
+                var ji = Intents[j];
+                if (!_duelPressed && !double.IsNaN(DuelAt) && (ji.Hit.Released || ji.Touch.Released) && _focusing[j])
+                {
+                    _duelPressed = true;
+                    if (System.Math.Abs(Time - DuelAt) <= DuelWindow) WinDuel(j);
+                    else { DuelResult = -1; DuelsLost++; Note(j, "duelmiss", 0); }
+                }
+            }
+            // Focus, held: the meter drains; let go with the ball out of reach: a dive
             for (int i = 0; i < 2; i++)
             {
                 // 2026-11-22 evening (the user: "both of them in space bar ... if your slow mo ends you release and then your character
@@ -118,12 +150,24 @@ namespace SquashSim
                 if (_heldWas[i] && !held) TrySmartDive(i);
                 _heldWas[i] = held;
                 bool want = held && CanFocus(i);
-                if (want && SpecialIncoming(i)) DefendSpecial(i);
                 var fm = M(Players[i]);
                 if (want) fm.Power = System.Math.Max(0, fm.Power - dt / FocusDrainSeconds);
-                if (fm != null) fm.FocusBoost = want && SpecialDefended && SpecialBy == 1 - i ? FocusSpeed : 1;
+                if (fm != null) fm.FocusBoost = SpecialDefended && SpecialBy == 1 - i ? FocusSpeed : 1;
                 if (want && !_focusing[i]) Note(i, "focus", 0);
                 _focusing[i] = want;
+            }
+            if (ChargeBy >= 0)
+            {
+                // the squat, then the jump straight up: the world stands still, the ball held at the racket
+                ChargeTime += dt;
+                var cp = Players[ChargeBy].Player;
+                double rise = System.Math.Max(0, System.Math.Min(1, (ChargeTime - SquatSeconds) / RiseSeconds));
+                cp.Pos.Set(_airAt.X, AirHeight * (1 - (1 - rise) * (1 - rise)), _airAt.Z); cp.Vel.Set(0, 0, 0);
+                Ball.Pos.CopyFrom(_zoneBall); Ball.Vel.Set(0, 0, 0);
+                Players[1 - ChargeBy].Player.Vel.Set(0, 0, 0);
+                if (ChargeTime >= ChargeSeconds) { ZoneBy = ChargeBy; ZoneTime = 0; ChargeBy = -1; Note(ZoneBy, "zone", 0); }
+                Intents[0].ClearEdges(); Intents[1].ClearEdges();
+                return true;
             }
             if (WindupBy >= 0)
             {
@@ -170,7 +214,7 @@ namespace SquashSim
             PinWindup();
         }
 
-        /// <summary>The striker in the air above the T and the ball at their racket, held there; the swing drawn back.</summary>
+        /// <summary>The striker in the air where they jumped and the ball at their racket, held there; the swing drawn back.</summary>
         void PinWindup()
         {
             var c = Players[WindupBy];
@@ -196,30 +240,31 @@ namespace SquashSim
         void StartSpecial(int i)
         {
             var c = Players[i];
-            var pr = c.Prediction;
-            ZoneBy = i; ZoneTime = 0;
+            ChargeBy = i; ChargeTime = 0;
             _focusing[0] = _focusing[1] = false;
-            // the jump: up above the T, the ball pulled to the racket (beside and above the head)
+            // right where you stand (kept off the walls); the ball comes to your racket, beside and above your head
             double sp = PhysicsConfig.Current.MovementAssist.PreferredSpacing;
-            double x = 0, zz = SHORT_LINE_Z + 0.4;
+            var at = c.Player.Pos;
+            double x = System.Math.Max(-HALF_W + 0.9, System.Math.Min(HALF_W - 0.9, at.X)), zz = System.Math.Max(2.0, System.Math.Min(LENGTH - 1.2, at.Z));
+            double side = x > 0 ? -1 : 1;                                                // (the racket on the open side, towards the middle)
             _airAt.Set(x, 0, zz);
-            _zoneBall.Set(x + System.Math.Max(0.75, sp), AirHeight + 1.5, zz - 0.3);
-            c.Player.Pos.Set(x, AirHeight, zz);
+            _zoneBall.Set(x + side * System.Math.Max(0.75, sp), AirHeight + 1.5, zz - 0.3);
+            c.Player.Pos.Set(x, 0, zz);
             c.Player.Vel.Set(0, 0, 0);
             c.Racket.MarkTeleported();
-            // the opponent never stands in the way of it: moved clear (towards the T side away from you), and no call carried over
+            // the opponent never stands in the way of it: moved clear (across the court), and no call carried over
             var o = Players[1 - i].Player;
             double dx = o.Pos.X - x, dz = o.Pos.Z - zz;
             if (dx * dx + dz * dz < 2.0 * 2.0)
             {
-                double ox = o.Pos.X >= 0 ? 1.9 : -1.9, oz = System.Math.Max(3.0, System.Math.Min(CourtDimensions.LENGTH - 1.0, zz + 1.8));
+                double ox = x >= 0 ? x - 2.2 : x + 2.2, oz = System.Math.Max(3.0, System.Math.Min(LENGTH - 1.0, zz + 1.2));
                 o.Pos.Set(System.Math.Max(-HALF_W + 0.4, System.Math.Min(HALF_W - 0.4, ox)), 0, oz);
                 o.Vel.Set(0, 0, 0);
                 Players[1 - i].Racket.MarkTeleported();
             }
             Interference.Reset();
             Ball.Pos.CopyFrom(_zoneBall); Ball.Vel.Set(0, 0, 0);
-            Note(i, "zone", 0);
+            Note(i, "charge", 0);
         }
 
         void FireSpecial(int i)
@@ -238,20 +283,45 @@ namespace SquashSim
             OnRacketContact(i, hit);
             mm.Power = 0;                                                     // (the stroke's own meter share: not for this one)
             SpecialBy = i; SpecialDefended = false; SpecialsFired++;
+            DuelAt = double.NaN; DuelResult = 0; _duelPressed = false;
             var op = ModsOf(Players[1 - i].Player);
             op.ReachCut = SpecialReachCut; op.GraceCut = SpecialGraceCut;
             Note(i, "special", 0);
             _landBy = i;                                                      // back down to the floor
         }
 
-        /// <summary>Focus against a Special Shot (the meter drains as for any Focus): the ball slowed, most of the cut lifted.</summary>
-        void DefendSpecial(int j)
+        /// <summary>The duel won: the cuts lifted, Focus speed, and the return will be weak.</summary>
+        void WinDuel(int j)
         {
-            var mm = M(Players[j]);
-            if (mm == null) return;
-            mm.ReachCut = DefendedReachCut; mm.GraceCut = DefendedGraceCut;
-            SpecialDefended = true; SpecialsDefended++;
+            var mm = ModsOf(Players[j].Player);
+            mm.ReachCut = 0; mm.GraceCut = 0;
+            SpecialDefended = true; SpecialsDefended++; DuelResult = 1;
+            _weakReturn[j] = true;
             Note(j, "defend", 0);
+        }
+
+        /// <summary>Seconds until the ball comes nearest the defender where they stand (at a playable height, before it's dead).</summary>
+        double ArrivalIn(int j)
+        {
+            var p = Players[j].Player;
+            var cfg = PhysicsConfig.Current;
+            double minH = cfg.Ball.Radius * 0.9, maxH = cfg.Racket.MaxContactHeight;
+            var b = _reachBall;
+            b.Pos.CopyFrom(Ball.Pos); b.Vel.CopyFrom(Ball.Vel); b.Omega.CopyFrom(Ball.Omega);
+            b.Temperature = Ball.Temperature; b.DipOffFrontWall = Ball.DipOffFrontWall; b.Resting = Ball.Resting; b.Asleep = Ball.Asleep;
+            b.SimTime = 0; b.FloorBounces = 0; b.LastCollisionSurface = Ball.LastCollisionSurface; b.ImpactHistory.Clear();
+            double dt = 0.01, best = double.MaxValue, at = 0.3;
+            int floors = Ball.FloorSinceFrontWall;
+            for (int k = 1; k <= 150; k++)
+            {
+                _reachEvents.Clear();
+                BallPhysics.Step(b, Surfaces, dt, _reachEvents);
+                if (floors + b.FloorBounces > 1) break;
+                if (b.Pos.Y < minH || b.Pos.Y > maxH) continue;
+                double d = DMath.Hypot(b.Pos.X - p.Pos.X, b.Pos.Z - p.Pos.Z);
+                if (d < best) { best = d; at = k * dt; }
+            }
+            return at;
         }
 
         // ---------------- 2026-11-22 evening: the smart dive (Space / RT, let go) ----------------
@@ -311,15 +381,26 @@ namespace SquashSim
             return false;
         }
 
-        /// <summary>A stroke by someone: a Special Shot in flight is over (the striker's own one has just begun).</summary>
-        void SpecialAtContact(int i) { if (SpecialBy >= 0 && SpecialBy != i) { SpecialBy = -1; SpecialDefended = false; } }
+        /// <summary>A stroke by someone: a Special Shot in flight is over (the striker's own one has just begun); a duel's winner plays
+        /// a weak return.</summary>
+        void SpecialAtContact(int i)
+        {
+            if (_weakReturn[i])
+            {
+                _weakReturn[i] = false;
+                Ball.Vel.X *= DuelReturnPace; Ball.Vel.Z *= DuelReturnPace; Ball.Vel.Y = Ball.Vel.Y * DuelReturnPace + 1.2;   // (a pop-up)
+            }
+            if (SpecialBy >= 0 && SpecialBy != i) { SpecialBy = -1; SpecialDefended = false; DuelAt = double.NaN; DuelResult = 0; }
+        }
 
         void SpecialReset()
         {
             ZoneBy = -1; SpecialBy = -1; SpecialDefended = false; _focusing[0] = _focusing[1] = false;
-            WindupBy = -1; _landBy = -1;
+            WindupBy = -1; _landBy = -1; ChargeBy = -1;
             for (int i = 0; i < 2; i++) Players[i].Player.Pos.Y = 0;
             _heldWas[0] = _heldWas[1] = false;
+            _weakReturn[0] = _weakReturn[1] = false;
+            DuelAt = double.NaN; DuelResult = 0; _duelPressed = false;
         }
 
     }
