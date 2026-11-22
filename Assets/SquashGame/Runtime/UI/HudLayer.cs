@@ -39,7 +39,8 @@ namespace SquashGame
         readonly Label[] _name = new Label[2], _points = new Label[2];
         readonly VisualElement[] _stamina = new VisualElement[2];               // P7 phase 1: each player's stamina, under the score
         /// <summary>The stamina bars' fill, 0..1 (tests).</summary>
-        public float StaminaShown(int p) { return _stamina[p] == null ? -1f : _stamina[p].resolvedStyle.width / 64f; }
+        public float StaminaShown(int p) { return _stamina[p] == null ? -1f : _stamina[p].resolvedStyle.width / StaminaBarWidth; }
+        public const float StaminaBarWidth = 96f;
         readonly Label _system = new Label(), _games = new Label(), _meta = new Label();
         readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label(), _promptKey = new Label();
         readonly VisualElement _third = new VisualElement(), _promptBox = new VisualElement();
@@ -127,7 +128,8 @@ namespace SquashGame
                 side.Add(nameRow); side.Add(_points[p]);
                 var bar = new VisualElement(); bar.AddToClassList("sb-stamina");
                 _stamina[p] = new VisualElement(); _stamina[p].AddToClassList("sb-stamina-fill");
-                bar.Add(_stamina[p]); side.Add(bar);
+                bar.Add(_stamina[p]);
+                side.Add(bar);                                                // 2026-11-22 evening: wider, thicker
                 _plus[p] = new Label("+1"); _plus[p].AddToClassList("sb-plus"); _plus[p].pickingMode = PickingMode.Ignore; side.Add(_plus[p]);
                 _side[p] = side;
                 _bug.Add(side);
@@ -422,7 +424,7 @@ namespace SquashGame
                 _points[p].text = s.Points[p].ToString();
                 // P7 phase 1: the stamina bar - amber when tired, red when spent
                 float st = Mathf.Clamp01((float)m.Players[p].Player.Stamina);
-                _stamina[p].style.width = 64f * st;
+                _stamina[p].style.width = StaminaBarWidth * st;
                 float tiredAt = (float)PhysicsConfig.Current.Fatigue.TiredBelow;
                 _stamina[p].EnableInClassList("sb-stamina-fill--tired", tiredAt > 0 && st < tiredAt);
                 _stamina[p].EnableInClassList("sb-stamina-fill--spent", tiredAt > 0 && st < 0.35f);
