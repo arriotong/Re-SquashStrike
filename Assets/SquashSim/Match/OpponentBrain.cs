@@ -681,7 +681,16 @@ namespace SquashSim
                 {
                     int side = m.Score.ServeSide;
                     bool hard = Uniform() < (0.1 + 0.35 * Profile.RiskAppetite) * (0.2 + 0.8 * Profile.Skill);   // hard serves come with skill
-                    _aimPX = side * (0.35 + 0.2 * Uniform()) + Gauss() * Profile.AimNoise * ArcadeAimNoiseScale * 0.2;
+                    // 2026-11-22 (the user: "bots serve fault too much"): a hard serve aimed near the middle came off the front wall too
+                    // steeply, hit the far side wall and came back to the server's own side (a fault) - it aims further over its own
+                    // side, a shallower line straight to the back corner; and the aim error is kept off the half-court line
+                    double noise = System.Math.Max(-0.12, System.Math.Min(0.12, Gauss() * Profile.AimNoise * ArcadeAimNoiseScale * 0.2));
+                    // the hard serve: the front-wall point on the line from where it's struck (a little right of the server) to the
+                    // receiver's back corner - each box has its own angle
+                    var sp = ctrl.Player.Pos;
+                    double cx = sp.X + 0.35, cz = sp.Z, landX = -side * (2.3 + 0.3 * Uniform()), landZ = 9.6;
+                    double wallX = cx + (landX - cx) * cz / (cz + landZ);
+                    _aimPX = hard ? wallX + noise : side * (0.35 + 0.2 * Uniform()) + noise;
                     _aimPY = hard ? 2.05 + 0.3 * Uniform() : 2.3 + 0.7 * Profile.Skill * Uniform();       // a weaker player serves lower, shorter
                     _aChargeFor = hard ? 0.45 + 0.45 * Uniform() : 0.04;
                     _serveAimSet = true;
