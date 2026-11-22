@@ -1758,6 +1758,7 @@
 .pk { flex-direction: row; flex-grow: 1; align-items: stretch; margin-top: 6px; }
 .pk-left { width: 56%; margin-right: 22px; }
 .pk-scroll { flex-grow: 1; }
+.pk-left > .k-tabs--strip { position: relative; left: 0; right: 0; top: 0; margin-bottom: 10px; }   /* 2026-11-22 evening: tabs over the grid */
 .pk-grid { flex-direction: row; flex-wrap: wrap; align-content: flex-start; padding: 8px 4px 40px 4px; }
 .k-card.pk-tile { width: 178px; height: 150px; margin: 0 12px 12px 0; }
 .pk-tile .k-card-title { font-size: 20px; }

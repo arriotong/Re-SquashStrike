@@ -428,10 +428,11 @@ namespace SquashGame.UI
         {
             var row = Kit.Box(under, "k-diff");
             _segs.Clear();
-            for (int i = 0; i < MatchChoices.Ladder.Length; i++) { var seg = Kit.Box(row, "k-diff-seg"); _segs.Add(seg); }
+            for (int i = 0; i < MeterSegments; i++) { var seg = Kit.Box(row, "k-diff-seg"); _segs.Add(seg); }   // (2026-11-22 evening: ten, for 100 opponents)
             _tier = Kit.L(row, "", "k-diff-tier");
         }
 
+        public const int MeterSegments = 10;
         public static readonly string[] TierNames = { "EASY", "MEDIUM", "HARD", "PRO", "WORLD No. 1" };
         static readonly Color[] TierColors = { new Color(0.47f, 0.86f, 0.35f), new Color(1f, 0.81f, 0.23f), new Color(1f, 0.55f, 0.16f), new Color(1f, 0.29f, 0.25f), new Color(0.75f, 0.47f, 1f) };
         /// <summary>The ladder's place as a difficulty word: the bottom quarter easy ... the top, the world No. 1.</summary>
@@ -445,9 +446,10 @@ namespace SquashGame.UI
         void UpdateMeter()
         {
             if (_tier == null) return;
-            int at = MatchChoices.LadderIndex(C.OpponentId), n = _segs.Count, t = Tier(at, n);
+            int all = MatchChoices.Ladder.Length, at = MatchChoices.LadderIndex(C.OpponentId), n = _segs.Count, t = Tier(at, all);
+            int lit = all > 1 ? Mathf.RoundToInt((float)at / (all - 1) * (n - 1)) : 0;
             for (int i = 0; i < n; i++)
-                _segs[i].style.backgroundColor = i <= at ? TierColors[Tier(i, n)] : new Color(1f, 1f, 1f, 0.1f);
+                _segs[i].style.backgroundColor = i <= lit ? TierColors[Tier(i, n)] : new Color(1f, 1f, 1f, 0.1f);
             _tier.text = TierNames[t];
             _tier.style.backgroundColor = TierColors[t];
         }

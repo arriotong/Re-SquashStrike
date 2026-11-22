@@ -68,7 +68,7 @@ namespace SquashGame.UI
         // ---- the classes' colours and names (the pros' too) ----
         public static Color ClassColour(string id)
         {
-            switch (id)
+            switch (PlayerClasses.FamilyOf(id))                                 // 2026-11-22 evening: 35 classes, five colours
             {
                 case "power": return new Color32(255, 90, 74, 255);
                 case "accuracy": return new Color32(60, 200, 255, 255);
@@ -85,7 +85,9 @@ namespace SquashGame.UI
             var pp = ProPersonas.For(id);
             if (pp != null && PlayerClasses.Find(pp.Class) != null) return pp.Class;          // the top 10: their own
             var star = SquashSim.Career.Stars.Find(id);
-            if (star != null) return PlayerClasses.ReadAs(star.Attributes, star.Signature);
+            if (star != null) return PlayerClasses.Nearest(star.Attributes, (uint)star.Rank);   // 2026-11-22 evening: the nearest of all 35
+            var club = SquashSim.Career.Stars.FindClub(id);
+            if (club != null) return club.Class;
             string style = SquashSim.Career.Stars.Describe(id).style;
             switch (style)
             {
@@ -143,6 +145,23 @@ namespace SquashGame.UI
         protected abstract void Describe(string id, VisualElement into);
         /// <summary>The look follows the tile in focus (the opponent's kit, the court behind).</summary>
         protected virtual void Hover(string id) { }
+        /// <summary>2026-11-22 evening: tabs over the grid (Q / E, LB / RB) - null: one grid. Which tab a tile is on, its order there.</summary>
+        protected virtual string[] TabNames { get { return null; } }
+        protected virtual int TabOf(string id) { return 0; }
+        protected virtual int TabOrder(string id) { return 0; }
+        TabBar _tabBar;
+        /// <summary>The tab shown (tests).</summary>
+        public int TabShown { get; private set; }
+        void ShowTab(int t)
+        {
+            TabShown = t;
+            foreach (var tile in Tiles) tile.item.Root.style.display = TabOf(tile.id) == t ? DisplayStyle.Flex : DisplayStyle.None;
+            var f = Focused;
+            if (f == null || f.Root.style.display == DisplayStyle.None)
+                foreach (var tile in Tiles) if (TabOf(tile.id) == t) { Focus(tile.item); break; }
+            if (_scroll != null) _scroll.scrollOffset = Vector2.zero;
+        }
+        public override void OnTab(int d) { if (_tabBar != null) _tabBar.Step(d); }
 
         protected override void Compose()
         {
@@ -151,9 +170,13 @@ namespace SquashGame.UI
             _scroll = new ScrollView(ScrollViewMode.Vertical);
             _scroll.AddToClassList("pk-scroll");
             _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            var names = TabNames;
+            if (names != null) { _tabBar = new TabBar(names); _tabBar.Changed += ShowTab; left.Add(_tabBar); }
             left.Add(_scroll);
             var grid = Kit.Box(_scroll, "pk-grid");
-            foreach (var id in Ids)
+            var ids = new List<string>(Ids);
+            if (names != null) ids.Sort((a, b) => TabOf(a) != TabOf(b) ? TabOf(a).CompareTo(TabOf(b)) : TabOrder(a).CompareTo(TabOrder(b)));
+            foreach (var id in ids)
             {
                 string pick = id;
                 // a portrait-like tile: its colour (the class, the walls), big initials, the name under
@@ -178,6 +201,7 @@ namespace SquashGame.UI
             MenuCinematics.Scene = TwoPlayer ? 1 : 0;
             MatchRunner.Showcase = true; MatchRunner.Studio = true; MatchRunner.StudioPair = true; KitStudio.Show(true);
             string cur = Current;
+            if (_tabBar != null) { int want = TabOf(cur); _tabBar.Select(want); ShowTab(want); }
             foreach (var t in Tiles) if (t.id == cur) { Focus(t.item); break; }
             _shown = null;
         }
@@ -284,6 +308,10 @@ namespace SquashGame.UI
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }
 
         protected override IEnumerable<string> Ids { get { return MatchChoices.Ladder; } }
+        // 2026-11-22 evening (the user's answer: tabs, Pros / Club): the pros by world rank, the club players by rating
+        protected override string[] TabNames { get { return new[] { "PROS", "CLUB" }; } }
+        protected override int TabOf(string id) { return id != null && id.StartsWith("star:") ? 0 : 1; }
+        protected override int TabOrder(string id) { var s = SquashSim.Career.Stars.Find(id); return s != null ? s.Rank : -SquashSim.Career.Stars.Describe(id).rating; }
         protected override string TileName(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name; }
         protected override string TileKicker(string id)
         {
@@ -400,6 +428,11 @@ namespace SquashGame.UI
         static MenuChoices C { get { return ProfileStore.Current.Choices; } }
 
         protected override IEnumerable<string> Ids { get { foreach (var c in PlayerClasses.All) yield return c.Id; } }
+        // 2026-11-22 evening: 35 classes - a tab for each family (Q / E), seven or so in each
+        static readonly string[] Families = { "power", "accuracy", "speed", "touch", "allround" };
+        protected override string[] TabNames { get { return new[] { "POWER", "ACCURACY", "SPEED", "TOUCH", "ALL-ROUND" }; } }
+        protected override int TabOf(string id) { return System.Math.Max(0, System.Array.IndexOf(Families, PlayerClasses.FamilyOf(id))); }
+        protected override int TabOrder(string id) { return System.Array.FindIndex(PlayerClasses.All, c => c.Id == id); }
         protected override string TileName(string id) { return SetupFlow.ClassName(id); }
         protected override string TileKicker(string id) { var d = PlayerClasses.Find(id); return d != null ? d.Short.ToUpperInvariant() : ""; }
         protected override Color TileColour(string id) { return SetupFlow.ClassColour(id); }

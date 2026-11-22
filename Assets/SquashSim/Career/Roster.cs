@@ -64,6 +64,13 @@ namespace SquashSim.Career
             }
         }
 
+        /// <summary>2026-11-22 evening: a made-up person's name, the k-th (Quick Match's club players) - the game's own lists.</summary>
+        public static string PersonName(int k)
+        {
+            int f = (k * 37 + 11) % Firsts.Length, l = (k * 53 + 29) % Lasts.Length;
+            return Firsts[f] + " " + Lasts[l];
+        }
+
         public static string StyleName(string style) { int i = Array.IndexOf(AllStyles, style); return i >= 0 ? AllStyleNames[i] : style; }
 
         public static readonly string[] Nations =

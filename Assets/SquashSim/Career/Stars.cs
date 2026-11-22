@@ -205,9 +205,73 @@ namespace SquashSim.Career
             style = null; rating = 0;
             if (id == null || !id.StartsWith("club:")) return false;
             var p = id.Split(':');
-            if (p.Length != 3 || !int.TryParse(p[2], out rating)) return false;
+            if ((p.Length != 3 && p.Length != 4) || !int.TryParse(p[2], out rating)) return false;   // (2026-11-22 evening: a 4th part names one)
             style = p[1];
             return true;
+        }
+
+        // ---------------- 2026-11-22 evening (the user: "consider putting more different characters in maybe all world no.1 to no.50
+        // ... adding more like club players in would be good ... opponents ideally club players + pro players add up to about 100") ----
+
+        /// <summary>One of Quick Match's named club players: "club:style:rating:NN" - played as the style at the rating.</summary>
+        public sealed class ClubPlayer { public int No; public string Name, Style, Class; public int Rating; public string Id; }
+        public const int ClubCount = 50;
+        static List<ClubPlayer> _clubs;
+        static readonly string[] ClubStyles = { "retriever", "attacker", "grinder", "shotmaker", "counter", "volleyer", "powerhouse", "magician" };
+        /// <summary>The club players, easiest first (rated 52 to 84).</summary>
+        public static List<ClubPlayer> Clubs()
+        {
+            if (_clubs != null) return _clubs;
+            _clubs = new List<ClubPlayer>();
+            for (int k = 0; k < ClubCount; k++)
+            {
+                int rating = 52 + (int)System.Math.Round(32.0 * k / (ClubCount - 1));
+                string style = ClubStyles[(k * 3 + k / 8) % ClubStyles.Length];
+                var c = new ClubPlayer { No = k + 1, Name = Roster.PersonName(k + 200), Style = style, Rating = rating };
+                c.Id = "club:" + style + ":" + rating + ":" + c.No.ToString("00");
+                c.Class = ClubClassFor(style, k);
+                _clubs.Add(c);
+            }
+            return _clubs;
+        }
+        static string ClubClassFor(string style, int k)
+        {
+            string[] pick;
+            switch (style)
+            {
+                case "attacker": pick = new[] { "power", "bully", "nickartist", "hunter" }; break;
+                case "powerhouse": pick = new[] { "slugger", "bomber", "tank", "showman" }; break;
+                case "retriever": pick = new[] { "speed", "chaser", "sprinter", "wall" }; break;
+                case "counter": pick = new[] { "wall", "longarms", "secondwind", "hustler" }; break;
+                case "grinder": pick = new[] { "grafter", "marathon", "railman", "zen" }; break;
+                case "shotmaker": pick = new[] { "touch", "dropper", "lobber", "trickster" }; break;
+                case "magician": pick = new[] { "matador", "trickster", "curver", "earlybird" }; break;
+                case "volleyer": pick = new[] { "volleyshark", "accuracy", "sniper", "closer" }; break;
+                default: pick = new[] { "allround", "clockwork", "crosscourt", "lightning" }; break;
+            }
+            string id = pick[(k / 2) % pick.Length];
+            return PlayerClasses.Find(id) != null ? id : PlayerClasses.Default;
+        }
+        public static ClubPlayer FindClub(string id)
+        {
+            if (id == null || !id.StartsWith("club:")) return null;
+            foreach (var c in Clubs()) if (c.Id == id) return c;
+            return null;
+        }
+        static string[] _allOpponents;
+        /// <summary>Quick Match's opponents, easiest first: the 50 club players, then the 50 pros from No. 50 up to the No. 1.</summary>
+        public static string[] AllOpponents
+        {
+            get
+            {
+                if (_allOpponents != null) return _allOpponents;
+                var l = new List<string>();
+                foreach (var c in Clubs()) l.Add(c.Id);
+                var stars = All();
+                for (int i = stars.Count - 1; i >= 0; i--) l.Add("star:" + stars[i].Id);
+                _allOpponents = l.ToArray();
+                return _allOpponents;
+            }
         }
 
         /// <summary>Quick Match's opponents, easiest first: two club players, then stars up to the world No. 1.</summary>
@@ -221,6 +285,8 @@ namespace SquashSim.Career
         {
             var s = Find(id);
             if (s != null) return (FullName(s), s.Style, s.Rating);
+            var club = FindClub(id);
+            if (club != null) return (club.Name, club.Style, club.Rating);
             if (ParseClub(id, out string style, out int rating)) return ("Club " + Roster.StyleName(style), style, rating);
             return (id == "wallbot" ? "Wall-bot" : Roster.StyleName(id), id, 0);
         }

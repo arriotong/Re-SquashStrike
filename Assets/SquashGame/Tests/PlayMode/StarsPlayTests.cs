@@ -81,13 +81,23 @@ namespace SquashGame.Tests
             // step 2: the opponent - the ladder in a grid, the pro on the right
             Assert.That(fe.Top, Is.InstanceOf<OpponentPickScreen>());
             var op = (OpponentPickScreen)fe.Top;
+            // 2026-11-22 evening: 100 - two tabs, the club players (yours to start) and the pros
+            Assert.That(MatchChoices.Ladder.Length, Is.EqualTo(100), "50 club players and the 50 pros");
+            Assert.That(op.TabShown, Is.EqualTo(1), "on the club tab (where your opponent is)");
             var tiles = op.Reachable().FindAll(i => i is CardItem);
-            Assert.That(tiles.Count, Is.EqualTo(MatchChoices.Ladder.Length), "everyone on the ladder");
+            Assert.That(tiles.Count, Is.EqualTo(50), "every club player");
             Assert.That(op.FocusedId, Is.EqualTo(MatchChoices.Ladder[0]), "on the one you had");
-            var top = (CardItem)tiles[tiles.Count - 1];
+            yield return Wait(0.4f, () => false);
+            yield return CaptureUI(fe, "SETUP_2_Club.png");
+            op.OnTab(-1);
+            yield return null; yield return null;
+            Assert.That(op.TabShown, Is.EqualTo(0), "Q: the pros");
+            tiles = op.Reachable().FindAll(i => i is CardItem);
+            Assert.That(tiles.Count, Is.EqualTo(50), "all 50 pros");
+            var top = (CardItem)tiles[0];
             op.Focus(top);
             yield return Wait(0.6f, () => false);
-            Assert.That(op.FocusedId, Is.EqualTo("star:s01"), "the top of the ladder: the world No. 1");
+            Assert.That(op.FocusedId, Is.EqualTo("star:s01"), "the pros by rank: the world No. 1 first");
             yield return CaptureUI(fe, "SETUP_2_Opponent.png");
             top.Submit();
             yield return null; yield return null;
@@ -105,8 +115,18 @@ namespace SquashGame.Tests
             // step 4: your class
             Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>());
             var kp = (ClassPickScreen)fe.Top;
+            // 2026-11-22 evening: 35 classes in five family tabs
+            int total = 0;
+            for (int t = 0; t < 5; t++)
+            {
+                while (kp.TabShown != t) { kp.OnTab(1); yield return null; }
+                int n = kp.Reachable().FindAll(i => i is CardItem).Count;
+                Assert.That(n, Is.InRange(5, 9), "a family's classes (tab " + t + ")");
+                total += n;
+            }
+            Assert.That(total, Is.EqualTo(35), "35 classes");
+            while (kp.TabShown != 0) { kp.OnTab(1); yield return null; }
             var classes = kp.Reachable().FindAll(i => i is CardItem);
-            Assert.That(classes.Count, Is.EqualTo(5), "five classes");
             var power = (CardItem)classes.Find(i => ((CardItem)i).Title == "Power");
             kp.Focus(power);
             yield return Wait(0.6f, () => false);
@@ -277,6 +297,8 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var pick = (ClassPickScreen)fe.Top;
             Assert.That(pick.FocusedId, Is.EqualTo("allround"), "on the class it has");
+            Assert.That(pick.TabShown, Is.EqualTo(4), "on its family's tab (all-round)");
+            while (pick.TabShown != 3) { pick.OnTab(-1); yield return null; }        // (2026-11-22 evening: Q to the Touch family)
             var touch = (CardItem)pick.Reachable().Find(i => i is CardItem c && c.Title == "Touch");
             touch.Submit();
             yield return null;

@@ -1,0 +1,1 @@
+static class NearestPeek { public static void Run() { var d = new System.Collections.Generic.Dictionary<string,int>(); foreach (var s in SquashSim.Career.Stars.All()) { var c = SquashSim.PlayerClasses.Nearest(s.Attributes, (uint)s.Rank); d[c] = d.TryGetValue(c, out int n) ? n + 1 : 1; } foreach (var kv in d) System.Console.WriteLine(kv.Key + " " + kv.Value); } }

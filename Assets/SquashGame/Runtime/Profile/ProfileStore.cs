@@ -65,7 +65,7 @@ namespace SquashGame.Profile
     {
         public int Opponent = 0, Difficulty = 0, Length = 0, Scoring = 0;      // 2026-10-25 playtest: a first match is one game on Easy
         /// <summary>P6: Quick Match's opponent (a Stars.QuickLadder id; Opponent / Difficulty are read once, from an older save).</summary>
-        public string OpponentId = "club:retriever:62";
+        public string OpponentId = SquashSim.Career.Stars.AllOpponents[0];   // (2026-11-22 evening: the easiest of the 100)
         /// <summary>Batch 2: Quick Match with the arcade abilities (MatchChoices.AbilityKit; off: the plain game).</summary>
         public bool Abilities;
         public int VsLength = 2, VsScoring = 0;

@@ -18,7 +18,7 @@ namespace SquashSim.Tests
     {
         [Test] public void FiveClassesEachWithAStrengthAWeaknessAndAPerk()
         {
-            Assert.That(PlayerClasses.All.Length, Is.EqualTo(5));
+            Assert.That(PlayerClasses.All.Length, Is.EqualTo(35), "the five, and 30 more (2026-11-22 evening)");
             foreach (var c in PlayerClasses.All)
             {
                 Assert.That(c.Strengths.Length, Is.EqualTo(2), c.Id);
@@ -57,6 +57,35 @@ namespace SquashSim.Tests
             Assert.That(PlayerClasses.ReadAs(new AthleteAttributes { Control = 8 }, new List<RunMod> { new RunMod { Id = "vdrop", Level = 2 } }), Is.EqualTo("touch"));
             Assert.That(PlayerClasses.ReadAs(new AthleteAttributes()), Is.EqualTo("allround"));
             foreach (var s in SquashSim.Career.Stars.All()) Assert.That(PlayerClasses.Find(PlayerClasses.ReadAs(s.Attributes, s.Signature)), Is.Not.Null, s.Id);
+        }
+
+        /// <summary>2026-11-22 evening (the user: "more different player classes ... maybe like 30 - 40"): 35 classes, each its own, in
+        /// one of the five families, with real cards; and 100 Quick Match opponents (50 named club players, the 50 pros), each with one.</summary>
+        [Test] public void ThirtyFiveClassesAndAHundredOpponents()
+        {
+            Assert.That(PlayerClasses.All.Length, Is.InRange(30, 40));
+            var ids = new HashSet<string>(); var names = new HashSet<string>();
+            string[] families = { "power", "accuracy", "speed", "touch", "allround" };
+            foreach (var d in PlayerClasses.All)
+            {
+                Assert.That(ids.Add(d.Id), Is.True, "unique id " + d.Id);
+                Assert.That(names.Add(d.Name), Is.True, "unique name " + d.Name);
+                Assert.That(System.Array.IndexOf(families, d.Family), Is.GreaterThanOrEqualTo(0), d.Id + " has a family");
+                Assert.That(d.Strengths.Length, Is.EqualTo(2), d.Id);
+                foreach (var c in d.Cards) Assert.That(SquashSim.Modes.GauntletAbilities.Find(c.Id), Is.Not.Null, d.Id + ": card " + c.Id);
+                Assert.That(System.Array.IndexOf(SquashSim.Career.Roster.AllStyles, d.Id), Is.EqualTo(-1), d.Id + ": not an AI style's name");
+            }
+            var all = SquashSim.Career.Stars.AllOpponents;
+            Assert.That(all.Length, Is.EqualTo(100), "50 club players and the 50 pros");
+            Assert.That(new HashSet<string>(all).Count, Is.EqualTo(100), "no one twice");
+            foreach (var c in SquashSim.Career.Stars.Clubs())
+            {
+                Assert.That(PlayerClasses.Find(c.Class), Is.Not.Null, c.Id + "'s class");
+                Assert.That(SquashSim.Career.Stars.Describe(c.Id).name, Is.EqualTo(c.Name));
+                Assert.That(SquashSim.Career.Stars.DifficultyFor(c.Id, -1), Is.GreaterThanOrEqualTo(0), "it plays at its rating");
+                Assert.That(AiProfile.For(c.Id, 0.5), Is.Not.Null);
+            }
+            foreach (var s in SquashSim.Career.Stars.All()) Assert.That(PlayerClasses.Find(PlayerClasses.Nearest(s.Attributes, (uint)s.Rank)), Is.Not.Null, s.Id);
         }
 
         [Test] public void TheClassIsKeptWithTheMatch()

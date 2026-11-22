@@ -134,10 +134,11 @@ namespace SquashGame.UI
     public static class MatchChoices
     {
         /// <summary>P6: Quick Match's opponents, easiest first (two club players, then stars up to the world No. 1).</summary>
-        public static string[] Ladder { get { return SquashSim.Career.Stars.QuickLadder; } }
+        public static string[] Ladder { get { return SquashSim.Career.Stars.AllOpponents; } }   // 2026-11-22 evening: all 100
         public static int LadderIndex(string id) { return Math.Max(0, Array.IndexOf(Ladder, id)); }
         /// <summary>An older save's Easy / Medium / Hard as the ladder's opponent.</summary>
-        public static string OldToId(int difficulty) { return Ladder[difficulty <= 0 ? 0 : difficulty == 1 ? 1 : 3]; }
+        // (2026-11-22 evening, 100 opponents: Easy a club player rated ~62, Medium ~76, Hard the world No. 30)
+        public static string OldToId(int difficulty) { var c = SquashSim.Career.Stars.Clubs(); return difficulty <= 0 ? c[15].Id : difficulty == 1 ? c[37].Id : "star:s30"; }
         /// <summary>"Zayn Mahrous  99" (the carousel).</summary>
         public static string Label(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name + "  " + d.rating; }
         /// <summary>"Zayn Mahrous  ·  99  ·  Powerhouse" (the PLAY card).</summary>
