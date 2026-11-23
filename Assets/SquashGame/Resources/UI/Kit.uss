@@ -1758,6 +1758,24 @@
 .pk { flex-direction: row; flex-grow: 1; align-items: stretch; margin-top: 6px; }
 .pk-left { width: 56%; margin-right: 22px; }
 .pk-scroll { flex-grow: 1; }
+/* 2026-11-23 Local Versus's controls step */
+.k-dev { flex-direction: row; flex-grow: 1; margin-top: 6px; }
+.k-dev-left { width: 46%; margin-right: 24px; }
+.k-dev-right { flex-grow: 1; padding: 18px 22px; border-radius: 16px; background-color: rgba(12, 13, 18, 0.86); border-width: 1px; border-color: rgba(255, 255, 255, 0.10); }
+.k-dev-player { font-size: 22px; letter-spacing: 4px; color: rgb(200, 255, 61); margin: 14px 0 4px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-dev-keys { font-size: 15px; color: rgba(255, 255, 255, 0.78); margin: 2px 0 6px 4px; white-space: normal; }
+.k-dev-head { font-size: 20px; letter-spacing: 4px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-dev-hint { font-size: 15px; color: rgba(255, 255, 255, 0.6); margin: 2px 0 12px 0; white-space: normal; }
+.k-dev-row { flex-direction: row; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-width: 2px; border-color: rgba(0, 0, 0, 0); }
+.k-dev-row--on { background-color: rgba(200, 255, 61, 0.22); border-color: rgb(200, 255, 61); }
+.k-dev-row--p1 { border-left-color: rgb(80, 160, 255); border-left-width: 6px; }
+.k-dev-row--p2 { border-left-color: rgb(255, 90, 74); border-left-width: 6px; }
+.k-dev-dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 12px; background-color: rgba(255, 255, 255, 0.2); }
+.k-dev-row--on .k-dev-dot { background-color: rgb(200, 255, 61); }
+.k-dev-kind { width: 110px; font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-dev-name { font-size: 18px; color: rgb(255, 255, 255); flex-shrink: 1; }
+.k-dev-left .k-car-value { font-size: 26px; white-space: normal; -unity-text-align: middle-center; }
+.k-dev-left .k-carousel { min-height: 0; }
 .pk-left > .k-tabs--strip { position: relative; left: 0; right: 0; top: 0; margin-bottom: 10px; }   /* 2026-11-22 evening: tabs over the grid */
 .pk-grid { flex-direction: row; flex-wrap: wrap; align-content: flex-start; padding: 8px 4px 40px 4px; }
 .k-card.pk-tile { width: 178px; height: 150px; margin: 0 12px 12px 0; }

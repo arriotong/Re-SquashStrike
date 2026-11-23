@@ -48,7 +48,8 @@ namespace SquashGame.UI
             }
             else
             {
-                if (from is LocalVersusScreen) fe.Push(new CourtPickScreen(true));
+                if (from is LocalVersusScreen) fe.Push(new ControlsScreen());              // 2026-11-23: who plays with what
+                else if (from is ControlsScreen) fe.Push(new CourtPickScreen(true));
                 else if (from is CourtPickScreen) fe.Push(new ClassPickScreen(0, true));
                 else if (from is ClassPickScreen cp && cp.Player == 0) fe.Push(new ClassPickScreen(1, true));
                 else fe.Push(new LocalVersusReadyScreen());
@@ -292,7 +293,7 @@ namespace SquashGame.UI
                 AddTo(board, new SelectorItem("Scoring", VersusScreen.ScoringTiles, () => C.VsScoring, v => C.VsScoring = v));
                 AddTo(board, new SelectorItem(MatchChoices.ControlName, VersusScreen.AimTiles, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
             }
-            AddTo(Root, new PrimaryItem(TwoPlayer ? "Next: the court" : "Next: your opponent", () => SetupFlow.Next(Fe, this, TwoPlayer)));
+            AddTo(Root, new PrimaryItem(TwoPlayer ? "Next: the controls" : "Next: your opponent", () => SetupFlow.Next(Fe, this, TwoPlayer)));
         }
 
         public override void OnHide() { ProfileStore.Save(); }

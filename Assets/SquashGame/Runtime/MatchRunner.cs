@@ -353,27 +353,20 @@ namespace SquashGame
 
         // ---------------- devices ----------------
 
-        /// <summary>Is Local 2P possible right now (at least one pad)?</summary>
-        public static bool CanPlayTwoPlayer { get { return Gamepad.all.Count >= 1; } }
+        /// <summary>Is Local 2P possible right now? 2026-11-23: any two controls that don't clash - two controllers, a controller and a
+        /// keyboard, two keyboards, or one keyboard's two halves (InputSetup).</summary>
+        public static bool CanPlayTwoPlayer { get { return InputSetup.CanPlayTwo; } }
 
-        /// <summary>Who plays with what: two pads -> one each (keyboard stays with P1); one pad -> keyboard vs pad.</summary>
-        public static void AssignDevices(out InputDevice[] p1, out InputDevice[] p2)
+        /// <summary>2026-11-23 (the user: "they can use anything or even both using controllers"): the players' chosen controls (Local
+        /// Versus's Controls step); unset, gone, or clashing - the usual pair (InputSetup.Defaults).</summary>
+        public static void ChosenControls(out PlayerControls p1, out PlayerControls p2)
         {
-            var pads = Gamepad.all;
-            var kbm = new List<InputDevice>();
-            if (Keyboard.current != null) kbm.Add(Keyboard.current);
-            if (Mouse.current != null) kbm.Add(Mouse.current);
-            if (pads.Count >= 2)
-            {
-                kbm.Add(pads[0]);
-                p1 = kbm.ToArray();
-                p2 = new InputDevice[] { pads[1] };
-            }
-            else
-            {
-                p1 = kbm.ToArray();
-                p2 = pads.Count == 1 ? new InputDevice[] { pads[0] } : new InputDevice[0];
-            }
+            var c = Profile.ProfileStore.Current.Choices;
+            string a = c.VsControls1, am = c.VsMouse1, b = c.VsControls2, bm = c.VsMouse2;
+            var prim = InputSetup.Primaries();
+            if (InputSetup.Find(prim, a) == null || InputSetup.Find(prim, b) == null || InputSetup.Clash(a, b)) InputSetup.Defaults(out a, out am, out b, out bm);
+            if (!string.IsNullOrEmpty(am) && am == bm) bm = "";
+            p1 = InputSetup.Resolve(a, am); p2 = InputSetup.Resolve(b, bm);
         }
 
         /// <summary>Start a match with these settings (from the setup panel, or a test).</summary>
@@ -388,13 +381,14 @@ namespace SquashGame
             if (Settings.TwoPlayer && !CanPlayTwoPlayer) Settings.TwoPlayer = false;
             if (Settings.TwoPlayer)
             {
-                AssignDevices(out InputDevice[] p1, out InputDevice[] p2);
-                Input.UseDevices(p1);
-                if (Input2 == null) Input2 = new IntentSource(p2); else Input2.UseDevices(p2);
+                ChosenControls(out PlayerControls p1, out PlayerControls p2);
+                Input.UseControls(p1);
+                if (Input2 == null) Input2 = new IntentSource(p2.Devices);
+                Input2.UseControls(p2);
             }
             else
             {
-                Input.UseDevices(null);
+                Input.UseControls(null);
                 if (Input2 != null) { Input2.Dispose(); Input2 = null; }
             }
             BotSeed = BotSeed * 1664525u + 1013904223u;   // a different (still deterministic) bot each match
@@ -538,20 +532,28 @@ namespace SquashGame
             if (!Settings.TwoPlayer || Input2 == null) { DeviceLost = null; return; }
             bool lost = false;
             foreach (var src in new[] { Input, Input2 })
+            {
                 if (src.Devices != null)
                     foreach (var d in src.Devices) if (d is Gamepad && !d.added) lost = true;
+                var k = src.Controls != null ? src.Controls.Keys as RawKeys : null;             // 2026-11-23: a keyboard unplugged
+                if (k != null && RawInput.Find(k.Device.Path) == null) lost = true;
+            }
             if (lost && DeviceLost == null)
             {
-                DeviceLost = "Controller disconnected - reconnect it to carry on";
+                DeviceLost = "A controller or keyboard was disconnected - reconnect it to carry on";
                 Clock.Pause();
             }
             else if (DeviceLost != null)
             {
-                // Whatever pads are there now: hand them out again and play on.
-                AssignDevices(out InputDevice[] p1, out InputDevice[] p2);
-                if (p2.Length > 0)
+                // back: the same controls again (found by name - a controller plugged back in is a new device), and play on
+                var c = Profile.ProfileStore.Current.Choices;
+                var prim = InputSetup.Primaries();
+                bool chosen = !string.IsNullOrEmpty(c.VsControls1) || !string.IsNullOrEmpty(c.VsControls2);
+                if (chosen && (InputSetup.Find(prim, c.VsControls1) == null || InputSetup.Find(prim, c.VsControls2) == null)) return;
+                ChosenControls(out PlayerControls p1, out PlayerControls p2);
+                if (!p1.Lost && !p2.Lost)
                 {
-                    Input.UseDevices(p1); Input2.UseDevices(p2);
+                    Input.UseControls(p1); Input2.UseControls(p2);
                     DeviceLost = null;
                     Clock.Resume();
                 }

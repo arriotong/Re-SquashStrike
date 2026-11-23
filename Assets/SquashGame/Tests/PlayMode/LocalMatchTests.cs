@@ -80,7 +80,12 @@ namespace SquashGame.Tests
             Assert.That(fe.Top, Is.InstanceOf<LocalVersusScreen>());
             Capture("P2M1_LocalVersus.png");
             yield return HubNav.ToPrimary(fe, pad1.dpad.down, pad1.dpad.right, Tap);
-            yield return Tap(pad1.buttonSouth);                     // 2026-11-22: next - the court, player 1's class, player 2's
+            yield return Tap(pad1.buttonSouth);                     // 2026-11-22: next - (2026-11-23 the controls) the court, the classes
+            Assert.That(fe.Top, Is.InstanceOf<ControlsScreen>(), "2026-11-23: who plays with what");
+            Assert.That(ProfileStore.Current.Choices.VsControls1, Does.StartWith("pad:0"), "two pads: one each - pad 1 for player 1");
+            Assert.That(ProfileStore.Current.Choices.VsControls2, Does.StartWith("pad:1"), "pad 2 for player 2");
+            yield return HubNav.ToPrimary(fe, pad1.dpad.down, pad1.dpad.down, Tap);
+            yield return Tap(pad1.buttonSouth);
             Assert.That(fe.Top, Is.InstanceOf<CourtPickScreen>());
             yield return Tap(pad1.buttonSouth);
             Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>());
@@ -155,7 +160,7 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             MatchRunner r = Object.FindFirstObjectByType<MatchCourt>().Runner;
             var fe = Object.FindFirstObjectByType<FrontEnd>();
-            Assert.That(MatchRunner.CanPlayTwoPlayer, Is.False);
+            Assert.That(MatchRunner.CanPlayTwoPlayer, Is.True, "2026-11-23: a keyboard alone can be split for two");
             yield return Tap(kb.enterKey);                          // title -> home
             yield return Tap(kb.enterKey);                          // PLAY
             var menu = fe.Top;

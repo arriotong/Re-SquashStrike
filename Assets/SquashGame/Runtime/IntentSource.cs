@@ -407,6 +407,77 @@ namespace SquashGame
             Intent.PausePressed |= _pause.WasPressedThisFrame();
             if (_appeal.WasPressedThisFrame() && (MouseGameplayEnabled || !FromMouse(_appeal))) Intent.AppealPressed = true;   // consumed by the next fixed step
             if ((_appeal.WasPressedThisFrame() && !FromMouse(_appeal)) || ReadyKey()) _ready = true;
+            if (Controls != null && Controls.Keys != null) SampleKeys(dt);
+        }
+
+        // ---------------- 2026-11-23: a keyboard (and mouse) read key by key - Local Versus's choice (InputSetup) ----------------
+
+        /// <summary>This player's chosen controls (Local Versus): a controller through the actions above, or a keyboard - whole, or
+        /// a half - and maybe a mouse, read here with its layout. Null: the usual (every device, or the given ones).</summary>
+        public PlayerControls Controls { get; private set; }
+        readonly HashSet<Key> _keysWas = new HashSet<Key>(), _keysNow = new HashSet<Key>();
+        bool _mouseHitWas, _mouseLetWas;
+        float _keyHeld;
+
+        public void UseControls(PlayerControls c)
+        {
+            Controls = c;
+            UseDevices(c != null ? c.Devices : null);
+            _keysWas.Clear();
+            if (c != null) { if (c.Keys != null) { Device = "keyboard"; DeviceLabel = c.Label; } else if (c.Devices.Length > 0) DeviceLabel = c.Label; }
+        }
+
+        bool KeyDown(Key k) { return k != Key.None && _keysNow.Contains(k); }
+        bool KeyPressed(Key k) { return k != Key.None && _keysNow.Contains(k) && !_keysWas.Contains(k); }
+        bool KeyReleased(Key k) { return k != Key.None && !_keysNow.Contains(k) && _keysWas.Contains(k); }
+
+        void SampleKeys(float dt)
+        {
+            var L = Controls.Layout; var keys = Controls.Keys;
+            _keysWas.Clear(); foreach (var k in _keysNow) _keysWas.Add(k);
+            _keysNow.Clear(); foreach (var k in L.All()) if (keys.Down(k)) _keysNow.Add(k);
+            // move: court-relative, full speed
+            float mx = (KeyDown(L.Right) ? 1f : 0f) - (KeyDown(L.Left) ? 1f : 0f), mz = (KeyDown(L.Down) ? 1f : 0f) - (KeyDown(L.Up) ? 1f : 0f);
+            if (mx != 0f || mz != 0f)
+            {
+                float mag = Mathf.Sqrt(mx * mx + mz * mz);
+                Intent.Move.X = mx / mag; Intent.Move.Z = mz / mag; Intent.MoveMagnitude = 1.0;
+            }
+            // aim: keys move the reticle like a stick; a mouse like the mouse
+            float ax = (KeyDown(L.AimRight) ? 1f : 0f) - (KeyDown(L.AimLeft) ? 1f : 0f), ay = (KeyDown(L.AimUp) ? 1f : 0f) - (KeyDown(L.AimDown) ? 1f : 0f);
+            if (ax != 0f || ay != 0f) { _rx += ax * StickReticleSpeed * dt; _ry += ay * StickReticleSpeed * dt; }
+            bool mouseHit = false, mouseLet = false;
+            if (Controls.Mouse != null)
+            {
+                Vector2 d = Controls.Mouse.TakeDelta();
+                if (MouseGameplayEnabled && (d.x != 0f || d.y != 0f))
+                {
+                    float k = MetresPerPixel * MouseSensitivityScale;
+                    _rx += d.x * k; _ry += (InvertMouseY ? -d.y : d.y) * k;
+                }
+                mouseHit = MouseGameplayEnabled && Controls.Mouse.Left; mouseLet = MouseGameplayEnabled && Controls.Mouse.Right;
+            }
+            ClampReticle();
+            Intent.AimPointX = _rx; Intent.AimPointY = _ry;
+            // the stroke: held to charge, let go as the ball comes
+            bool hitNow = KeyDown(L.Hit) || mouseHit, hitWas = _keysWas.Contains(L.Hit) || _mouseHitWas;
+            var b = Intent.Hit;
+            if (hitNow && !hitWas) { b.Pressed = true; _keyHeld = 0f; }
+            if (!hitNow && hitWas) b.Released = true;
+            b.Held = b.Held || hitNow;
+            if (hitNow) { _keyHeld += dt; b.HeldSeconds = Mathf.Max((float)b.HeldSeconds, _keyHeld); } else _keyHeld = 0f;   // (the actions above reset it each frame)
+            _mouseHitWas = mouseHit;
+            Intent.Sprint |= KeyDown(L.Sprint);
+            if (KeyPressed(L.Boast)) Intent.BoastPressed = true;
+            if (KeyPressed(L.Focus)) { _slowmoPressed = true; if (SpaceDives) Intent.DivePressed = true; }
+            Intent.FocusHeld |= KeyDown(L.Focus);
+            if (KeyPressed(L.Special)) Intent.SpecialPressed = true;
+            if (KeyPressed(L.Challenge)) _challengePressed = true;
+            if (KeyPressed(L.Pause)) Intent.PausePressed = true;
+            bool letNow = mouseLet && !_mouseLetWas;
+            _mouseLetWas = mouseLet;
+            if (KeyPressed(L.Appeal) || letNow) Intent.AppealPressed = true;
+            if (KeyPressed(L.Ready) || KeyPressed(L.Appeal)) _ready = true;
         }
 
         bool ReadyKey()

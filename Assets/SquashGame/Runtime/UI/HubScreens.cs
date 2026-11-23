@@ -103,7 +103,7 @@ namespace SquashGame.UI
                     .Line(() => "You v " + SquashSim.Career.Stars.Describe(C.OpponentId).name + "  ·  " + MatchChoices.LengthLabels[C.Length] + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  abilities on" : ""))
                     .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
                 AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
-                    .Line("Pad and keyboard, or two pads").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "CONNECT A PAD"));
+                    .Line("Controllers, keyboards - any mix").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "PLUG IN A CONTROLLER"));
             }
 
             // ---- CAREER ----
@@ -391,6 +391,8 @@ namespace SquashGame.UI
             else
             {
                 AddTo(mid, new ActionItem("Match: " + FormatLine(C.VsLength, C.VsScoring), () => SetupFlow.BackTo<LocalVersusScreen>(Fe), "CHANGE"));
+                MatchRunner.ChosenControls(out PlayerControls k1, out PlayerControls k2);
+                AddTo(mid, new ActionItem("Controls: " + k1.Label + "  v  " + k2.Label, () => SetupFlow.BackTo<ControlsScreen>(Fe), "CHANGE"));   // 2026-11-23
                 AddTo(mid, new ActionItem("Court: " + Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Name, () => SetupFlow.BackTo<CourtPickScreen>(Fe), "CHANGE"));
                 AddTo(mid, new ActionItem("Player 1: " + SetupFlow.ClassName(SetupFlow.Mine(0)), () => SetupFlow.BackTo<ClassPickScreen>(Fe, c => c.Player == 0), "CHANGE"));
                 AddTo(mid, new ActionItem("Player 2: " + SetupFlow.ClassName(SetupFlow.Mine(1)), () => SetupFlow.BackTo<ClassPickScreen>(Fe, c => c.Player == 1), "CHANGE"));
@@ -471,8 +473,10 @@ namespace SquashGame.UI
             if (TwoPlayer)
             {
                 _oppName.text = "Player 2  ·  " + SetupFlow.ClassName(SetupFlow.Mine(1));
-                int pads = UnityEngine.InputSystem.Gamepad.all.Count;
-                _oppStyle.text = pads == 0 ? "CONNECT A PAD TO PLAY" : pads == 1 ? "THE PAD  ·  PLAYER 1 ON KEYBOARD" : "PAD 2";
+                // 2026-11-23: what each plays with (the controls step)
+                MatchRunner.ChosenControls(out PlayerControls c1, out PlayerControls c2);
+                _oppStyle.text = c2.Label.ToUpperInvariant();
+                _youMeta.text += "  ·  " + c1.Label.ToUpperInvariant();
                 _oppLines.text = "";
                 KitDirector.OpponentPreview = null;
                 return;

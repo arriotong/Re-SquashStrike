@@ -72,6 +72,8 @@ namespace SquashGame.Profile
         public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.Pickable index (the game's courts, then the World Tour's stages)
         /// <summary>2026-11-22 your class (SquashSim.PlayerClasses id) and player 2's in local versus.</summary>
         public string Class = SquashSim.PlayerClasses.Default, VsClass2 = SquashSim.PlayerClasses.Default;
+        /// <summary>2026-11-23 local versus: each player's controls and mouse (InputSetup option ids; "" - the usual pair).</summary>
+        public string VsControls1 = "", VsMouse1 = "", VsControls2 = "", VsMouse2 = "";
     }
 
     /// <summary>P2-M2: a Target Arcade challenge's (or drill's) best.</summary>
