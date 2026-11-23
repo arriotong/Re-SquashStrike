@@ -192,9 +192,20 @@ namespace SquashGame.UI
         public override void Submit()
         {
             if (!IsEnabled) return;
-            if (ListOpener != null && _values.Length > ListFrom) ListOpener(this);
+            if (ListOpener != null && (Dropdown || _values.Length > ListFrom)) ListOpener(this);
             else Change(1);
         }
+        /// <summary>2026-11-23 a dropdown: confirm always opens the list (the Local Versus controls); no arrows drawn.</summary>
+        public bool Dropdown
+        {
+            get { return _dropdown; }
+            set
+            {
+                _dropdown = value; Root.EnableInClassList("k-drop", value);
+                if (value && Root.Q<Label>(className: "k-drop-caret") == null) { var c = new Label("▾"); c.AddToClassList("k-drop-caret"); c.pickingMode = PickingMode.Ignore; Root.Add(c); }
+            }
+        }
+        bool _dropdown;
         public override void Change(int d) { if (!IsEnabled) return; _set(OptionItem.Step(_get(), d, _values.Length)); Refresh(); }
         /// <summary>2026-11-20 the list's parts (the courts: legacy / location), by index; null: one list.</summary>
         public Func<int, string> Sections;

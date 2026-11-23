@@ -246,20 +246,23 @@ namespace SquashGame
             return c;
         }
 
-        /// <summary>The device behind a choice was used just now (its row lights up: "press to identify").</summary>
+        /// <summary>2026-11-23 (the user: "if i click it senses as a selection input so find another way"): the device behind a choice is
+        /// being shown - inputs the menus don't use: Shift on a keyboard, moving a mouse, a controller's right stick or a trigger.</summary>
         public static bool Active(Option o)
         {
             if (o == null) return false;
-            if (o.Raw != null) return Time.realtimeSinceStartup - o.Raw.LastActive < 0.35f && (o.Region == KeyRegion.Whole || AnyInRegion(new RawKeys(o.Raw), o.Region));
-            if (o.Unity is Gamepad g)
+            if (o.Raw != null)
             {
-                foreach (var ctl in g.allControls) if (ctl is ButtonControl b && !b.synthetic && b.isPressed) return true;
-                return g.leftStick.ReadValue().sqrMagnitude > 0.25f || g.rightStick.ReadValue().sqrMagnitude > 0.25f;
+                if (o.Raw.IsKeyboard) { var k = new RawKeys(o.Raw); return k.Down(Key.LeftShift) || k.Down(Key.RightShift); }
+                return Time.realtimeSinceStartup - o.Raw.LastMoved < 0.35f;
             }
-            if (o.Unity is Keyboard) return o.Region == KeyRegion.Whole ? Keyboard.current.anyKey.isPressed : AnyInRegion(new MergedKeys(), o.Region);
-            if (o.Unity is Mouse ms) return ms.delta.ReadValue().sqrMagnitude > 4f || ms.leftButton.isPressed || ms.rightButton.isPressed;
+            if (o.Unity is Gamepad g)
+                return g.rightStick.ReadValue().sqrMagnitude > 0.25f || g.leftTrigger.ReadValue() > 0.5f || g.rightTrigger.ReadValue() > 0.5f;
+            if (o.Unity is Keyboard kb) return kb.shiftKey.isPressed;
+            if (o.Unity is Mouse ms) return ms.delta.ReadValue().sqrMagnitude > 4f;
             return false;
         }
+        public const string IdentifyHint = "To see which is which: tap Shift on a keyboard, move a mouse, or move a controller's right stick";
 
         static bool AnyInRegion(IKeyReader keys, KeyRegion r)
         {

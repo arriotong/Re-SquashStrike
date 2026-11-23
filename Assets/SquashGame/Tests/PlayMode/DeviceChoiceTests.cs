@@ -134,7 +134,8 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var cs = (ControlsScreen)fe.Top;
             var c = ProfileStore.Current.Choices;
-            Assert.That(cs.Rows, Is.EqualTo(InputSetup.Primaries().Count + InputSetup.Mice().Count - 1), "every controller, keyboard (whole and halves) and mouse");
+            // 2026-11-23 remade: one row a device (the halves under their keyboard, when played) - lined up; dropdowns to pick
+            Assert.That(cs.Rows, Is.EqualTo(InputSetup.Primaries().FindAll(o => o.Kind == "pad" || o.Region == KeyRegion.Whole).Count + InputSetup.Mice().Count - 1), "every controller, keyboard and mouse once");
             Assert.That(c.VsControls1, Does.StartWith("kb:"), "one pad: the keyboard and mouse ...");
             Assert.That(c.VsControls2, Does.StartWith("pad:"), "... against the pad");
             Assert.That(cs.RowsLit, Is.EqualTo(0), "nothing lit: " + cs.LitNames);
@@ -143,12 +144,27 @@ namespace SquashGame.Tests
             yield return FrontEndTests.CaptureUI(fe, "CONTROLS_Step.png");
             Set(pad.rightStick, Vector2.zero); yield return null; yield return null;
             Assert.That(cs.RowsLit, Is.EqualTo(0), "released: " + cs.LitNames);
+            // a keyboard shows itself with Shift (not a key the menus use): its row lit, nothing picked
+            var top = fe.Top;
+            Press(kb.leftShiftKey); yield return null; yield return null;
+            Assert.That(cs.LitNames, Does.Contain("Keyboard"), "Shift lights the keyboard");
+            Assert.That(fe.Top, Is.SameAs(top), "and changes nothing on screen");
+            Release(kb.leftShiftKey); yield return null; yield return null;
+            // the keys dropdown: player 1 on the left half
+            cs.KeysDropdown(0).Pick(1);
+            Assert.That(c.VsControls1, Does.EndWith(":left"), "player 1 on the keyboard's left half");
+            yield return null; yield return null;
+            yield return FrontEndTests.CaptureUI(fe, "CONTROLS_Halves.png");
+            // player 2 picks the same keyboard: it's split - they get the other half
+            int kbAt = System.Array.FindIndex(cs.DeviceDropdown(1).Values, v => v.StartsWith("Keyboard"));
+            cs.DeviceDropdown(1).Pick(kbAt);
+            Assert.That(c.VsControls1, Does.EndWith(":left")); Assert.That(c.VsControls2, Does.EndWith(":right"), "the same keyboard: split between them");
             // player 1 takes the pad: player 2 gets the keyboard
-            var p1 = (CarouselItem)cs.Reachable().Find(i => i is CarouselItem);
+            var p1 = cs.DeviceDropdown(0);
             int padAt = System.Array.FindIndex(p1.Values, v => v.StartsWith("Controller"));
             p1.Pick(padAt);
             Assert.That(c.VsControls1, Does.StartWith("pad:"), "player 1 on the pad");
-            Assert.That(c.VsControls2, Does.StartWith("kb:"), "the keyboard went to player 2");
+            Assert.That(c.VsControls2, Does.StartWith("kb:"), "player 2 keeps the keyboard");
             Assert.That(c.VsMouse1, Is.Empty, "a pad needs no mouse");
         }
     }

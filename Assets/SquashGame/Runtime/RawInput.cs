@@ -42,6 +42,8 @@ namespace SquashGame
             internal readonly List<IntPtr> Handles = new List<IntPtr>();
             /// <summary>Real time of its last key, button or movement.</summary>
             public float LastActive = -100f;
+            /// <summary>A mouse: real time of its last movement (moving it shows which it is - a click would pick).</summary>
+            public float LastMoved = -100f;
             internal readonly bool[] Keys = new bool[256];
             internal float Dx, Dy;
             internal int Buttons;
@@ -225,6 +227,7 @@ namespace SquashGame
                 if ((buttons & 0x04) != 0) d.Buttons |= 2; if ((buttons & 0x08) != 0) d.Buttons &= ~2;
                 if ((buttons & 0x10) != 0) d.Buttons |= 4; if ((buttons & 0x20) != 0) d.Buttons &= ~4;
                 if (dx != 0 || dy != 0 || buttons != 0) d.LastActive = now;
+                if (dx != 0 || dy != 0) d.LastMoved = now;
             }
         }
 
