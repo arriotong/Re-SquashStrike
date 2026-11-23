@@ -1766,16 +1766,26 @@
 .k-dev-keys { font-size: 15px; color: rgba(255, 255, 255, 0.78); margin: 2px 0 6px 4px; white-space: normal; }
 .k-dev-head { font-size: 20px; letter-spacing: 4px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .k-dev-hint { font-size: 15px; color: rgba(255, 255, 255, 0.6); margin: 2px 0 12px 0; white-space: normal; }
-.k-dev-row { flex-direction: row; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.04); border-width: 2px; border-color: rgba(0, 0, 0, 0); }
+.k-dev-list { flex-grow: 1; }
+.k-dev-row { flex-direction: row; align-items: center; height: 46px; padding: 0 14px 0 10px; margin-bottom: 6px; border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.05); border-width: 2px; border-left-width: 6px; border-color: rgba(0, 0, 0, 0); }
 .k-dev-row--on { background-color: rgba(200, 255, 61, 0.22); border-color: rgb(200, 255, 61); }
-.k-dev-row--p1 { border-left-color: rgb(80, 160, 255); border-left-width: 6px; }
-.k-dev-row--p2 { border-left-color: rgb(255, 90, 74); border-left-width: 6px; }
-.k-dev-dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 12px; background-color: rgba(255, 255, 255, 0.2); }
+.k-dev-row--p1 { border-left-color: rgb(80, 160, 255); }
+.k-dev-row--p2 { border-left-color: rgb(255, 90, 74); }
+.k-dev-dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 14px; flex-shrink: 0; background-color: rgba(255, 255, 255, 0.2); }
 .k-dev-row--on .k-dev-dot { background-color: rgb(200, 255, 61); }
-.k-dev-kind { width: 110px; font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
-.k-dev-name { font-size: 18px; color: rgb(255, 255, 255); flex-shrink: 1; }
-.k-dev-left .k-car-value { font-size: 26px; white-space: normal; -unity-text-align: middle-center; }
-.k-dev-left .k-carousel { min-height: 0; }
+.k-dev-kind { width: 120px; flex-shrink: 0; font-size: 13px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.55); -unity-text-align: middle-left;
+    -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.k-dev-name { flex-grow: 1; flex-shrink: 1; font-size: 18px; color: rgb(255, 255, 255); -unity-text-align: middle-left; overflow: hidden; }
+.k-dev-who { width: 40px; flex-shrink: 0; font-size: 16px; -unity-text-align: middle-right; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.k-dev-halves { margin: -2px 0 6px 146px; }
+.k-dev-half { font-size: 14px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.75); }
+.k-dev-left .k-car-value { font-size: 24px; white-space: normal; -unity-text-align: middle-center; }
+.k-dev-left .k-carousel { height: 72px; margin-bottom: 4px; }
+.k-drop .k-car-arrow { display: none; }
+.k-drop .k-car-value { flex-grow: 1; border-radius: 8px; padding: 4px 12px; background-color: rgba(0, 0, 0, 0.25); }
+.k-drop .k-car-count { display: none; }
+.k-drop-caret { font-size: 22px; color: rgb(200, 255, 61); margin-left: 10px; }
 .pk-left > .k-tabs--strip { position: relative; left: 0; right: 0; top: 0; margin-bottom: 10px; }   /* 2026-11-22 evening: tabs over the grid */
 .pk-grid { flex-direction: row; flex-wrap: wrap; align-content: flex-start; padding: 8px 4px 40px 4px; }
 .k-card.pk-tile { width: 178px; height: 150px; margin: 0 12px 12px 0; }
@@ -1802,3 +1812,16 @@
 .pk-format { align-self: center; width: 760px; }
 .pk-tile .k-card-glyph { position: absolute; top: 8px; left: 14px; font-size: 46px; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .pk-tile .k-card-shade { height: 46%; }
+
+/* 2026-11-23 the Gauntlet's opening */
+.gi-stage { flex-grow: 1; align-items: center; justify-content: center; }
+.gi-title { font-size: 150px; letter-spacing: 14px; color: rgb(255, 90, 74); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold");
+    text-shadow: 0 10px 40px rgba(0, 0, 0, 0.9); transition-property: font-size, margin-bottom; transition-duration: 0.35s; }
+.gi-title--small { font-size: 64px; margin-bottom: 26px; }
+.gi-card { width: 1100px; padding: 34px 44px; border-radius: 22px; background-color: rgba(12, 13, 18, 0.9); border-width: 2px; border-color: rgb(255, 90, 74);
+    align-items: center; opacity: 0; translate: 0 40px; transition-property: opacity, translate; transition-duration: 0.3s; transition-timing-function: ease-out; }
+.gi-card--in { opacity: 1; translate: 0 0; }
+.gi-count { font-size: 18px; letter-spacing: 4px; color: rgba(255, 255, 255, 0.55); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.gi-big { font-size: 64px; letter-spacing: 3px; color: rgb(255, 255, 255); -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); margin: 8px 0; }
+.gi-small { font-size: 26px; color: rgb(200, 255, 61); -unity-text-align: middle-center; white-space: normal; }
+.gt-class { font-size: 16px; letter-spacing: 2px; color: rgb(200, 255, 61); margin: 6px 0; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }

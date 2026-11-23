@@ -934,7 +934,7 @@ namespace SquashGame.UI
             Kit.L(them, p.Name, "k-vs-name");
             Kit.L(them, Career.Rank(rb).ToUpperInvariant() + "  ·  " + p.Nat + "  ·  " + Roster.StyleName(p.Style).ToUpperInvariant() + "  ·  RATED " + Roster.RatingOf(p), "k-vs-meta");
             var star = p.StarOf;
-            if (star != null) Kit.L(them, "“" + star.Title + "”  " + star.Bio, "k-cr-callout");          // P6: the stars' own story
+            if (star != null && !string.IsNullOrEmpty(star.Title)) Kit.L(them, "“" + star.Title + "”  " + star.Bio, "k-cr-callout");   // (the top 10 have their story)          // P6: the stars' own story
             foreach (var line in Roster.StyleLines(p.Style)) Kit.L(them, line, "k-cr-callout");
             if (star != null) Kit.L(them, "Signature: " + string.Join(", ", star.Signature.ConvertAll(m => { var a = SquashSim.Modes.GauntletAbilities.Find(m.Id); return a != null ? a.Name : m.Id; })), "k-cr-callout");
         }

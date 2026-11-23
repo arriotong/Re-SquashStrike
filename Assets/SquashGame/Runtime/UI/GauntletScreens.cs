@@ -85,12 +85,39 @@ namespace SquashGame.UI
         {
             if (Cards.Deck.Count == 0) GauntletCards.AutoDeck(Cards);
             G.Run = Gauntlet.NewRun(unchecked((uint)System.Environment.TickCount * 2654435761u) | 1u, Talents, GauntletCards.RunDeck(Cards));
+            G.Run.Class = SetupFlow.Mine(0);                                   // 2026-11-23: the run's class, fixed for it
+            _sessionSeed = G.Run.Seed;
             G.Runs++;
             Codex(G.Run);
             ProfileStore.Save();
         }
 
         public static void Abandon() { if (G.Run != null) { Finish(G.Run); G.Run = null; ProfileStore.Save(); } }
+
+        // ---------------- 2026-11-23 (the user: "make it if you quit you lose your run, you cant resume it") ----------------
+        static uint _sessionSeed;
+        /// <summary>A run in progress (not over, not waiting on the win's choice).</summary>
+        public static bool InProgress { get { var r = Run; return r != null && !r.Over && !r.ChoiceDue; } }
+        /// <summary>The run left (the Gauntlet screen left, the floor quit, the game closed): it's over - no resuming.</summary>
+        public static void QuitRun()
+        {
+            var r = Run;
+            if (r == null || r.Over) return;
+            r.Over = true; r.AwaitingPick = false;
+            Playtest.Log("gauntlet_quit", ("floor", r.Floor), ("score", r.Score));
+            Finish(r);
+            ProfileStore.Save();
+        }
+        /// <summary>A run from an earlier session (the game was closed in the middle of it): ended. True: it was.</summary>
+        public static bool EndStaleRun()
+        {
+            var r = Run;
+            if (r == null || r.Over || r.ChoiceDue || r.Seed == _sessionSeed) return false;
+            QuitRun();
+            return true;
+        }
+        /// <summary>The class the run plays as (its own; an older run: the profile's).</summary>
+        public static string RunClass(GauntletRun r) { return r != null && !string.IsNullOrEmpty(r.Class) ? r.Class : SetupFlow.Mine(0); }
 
         /// <summary>A run's end: its coins kept, the records.</summary>
         static void Finish(GauntletRun run)
@@ -151,7 +178,7 @@ namespace SquashGame.UI
                 Gauntlet = true, ParPoints = 999,                                    // 2026-11-21: the floor's target decides it, not a game
                 GauntletFloor = Gauntlet.BeginFloor(run, Talents),
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
-                Class = SetupFlow.Mine(0),                                           // 2026-11-22 your class: the base the cards build on
+                Class = RunClass(run),                                               // 2026-11-22 your class: the base the cards build on (2026-11-23: the run's)
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = CourtFor(run, f), CrowdFill = CrowdFor(f),
                 P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : "FLOOR " + f,
@@ -350,8 +377,16 @@ namespace SquashGame.UI
         public override bool Spatial { get { return true; } }
         bool _banishing;
 
+        /// <summary>2026-11-23: leaving with a run in progress ends it (no resuming) - asked first.</summary>
+        public override void Back()
+        {
+            if (!GauntletFlow.InProgress) { base.Back(); return; }
+            Fe.Push(new ConfirmScreen("Leave the Gauntlet? Your run ends - it can't be resumed (its coins are kept).", () => { GauntletFlow.QuitRun(); Fe.Pop(); }));
+        }
+
         protected override void Compose()
         {
+            if (GauntletFlow.EndStaleRun()) GauntletFlow.LastUnlock = null;          // (closed mid-run last time: that run is over)
             var run = GauntletFlow.Run;
             var st = GauntletFlow.State;
             if (GauntletFlow.LastReward != null) { Content.Add(new RewardStrip(GauntletFlow.LastReward)); Fe.ToastAchievements(GauntletFlow.LastReward); GauntletFlow.LastReward = null; }
@@ -365,7 +400,13 @@ namespace SquashGame.UI
                 grid.RemoveFromHierarchy();
                 var stage = Kit.Box(Content, "gt-stage");
                 var hero = AddTo(stage, new CardItem(run != null ? "NEW RUN" : "START A RUN", run != null ? (run.RunWon ? "RUN WON!" : "RUN OVER") : "THE GAUNTLET",
-                        () => { GauntletFlow.NewRun(); Fe.Replace(new GauntletScreen()); }, CardSize.Hero)        // first: it has the focus
+                        () => Fe.Push(new ClassPickScreen("THE GAUNTLET  ·  YOUR CLASS FOR THIS RUN", SetupFlow.Mine(0), id =>
+                        {
+                            // 2026-11-23: the class for the run (kept to its end), then the intro, then floor 1
+                            ProfileStore.Current.Choices.Class = id; ProfileStore.Save();
+                            GauntletFlow.NewRun();
+                            Fe.Replace(new GauntletIntroScreen());
+                        })), CardSize.Hero)        // first: it has the focus
                     .Drawn("chevrons", new Color32(30, 14, 14, 255), new Color32(255, 90, 74, 255))
                     .Line(run != null
                         ? (run.RunWon ? "All " + Gauntlet.WinFloor + " floors" + (run.FloorsWon > Gauntlet.WinFloor ? " and " + (run.FloorsWon - Gauntlet.WinFloor) + " endless" : "") : "Floor " + run.Floor + " was too much") + "  ·  " + run.Score.ToString("N0") + " points"
@@ -463,7 +504,9 @@ namespace SquashGame.UI
             play.Root.AddToClassList("gt-hero");
             var col = Kit.Box(stage2, "gt-col");
             var next = Kit.Panel(col, boss ? "THE BOSS" : fl.Kind == FloorKind.Elite ? "ELITE" : "YOUR OPPONENT"); next.AddToClassList("gt-info");
-            Kit.L(next, (boss ? fl.Name + "  ·  " + fl.Title.ToUpperInvariant() + "  ·  " : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + Roster.StyleName(fl.Style).ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
+            // (2026-11-23 the user: "the gauntlet crashes after i reached level 5" - floor 5's boss had no title: nothing here may be missing)
+            string bossTitle = string.IsNullOrEmpty(fl.Title) ? "" : fl.Title.ToUpperInvariant() + "  ·  ";
+            Kit.L(next, (boss ? fl.Name + "  ·  " + bossTitle : fl.Kind == FloorKind.Elite ? fl.Name + "  ·  " : "") + (Roster.StyleName(fl.Style) ?? "").ToUpperInvariant() + "  ·  " + Level(fl.Difficulty), "gt-big");
             foreach (var line in Roster.StyleLines(fl.Style)) Kit.L(next, line, "gt-text");
             foreach (var tw in fl.Twists) Kit.L(next, "TWIST: " + Gauntlet.TwistName(tw) + " - " + Gauntlet.TwistText(tw), "gt-twist");
             if (fl.Traits.Count > 0) Kit.L(next, "Traits: " + Traits(fl), "gt-trait");
@@ -472,10 +515,9 @@ namespace SquashGame.UI
             Kit.L(next, rallies + " rallies" + (Gauntlet.HeadStart(run) > 0 ? "  ·  you start with " + Gauntlet.HeadStart(run) * 100 + " points" : "") + "  ·  " + (court != null ? court.Name : ""), "k-cr-note");
             var me = Kit.Panel(col, "YOUR BUILD"); me.AddToClassList("gt-info");
             Kit.L(me, run.Score.ToString("N0") + " points  ·  " + run.Coins + " coins" + (run.Golden ? "  ·  golden racket: one retry" : "") + (run.CanRevive && !run.Revived ? "  ·  second chance ready" : ""), "gt-hearts");
-            AddTo(me, new ActionItem("Class: " + SetupFlow.ClassName(SetupFlow.Mine(0)),
-                () => Fe.Push(new ClassPickScreen("THE GAUNTLET", SetupFlow.Mine(0), id => { ProfileStore.Current.Choices.Class = id; ProfileStore.Save(); Fe.Replace(new GauntletScreen()); })), "CHANGE"));
+            Kit.L(me, "CLASS  ·  " + SetupFlow.ClassName(GauntletFlow.RunClass(run)).ToUpperInvariant() + "  ·  for the whole run", "gt-class");   // 2026-11-23: locked
             Build(me, run);
-            var quit = new ActionItem("Abandon the run", () => Fe.Push(new ConfirmScreen("Abandon this run? Its coins are kept.", () => { GauntletFlow.Abandon(); Fe.Replace(new GauntletScreen()); })));
+            var quit = new ActionItem("End the run", () => Fe.Push(new ConfirmScreen("End this run? It can't be resumed - its coins are kept.", () => { GauntletFlow.QuitRun(); Fe.Replace(new GauntletScreen()); })));
             quit.Root.AddToClassList("k-action--chip");
             AddTo(TopBar, quit);
         }

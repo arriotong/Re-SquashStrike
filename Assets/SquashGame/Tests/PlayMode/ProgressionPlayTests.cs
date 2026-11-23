@@ -223,8 +223,19 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "P3_Gauntlet_Start.png");
             yield return Tap(kb.enterKey);                                            // Start a run
             yield return null;
+            // 2026-11-23: the class for the run first, then the opening (THE GAUNTLET and its rules), then floor 1
+            Assert.That(fe.Top, Is.InstanceOf<ClassPickScreen>(), "the run's class");
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null;
             Assert.That(GauntletFlow.Run, Is.Not.Null);
-            Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>());
+            Assert.That(GauntletFlow.Run.Class, Is.Not.Empty, "the class kept with the run");
+            Assert.That(fe.Top, Is.InstanceOf<GauntletIntroScreen>(), "the opening");
+            yield return Wait(1.8f, () => false);
+            yield return CaptureUI(fe, "GAUNTLET_Intro.png");
+            var intro = (GauntletIntroScreen)fe.Top;
+            for (int k = 0; k < 12 && fe.Top is GauntletIntroScreen; k++) yield return Tap(kb.enterKey);
+            Assert.That(fe.Top, Is.InstanceOf<GauntletScreen>(), "then floor 1");
+            Assert.That(GauntletFlow.Run, Is.Not.Null);
             yield return Wait(0.4f, () => false);
             yield return CaptureUI(fe, "P3_Gauntlet_Floor.png");
 

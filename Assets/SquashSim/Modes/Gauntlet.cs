@@ -45,6 +45,8 @@ namespace SquashSim.Modes
         public int Rerolls, Banishes, Cards = 3, Roll, BossesBeaten;
         public List<RunMod> Abilities = new List<RunMod>();
         public List<string> Offer = new List<string>();
+        /// <summary>2026-11-23 the class the run is played as - chosen at its start, kept to its end ("" - the profile's, older runs).</summary>
+        public string Class = "";
         public List<string> Banished = new List<string>();
         /// <summary>2026-10-28: the deck this run draws from (GauntletCards: each card and its level, 1-3, or 4 evolved).
         /// Empty: the old draw from every ability (runs from before the decks, the bench).</summary>
@@ -218,7 +220,7 @@ namespace SquashSim.Modes
             }
             if (f.Kind == FloorKind.Boss)
             {
-                f.Title = star.Title;
+                f.Title = star.Title ?? "";                                     // 2026-11-23: the pros past the top 10 have none (the floor-5 crash)
                 f.Difficulty = Math.Min(1.0, f.Difficulty + 0.05);
                 if (star == Career.Stars.No1) f.Difficulty = 1.0;               // the world No. 1 plays at their very best
                 f.Signature.AddRange(star.Signature);

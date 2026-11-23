@@ -74,6 +74,7 @@ public static class Program
         if (Array.IndexOf(args, "--pros") >= 0) { ProBench.Run(Arg(args, "--games") != null ? games : 10, Arg(args, "--opp") ?? "retriever", double.Parse(Arg(args, "--d1") ?? "0.8", CultureInfo.InvariantCulture)); return 0; }
         if (Arg(args, "--dig") != null) { ReplayDig.Run(Arg(args, "--dig")); return 0; }
         if (Array.IndexOf(args, "--stamina-t") >= 0) { StaminaBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }
+        if (Array.IndexOf(args, "--gauntlet-floors") >= 0) { GauntletPeek.Run(); return 0; }
         if (Array.IndexOf(args, "--nearest") >= 0) { NearestPeek.Run(); return 0; }
         if (Array.IndexOf(args, "--reviews") >= 0) { ReviewBench.Run(Arg(args, "--games") != null ? games : 20); return 0; }
         if (Array.IndexOf(args, "--special") >= 0) { SpecialBench.Run(Arg(args, "--games") != null ? games : 6); return 0; }

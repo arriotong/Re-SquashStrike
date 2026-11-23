@@ -93,6 +93,18 @@ namespace SquashGame.Audio
             }
         }
 
+        int _lastServer = -1, _lastGamesSaid = -1;
+        object _saidFor;
+
+        /// <summary>The score as a referee says it: the server's first; level - "all" (0: "love"). Up to twenty.</summary>
+        public void SayScore(MatchScore s, float wait)
+        {
+            int a = s.Points[s.Server], b = s.Points[1 - s.Server];
+            if (a > 20 || b > 20 || a < 0 || b < 0) return;
+            Say("n" + a, wait);
+            Say(a == b ? "all" : "n" + b, 0.04f);
+        }
+
         /// <summary>One point from the game (or the match) for either player?</summary>
         static string BallLine(MatchScore s)
         {
@@ -334,7 +346,24 @@ namespace SquashGame.Audio
                     string line = mr.Demo ? null : CallLine(o, m.AppealBy >= 0 && m.ReviewOpen);
                     if (line != null) Say(line);
                     else if (!(m.Score.GameOver || m.Score.MatchOver)) Play("call", refPos, 0.6f);
-                    if (!mr.Demo) { string ball = BallLine(m.Score); if (ball != null) Say(ball, 0.35f); }
+                    // 2026-11-23 (the user: "ref calls out the score out loud as well"): hand out, the score - the server's first,
+                    // "four all" - then game ball / match ball (not the Gauntlet's floors: their scores are points in hundreds)
+                    if (!mr.Demo && mr.Floor == null && !(m.Score.GameOver || m.Score.MatchOver))
+                    {
+                        if (_lastServer >= 0 && m.Score.Server != _lastServer && o.Winner >= 0) Say("handout", 0.15f);
+                        SayScore(m.Score, 0.15f);
+                        string ball = BallLine(m.Score); if (ball != null) Say(ball, 0.1f);
+                    }
+                    _lastServer = m.Score.Server;
+                }
+                // a new game: "love all"
+                if (!ReferenceEquals(_saidFor, m)) { _saidFor = m; _lastGamesSaid = -1; _lastServer = -1; }   // (a new match)
+                int games = m.Score.Games[0] + m.Score.Games[1];
+                if (games != _lastGamesSaid && m.Phase == MatchPhase.AwaitToss && m.Score.Points[0] + m.Score.Points[1] == 0)
+                {
+                    _lastGamesSaid = games;
+                    if (!mr.Demo && mr.Floor == null) SayScore(m.Score, 0.3f);
+                    _lastServer = m.Score.Server;
                 }
                 if ((m.Phase == MatchPhase.GameOver || m.Phase == MatchPhase.MatchOver) && _lastPhase != m.Phase)
                 {
