@@ -798,7 +798,7 @@
 }
 .hud-third--in { translate: 0 0; opacity: 1; }
 .hud-third-call { font-size: 40px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
-.hud-third-sub { font-size: 13px; letter-spacing: 2px; margin-top: -2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.hud-third-sub { font-size: 16px; letter-spacing: 2px; margin-top: -2px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .hud-strip {
     position: absolute; left: 50%; bottom: 46px; translate: -50% 0; flex-direction: row; align-items: center;
     padding: 8px 16px; border-radius: 22px; background-color: rgba(12, 13, 16, 0.88);

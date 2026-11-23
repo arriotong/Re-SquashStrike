@@ -42,6 +42,8 @@ namespace SquashGame
         public float StaminaShown(int p) { return _stamina[p] == null ? -1f : _stamina[p].resolvedStyle.width / StaminaBarWidth; }
         public const float StaminaBarWidth = 96f;
         readonly Label _system = new Label(), _games = new Label(), _meta = new Label();
+        /// <summary>The small line under the score is up (tests: only with the Gauntlet's Focus charges).</summary>
+        public bool MetaShown { get; private set; }
         readonly Label _banner = new Label(), _sub = new Label(), _centre = new Label(), _prompt = new Label(), _promptKey = new Label();
         readonly VisualElement _third = new VisualElement(), _promptBox = new VisualElement();
         readonly VisualElement _let = new VisualElement();
@@ -438,9 +440,11 @@ namespace SquashGame
             _system.text = s.System == ScoringSystem.Par ? "TO " + PhysicsConfig.Current.Match.ParPoints : "TO " + s.GameTarget;
             _games.text = "GAMES " + s.Games[0] + "-" + s.Games[1];
             _games.style.display = s.GamesToWin > 1 ? DisplayStyle.Flex : DisplayStyle.None;
-            string server = !twoPlayer && s.Server == r.HumanIndex ? "You serve" : names[s.Server] + " serves";
-            _meta.text = (m.Phase == MatchPhase.WarmUp ? "Knock-up" : server + " from the " + (s.ServeSide > 0 ? "right" : "left") + " box") +
-                         (r.Settings.FocusCharges > 0 ? "   ·   FOCUS " + r.FocusLeft + "  (" + IntentSource.FocusKey + ")" : "");     // P5
+            // 2026-11-23 (the user: "little sentences like you serving from the right ... very small while blocking the view in
+            // important places like the score box"): no serve line under the score - the dot by the name shows who serves, and
+            // your own serve's prompt says which box; only the Gauntlet's Focus charges, when it has them
+            _meta.text = r.Settings.FocusCharges > 0 ? "FOCUS " + r.FocusLeft + "  (" + IntentSource.FocusKey + ")" : "";     // P5
+            MetaShown = r.Settings.FocusCharges > 0;
 
             // ---- banners ----
             string banner = null, sub = null, centre = null, prompt = null, key = null;
@@ -462,6 +466,8 @@ namespace SquashGame
                     // P2-M7: the decision big, why in plain words, who gets the point
                     banner = UI.CallWords.Decision(o);
                     sub = UI.CallWords.Reason(o, names, r.LastCallStriker, twoPlayer ? -1 : r.HumanIndex) + "   ·   " + point + (r.OnlineMatch != null ? "" : "V  review");
+                    // 2026-11-23: a call put right on video says so (the box shows the new call - LastOutcome is replaced)
+                    if (o.Reason != null && o.Reason.StartsWith("Overturned")) sub = "OVERTURNED ON VIDEO REVIEW   ·   " + sub;
                 }
                 else
                 {
@@ -513,8 +519,8 @@ namespace SquashGame
             if (_nickLeft > 0) { _nickLeft -= Time.unscaledDeltaTime; if (_nickLeft <= 0) { _nick.style.display = DisplayStyle.None; _nick.RemoveFromClassList("hud-nick--in"); } }
             if (_calloutLeft > 0) { _calloutLeft -= Time.unscaledDeltaTime; if (_calloutLeft <= 0) { _callout.style.display = DisplayStyle.None; _callout.RemoveFromClassList("hud-callout--in"); } }
             Celebrate(r, m, s, names);
-            if (_win.style.display == DisplayStyle.Flex) { _centre.style.display = DisplayStyle.None; _meta.style.display = DisplayStyle.None; }
-            else _meta.style.display = DisplayStyle.Flex;
+            _meta.style.display = MetaShown && _win.style.display != DisplayStyle.Flex ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_win.style.display == DisplayStyle.Flex) _centre.style.display = DisplayStyle.None;
             LetChip(r, m, twoPlayer);
             NetChip(r);
             Broadcast(r, m, s, names);

@@ -147,6 +147,66 @@ namespace SquashGame.Tests
             yield return FrontEndTests.CaptureUI(fe, "REVIEW_Verdict.png");
         }
 
+        /// <summary>2026-11-23: a call overturned on video - the call box shows the new call and says so; the referee points at
+        /// the call and puts his arms up for the review; no small serve line under the score.</summary>
+        [UnityTest]
+        public IEnumerator AnOverturnedCallShowsTheNewCallAndTheRefereePoints()
+        {
+            var kb = InputSystem.AddDevice<Keyboard>();
+            var mouse = InputSystem.AddDevice<Mouse>();
+            SceneManager.LoadScene("Match");
+            yield return null; yield return null;
+            var fe = Object.FindFirstObjectByType<FrontEnd>();
+            yield return null;
+            fe.StartMatch(MatchSettings.QuickGame());
+            float tw = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - tw < 0.5f) yield return null;
+            MatchRunner r = fe.Match;
+            MatchSimulation m = r.Sim;
+            if (r.ReplayActive) r.StopReplay();                         // (the walk-on, when this is the session's first match)
+            Assert.That(fe.Hud.MetaShown, Is.False, "no small serve line under the score");
+            Courts.CurrentId = "show";                                    // (a glass show court: the referee's desk behind it)
+            for (int f = 0; f < 6; f++) yield return null;
+            var gestures = RefereeGestures.Active;
+            Assert.That(gestures, Is.Not.Null, "the referee at his desk");
+            // the opponent well clear: asking gets No let - and the referee points to them
+            m.Bots[1] = null;
+            m.Intents[1].Move.X = 0; m.Intents[1].Move.Z = 0; m.Intents[1].MoveMagnitude = 0;
+            m.StageRally(From, Drive, TX + 0.6, TZ + 0.6, TX - 2.6, TZ + 2.4);
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 0.4f) yield return null;
+            Press(mouse.rightButton); yield return null; Release(mouse.rightButton);
+            t0 = Time.realtimeSinceStartup;
+            while (m.Referee.Outcome == null && Time.realtimeSinceStartup - t0 < 2f) yield return null;
+            Assert.That(m.Referee.Outcome.Kind, Is.EqualTo(RallyEnd.NoLet));
+            yield return null; yield return null;
+            Assert.That(gestures.LastGesture, Is.EqualTo("point:1"), "the referee points to the player who gets the point");
+            // film him (from the front of the court, looking back at the desk)
+            var cam = Camera.main; var rig = cam.GetComponent<GameplayCameraRig>(); rig.enabled = false;
+            t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 0.5f) yield return null;
+            cam.fieldOfView = 34f;
+            cam.transform.position = SimToWorld.Pos(1.0, 2.6, 4.0);
+            cam.transform.LookAt(SimToWorld.Pos(-0.3, 2.6, 9.75 + 6.95));
+            yield return null;
+            yield return FrontEndTests.CaptureUI(fe, "REFEREE_Points.png");
+            rig.enabled = true;
+            t0 = Time.realtimeSinceStartup;
+            while (r.ReplayActive && Time.realtimeSinceStartup - t0 < 6f) yield return null;
+            // the review sees it otherwise (made so here): a let
+            typeof(MatchSimulation).GetProperty("CallTrue").SetValue(m, new InterferenceDecision { Call = InterferenceCall.Let, Reason = "Let - opponent was clearing" });
+            Assert.That(m.Challenge(0), Is.True, "challenged");
+            yield return null; yield return null;
+            Assert.That(gestures.LastGesture, Is.EqualTo("review"), "arms up for the review");
+            t0 = Time.realtimeSinceStartup;
+            while (m.ReviewResult == 0 && Time.realtimeSinceStartup - t0 < 15f) { if (r.ReplayActive) r.StopReplay(); yield return null; }
+            Assert.That(m.ReviewResult, Is.EqualTo(1), "overturned");
+            yield return null; yield return null;
+            Assert.That(fe.Hud.BannerText, Is.EqualTo("LET"), "the call box shows the new call");
+            Assert.That(fe.Hud.BannerSub, Does.StartWith("OVERTURNED ON VIDEO REVIEW"));
+            yield return FrontEndTests.CaptureUI(fe, "REVIEW_Overturned.png");
+        }
+
         [UnityTest]
         public IEnumerator WithLetsOffTheMatchPlaysThrough()
         {

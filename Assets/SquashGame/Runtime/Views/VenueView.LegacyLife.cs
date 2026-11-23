@@ -406,8 +406,9 @@ namespace SquashGame
             Kid(c, "RefTableTop", root.transform, wood, W(0, 2.22, z - 0.35), new Vector3(4.4f, 0.06f, 0.8f), false);
             foreach (float x in new[] { -0.7f, 0.9f })
             {
-                var mon = Kid(c, "RefMonitor", root.transform, c.Dark, W(x, 2.55, z - 0.25), new Vector3(0.7f, 0.45f, 0.05f), false);
-                Kid(c, "RefMonitorGlow", root.transform, screen, W(x, 2.55, z - 0.28), new Vector3(0.62f, 0.38f, 0.01f), false);
+                // (low and small, laid back on the table: they mustn't hide the referee's arms)
+                var mon = Kid(c, "RefMonitor", root.transform, c.Dark, W(x - 0.35f, 2.36, z - 0.2), new Vector3(0.42f, 0.26f, 0.04f), false);
+                Kid(c, "RefMonitorGlow", root.transform, screen, W(x - 0.35f, 2.36, z - 0.23), new Vector3(0.36f, 0.2f, 0.01f), false);
             }
             // the referee (left of centre) and the marker: on tall chairs, blazers, looking at the court
             foreach (var (x, name) in new[] { (-0.7f, "Referee"), (0.9f, "Marker") })
@@ -422,7 +423,32 @@ namespace SquashGame
                 var top = Greybox.Primitive(PrimitiveType.Sphere, name + "Hair", c.Venue, hair, false);
                 top.transform.position = W(x, 3.09, z + 0.34); top.transform.localScale = new Vector3(0.25f, 0.18f, 0.25f);
                 top.transform.SetParent(root.transform, true);
-                foreach (int s in new[] { -1, 1 }) Kid(c, name + "Arm", root.transform, blazer, W(x + s * 0.3f, 2.38, z + 0.05), new Vector3(0.13f, 0.13f, 0.55f), false);
+                if (name != "Referee")
+                {
+                    foreach (int s in new[] { -1, 1 }) Kid(c, name + "Arm", root.transform, blazer, W(x + s * 0.3f, 2.38, z + 0.05), new Vector3(0.13f, 0.13f, 0.55f), false);
+                    continue;
+                }
+                // 2026-11-23 (the user: "referee pointing"): the referee's arms hang from the shoulders, so they can point at a call
+                var gesture = root.AddComponent<RefereeGestures>();
+                for (int s = 0; s < 2; s++)
+                {
+                    int side = s == 0 ? -1 : 1;
+                    var shoulder = Pivot(c, "RefereeShoulder", W(x + side * 0.3f, 2.68, z + 0.3));
+                    shoulder.transform.SetParent(root.transform, true);
+                    Vector3 rest = (W(x + side * 0.3f, 2.3, z - 0.3) - shoulder.transform.position).normalized;    // forearms on the table
+                    shoulder.transform.rotation = Quaternion.LookRotation(rest, Vector3.up);
+                    var arm = Greybox.Box("RefereeArm", c.Venue, blazer, Vector3.zero, new Vector3(0.13f, 0.13f, 0.62f), false);
+                    arm.transform.SetParent(shoulder.transform, false);
+                    arm.transform.localPosition = new Vector3(0, 0, 0.31f);
+                    var cuff = Greybox.Box("RefereeCuff", c.Venue, shirt, Vector3.zero, new Vector3(0.15f, 0.15f, 0.08f), false);
+                    cuff.transform.SetParent(shoulder.transform, false); cuff.transform.localPosition = new Vector3(0, 0, 0.6f);
+                    var hand = Greybox.Primitive(PrimitiveType.Sphere, "RefereeHand", c.Venue, skin, false);
+                    hand.transform.SetParent(shoulder.transform, false);
+                    hand.transform.localPosition = new Vector3(0, 0, 0.7f); hand.transform.localScale = new Vector3(0.14f, 0.16f, 0.16f);
+                    if (s == 0) gesture.Left = shoulder.transform; else gesture.Right = shoulder.transform;
+                }
+                gesture.Court = (W(0, 0, 0) - W(0, 0, 1)).normalized;              // (the way the court is from the desk)
+                gesture.SideOf = simX => W(simX, 0, 0).x - W(0, 0, 0).x;
             }
         }
     }
