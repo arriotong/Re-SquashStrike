@@ -120,6 +120,10 @@ namespace SquashGame.UI
         protected readonly List<(MenuItem item, string id)> Tiles = new List<(MenuItem, string)>();
         /// <summary>2026-11-22 opened on its own (not a step): the pick is handed here and the screen closes.</summary>
         public Action<string> Done;
+        /// <summary>2026-11-24 a collection (the pro cards, the perks): A acts on the tile and the screen stays.</summary>
+        protected virtual bool Browse { get { return false; } }
+        /// <summary>Redraw the panel (after a browse pick).</summary>
+        protected void Refresh() { _shown = null; }
         ScrollView _scroll;
         protected VisualElement Preview, Details, Pic;
         MenuItem _shown;
@@ -182,7 +186,7 @@ namespace SquashGame.UI
                 string pick = id;
                 // a portrait-like tile: its colour (the class, the walls), big initials, the name under
                 Color col = TileColour(id);
-                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); if (Done != null) { Fe.Pop(); Done(pick); } else SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
+                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); if (Browse) { Refresh(); return; } if (Done != null) { Fe.Pop(); Done(pick); } else SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
                     .Glyph(TileGlyph(id))
                     .Badge(() => TileBadge(pick), false));
                 item.Root.AddToClassList("pk-tile");
@@ -225,6 +229,7 @@ namespace SquashGame.UI
             Hover(id);
             string shot = Shot(id);
             if (shot != _picShot) { Pic.Clear(); _picShot = shot; if (shot != null) Vignettes.Attach(Pic, shot, 640, 520); }
+            Pic.style.display = shot != null ? DisplayStyle.Flex : DisplayStyle.None;            // 2026-11-24 a collection without a picture
             Details.Clear();
             Describe(id, Details);
             Juice.FadeIn(Details);

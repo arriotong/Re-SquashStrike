@@ -62,7 +62,7 @@ namespace SquashGame.UI
             { "TARGET ARCADE", 3 }, { "PRACTICE COURT", 4 }, { "ACADEMY", 5 }, { "ALL LESSONS", 5 },
             { "YOUR KIT", MenuCinematics.LockerScene }, { "STATS", 1 }, { "ACHIEVEMENTS", 2 },
             { "LAST MATCH", 2 }, { "HIGHLIGHTS", 0 }, { "LIBRARY", 1 },
-            { "SHOT PUZZLE", 3 }, { "RULES QUIZ", 5 }, { "SKILL TEST", 4 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "CARD PACKS", 3 }, { "COSMETICS", MenuCinematics.LockerScene }, { "PRO SHOP", 1 },
+            { "SHOT PUZZLE", 3 }, { "RULES QUIZ", 5 }, { "SKILL TEST", 4 }, { "THIS WEEK", 0 }, { "GAUNTLET", 4 }, { "SCENARIOS", 1 }, { "CARD PACKS", 3 }, { "COSMETICS", MenuCinematics.LockerScene }, { "PRO SHOP", 1 }, { "PRO CARDS", 2 }, { "PERKS", 4 },
             { "QUICK PLAY", 0 }, { "RANKED", 2 }, { "PRIVATE ROOM", 1 }, { "LEADERBOARD", 3 },
         };
 
@@ -262,8 +262,11 @@ namespace SquashGame.UI
                 .Line(() => "Power cards for the Gauntlet  ·  " + SquashSim.Modes.GauntletCards.CardCost + " coins").Badge(() => "NEW CARDS", true));
             AddTo(row, new CardItem("CLOTHES", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.CosmeticsTab))).Drawn("rings", new Color32(30, 18, 40, 255), new Color32(190, 110, 255, 255))
                 .Line(() => "Shirts, colours and cool looks  ·  " + GearDrops.PullCost + " coins").Badge(() => "YOU CAN OPEN " + GearDrops.Wallet.Coins / GearDrops.PullCost, GearDrops.CanPull(1)));
-            AddTo(row, new CardItem("PRO SHOP", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.ShopTab))).Drawn("chevrons", new Color32(60, 36, 10, 255), new Color32(255, 184, 59, 255))
-                .Line("Rackets, shoes and kit"));
+            // 2026-11-24: the Pro Shop went to career; the new machines (SPECIALS and WALK-ON are the store's next tabs)
+            AddTo(row, new CardItem("PRO CARDS", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.ProCardsTab))).Drawn("stripes", new Color32(12, 40, 64, 255), new Color32(120, 240, 255, 255))
+                .Line(() => "Collect all 100 players  ·  " + GearDrops.PullCost + " coins"));
+            AddTo(row, new CardItem("PERKS", "MYSTERY PACK", () => Fe.Push(new StoreScreen(StoreScreen.PerksTab))).Drawn("chevrons", new Color32(16, 48, 24, 255), new Color32(200, 255, 61, 255))
+                .Line("Small edges from training"));
         }
 
         void RefreshRail()
@@ -512,6 +515,7 @@ namespace SquashGame.UI
                     GamesToWin = MatchChoices.LengthGames[C.Length], Scoring = MatchChoices.ScoringValues[Mathf.Clamp(C.Scoring, 0, 1)], WarmUp = S.WarmUp,
                     Court = Courts.Pickable[Mathf.Clamp(C.Court, 0, Courts.Pickable.Length - 1)].Id,
                     Class = SetupFlow.Mine(0),                                          // 2026-11-22 your class
+                    Perks = true,                                                       // 2026-11-24 your training perks
                 }.Dressed();
                 if (MatchChoices.QuickMatchAbilities && C.Abilities)
                 {

@@ -87,6 +87,8 @@ namespace SquashGame
         public List<SquashSim.RunMod> Mods, OppMods;
         /// <summary>2026-11-22 your class (PlayerClasses id; "" none) and player 2's in local versus.</summary>
         public string Class = "", Class2 = "";
+        /// <summary>2026-11-24 your training perks on top (Quick Match, career, the Gauntlet; never versus or online).</summary>
+        public bool Perks;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
 
@@ -190,6 +192,8 @@ namespace SquashGame
         /// <summary>A recording ended: the match was played out, or left (file.Retired). Raised once per match.</summary>
         public static event System.Action<ReplayFile> ReplayFinished;
         ReplaySetup _setup;
+        /// <summary>The setup this match was built from (tests: the perks on your attributes).</summary>
+        public ReplaySetup Setup { get { return _setup; } }
         IAthleteBrain _autopilot;
         InputIntent _autoIntent;
 
@@ -262,6 +266,7 @@ namespace SquashGame
                 setup.Mods0 = PlayerClasses.Mods(setup.Mods0, s.Class);
                 setup.Class0 = s.Class;
             }
+            if (s.Perks && !setup.TwoPlayer) setup.Attr0 = Progression.Machines.Boost(setup.Attr0);      // 2026-11-24 (recorded with the match)
             if (setup.TwoPlayer && !string.IsNullOrEmpty(s.Class2))
             {
                 setup.Attr1 = PlayerClasses.Attributes(setup.Attr1, s.Class2);

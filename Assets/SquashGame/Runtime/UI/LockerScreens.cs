@@ -190,6 +190,11 @@ namespace SquashGame.UI
                 case Slot.Strings: p.lineWidth = 1.5f * k; for (int i = 0; i < 5; i++) { float t = .22f + i * .14f; p.BeginPath(); p.MoveTo(V(t, .16f)); p.LineTo(V(t, .84f)); p.Stroke(); p.BeginPath(); p.MoveTo(V(.16f, t)); p.LineTo(V(.84f, t)); p.Stroke(); } break;
                 case Slot.Celebration: Poly(V(.5f, .08f), V(.6f, .38f), V(.92f, .38f), V(.66f, .56f), V(.76f, .88f), V(.5f, .68f), V(.24f, .88f), V(.34f, .56f), V(.08f, .38f), V(.4f, .38f)); break;
                 case Slot.Banner: Poly(V(.15f, .2f), V(.85f, .2f), V(.85f, .8f), V(.15f, .8f)); break;
+                // 2026-11-24 the machines: a lightning bolt, a spotlight, a card, a plus
+                case Slot.Special: Poly(V(.58f, .06f), V(.22f, .54f), V(.46f, .54f), V(.36f, .94f), V(.8f, .4f), V(.54f, .4f)); break;
+                case Slot.WalkOn: Poly(V(.42f, .08f), V(.58f, .08f), V(.9f, .9f), V(.1f, .9f)); break;
+                case Slot.ProCard: Poly(V(.24f, .1f), V(.76f, .1f), V(.76f, .9f), V(.24f, .9f)); p.fillColor = new Color(0, 0, 0, 0.45f); p.BeginPath(); p.Arc(V(.5f, .4f), w * 0.12f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); Poly(V(.34f, .72f), V(.66f, .72f), V(.6f, .56f), V(.4f, .56f)); break;
+                case Slot.Perk: Poly(V(.4f, .12f), V(.6f, .12f), V(.6f, .4f), V(.88f, .4f), V(.88f, .6f), V(.6f, .6f), V(.6f, .88f), V(.4f, .88f), V(.4f, .6f), V(.12f, .6f), V(.12f, .4f), V(.4f, .4f)); break;
                 case Slot.Trail: p.lineWidth = 5f * k; p.BeginPath(); p.MoveTo(V(.12f, .82f)); p.LineTo(V(.6f, .4f)); p.Stroke(); p.BeginPath(); p.Arc(V(.7f, .3f), w * 0.13f, Angle.Degrees(0), Angle.Degrees(360)); p.Fill(); break;
                 default: p.lineWidth = 3f * k; for (int i = 0; i < 3; i++) { p.BeginPath(); p.MoveTo(V(.18f, .3f + i * .2f)); p.LineTo(V(i == 2 ? .6f : .82f, .3f + i * .2f)); p.Stroke(); } break;
             }
@@ -275,7 +280,7 @@ namespace SquashGame.UI
                 var tile = Kit.Box(_wrap, "k-tile");
                 if (it.Rarity >= 0) tile.style.borderBottomColor = tile.style.borderTopColor = tile.style.borderLeftColor = tile.style.borderRightColor = it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[it.Rarity];
                 var art = Kit.Box(tile, "k-tile-art");
-                if (text || it.None) { art.AddToClassList("k-tile-art--text"); Kit.L(art, it.None ? "NONE" : it.Name, "k-tile-art-name"); }
+                if (text || it.None) { art.AddToClassList("k-tile-art--text"); Kit.L(art, it.None ? "NONE" : own ? it.Name : "", "k-tile-art-name"); }   // (2026-11-24 locked: LOCKED alone - the name is under it)
                 else
                 {
                     art.style.backgroundColor = it.A;
@@ -360,6 +365,11 @@ namespace SquashGame.UI
 
     public sealed class LockerRoomScreen : GameScreen
     {
+        /// <summary>2026-11-24: the Special Shot, the walk-on and the celebration (the machines' looks).</summary>
+        public const string ShowtimeTab = "SHOWTIME";
+        static readonly string[] TabOrder = { "CLOTHES", "LOOK", "RACKET", "SHOWTIME", "CARD" };
+        readonly string _startTab;
+        public LockerRoomScreen(string tab = null) { _startTab = tab; }
         public override MenuWorld Backdrop { get { return MenuWorld.You; } }   // 2026-11-21 the screen sweep: its world, not the court
         protected override bool ShowCoins { get { return true; } }
         protected override string Kicker { get { return "LOCKER ROOM"; } }
@@ -379,9 +389,12 @@ namespace SquashGame.UI
             // ---- 2026-11-20 each tab: the slots down the left, the slot's items as a grid in the middle, you (or your racket, or
             // your card) on the right with what the item is ----
             Wardrobe("CLOTHES", new[] { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Headband, Slot.Wristband }, "you");
-            Wardrobe("LOOK", new[] { Slot.Body, Slot.Skin, Slot.Hair, Slot.HairColour, Slot.Celebration }, "you");
+            Wardrobe("LOOK", new[] { Slot.Body, Slot.Skin, Slot.Hair, Slot.HairColour }, "you");
             Wardrobe("RACKET", new[] { Slot.Frame, Slot.Grip, Slot.Strings, Slot.Trail }, "racket");
+            Wardrobe(ShowtimeTab, new[] { Slot.Special, Slot.WalkOn, Slot.Celebration }, "you");      // 2026-11-24
             Wardrobe("CARD", new[] { Slot.Banner, Slot.Title }, null);
+            int start = _startTab != null ? System.Array.IndexOf(TabOrder, _startTab) : -1;
+            if (start > 0) Root.schedule.Execute(() => Tabs.Select(start));
         }
 
         void Wardrobe(string name, Slot[] slots, string shot)

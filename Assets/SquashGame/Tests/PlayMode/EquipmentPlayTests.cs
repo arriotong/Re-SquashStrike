@@ -82,9 +82,14 @@ namespace SquashGame.Tests
             hub.Tabs.Select(3);                                             // PLAYER
             yield return null; yield return null;
             Assert.That(hub.Tabs.Current, Is.EqualTo("PLAYER"));
-            var button = fe.Top.Find("Equipment  ·  rackets, shoes, kit");
+            var button = fe.Top.Find("Shop  ·  equipment and the Pro Shop");
             Assert.That(button, Is.Not.Null, "the PLAYER tab's way in");
             hub.Focus(button);
+            yield return Tap(kb.enterKey);
+            yield return null; yield return null; yield return null;
+            // 2026-11-24 career's SHOP: Equipment and the Pro Shop
+            Assert.That(fe.Top, Is.InstanceOf<CareerShopScreen>());
+            fe.Top.Focus(fe.Top.Find("EQUIPMENT"));
             yield return Tap(kb.enterKey);
             yield return null; yield return null; yield return null;
             Assert.That(fe.Top, Is.InstanceOf<EquipmentScreen>());

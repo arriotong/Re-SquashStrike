@@ -110,6 +110,7 @@ namespace SquashGame.Tests
                 ("Practice", () => new PracticeScreen()), ("Academy", () => new AcademyScreen()), ("Challenges", () => new ChallengesScreen()),
                 ("Scenarios", () => new ScenarioScreen()), ("Gauntlet", () => new GauntletScreen()), ("Deck", () => new DeckScreen()),
                 ("Talents", () => new TalentsScreen()), ("Store", () => new StoreScreen()), ("Gold plate", () => new GoldPlateScreen()),
+                ("Pro cards", () => new ProCardsScreen()), ("Perks", () => new PerksScreen()),
                 ("Locker Room", () => new LockerRoomScreen()), ("Profile", () => new ProfileScreen()), ("Stats", () => new StatsScreen()),
                 ("Achievements", () => new AchievementsScreen()), ("Codex", () => new CodexScreen()), ("Gallery", () => new GalleryScreen()),
                 ("Replays", () => new ReplayLibraryScreen()), ("Leaderboard", () => new LeaderboardScreen()),
@@ -127,6 +128,8 @@ namespace SquashGame.Tests
             yield return Visit(fe, "Career hub", () => new CareerHubScreen());
             yield return Visit(fe, "Career record", () => new CareerRecordScreen());
             yield return Visit(fe, "Equipment", () => new EquipmentScreen());
+            yield return Visit(fe, "Career shop", () => new CareerShopScreen());
+            yield return Visit(fe, "Pro Shop", () => new StoreScreen(StoreScreen.ShopTab));
             yield return Visit(fe, "Trophy cabinet", () => new TrophyCabinetScreen());
             yield return Visit(fe, "Sponsor", () => new SponsorScreen());
             yield return Visit(fe, "Coach", () => new CoachScreen());

@@ -129,6 +129,8 @@ namespace SquashGame.Profile
         public List<ScenarioRecord> Scenarios = new List<ScenarioRecord>();                   // P3-R6
         public Progression.Wallet Wallet;                                                    // P4: coins (the one currency)
         public Progression.GachaState Gacha;                                                 // P4: pulls, pity, the shop
+        public List<Progression.ItemCount> Copies = new List<Progression.ItemCount>();        // 2026-11-24: pro cards' and perks' copies (their tier / level)
+        public List<string> Perks = new List<string>();                                       // 2026-11-24: the perks you train with (3 at most)
     }
 
     /// <summary>P3-R6: a scenario's best stars.</summary>
@@ -248,6 +250,10 @@ namespace SquashGame.Profile
             var g = p.Progress;
             if (g.Owned == null) g.Owned = new List<string>();
             if (g.Seen == null) g.Seen = new List<string>();
+            if (g.Copies == null) g.Copies = new List<Progression.ItemCount>();
+            if (g.Perks == null) g.Perks = new List<string>();
+            if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.Special)) g.Loadout.Special = "sp_classic";
+            if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.WalkOn)) g.Loadout.WalkOn = "wo_classic";
             if (g.Loadout == null) g.Loadout = new Progression.Loadout();
             if (g.Achievements == null) g.Achievements = new List<AchievementState>();
             if (g.Stats == null) g.Stats = new Progression.LifetimeStats();

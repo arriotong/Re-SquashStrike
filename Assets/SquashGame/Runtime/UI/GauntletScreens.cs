@@ -178,6 +178,7 @@ namespace SquashGame.UI
                 Gauntlet = true, ParPoints = 999,                                    // 2026-11-21: the floor's target decides it, not a game
                 GauntletFloor = Gauntlet.BeginFloor(run, Talents),
                 Attributes = Gauntlet.Attributes(run), Mods = Gauntlet.SimMods(run), EachGame0 = Gauntlet.HeadStart(run), FocusCharges = Gauntlet.FocusCharges(run),
+                Perks = true,                                                        // 2026-11-24 your training perks
                 Class = RunClass(run),                                               // 2026-11-22 your class: the base the cards build on (2026-11-23: the run's)
                 OppAttributes = fl.Attributes, OppMods = Gauntlet.OppMods(fl), KitSeed = star != null ? star.KitSeed : 0u,
                 Court = CourtFor(run, f), CrowdFill = CrowdFor(f),

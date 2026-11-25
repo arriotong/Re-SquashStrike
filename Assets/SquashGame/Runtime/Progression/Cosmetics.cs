@@ -19,7 +19,8 @@ using UnityEngine;
 
 namespace SquashGame.Progression
 {
-    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body, Trail }
+    public enum Slot { Shirt, Shorts, Socks, Shoes, Skin, Headband, Wristband, Frame, Grip, Strings, Celebration, Banner, Title, Hair, HairColour, Body, Trail,
+                       Special, WalkOn, ProCard, Perk }        // 2026-11-24 the new machines: a Special Shot's cut-in, the walk-on; the pro cards and perks (collected, not worn)
 
     public enum UnlockKind { Free, Level, Achievement, Challenge, Sponsor, Gacha }
 
@@ -38,6 +39,10 @@ namespace SquashGame.Progression
         public int Rarity = -1;
         public string Banner, GoldOf;
         public bool Gold, Glow;
+        // 2026-11-24 the machines: a pro card's opponent id; a perk's stats (0 speed, 1 stamina, 2 power, 3 control) and size
+        public string Ref;
+        public int Stat = -1, Stat2 = -1;
+        public float Amount, Amount2;
 
         public string HowToUnlock
         {
@@ -78,7 +83,8 @@ namespace SquashGame.Progression
         public string Shirt = "shirt_charcoal", Shorts = "shorts_black", Socks = "socks_white", Shoes = "shoes_white", Skin = "skin_3",
                       Headband = "headband_none", Wristband = "wristband_none", Frame = "frame_graphite", Grip = "grip_black",
                       Strings = "strings_white", Celebration = "cel_fist", Banner = "banner_charcoal", Title = "title_rookie",
-                      Hair = "hair_short", HairColour = "haircol_darkbrown", Body = "body_male", Trail = "trail_classic";
+                      Hair = "hair_short", HairColour = "haircol_darkbrown", Body = "body_male", Trail = "trail_classic",
+                      Special = "sp_classic", WalkOn = "wo_classic";      // 2026-11-24
 
         public string Get(Slot s)
         {
@@ -88,6 +94,7 @@ namespace SquashGame.Progression
                 case Slot.Skin: return Skin; case Slot.Headband: return Headband; case Slot.Wristband: return Wristband; case Slot.Frame: return Frame;
                 case Slot.Grip: return Grip; case Slot.Strings: return Strings; case Slot.Celebration: return Celebration; case Slot.Banner: return Banner;
                 case Slot.Hair: return Hair; case Slot.HairColour: return HairColour; case Slot.Body: return Body; case Slot.Trail: return Trail;
+                case Slot.Special: return Special ?? "sp_classic"; case Slot.WalkOn: return WalkOn ?? "wo_classic";
                 default: return Title;
             }
         }
@@ -101,6 +108,8 @@ namespace SquashGame.Progression
                 case Slot.Grip: Grip = id; break; case Slot.Strings: Strings = id; break; case Slot.Celebration: Celebration = id; break; case Slot.Banner: Banner = id; break;
                 case Slot.Hair: Hair = id; break; case Slot.HairColour: HairColour = id; break; case Slot.Body: Body = id; break;
                 case Slot.Trail: Trail = id; break;
+                case Slot.Special: Special = id; break; case Slot.WalkOn: WalkOn = id; break;
+                case Slot.ProCard: case Slot.Perk: break;                     // (collected, not worn)
                 default: Title = id; break;
             }
         }
@@ -111,7 +120,7 @@ namespace SquashGame.Progression
     public static class Cosmetics
     {
         public static readonly Slot[] KitSlots = { Slot.Shirt, Slot.Shorts, Slot.Socks, Slot.Shoes, Slot.Skin, Slot.Headband, Slot.Wristband, Slot.Frame, Slot.Grip, Slot.Strings, Slot.Hair, Slot.HairColour, Slot.Body };
-        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title", "Hair", "Hair colour", "Body", "Shot trail" };
+        public static readonly string[] SlotNames = { "Shirt", "Shorts", "Socks", "Shoes", "Skin tone", "Headband", "Wristband", "Racket frame", "Grip", "Strings", "Celebration", "Card banner", "Title", "Hair", "Hair colour", "Body", "Shot trail", "Special shot", "Walk-on", "Pro card", "Perk" };
 
         /// <summary>PR3: the hair styles, in AthleteRig's order (item id suffix, name).</summary>
         public static readonly (string id, string name)[] HairStyles =
@@ -234,6 +243,7 @@ namespace SquashGame.Progression
             // ---- P4: Gear Drops - the shot trail's default, then the six banners and their gold editions ----
             Add(Slot.Trail, "trail_classic", "Classic", H(0xfff2cc), H(0xfff2cc), UnlockKind.Free);
             GearDrops.AddTo((slot, id, name, a, b, u) => Add(slot, id, name, a, b, u));
+            Machines.AddTo((slot, id, name, a, b, u) => Add(slot, id, name, a, b, u));        // 2026-11-24 the new machines
 
             // achievements' rewards: those items unlock there, not on the level table
             foreach (var a in Achievements.All())

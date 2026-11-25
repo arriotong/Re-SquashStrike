@@ -93,6 +93,7 @@ namespace SquashGame.Tests
                 ("Locker Room", () => new LockerRoomScreen()), ("Stats", () => new StatsScreen()), ("Achievements", () => new AchievementsScreen()),
                 ("Settings", () => new SettingsScreen()), ("Controls", () => new ControlsHelpScreen()),
                 ("Confirm", () => new ConfirmScreen("Quit?", () => { })), ("Create player", () => new CreatePlayerScreen()),
+                ("Pro cards", () => new ProCardsScreen()), ("Perks", () => new PerksScreen()),                       // 2026-11-24 the machines
             };
             foreach (var (name, make) in screens) yield return Check(fe, name, make(), log);
 
@@ -101,6 +102,8 @@ namespace SquashGame.Tests
             var c = CareerStore.Current;
             yield return Check(fe, "Career hub (events)", new CareerHubScreen(), log);
             yield return Check(fe, "Equipment", new EquipmentScreen(), log);
+            yield return Check(fe, "Career shop", new CareerShopScreen(), log);
+            yield return Check(fe, "Pro Shop (career)", new StoreScreen(StoreScreen.ShopTab), log);
             yield return Check(fe, "Trophy cabinet", new TrophyCabinetScreen(), log);
             c.Enter(SquashSim.Career.Tour.HomeIndex);
             yield return Check(fe, "Career hub (match)", new CareerHubScreen(), log);

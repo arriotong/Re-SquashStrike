@@ -7,7 +7,11 @@
 //
 //   CARD PACKS   the Gauntlet's cards (GauntletCards): a card a pull
 //   COSMETICS    Gear Drops' six themed banners (chips switch them)
-//   PRO SHOP     the kit store's gear, as a gacha (GearDrops.ProShop)
+//   PRO SHOP     the kit store's gear, as a gacha (GearDrops.ProShop) -
+//                2026-11-24 ("put the proshop thing ... specifically in the
+//                career mode"): career's Shop opens it, alone; the store has
+//                the new machines instead (Machines): PRO CARDS, SPECIALS,
+//                WALK-ON, PERKS
 //
 // Each: a gradient banner, the big title, what is guaranteed and when
 // (top right), the featured prizes large in the middle, and two big
@@ -48,18 +52,29 @@ namespace SquashGame.UI
 
     public sealed class StoreScreen : GameScreen
     {
-        public override MenuWorld Backdrop { get { return MenuWorld.Store; } }   // 2026-11-21 its toon world (Dioramas)
+        public override MenuWorld Backdrop { get { return Career ? MenuWorld.Career : MenuWorld.Store; } }   // 2026-11-21 its toon world (Dioramas)
         public const string CardsTab = "CARD PACKS", CosmeticsTab = "CLOTHES", ShopTab = "PRO SHOP";
-        static readonly string[] Tabs3 = { CardsTab, CosmeticsTab, ShopTab };
+        public const string ProCardsTab = "PRO CARDS", SpecialsTab = "SPECIALS", WalkOnTab = "WALK-ON", PerksTab = "PERKS";
+        /// <summary>The store's machines, tab by tab (the Pro Shop is career's: alone, on its own page).</summary>
+        public static readonly string[] StoreTabs = { CardsTab, CosmeticsTab, ProCardsTab, SpecialsTab, WalkOnTab, PerksTab };
+        static readonly (string tab, string banner)[] MachineTabs =
+            { (ProCardsTab, Machines.ProCardsId), (SpecialsTab, Machines.SpecialsId), (WalkOnTab, Machines.WalkOnId), (PerksTab, Machines.PerksId) };
+        /// <summary>The career's Pro Shop (2026-11-24): the Pro Shop alone.</summary>
+        public bool Career { get { return _tab == ShopTab; } }
 
         readonly string _tab, _banner;
         /// <summary>Open on a tab (and, for COSMETICS, a banner).</summary>
         public StoreScreen(string tab = CardsTab, string banner = null) { _tab = tab; _banner = banner; }
         /// <summary>The store on a banner (the reveal goes back to it): the Pro Shop's, else a cosmetics one.</summary>
-        public static StoreScreen For(string banner) { return banner == GearDrops.ProShopId ? new StoreScreen(ShopTab) : new StoreScreen(CosmeticsTab, banner); }
+        public static StoreScreen For(string banner)
+        {
+            if (banner == GearDrops.ProShopId) return new StoreScreen(ShopTab);
+            foreach (var m in MachineTabs) if (m.banner == banner) return new StoreScreen(m.tab);
+            return new StoreScreen(CosmeticsTab, banner);
+        }
 
-        protected override string Kicker { get { return "SHOP & KIT  ·  MYSTERY PACKS"; } }
-        protected override string Title { get { return "Store"; } }
+        protected override string Kicker { get { return Career ? "CAREER  ·  SHOP" : "SHOP & KIT  ·  MYSTERY PACKS"; } }
+        protected override string Title { get { return Career ? "Pro Shop" : "Store"; } }
         protected override bool ShowChip { get { return false; } }
         protected override bool ShowCoins { get { return true; } }
         /// <summary>The cosmetics banner on show.</summary>
@@ -70,10 +85,16 @@ namespace SquashGame.UI
         protected override void Compose()
         {
             Banner = _banner ?? GearDrops.Banners()[0].Id;
+            if (Career) { Shop(Content); return; }
             Cards(Page(CardsTab));
             Cosmetics_(Page(CosmeticsTab));
-            Shop(Page(ShopTab));
-            int start = System.Array.IndexOf(Tabs3, _tab);
+            ProCards(Page(ProCardsTab));
+            Machine(Page(SpecialsTab), SpecialsTab, Machines.SpecialsId, "SPECIAL", new Color32(255, 70, 40, 255), new Color32(255, 214, 60, 255),
+                    new ActionItem("Wear it", () => Fe.Push(new LockerRoomScreen(LockerRoomScreen.ShowtimeTab)), "▶"));
+            Machine(Page(WalkOnTab), WalkOnTab, Machines.WalkOnId, "ENTRANCE", new Color32(40, 60, 190, 255), new Color32(255, 110, 180, 255),
+                    new ActionItem("Wear it", () => Fe.Push(new LockerRoomScreen(LockerRoomScreen.ShowtimeTab)), "▶"));
+            Perks(Page(PerksTab));
+            int start = System.Array.IndexOf(StoreTabs, _tab);
             if (start > 0) Root.schedule.Execute(() => Tabs.Select(start));
         }
 
@@ -140,6 +161,73 @@ namespace SquashGame.UI
             GearPulls(b, ShopTab, bn.Id);
         }
 
+        // ---------------- 2026-11-24 the new machines ----------------
+
+        void ProCards(VisualElement page)
+        {
+            var bn = Machines.Find(Machines.ProCardsId);
+            var b = BannerBox(page, bn.Name, "CARDS", new Color32(20, 120, 200, 255), new Color32(120, 240, 255, 255));
+            Info(b, "OPEN 10: AT LEAST ONE SUPER CARD", "Get a card again: Silver at " + Machines.TierAt[1] + ", Gold at " + Machines.TierAt[2] + ", Holo at " + Machines.TierAt[3]);
+            var top = new List<Item>(bn.Of(GearRarity.Legendary));
+            GearFeatured(b, bn, top.GetRange(0, Mathf.Min(3, top.Count)));
+            int owned = GearDrops.OwnedIn(bn, out _);
+            Footer(b, bn.Blurb, "You have " + owned + " of " + bn.Items.Count, new ActionItem("Your cards", () => Fe.Push(new ProCardsScreen()), "▶"), o => MachineOdds(o, Machines.ProCardsId));
+            GearPulls(b, ProCardsTab, bn.Id);
+        }
+
+        void Perks(VisualElement page)
+        {
+            var bn = Machines.Find(Machines.PerksId);
+            var b = BannerBox(page, bn.Name, "TRAIN", new Color32(30, 150, 80, 255), new Color32(200, 255, 61, 255));
+            Info(b, "WEAR " + Machines.MaxPerks + " PERKS AT ONCE", "Quick Match, career and the Gauntlet  ·  get one again to level it up");
+            var top = new List<Item>(bn.Of(GearRarity.Legendary)); top.Add(bn.Of(GearRarity.Epic)[0]);
+            GearFeatured(b, bn, top);
+            int owned = GearDrops.OwnedIn(bn, out _);
+            Footer(b, bn.Blurb, "You have " + owned + " of " + bn.Items.Count + "   ·   now: " + Machines.Describe(Machines.Total()),
+                   new ActionItem("Your perks", () => Fe.Push(new PerksScreen()), "▶"), o => MachineOdds(o, Machines.PerksId));
+            GearPulls(b, PerksTab, bn.Id);
+        }
+
+        void Machine(VisualElement page, string tab, string id, string watermark, Color from, Color to, ActionItem extra)
+        {
+            var bn = Machines.Find(id);
+            var b = BannerBox(page, bn.Name, watermark, from, to);
+            GearInfo(b, bn);
+            var top = new List<Item>();
+            for (int r = 4; r >= 0 && top.Count < 3; r--) foreach (var it in bn.Of((GearRarity)r)) if (top.Count < 3) top.Add(it);
+            GearFeatured(b, bn, top);
+            int owned = GearDrops.OwnedIn(bn, out _);
+            Footer(b, bn.Blurb, "You have " + owned + " of " + bn.Items.Count, extra, o => MachineOdds(o, id));
+            GearPulls(b, tab, bn.Id);
+        }
+
+        static VisualElement MachineOdds(VisualElement o, string id)
+        {
+            for (int r = 4; r >= 0; r--)
+            {
+                var line = Kit.Box(o, "gd-odd");
+                var dot = Kit.Box(line, "gd-odd-dot"); dot.style.backgroundColor = GearDrops.RarityColours[r];
+                Kit.L(line, GearDrops.RarityNames[r], "gd-odd-name");
+                Kit.L(line, (GearDrops.Odds[r] * 100).ToString("0.#") + "%", "gd-odd-pct");
+            }
+            var rules = new List<string>
+            {
+                "A pull: " + GearDrops.PullCost + " coins; ten for " + GearDrops.TenPullCost.ToString("N0") + " (one free), an Epic or better among them.",
+                "After " + GearDrops.Pity + " pulls here without a Legendary, the next one is.",
+            };
+            if (id == Machines.ProCardsId) rules.Add("A card again: Silver at " + Machines.TierAt[1] + " copies, Gold at " + Machines.TierAt[2] + ", Holo at " + Machines.TierAt[3] + ". Past Holo: coins.");
+            else if (id == Machines.PerksId)
+            {
+                rules.Add("A perk again: level 2 at " + Machines.PerkLevelAt[1] + " copies, level 3 at " + Machines.PerkLevelAt[2] + " (x1.5, x2). Past level 3: coins.");
+                rules.Add("Wear " + Machines.MaxPerks + " at once. A stat goes up " + Machines.Percent(Machines.MaxPerStat) + " at most, all perks together.");
+                rules.Add("Perks count in Quick Match, career and the Gauntlet - never in Local Versus or online.");
+            }
+            else rules.Add("Duplicates pay coins: " + string.Join(" / ", System.Array.ConvertAll(GearDrops.DupeCoins, c => c.ToString())) + " (Common to Legendary). Looks only.");
+            rules.Add("Coins come from playing every mode. Never real money.");
+            foreach (var rule in rules) Kit.L(o, "·  " + rule, "gd-rule");
+            return o;
+        }
+
         // ---------------- the parts ----------------
 
         static (Color, Color) ColoursOf(string banner)
@@ -195,7 +283,7 @@ namespace SquashGame.UI
             {
                 var it = items[i];
                 int r = Mathf.Clamp(bn.RarityOf(it), 0, 4);
-                var t = Tile(feat, i, it.Name, GearDrops.RarityNames[r].ToUpperInvariant() + "  ·  " + GearUi.SlotName(it).ToUpperInvariant(), GearDrops.RarityColours[r]);
+                var t = Tile(feat, i, GearUi.NameOf(it), GearDrops.RarityNames[r].ToUpperInvariant() + "  ·  " + GearUi.SlotName(it).ToUpperInvariant(), GearDrops.RarityColours[r]);
                 t.Insert(0, GearUi.Swatch(it, "gx-feat-art"));
             }
         }

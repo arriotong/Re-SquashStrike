@@ -48,6 +48,7 @@ namespace SquashGame.Progression
         public Rarity Rarity;
         public bool Gold, New;
         public int Coins;           // a duplicate's coins (0 when new)
+        public string Up;           // 2026-11-24 a pro card's or perk's copy: "SILVER", "LEVEL 2" (null: a copy towards the next)
     }
 
     [Serializable] public sealed class BannerPity { public string Id; public int Count; }
@@ -93,7 +94,7 @@ namespace SquashGame.Progression
 
         static List<GearBanner> _banners;
         public static List<GearBanner> Banners() { if (_banners == null) Cosmetics.All(); return _banners; }
-        public static GearBanner Banner(string id) { foreach (var b in Banners()) if (b.Id == id) return b; return id == ProShopId ? ProShop() : null; }
+        public static GearBanner Banner(string id) { foreach (var b in Banners()) if (b.Id == id) return b; return id == ProShopId ? ProShop() : Machines.Find(id); }
 
         // ---------------- 2026-10-29: the Pro Shop is a gacha ("we are changing pro shop into gacha now") ----------------
 
@@ -297,6 +298,13 @@ namespace SquashGame.Progression
         static Drop Give(Item it, Rarity r, bool gold)
         {
             var d = new Drop { Item = it, Rarity = r, Gold = gold };
+            if (Machines.Counts(it))                                                     // 2026-11-24 pro cards, perks: copies level them
+            {
+                d.Up = Machines.Copy(it, r, out d.Coins);
+                d.New = d.Up == "NEW"; if (d.New) d.Up = null;
+                Wallet.Coins += d.Coins;
+                return d;
+            }
             if (P.Owned.Contains(it.Id)) { d.Coins = DupeCoins[(int)r]; Wallet.Coins += d.Coins; }
             else { P.Owned.Add(it.Id); d.New = true; }
             return d;

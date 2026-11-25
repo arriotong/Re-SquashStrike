@@ -301,6 +301,7 @@ namespace SquashGame.UI
                 CrowdFill = CrowdFill(c.S.Current != null ? c.S.Current.Tier : 0),
                 Attributes = c.Effective,                                  // your levels and your gear (P7 phase 5)
                 Class = string.IsNullOrEmpty(c.S.Class) ? SquashSim.PlayerClasses.Default : c.S.Class,   // 2026-11-22 your class, on top
+                Perks = true,                                                                              // 2026-11-24 your training perks
                 GearLooks = GearLooks(c),                                   // bought gear shows (the starters leave your Locker look)
                 Prestige = PrestigeOf(c),                                   // camera work: a final opens with the fly-around
             }.Dressed());
@@ -642,7 +643,7 @@ namespace SquashGame.UI
             var right = Kit.Box(body, "fc-right");
             // (six choices at most: the icons upgrade on confirm - this says so)
             _upgrade = Kit.L(right, "", "fc-hint");
-            var shop = AddTo(right, new ActionItem("Equipment  ·  rackets, shoes, kit", () => Fe.Push(new EquipmentScreen())));
+            var shop = AddTo(right, new ActionItem("Shop  ·  equipment and the Pro Shop", () => Fe.Push(new CareerShopScreen())));   // 2026-11-24 the Pro Shop is career's
             shop.Root.AddToClassList("fc-btn");
             var gearNames = new List<string>();
             foreach (var g in c.Wearing()) gearNames.Add(g.Name);

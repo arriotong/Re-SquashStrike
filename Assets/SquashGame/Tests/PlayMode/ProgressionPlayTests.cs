@@ -137,13 +137,10 @@ namespace SquashGame.Tests
             row.Select("shirt_white");
             Assert.That(ProfileStore.Current.Progress.Loadout.Shirt, Is.EqualTo("shirt_white"), "picked again");
 
-            // LOOK: a celebration plays on the athlete as you browse
+            // LOOK
             yield return Tap(kb.eKey);
             yield return null; yield return null;
             Assert.That(locker.Tabs.Current, Is.EqualTo("LOOK"));
-            yield return FocusRow(kb, fe, "Celebration");
-            yield return null;
-            Assert.That(KitDirector.PreviewPose, Is.Not.Null, "the celebration is shown");
             yield return Wait(1.0f, () => false);
             yield return CaptureUI(fe, "P2M5_UI_2_Kit.png");
             yield return Tap(kb.eKey);                                                 // RACKET
@@ -151,6 +148,15 @@ namespace SquashGame.Tests
             Assert.That(((LockerRow)fe.Top.Focused).Slot, Is.EqualTo(Slot.Frame));
             Assert.That(KitDirector.PreviewPose, Is.Null);
             yield return CaptureUI(fe, "P2M5_UI_3_Racket.png");
+            // 2026-11-24 SHOWTIME: the Special Shot, the walk-on, the celebration - which plays on the athlete as you browse
+            yield return Tap(kb.eKey);
+            yield return null; yield return null;
+            Assert.That(locker.Tabs.Current, Is.EqualTo(LockerRoomScreen.ShowtimeTab));
+            yield return FocusRow(kb, fe, "Celebration");
+            yield return null;
+            Assert.That(KitDirector.PreviewPose, Is.Not.Null, "the celebration is shown");
+            yield return Wait(1.0f, () => false);
+            yield return CaptureUI(fe, "SHOWTIME_Locker.png");
             yield return Tap(kb.eKey);                                                 // CARD
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "U5_Locker_Card.png");
@@ -455,9 +461,15 @@ namespace SquashGame.Tests
             store.Tabs.Select(0);                                                       // CARD PACKS
             yield return Wait(0.5f, () => false);
             yield return CaptureUI(fe, "S1_Store_Cards.png");
-            store.Tabs.Select(2);                                                       // PRO SHOP
-            yield return Wait(0.5f, () => false);
-            yield return CaptureUI(fe, "S1_Store_ProShop.png");
+            // 2026-11-24 the new machines, a tab each (the Pro Shop is career's now)
+            Assert.That(store.Tabs.Count, Is.EqualTo(StoreScreen.StoreTabs.Length));
+            for (int t = 2; t < StoreScreen.StoreTabs.Length; t++)
+            {
+                store.Tabs.Select(t);
+                yield return Wait(0.5f, () => false);
+                Assert.That(store.Pulls.ContainsKey(StoreScreen.StoreTabs[t]), Is.True, StoreScreen.StoreTabs[t] + " can be pulled");
+                yield return CaptureUI(fe, "STORE_" + StoreScreen.StoreTabs[t].Replace(" ", "").Replace("-", "") + ".png");
+            }
             store.Tabs.Select(1);
             yield return null;
 
@@ -479,6 +491,12 @@ namespace SquashGame.Tests
             var shop = GearDrops.Pull(GearDrops.ProShopId, 1);
             Assert.That(shop.Count, Is.EqualTo(1));
             Assert.That(GearDrops.ProShop().Items, Does.Contain(shop[0].Item), "the kit store's gear");
+            // 2026-11-24: the Pro Shop is the career's - alone on its own page
+            fe.Push(new StoreScreen(StoreScreen.ShopTab));
+            yield return Wait(0.6f, () => false);
+            Assert.That(((StoreScreen)fe.Top).Career, Is.True);
+            Assert.That(((StoreScreen)fe.Top).Pulls.ContainsKey(StoreScreen.ShopTab), Is.True);
+            yield return CaptureUI(fe, "CAREER_ProShop.png");
         }
 
         [UnityTest]

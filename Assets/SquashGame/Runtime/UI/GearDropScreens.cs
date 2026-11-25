@@ -42,6 +42,10 @@ namespace SquashGame.UI
         }
 
         public static string SlotName(Item it) { return Cosmetics.SlotNames[(int)it.Slot]; }
+        /// <summary>An item's name - a pro card's, the player's (their real name where the local roster has it).</summary>
+        public static string NameOf(Item it) { return it.Ref != null ? SquashSim.Career.Stars.Describe(it.Ref).name : it.Name; }
+        /// <summary>Whether a pulled item is worn (the reveal's "Wear it"): not titles, pro cards or perks.</summary>
+        public static bool Wearable(Item it) { return it.Slot != Slot.Title && it.Slot != Slot.ProCard && it.Slot != Slot.Perk; }
         public static Color RarityColour(Item it) { return it.Gold ? GearDrops.GoldAccent : GearDrops.RarityColours[Mathf.Clamp(it.Rarity, 0, 4)]; }
     }
 
@@ -71,10 +75,12 @@ namespace SquashGame.UI
                 c.Add(GearUi.Swatch(d.Item, "gd-sw-reveal"));
                 var k = Kit.L(c, (d.Gold ? "★ GOLD  ·  " : "") + GearDrops.RarityNames[(int)d.Rarity].ToUpperInvariant(), "gd-card-k");
                 k.style.color = GearUi.RarityColour(d.Item);
-                Kit.L(c, d.Item.Name, "gd-card-name");
+                Kit.L(c, GearUi.NameOf(d.Item), "gd-card-name");
                 Kit.L(c, GearUi.SlotName(d.Item), "gd-card-slot");
-                var tag = Kit.L(c, d.New ? "NEW" : "+" + d.Coins + " coins", "gd-card-tag");
-                if (d.New) tag.AddToClassList("gd-card-tag--new");
+                // 2026-11-24 a pro card's / perk's copy: its new tier or level, else a copy towards the next
+                string said = d.New ? "NEW" : d.Up != null ? d.Up + "!" : d.Coins > 0 ? "+" + d.Coins + " coins" : "+1 copy  ·  " + Machines.ToNext(d.Item) + " to go";
+                var tag = Kit.L(c, said, "gd-card-tag");
+                if (d.New || d.Up != null) tag.AddToClassList("gd-card-tag--new");
                 if (d.Rarity >= Rarity.Epic || d.Gold) c.AddToClassList("gd-card--big");
                 _cards.Add(c);
             }
@@ -93,7 +99,7 @@ namespace SquashGame.UI
         {
             Drop best = null;
             foreach (var d in _drops)
-                if (d.New && d.Item.Slot != Slot.Title && (best == null || (d.Gold ? 10 : 0) + (int)d.Rarity > (best.Gold ? 10 : 0) + (int)best.Rarity)) best = d;
+                if (d.New && GearUi.Wearable(d.Item) && (best == null || (d.Gold ? 10 : 0) + (int)d.Rarity > (best.Gold ? 10 : 0) + (int)best.Rarity)) best = d;
             return best;
         }
 

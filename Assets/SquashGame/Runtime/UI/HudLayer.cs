@@ -156,7 +156,9 @@ namespace SquashGame
             _chat.AddToClassList("hud-chat"); _chat.pickingMode = PickingMode.Ignore; Add(_chat);
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
-            _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
+            _introLine.AddToClassList("hud-intro-line"); _introLine.pickingMode = PickingMode.Ignore; _introLine.style.display = DisplayStyle.None;
+            Add(_woFx);                                                                                  // 2026-11-24 the walk-on's effects, under its card
+            _intro.Add(_introLine); _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
             _cine.AddToClassList("hud-cine"); _cineTitle.AddToClassList("hud-cine-title"); _cineSub.AddToClassList("hud-cine-sub");
             _cine.Add(_cineTitle); _cine.Add(_cineSub); _cine.style.display = DisplayStyle.None; _cine.pickingMode = PickingMode.Ignore; Add(_cine);
             _cineTitle.pickingMode = PickingMode.Ignore; _cineSub.pickingMode = PickingMode.Ignore;
@@ -181,7 +183,7 @@ namespace SquashGame
             _cutIn.AddToClassList("hud-cutin"); _cutIn.pickingMode = PickingMode.Ignore; _cutIn.style.display = DisplayStyle.None;
             _cutKicker.AddToClassList("hud-cutin-kicker"); _cutName.AddToClassList("hud-cutin-name");
             _cutKicker.pickingMode = PickingMode.Ignore; _cutName.pickingMode = PickingMode.Ignore;
-            for (int k = 0; k < 7; k++) { var line = new VisualElement(); line.AddToClassList("hud-cutin-line"); line.style.top = Length.Percent(8 + k * 13); line.pickingMode = PickingMode.Ignore; _cutIn.Add(line); }
+            for (int k = 0; k < 7; k++) { var line = new VisualElement(); line.AddToClassList("hud-cutin-line"); line.style.top = Length.Percent(8 + k * 13); line.pickingMode = PickingMode.Ignore; _cutIn.Add(line); _cutLines.Add(line); }
             _cutIn.Add(_cutKicker); _cutIn.Add(_cutName); Add(_cutIn);
             _duel.AddToClassList("hud-duel"); _duel.pickingMode = PickingMode.Ignore; _duel.style.display = DisplayStyle.None;
             _duelTarget.AddToClassList("hud-duel-target"); _duelRing.AddToClassList("hud-duel-ring"); _duelWord.AddToClassList("hud-duel-word");
@@ -207,6 +209,15 @@ namespace SquashGame
         readonly Label[] _plus = new Label[2];
         readonly VisualElement[] _side = new VisualElement[2];
         readonly VisualElement _cutIn = new VisualElement(), _duel = new VisualElement(), _duelTarget = new VisualElement(), _duelRing = new VisualElement();
+        // 2026-11-24 the machines: your Special Shot's look on your cut-in; your walk-on's line and effects
+        readonly System.Collections.Generic.List<VisualElement> _cutLines = new System.Collections.Generic.List<VisualElement>();
+        readonly Label _introLine = new Label();
+        readonly WalkOnFx _woFx = new WalkOnFx();
+        SquashGame.Progression.Item _cutStyle;
+        /// <summary>The Special Shot look on the cut-in now (null: the plain one) and the walk-on effect playing - tests.</summary>
+        public string CutInLook { get { return _cutStyle != null ? _cutStyle.Id : null; } }
+        public int WalkOnFxPlaying { get { return _woFx.Playing; } }
+        static SquashGame.Progression.Loadout MyLoadout { get { var p = SquashGame.Profile.ProfileStore.Current; return p != null && p.Progress != null ? p.Progress.Loadout : null; } }
         readonly Label _cutKicker = new Label(), _cutName = new Label(), _duelWord = new Label();
         string[] _names;
         /// <summary>The cut-in on screen, the duel ring on screen (tests).</summary>
@@ -215,6 +226,42 @@ namespace SquashGame
         /// <summary>The duel ring shows from this long (sim seconds) before the ball arrives; its size then, and at the target.</summary>
         public const float DuelLead = 0.7f, DuelRingFrom = 420f, DuelRingAt = 120f;
 
+        /// <summary>2026-11-24 a Special Shot look (the SPECIALS machine) on the cut-in - its colours and pattern; null: the plain band.
+        /// Patterns: 0 speed lines, 1 rays, 2 comic stripes, 3 glitch bars (moved each frame).</summary>
+        void StyleCutIn(SquashGame.Progression.Item look)
+        {
+            _cutStyle = look;
+            if (look == null)
+            {
+                _cutIn.style.backgroundColor = StyleKeyword.Null; _cutIn.style.borderTopColor = StyleKeyword.Null; _cutIn.style.borderBottomColor = StyleKeyword.Null;
+                _cutKicker.style.color = StyleKeyword.Null;
+                for (int k = 0; k < _cutLines.Count; k++)
+                {
+                    var l = _cutLines[k];
+                    l.style.top = Length.Percent(8 + k * 13); l.style.height = StyleKeyword.Null; l.style.left = StyleKeyword.Null;
+                    l.style.backgroundColor = StyleKeyword.Null; l.style.rotate = StyleKeyword.Null;
+                }
+                return;
+            }
+            Color a = look.A, b = look.B;
+            var bg = Color.Lerp(new Color(0.04f, 0.04f, 0.06f), a, 0.42f); bg.a = 0.9f;
+            _cutIn.style.backgroundColor = bg;
+            _cutIn.style.borderTopColor = a; _cutIn.style.borderBottomColor = a;
+            _cutKicker.style.color = b;
+            for (int k = 0; k < _cutLines.Count; k++)
+            {
+                var l = _cutLines[k];
+                l.style.left = StyleKeyword.Null; l.style.rotate = StyleKeyword.Null;
+                switch (look.Style)
+                {
+                    case 1: l.style.top = Length.Percent(46); l.style.height = 8; l.style.rotate = new Rotate(-36 + k * 12); l.style.backgroundColor = new Color(b.r, b.g, b.b, 0.22f); break;
+                    case 2: l.style.top = Length.Percent(4 + k * 14); l.style.height = 26; l.style.backgroundColor = k % 2 == 0 ? new Color(a.r, a.g, a.b, 0.5f) : new Color(b.r, b.g, b.b, 0.25f); break;
+                    case 3: l.style.backgroundColor = new Color(b.r, b.g, b.b, 0.35f); break;
+                    default: l.style.top = Length.Percent(8 + k * 13); l.style.height = 4; l.style.backgroundColor = new Color(b.r, b.g, b.b, 0.3f); break;
+                }
+            }
+        }
+
         void CutInAndDuel(MatchRunner r, MatchSimulation m, int me)
         {
             bool cut = GameplayCameraRig.CutInShowing;
@@ -222,13 +269,24 @@ namespace SquashGame
             {
                 int who = GameplayCameraRig.CutInWho;
                 bool mine = who == me && !r.Settings.TwoPlayer;
-                _cutKicker.text = mine ? "YOUR SPECIAL SHOT" : "SPECIAL SHOT";
+                var look = mine ? SquashGame.Progression.Machines.SpecialOf(MyLoadout) : null;
+                if (look != null && look.Id == "sp_classic") look = null;
+                StyleCutIn(look);
+                _cutKicker.text = look != null ? look.Pose : mine ? "YOUR SPECIAL SHOT" : "SPECIAL SHOT";
                 _cutName.text = _names != null && who >= 0 && who < _names.Length ? _names[who].ToUpperInvariant() : "";
                 _cutIn.EnableInClassList("hud-cutin--them", !mine);
                 _cutIn.RemoveFromClassList("hud-cutin--in");
                 _cutIn.schedule.Execute(() => _cutIn.AddToClassList("hud-cutin--in")).StartingIn(16);
             }
             _cutIn.style.display = cut ? DisplayStyle.Flex : DisplayStyle.None;
+            if (cut && _cutStyle != null && _cutStyle.Style == 3)                                    // glitch: the bars jump about
+                for (int k = 0; k < _cutLines.Count; k++)
+                {
+                    float u = Mathf.Repeat(Mathf.Sin((Time.unscaledTime * 23f + k * 7.1f)) * 43758.5f, 1f);
+                    _cutLines[k].style.top = Length.Percent(u * 92f);
+                    _cutLines[k].style.height = 4 + u * 22f;
+                    _cutLines[k].style.left = Length.Percent(-10 + u * 30f);
+                }
             if (cut) { _pop.style.display = DisplayStyle.None; _popLeft = 0; _popSmall.style.display = DisplayStyle.None; _popSmallLeft = 0; _focusDim.style.opacity = 0; }
             // the duel: a ring closing on the target as the ball comes; let go of Hit (holding Focus) as it meets it
             bool duel = me >= 0 && me < 2 && m.SpecialIncoming(me) && m.DuelResult == 0 && !double.IsNaN(m.DuelAt) && !r.ReplayActive;
@@ -693,6 +751,17 @@ namespace SquashGame
                 _introSub.text = (s.GamesToWin > 1 ? "BEST OF " + (s.GamesToWin * 2 - 1) : "ONE GAME") + "   ·   " + system + "   ·   GLASS COURT";
             }
             _intro.style.display = intro ? DisplayStyle.Flex : DisplayStyle.None;
+            // 2026-11-24 your walk-on (the WALK-ON machine): its colours and line on the card, its effect over the screen
+            var wo = SquashGame.Progression.Machines.WalkOnOf(MyLoadout);
+            bool styled = wo != null && wo.Id != "wo_classic";
+            bool walking = cine && !(r.ReplayProgress < r.CinematicOrbit && r.CinematicTitle != null);
+            if (styled && (intro || walking) && r.OnlineMatch == null) _woFx.Play(wo.Style, wo.A, wo.B); else _woFx.Stop();
+            _woFx.Step(Time.unscaledDeltaTime);
+            _introLine.text = styled ? wo.Pose : "";
+            _introLine.style.display = styled && !string.IsNullOrEmpty(wo.Pose) ? DisplayStyle.Flex : DisplayStyle.None;
+            if (styled) { _intro.style.borderTopColor = wo.A; _introSub.style.color = wo.A; _introLine.style.color = wo.A; }
+            else { _intro.style.borderTopColor = StyleKeyword.Null; _introSub.style.color = StyleKeyword.Null; }
+            if (styled && walking && !string.IsNullOrEmpty(wo.Pose)) _cineSub.text = wo.Pose + "   ·   " + _cineSub.text;
             _intro.EnableInClassList("hud-intro--in", intro && _introLeft < 3.4f && _introLeft > 0.3f);
         }
 

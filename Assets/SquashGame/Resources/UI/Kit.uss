@@ -965,6 +965,7 @@
 }
 .hud-intro--in { translate: -50% 0; opacity: 1; }
 .hud-intro-names { font-size: 44px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-intro-line { font-size: 15px; letter-spacing: 6px; margin-bottom: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }   /* 2026-11-24 your walk-on's line */
 .hud-intro-sub { font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 
 /* ---- P3-R2: challenges ---- */

@@ -168,7 +168,20 @@ namespace SquashGame.Athlete
                 Pose("cel_bow", "celebration").Crouch(0.04f).Lean(50).Feet(-0.18f, 0, 0.18f, 0, 10, -10)
                     .Racket(-0.30f, 0.60f, -0.45f, 0.0f, -0.6f, -0.7f, -0.9f, 0.0f, 0.0f).Hand(0.05f, 0.95f, -0.40f).Look(-20),
                 Pose("cel_knee", "celebration").Crouch(0.48f).Lean(-10).Feet(-0.22f, -0.42f, 0.22f, 0.48f, 10, -10)
-                    .Racket(-0.55f, 1.55f, -0.20f, -0.4f, 0.9f, 0.0f, 0.0f, 0.0f, -1.0f, -0.3f, 0.0f, 0.3f).Hand(0.32f, 1.35f, -0.25f, 0.35f, -0.2f, 0.25f).Look(24)
+                    .Racket(-0.55f, 1.55f, -0.20f, -0.4f, 0.9f, 0.0f, 0.0f, 0.0f, -1.0f, -0.3f, 0.0f, 0.3f).Hand(0.32f, 1.35f, -0.25f, 0.35f, -0.2f, 0.25f).Look(24),
+                // ---------------- 2026-11-24 the WALK-ON machine's celebrations ----------------
+                Pose("cel_guitar", "celebration").Crouch(0.12f).Lean(6).Feet(-0.30f, 0, 0.30f, 0, 18, -18)       // the racket across the body, played
+                    .Racket(0.18f, 1.18f, -0.28f, 0.85f, 0.5f, 0.0f, 0.0f, 0.0f, -1.0f, -0.4f, -0.6f, 0.2f).Hand(0.12f, 1.14f, -0.34f, 0.4f, -0.6f, 0.1f).Look(-14),
+                Pose("cel_flex", "celebration").Crouch(0.1f).Lean(-4).Feet(-0.30f, 0, 0.30f, 0, 16, -16)          // both arms up, bent: a double flex
+                    .Racket(-0.44f, 1.74f, -0.06f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, -1.0f, -0.6f, 0.0f).Hand(0.44f, 1.52f, -0.04f, 1.0f, -0.6f, 0.0f).Look(8),
+                Pose("cel_point", "celebration").Crouch(0.02f).Lean(-4).Feet(-0.22f, 0, 0.22f, 0, 12, -12)        // pointing out to the crowd
+                    .Racket(-0.27f, 0.24f, -0.04f, 0.0f, -1.0f, -0.12f, -1.0f, 0.0f, 0.0f).Hand(0.30f, 1.75f, -0.60f, 0.3f, -0.3f, 0.2f).Look(15),
+                Pose("cel_salute", "celebration").Crouch(0.0f).Lean(-2).Feet(-0.12f, 0, 0.12f, 0, 4, -4)          // heels together, a salute
+                    .Racket(-0.24f, 0.22f, 0.0f, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f).Hand(0.06f, 1.66f, -0.12f, 0.6f, -0.1f, 0.0f).Look(5),
+                Pose("cel_shush", "celebration").Crouch(0.04f).Lean(4).Feet(-0.20f, 0, 0.20f, 0, 10, -10)        // a finger to the lips
+                    .Racket(-0.27f, 0.30f, -0.08f, 0.0f, -1.0f, -0.12f, -1.0f, 0.0f, 0.0f).Hand(0.02f, 1.55f, -0.16f, 0.4f, -0.5f, 0.1f).Look(-3),
+                Pose("cel_cool", "celebration").Crouch(0.0f).Lean(-6).Feet(-0.24f, 0, 0.20f, 0, 14, -6)          // the racket on the shoulder, a hand on the hip
+                    .Racket(-0.20f, 1.75f, 0.35f, 0.0f, 0.6f, 0.8f, -1.0f, 0.0f, 0.0f, -0.6f, -0.6f, 0.0f).Hand(0.30f, 1.00f, -0.05f, 1.0f, 0.0f, 0.0f).Look(6)
             };
             var list = new List<AthletePose>();
             foreach (var b in poses) list.Add(b.P);
