@@ -131,6 +131,8 @@ namespace SquashGame.Profile
         public Progression.GachaState Gacha;                                                 // P4: pulls, pity, the shop
         public List<Progression.ItemCount> Copies = new List<Progression.ItemCount>();        // 2026-11-24: pro cards' and perks' copies (their tier / level)
         public List<string> Perks = new List<string>();                                       // 2026-11-24: the perks you train with (3 at most)
+        public string ProCard;                                                                // 2026-11-25: your card (shown on your tag, your coach)
+        public List<string> CardSets = new List<string>();                                    // 2026-11-25: the pro card sets completed (rewarded)
     }
 
     /// <summary>P3-R6: a scenario's best stars.</summary>
@@ -265,6 +267,7 @@ namespace SquashGame.Profile
             if (g.Seen == null) g.Seen = new List<string>();
             if (g.Copies == null) g.Copies = new List<Progression.ItemCount>();
             if (g.Perks == null) g.Perks = new List<string>();
+            if (g.CardSets == null) g.CardSets = new List<string>();
             if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.Special)) g.Loadout.Special = "sp_classic";
             if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.WalkOn)) g.Loadout.WalkOn = "wo_classic";
             if (g.Loadout == null) g.Loadout = new Progression.Loadout();

@@ -95,10 +95,110 @@ namespace SquashGame.Progression
             c.N++;
             if (!P.Owned.Contains(it.Id)) P.Owned.Add(it.Id);
             int after = StepFor(steps, c.N);
-            if (before < 0) return "NEW";
+            if (before < 0) { if (it.Slot == Slot.ProCard) CheckSets(); return "NEW"; }
             if (after == before) return null;
             return it.Slot == Slot.ProCard ? TierNames[after].ToUpperInvariant() : "LEVEL " + (after + 1);
         }
+
+        // ---------------- 2026-11-25 the pro cards do things (the user: "1234 should all be added") ----------------
+        //   1  your card: on your player tag and your walk-on; a tier badge on that pro in the opponent picker
+        //   2  sets: the top 10, all 50 pros, all 50 club players, all 100 - coins and a title each
+        //   3  your card coaches you: a small edge in its class's stat, by tier (with the perks, under their cap)
+        //   4  the world's top 10 are locked in Quick Match until you have their card
+
+        /// <summary>A pro card's item by opponent id (null: none).</summary>
+        public static Item CardOf(string opponentId)
+        {
+            var b = Find(ProCardsId);
+            return b == null || opponentId == null ? null : b.Items.Find(i => i.Ref == opponentId);
+        }
+
+        /// <summary>Your card (an owned pro card's id), or null.</summary>
+        public static string YourCard
+        {
+            get { var id = P.ProCard; return !string.IsNullOrEmpty(id) && TierOf(id) >= 0 ? id : null; }
+        }
+
+        /// <summary>Make a card yours (again: no card). False: not owned.</summary>
+        public static bool SetYourCard(string id)
+        {
+            if (id != null && TierOf(id) < 0) return false;
+            P.ProCard = id != null && id == P.ProCard ? null : id;
+            ProfileStore.Save();
+            return true;
+        }
+
+        /// <summary>"GOLD CARD · Zayn Mahrous" (your tag, your walk-on); null with no card.</summary>
+        public static string YourCardLine()
+        {
+            var id = YourCard; if (id == null) return null;
+            var it = Cosmetics.Find(id);
+            return TierNames[TierOf(id)].ToUpperInvariant() + " CARD  ·  " + SquashSim.Career.Stars.Describe(it.Ref).name;
+        }
+
+        /// <summary>The coach's edge by tier (Bronze .. Holo) on the 0..10 scale (a point is 4%).</summary>
+        public static readonly float[] CoachAt = { 0.1f, 0.2f, 0.3f, 0.4f };
+
+        /// <summary>The stat a card coaches (0 speed, 1 stamina, 2 power, 3 control): its pro's class family.</summary>
+        public static int CoachStat(Item card)
+        {
+            if (card == null || card.Ref == null) return -1;
+            string fam = PlayerClasses.FamilyOf(SquashGame.UI.SetupFlow.OpponentClass(card.Ref));
+            switch (fam) { case "power": return 2; case "speed": return 0; case "accuracy": case "touch": return 3; default: return 1; }
+        }
+
+        /// <summary>What your card adds now, stat by stat.</summary>
+        public static float[] CoachGives(string id = null)
+        {
+            var d = new float[4];
+            id = id ?? YourCard;
+            var it = id != null ? Cosmetics.Find(id) : null;
+            int tier = id != null ? TierOf(id) : -1, s = CoachStat(it);
+            if (tier >= 0 && s >= 0) d[s] = CoachAt[tier];
+            return d;
+        }
+
+        public sealed class CardSet
+        {
+            public string Id, Name, Title;
+            public int Coins;
+            public System.Func<Item, bool> In;
+        }
+
+        public static readonly CardSet[] Sets =
+        {
+            new CardSet { Id = "top10", Name = "The world's top 10", Title = "title_top10", Coins = 2500, In = i => IsTop(i.Ref, 10) },
+            new CardSet { Id = "clubs", Name = "All 50 club players", Title = "title_clubhouse", Coins = 1500, In = i => i.Ref != null && !i.Ref.StartsWith("star:") },
+            new CardSet { Id = "pros", Name = "All 50 pros", Title = "title_tourcollector", Coins = 5000, In = i => i.Ref != null && i.Ref.StartsWith("star:") },
+            new CardSet { Id = "all", Name = "All 100 players", Title = "title_completionist", Coins = 10000, In = i => true },
+        };
+
+        static bool IsTop(string opponentId, int n) { var s = SquashSim.Career.Stars.Find(opponentId); return s != null && s.Rank <= n; }
+
+        public static int SetSize(CardSet s) { return Find(ProCardsId).Items.FindAll(i => s.In(i)).Count; }
+        public static int SetHave(CardSet s) { return Find(ProCardsId).Items.FindAll(i => s.In(i) && TierOf(i.Id) >= 0).Count; }
+        public static bool SetDone(CardSet s) { return P.CardSets != null && P.CardSets.Contains(s.Id); }
+
+        /// <summary>The sets the last pull completed (the reveal says so; cleared by whoever shows them).</summary>
+        public static readonly List<CardSet> JustCompleted = new List<CardSet>();
+
+        /// <summary>Any set newly complete: its coins and title given, once.</summary>
+        public static void CheckSets()
+        {
+            if (P.CardSets == null) P.CardSets = new List<string>();
+            foreach (var s in Sets)
+            {
+                if (P.CardSets.Contains(s.Id) || SetHave(s) < SetSize(s)) continue;
+                P.CardSets.Add(s.Id);
+                GearDrops.Wallet.Coins += s.Coins;
+                if (!P.Owned.Contains(s.Title)) P.Owned.Add(s.Title);
+                JustCompleted.Add(s);
+            }
+        }
+
+        /// <summary>Quick Match: the world's top 10 need their card (the developer's mode opens them).</summary>
+        public const int LockedTop = 10;
+        public static bool Locked(string opponentId) { return IsTop(opponentId, LockedTop) && !DevMode.On && TierOf(CardOf(opponentId) != null ? CardOf(opponentId).Id : "") < 0; }
 
         // ---------------- perks ----------------
 
@@ -147,6 +247,7 @@ namespace SquashGame.Progression
                 var g = Gives(it, LevelOf(id));
                 for (int k = 0; k < 4; k++) t[k] += g[k];
             }
+            if (ids == null) { var c = CoachGives(); for (int k = 0; k < 4; k++) t[k] += c[k]; }       // 2026-11-25 your card coaches you (same cap)
             for (int k = 0; k < 4; k++) t[k] = Mathf.Min(t[k], MaxPerStat);
             return t;
         }
@@ -189,7 +290,11 @@ namespace SquashGame.Progression
             _list.Add(Specials(add));
             _list.Add(WalkOns(add));
             _list.Add(Perks(add));
+            // 2026-11-25 the card sets' titles
+            foreach (var s in Sets) { var t = add(Slot.Title, s.Title, TitleName(s.Id), Color.white, Color.white, UnlockKind.Challenge); t.Achievement = "Pro Cards: " + s.Name.ToLowerInvariant(); }
         }
+
+        static string TitleName(string set) { switch (set) { case "top10": return "Top Ten Collector"; case "clubs": return "Clubhouse Legend"; case "pros": return "Tour Collector"; default: return "Completionist"; } }
 
         static GearBanner ProCards(Func<Slot, string, string, Color, Color, UnlockKind, Item> add)
         {

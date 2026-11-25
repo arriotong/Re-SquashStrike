@@ -502,6 +502,7 @@ namespace SquashGame.UI
         {
             ProfileStore.Save();
             KitDirector.OpponentPreview = null;
+            if (!TwoPlayer && Machines.Locked(C.OpponentId)) C.OpponentId = "star:s11";       // 2026-11-25 (a locked pro: the best one open)
             if (TwoPlayer)
                 Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = S.WarmUp,
                                                   Court = Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Id,

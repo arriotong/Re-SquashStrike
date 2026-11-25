@@ -971,6 +971,7 @@
 .hud-drill-head { font-size: 16px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 .hud-drill-text { margin-top: 4px; font-size: 19px; color: rgb(255, 255, 255); white-space: normal; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .hud-drill-note { margin-top: 4px; font-size: 30px; letter-spacing: 4px; color: rgb(255, 214, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-intro-card { margin-top: 6px; font-size: 13px; letter-spacing: 3px; color: rgb(255, 214, 106); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }   /* 2026-11-25 your pro card */
 .hud-intro-line { font-size: 15px; letter-spacing: 6px; margin-bottom: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }   /* 2026-11-24 your walk-on's line */
 .hud-intro-sub { font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 

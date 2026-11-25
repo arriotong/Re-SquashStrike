@@ -81,6 +81,10 @@ namespace SquashGame.Tests
             // step 2: the opponent - the ladder in a grid, the pro on the right
             Assert.That(fe.Top, Is.InstanceOf<OpponentPickScreen>());
             var op = (OpponentPickScreen)fe.Top;
+            // 2026-11-25 the world's top 10 are locked until you have their card: the No. 1's card in hand
+            Assert.That(SquashGame.Progression.Machines.Locked("star:s01"), Is.True, "the No. 1: locked without the card");
+            SquashGame.Progression.Machines.Copy(SquashGame.Progression.Machines.CardOf("star:s01"), SquashGame.Progression.Rarity.Legendary, out _);
+            Assert.That(SquashGame.Progression.Machines.Locked("star:s01"), Is.False, "the card opens them");
             // 2026-11-22 evening: 100 - two tabs, the club players (yours to start) and the pros
             Assert.That(MatchChoices.Ladder.Length, Is.EqualTo(100), "50 club players and the 50 pros");
             Assert.That(op.TabShown, Is.EqualTo(2), "on the club tab (where your opponent is)");

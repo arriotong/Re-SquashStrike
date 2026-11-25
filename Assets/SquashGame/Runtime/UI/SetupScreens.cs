@@ -122,6 +122,8 @@ namespace SquashGame.UI
         public Action<string> Done;
         /// <summary>2026-11-24 a collection (the pro cards, the perks): A acts on the tile and the screen stays.</summary>
         protected virtual bool Browse { get { return false; } }
+        /// <summary>2026-11-25 a tile that can't be picked yet (the locked top 10): A refused.</summary>
+        protected virtual bool CanPick(string id) { return true; }
         /// <summary>Redraw the panel (after a browse pick).</summary>
         protected void Refresh() { _shown = null; }
         ScrollView _scroll;
@@ -192,7 +194,7 @@ namespace SquashGame.UI
                 string pick = id;
                 // a portrait-like tile: its colour (the class, the walls), big initials, the name under
                 Color col = TileColour(id);
-                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { Choose(pick); if (Browse) { Refresh(); return; } if (Done != null) { Fe.Pop(); Done(pick); } else SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
+                var item = AddTo(grid, new CardItem(TileName(id), TileKicker(id), () => { if (!CanPick(pick)) { Sounds.Play("back"); return; } Choose(pick); if (Browse) { Refresh(); return; } if (Done != null) { Fe.Pop(); Done(pick); } else SetupFlow.Next(Fe, this, TwoPlayer); }, CardSize.S)
                     .Glyph(TileGlyph(id))
                     .Badge(() => TileBadge(pick), false));
                 item.Root.AddToClassList("pk-tile");
@@ -330,10 +332,13 @@ namespace SquashGame.UI
         {
             var star = SquashSim.Career.Stars.Find(id);
             var d = SquashSim.Career.Stars.Describe(id);
-            return (star != null ? "No. " + star.Rank : "CLUB") + "  ·  " + d.rating;
+            var card = Machines.CardOf(id); int tier = card != null ? Machines.TierOf(card.Id) : -1;
+            return (star != null ? "No. " + star.Rank : "CLUB") + "  ·  " + d.rating + (tier >= 0 ? "  ·  " + Machines.TierNames[tier].ToUpperInvariant() : "");   // 2026-11-25 your card's tier
         }
-        protected override Color TileColour(string id) { return SetupFlow.ClassColour(SetupFlow.OpponentClass(id)); }
-        protected override string TileBadge(string id) { return SetupFlow.ClassName(SetupFlow.OpponentClass(id)).ToUpperInvariant(); }
+        protected override Color TileColour(string id) { return Machines.Locked(id) ? new Color(0.35f, 0.37f, 0.4f) : SetupFlow.ClassColour(SetupFlow.OpponentClass(id)); }
+        protected override string TileBadge(string id) { return Machines.Locked(id) ? "LOCKED" : SetupFlow.ClassName(SetupFlow.OpponentClass(id)).ToUpperInvariant(); }
+        /// <summary>2026-11-25 the world's top 10: their card first (Machines.Locked).</summary>
+        protected override bool CanPick(string id) { return !Machines.Locked(id); }
         protected override string Current { get { return C.OpponentId; } }
         protected override void Choose(string id) { C.OpponentId = id; }
         protected override string Shot(string id) { return "them"; }
@@ -350,7 +355,10 @@ namespace SquashGame.UI
             var star = SquashSim.Career.Stars.Find(id);
             var d = SquashSim.Career.Stars.Describe(id);
             string cls = SetupFlow.OpponentClass(id);
-            Kit.L(into, star != null ? "WORLD No. " + star.Rank + "  ·  RATED " + d.rating : "CLUB PLAYER  ·  RATED " + d.rating, "pk-kicker");
+            // 2026-11-25 your card's tier, or the lock, on the top line (the panel's height stays)
+            var card = Machines.CardOf(id); int tier = card != null ? Machines.TierOf(card.Id) : -1;
+            string cardNote = Machines.Locked(id) ? "  ·  LOCKED: GET THEIR PRO CARD" : tier >= 0 ? "  ·  YOUR CARD: " + Machines.TierNames[tier].ToUpperInvariant() : "";
+            Kit.L(into, (star != null ? "WORLD No. " + star.Rank + "  ·  RATED " + d.rating : "CLUB PLAYER  ·  RATED " + d.rating) + cardNote, "pk-kicker");
             Kit.L(into, d.name, "pk-name");
             var badge = Kit.L(into, SetupFlow.ClassName(cls).ToUpperInvariant() + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant(), "pk-class");
             badge.style.backgroundColor = SetupFlow.ClassColour(cls);

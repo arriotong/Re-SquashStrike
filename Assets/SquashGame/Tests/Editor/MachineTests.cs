@@ -115,6 +115,47 @@ namespace SquashGame.Tests
         }
 
         [Test]
+        public void ProCardsDoThings()
+        {
+            var p = ProfileStore.Current.Progress;
+            // 4: the top 10 locked until you have their card
+            Assert.That(Machines.Locked("star:s01"), Is.True);
+            Assert.That(Machines.Locked("star:s10"), Is.True);
+            Assert.That(Machines.Locked("star:s11"), Is.False);
+            Assert.That(Machines.Locked(SquashSim.Career.Stars.Clubs()[0].Id), Is.False);
+            var no1 = Machines.CardOf("star:s01");
+            Assert.That(Machines.Copy(no1, Rarity.Legendary, out _), Is.EqualTo("NEW"));
+            Assert.That(Machines.Locked("star:s01"), Is.False, "the card opens them");
+            // 1 + 3: your card - shown, and coaching its class's stat by tier, under the perks' cap
+            Assert.That(Machines.YourCard, Is.Null);
+            Assert.That(Machines.SetYourCard("pc_nothing_owned"), Is.False);
+            Assert.That(Machines.SetYourCard(no1.Id), Is.True);
+            Assert.That(Machines.YourCard, Is.EqualTo(no1.Id));
+            Assert.That(Machines.YourCardLine(), Does.StartWith("BRONZE CARD"));
+            int stat = Machines.CoachStat(no1);
+            Assert.That(stat, Is.InRange(0, 3));
+            Assert.That(Machines.Total()[stat], Is.EqualTo(Machines.CoachAt[0]).Within(1e-5), "Bronze coaches a little");
+            for (int i = 0; i < 9; i++) Machines.Copy(no1, Rarity.Legendary, out _);
+            Assert.That(Machines.Total()[stat], Is.EqualTo(Machines.CoachAt[3]).Within(1e-5), "Holo coaches the most");
+            Assert.That(Machines.YourCardLine(), Does.StartWith("HOLO CARD"));
+            Machines.SetYourCard(no1.Id);
+            Assert.That(Machines.YourCard, Is.Null, "again: no card");
+            // 2: a set - the top 10: coins and a title, once
+            int coins = GearDrops.Wallet.Coins;
+            Machines.JustCompleted.Clear();
+            for (int r = 2; r <= 10; r++) Machines.Copy(Machines.CardOf("star:s" + r.ToString("00")), Rarity.Epic, out _);
+            var top10 = System.Array.Find(Machines.Sets, s => s.Id == "top10");
+            Assert.That(Machines.SetHave(top10), Is.EqualTo(10));
+            Assert.That(Machines.SetDone(top10), Is.True);
+            Assert.That(Machines.JustCompleted.Exists(s => s.Id == "top10"), Is.True);
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(coins + top10.Coins));
+            Assert.That(p.Owned, Does.Contain(top10.Title), "the title");
+            Assert.That(Cosmetics.Find(top10.Title).Slot, Is.EqualTo(Slot.Title));
+            Machines.CheckSets();
+            Assert.That(GearDrops.Wallet.Coins, Is.EqualTo(coins + top10.Coins), "paid once");
+        }
+
+        [Test]
         public void PerksAreSmallCappedAndThreeAtMost()
         {
             var p = ProfileStore.Current.Progress;

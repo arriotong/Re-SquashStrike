@@ -85,6 +85,9 @@ namespace SquashGame.UI
                 _cards.Add(c);
             }
             AddTo(Root, new PrimaryItem("Done", () => { RevealAll(); Fe.Pop(); Fe.Replace(StoreScreen.For(_banner)); }));
+            // 2026-11-25 a pull that finished a pro card set: its reward
+            foreach (var set in Machines.JustCompleted) Fe.Toast("SET COMPLETE", set.Name + ": " + set.Coins.ToString("N0") + " coins and the title " + Cosmetics.Find(set.Title).Name);
+            Machines.JustCompleted.Clear();
             var best = Best();
             if (best != null)
             {

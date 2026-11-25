@@ -296,6 +296,8 @@ namespace SquashGame.UI
             var t = Cosmetics.Find(p.Loadout.Title);
             var on = ProfileStore.Current.Online;                                   // P2-M8: the ranked rating, once you have one
             _title.text = (t != null ? t.Name : "Rookie").ToUpperInvariant() + (on != null && on.Games > 0 ? "  ·  " + on.Rating : "");
+            var card = Machines.YourCardLine();                                       // 2026-11-25 your pro card
+            if (card != null) _title.text += "  ·  " + card;
             _name.text = PlayerName.Shown();
             int next = Rewards.NextUnlock(p.Xp, out var items, out int toGo);
             // 2026-10-30 (the kid test): "NEXT 210 COINS · 200 XP" read as nonsense - now it says what the ring fills up to

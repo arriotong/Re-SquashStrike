@@ -40,9 +40,15 @@ namespace SquashGame.UI
         protected override string TileName(string id) { return GearUi.NameOf(It(id)); }
         protected override string TileKicker(string id) { var it = It(id); var s = SquashSim.Career.Stars.Find(it.Ref); return (s != null ? "No. " + s.Rank : "CLUB") + "  ·  " + SquashSim.Career.Stars.Describe(it.Ref).rating; }
         protected override Color TileColour(string id) { int t = Machines.TierOf(id); return t < 0 ? new Color(0.35f, 0.37f, 0.4f) : Machines.TierColours[t]; }
-        protected override string TileBadge(string id) { int t = Machines.TierOf(id); return t < 0 ? "NOT YET" : Machines.TierNames[t].ToUpperInvariant(); }
-        protected override string Current { get { foreach (var it in Bn.Items) if (Machines.TierOf(it.Id) >= 0) return it.Id; return Bn.Items[0].Id; } }
-        protected override void Choose(string id) { Sounds.Play(Machines.TierOf(id) >= 0 ? "tick" : "back"); }
+        protected override string TileBadge(string id) { int t = Machines.TierOf(id); return t < 0 ? "NOT YET" : (id == Machines.YourCard ? "YOURS  ·  " : "") + Machines.TierNames[t].ToUpperInvariant(); }
+        protected override string Current { get { if (Machines.YourCard != null) return Machines.YourCard; foreach (var it in Bn.Items) if (Machines.TierOf(it.Id) >= 0) return it.Id; return Bn.Items[0].Id; } }
+        /// <summary>2026-11-25 A: make it your card (on your tag and walk-on, your coach); again: no card.</summary>
+        protected override void Choose(string id)
+        {
+            if (Machines.TierOf(id) < 0) { Sounds.Play("back"); return; }
+            Machines.SetYourCard(id);
+            Sounds.Play(Machines.YourCard == id ? "stamp" : "tick");
+        }
         protected override string Shot(string id) { return null; }
 
         protected override void Describe(string id, VisualElement into)
@@ -57,15 +63,25 @@ namespace SquashGame.UI
             var s = SquashSim.Career.Stars.Find(it.Ref);
             Kit.L(into, (s != null ? "World No. " + s.Rank + "  ·  " : "Club player  ·  ") + "rated " + d.rating + "  ·  " + Roster.StyleName(d.style), "pk-text");
             Kit.L(into, "Class: " + SetupFlow.ClassName(SetupFlow.OpponentClass(it.Ref)), "pk-text");
-            if (tier < 0) Kit.L(into, "Find this card in the PRO CARDS machine.", "pk-perk");
+            if (tier < 0) Kit.L(into, "Find this card in the PRO CARDS machine." + (s != null && s.Rank <= Machines.LockedTop ? " Until then they're locked in Quick Match." : ""), "pk-perk");
             else
             {
                 int next = Machines.ToNext(it);
                 Kit.L(into, Machines.CopiesOf(id) + (Machines.CopiesOf(id) == 1 ? " copy" : " copies") + (next > 0 ? "  ·  " + next + " more to " + Machines.TierNames[tier + 1] : "  ·  the top tier"), "pk-good");
             }
+            // 2026-11-25 as your coach: its class's stat, by tier
+            var coach = Machines.CoachGives(tier >= 0 ? id : null);
+            int st = Machines.CoachStat(it);
+            string what = st >= 0 ? Machines.StatNames[st] : "";
+            Kit.L(into, (id == Machines.YourCard ? "YOUR CARD  ·  COACHING YOU: " : tier >= 0 ? "A: MAKE IT YOUR CARD  ·  COACHES: " : "AS YOUR CARD IT WOULD COACH: ") + what.ToUpperInvariant() + " +" +
+                        Machines.Percent(tier >= 0 ? coach[st] : Machines.CoachAt[0]) + (tier < 0 ? " (more at higher tiers)" : ""), "pk-perk");
+            // the sets
+            var sets = Kit.Box(into, "pk-bars");
+            foreach (var set in Machines.Sets)
+                Kit.L(sets, (Machines.SetDone(set) ? "✓  " : "·  ") + set.Name + "   " + Machines.SetHave(set) + " / " + Machines.SetSize(set) + "   ·   " + set.Coins.ToString("N0") + " coins + the title " + Cosmetics.Find(set.Title).Name, Machines.SetDone(set) ? "pk-good" : "pk-text");
         }
 
-        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Look"), (PromptBar.Btn.Tabs, "Pros / club"), (PromptBar.Btn.B, "Back")); }
+        protected override void SetPrompts() { Prompts.Set((PromptBar.Btn.Move, "Look"), (PromptBar.Btn.A, "Your card"), (PromptBar.Btn.Tabs, "Pros / club"), (PromptBar.Btn.B, "Back")); }
     }
 
     public sealed class PerksScreen : PickScreen

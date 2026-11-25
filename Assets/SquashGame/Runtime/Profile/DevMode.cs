@@ -98,6 +98,7 @@ namespace SquashGame.Profile
                     p.Copies.Add(new Progression.ItemCount { Id = it.Id, N = top });
                 }
             }
+            Progression.Machines.CheckSets(); Progression.Machines.JustCompleted.Clear();
             ProfileStore.Save();
             return n;
         }

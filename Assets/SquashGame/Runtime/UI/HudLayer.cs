@@ -162,7 +162,8 @@ namespace SquashGame
             Add(_drill);
             _introLine.AddToClassList("hud-intro-line"); _introLine.pickingMode = PickingMode.Ignore; _introLine.style.display = DisplayStyle.None;
             Add(_woFx);                                                                                  // 2026-11-24 the walk-on's effects, under its card
-            _intro.Add(_introLine); _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
+            _introCard.AddToClassList("hud-intro-card"); _introCard.pickingMode = PickingMode.Ignore;
+            _intro.Add(_introLine); _intro.Add(_introNames); _intro.Add(_introSub); _intro.Add(_introCard); _intro.style.display = DisplayStyle.None; Add(_intro);
             _cine.AddToClassList("hud-cine"); _cineTitle.AddToClassList("hud-cine-title"); _cineSub.AddToClassList("hud-cine-sub");
             _cine.Add(_cineTitle); _cine.Add(_cineSub); _cine.style.display = DisplayStyle.None; _cine.pickingMode = PickingMode.Ignore; Add(_cine);
             _cineTitle.pickingMode = PickingMode.Ignore; _cineSub.pickingMode = PickingMode.Ignore;
@@ -215,7 +216,7 @@ namespace SquashGame
         readonly VisualElement _cutIn = new VisualElement(), _duel = new VisualElement(), _duelTarget = new VisualElement(), _duelRing = new VisualElement();
         // 2026-11-24 the machines: your Special Shot's look on your cut-in; your walk-on's line and effects
         readonly System.Collections.Generic.List<VisualElement> _cutLines = new System.Collections.Generic.List<VisualElement>();
-        readonly Label _introLine = new Label();
+        readonly Label _introLine = new Label(), _introCard = new Label();
         readonly VisualElement _drill = new VisualElement();
         readonly Label _drillHead = new Label(), _drillText = new Label(), _drillNote = new Label();
         /// <summary>The drill's head line on screen (null: no drill) - tests.</summary>
@@ -781,6 +782,9 @@ namespace SquashGame
             if (styled && (intro || walking) && r.OnlineMatch == null) _woFx.Play(wo.Style, wo.A, wo.B); else _woFx.Stop();
             _woFx.Step(Time.unscaledDeltaTime);
             _introLine.text = styled ? wo.Pose : "";
+            var cardLine = r.OnlineMatch == null && !r.Settings.TwoPlayer ? SquashGame.Progression.Machines.YourCardLine() : null;     // 2026-11-25 your pro card
+            _introCard.text = cardLine != null ? "♦  " + cardLine : "";
+            _introCard.style.display = cardLine != null ? DisplayStyle.Flex : DisplayStyle.None;
             _introLine.style.display = styled && !string.IsNullOrEmpty(wo.Pose) ? DisplayStyle.Flex : DisplayStyle.None;
             if (styled) { _intro.style.borderTopColor = wo.A; _introSub.style.color = wo.A; _introLine.style.color = wo.A; }
             else { _intro.style.borderTopColor = StyleKeyword.Null; _introSub.style.color = StyleKeyword.Null; }
