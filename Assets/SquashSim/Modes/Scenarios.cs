@@ -21,6 +21,7 @@ namespace SquashSim.Modes
     {
         public bool Won;
         public int Rallies, RalliesWon, Tins, Errors, Winners, Nicks, Kills, GreatHits, LongestRally, Margin;
+        public int Specials, DuelsWon, Dives;                                  // 2026-11-25 the Specials group
         public int PointsLost { get { return Rallies - RalliesWon; } }
     }
 
@@ -35,6 +36,8 @@ namespace SquashSim.Modes
         public int GamesToWin = 1;
         public int StartPoints0, StartPoints1, StartGames0, StartGames1, StartServer = -1;
         public string Star2Text, Star3Text;
+        /// <summary>2026-11-25 the Specials group: the Special Shot card for you (and the opponent); a meter full at the start.</summary>
+        public bool Abilities, YouFull, OppSpecial, OppFull;
         public Func<ScenarioResult, bool> Star2, Star3;
 
         /// <summary>Stars this result earns: 0 for a loss, 1 the win, +1 for each condition met.</summary>
@@ -49,8 +52,8 @@ namespace SquashSim.Modes
 
     public static class Scenarios
     {
-        public static readonly string[] GroupNames = { "Pressure", "Comebacks", "Legends" };
-        public static readonly int[] GroupUnlock = { 0, 6, 18 };      // total stars to open the group
+        public static readonly string[] GroupNames = { "Pressure", "Comebacks", "Legends", "Specials", "Iron Man" };
+        public static readonly int[] GroupUnlock = { 0, 6, 18, 12, 30 };      // total stars to open the group (2026-11-25: Specials and Iron Man)
 
         static List<Scenario> _all;
         public static List<Scenario> All()
@@ -105,6 +108,36 @@ namespace SquashSim.Modes
             var last = S(2, "lastdance", "The last dance", "Losing by miles. Can you make the greatest comeback ever?", "retriever", 0.80, 12, 3, 10,
               "Never hit the tin", r => r.Tins == 0, "Lose 3 rallies at most", r => r.PointsLost <= 3);
             last.GamesToWin = 3; last.StartGames1 = 2;
+
+            // ---- 2026-11-25 Specials: the Special Shot, the duel, the dive ----
+            Scenario Sp(Scenario s, bool youFull, bool oppSpecial, bool oppFull) { s.Abilities = true; s.YouFull = youFull; s.OppSpecial = oppSpecial; s.OppFull = oppFull; return s; }
+            Sp(S(3, "spdelivery", "Special delivery", "Your meter's full and it's 5-all. Show them what it can do!", "retriever", 0.40, 4, 5, 5,
+              "Fire a Special Shot", r => r.Specials >= 1, "Never hit the tin", r => r.Tins == 0), true, false, false);
+            Sp(S(3, "spduel", "Duel at dawn", "They've got a full meter too. When theirs comes, win the duel!", "attacker", 0.45, 5, 6, 6,
+              "Win a duel", r => r.DuelsWon >= 1, "Fire a Special Shot", r => r.Specials >= 1), true, true, true);
+            Sp(S(3, "spdive", "Fly for it", "Down 6-9 to a runner. Dive for the ones out of reach!", "retriever", 0.50, 6, 6, 9,
+              "Dive three times", r => r.Dives >= 3, "Two errors at most", r => r.Errors <= 2), true, false, false);
+            var show = Sp(S(3, "spshowdown", "Special showdown", "One game each, 8-all in the last. Both meters full!", "shotmaker", 0.55, 8, 8, 8,
+              "Two Special Shots", r => r.Specials >= 2, "Win a duel", r => r.DuelsWon >= 1), true, true, true);
+            show.GamesToWin = 2; show.StartGames0 = 1; show.StartGames1 = 1;
+            Sp(S(3, "spstorm", "The storm", "They fire Special Shots all game. Duel them back!", "attacker", 0.65, 10, 0, 0,
+              "Win two duels", r => r.DuelsWon >= 2, "Four winners", r => r.Winners >= 4), false, true, true);
+            // ---- 2026-11-25 Iron Man: long matches ----
+            var i1 = S(4, "ironfive", "Best of five", "A full best-of-five against a grinder. Pace yourself!", "grinder", 0.50, 6, 0, 0,
+              "Six errors at most", r => r.Errors <= 6, "A 20-shot rally", r => r.LongestRally >= 20);
+            i1.GamesToWin = 3;
+            var i2 = S(4, "ironlungs", "Iron lungs", "Two games down to a runner. Three to win, every one long.", "retriever", 0.55, 8, 0, 0,
+              "12 winners", r => r.Winners >= 12, "One tin at most", r => r.Tins <= 1);
+            i2.GamesToWin = 3; i2.StartGames1 = 2;
+            var i3 = S(4, "ironold", "Old-school marathon", "Old rules, best of three: only the server scores. It goes on and on.", "shotmaker", 0.55, 8, 0, 0,
+              "8 great hits", r => r.GreatHits >= 8, "Hit a nick into the corner", r => r.Nicks >= 1);
+            i3.Scoring = "english"; i3.GamesToWin = 2;
+            var i4 = S(4, "ironfifth", "Fifth game, 0-5", "Two games each, and you're 0-5 down in the last. Dig in!", "attacker", 0.65, 10, 0, 5,
+              "Never hit the tin", r => r.Tins == 0, "Win by 2 or more", r => r.Margin >= 2);
+            i4.GamesToWin = 3; i4.StartGames0 = 2; i4.StartGames1 = 2;
+            var i5 = S(4, "ironchamp", "Champion of champions", "A whole best-of-five against one of the very best.", "attacker", 0.80, 12, 0, 0,
+              "15 winners", r => r.Winners >= 15, "Five errors at most", r => r.Errors <= 5);
+            i5.GamesToWin = 3;
             return _all;
         }
 

@@ -28,6 +28,8 @@ namespace SquashSim.Arcade
         public double ZoneScale = 1;            // floor zones (1 = generous)
         public string[] Shots;                  // Shot Menu: the shots it may call
         public int[] Stars = { 0, 0, 0 };       // scores for 1 / 2 / 3 stars
+        /// <summary>2026-11-25 the platinum score: well past 3 stars (0: none - a drill).</summary>
+        public int Platinum { get { return Stars[2] > 0 ? (int)System.Math.Ceiling(Stars[2] * 1.4) : 0; } }
 
         public static readonly string[] LevelNames = { "Easy", "Medium", "Hard" };
         public string LevelName { get { return LevelNames[System.Math.Max(0, System.Math.Min(2, Level))]; } }

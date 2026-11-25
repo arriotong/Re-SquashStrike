@@ -205,6 +205,7 @@ namespace SquashGame.UI
                 MatchPointOnAStroke = r.Sim.Score.MatchWinner == h && last != null && last.Kind == RallyEnd.Stroke && last.Winner == h,
             };
             foreach (var g in Games) f.Games.Add(new[] { g[h], g[1 - h] });
+            f.Specials = r.Sim.SpecialsOf[h]; f.DuelsWon = r.Sim.DuelsWonBy[h]; f.Dives = r.Sim.DivesBy[h];     // 2026-11-25
             return f;
         }
     }

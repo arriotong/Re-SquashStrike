@@ -29,7 +29,7 @@ namespace SquashGame.UI
         public static string Best(string id)
         {
             var r = ProfileStore.Record(id);
-            return r == null ? "not played" : Of(r.Stars) + "   best " + r.Best.ToString("N0");
+            return r == null ? "not played" : Of(r.Stars) + (r.Platinum ? "  ◆" : "") + "   best " + r.Best.ToString("N0");
         }
 
         public static int Mode(ArcadeMode mode)
@@ -88,6 +88,13 @@ namespace SquashGame.UI
                 Kit.L(t, new string('★', i + 1), "k-ta-thr-s");
                 Kit.L(t, c.Stars[i].ToString("N0"), "k-ta-thr-v");
             }
+            if (c.Platinum > 0)                                                       // 2026-11-25 platinum, past the stars
+            {
+                var t = Kit.Box(row, "k-ta-thr");
+                if (rec != null && rec.Platinum) t.AddToClassList("k-ta-thr--on");
+                Kit.L(t, "◆ PLAT", "k-ta-thr-s");
+                Kit.L(t, c.Platinum.ToString("N0"), "k-ta-thr-v");
+            }
             var bestRow = Kit.Box(panel, "k-ta-bestrow");
             Kit.L(bestRow, "YOUR BEST", "k-ta-best-k");
             Kit.L(bestRow, rec == null ? "NOT PLAYED YET" : best.ToString("N0"), rec == null ? "k-ta-best-none" : "k-ta-best-v");
@@ -134,7 +141,7 @@ namespace SquashGame.UI
             {
                 var c = Challenges.Get(mode, l);
                 var r = ProfileStore.Record(c.Id);
-                if (r != null) return c.LevelName.ToUpperInvariant() + "  " + Stars.Of(r.Stars) + "  " + r.Best.ToString("N0");
+                if (r != null) return c.LevelName.ToUpperInvariant() + "  " + Stars.Of(r.Stars) + (r.Platinum ? "  ◆" : "") + "  " + r.Best.ToString("N0");
             }
             return "NOT PLAYED YET";
         }
@@ -335,7 +342,13 @@ namespace SquashGame.UI
             if (_best && _c.Mode != ArcadeMode.Drill) Replays.ArcadeBests.Save(r.Log, _score);          // P2-M6: "Watch best"
             // P2-M5: XP, new stars, the arcade achievements
             Reward = Progression.Rewards.Arcade(_c.Id, _c.Mode == ArcadeMode.Drill, starsBefore, _stars, _score, _c.Mode == ArcadeMode.Streak);
+            NewPlatinum = Progression.ArcadePlatinum.Check(_c, _score, out bool all);          // 2026-11-25 past the stars
+            AllPlatinum = all;
         }
+
+        /// <summary>2026-11-25 this play reached platinum for the first time (and made every level platinum) - tests.</summary>
+        public bool NewPlatinum { get; private set; }
+        public bool AllPlatinum { get; private set; }
 
         /// <summary>This play set a new best (tests).</summary>
         public bool NewBest { get { return _best; } }
@@ -387,6 +400,27 @@ namespace SquashGame.UI
             Career.Tile(tiles, _c.Drill == DrillKind.Ghosting ? "SPOTS" : "TARGETS HIT", _s.Hits + " / " + _s.Attempts);
             Career.Tile(tiles, "BEST COMBO", _s.BestCombo.ToString());
             Career.Tile(tiles, "GREAT HITS", _s.GreatHits.ToString());
+            // 2026-11-25 platinum: past 3 stars
+            if (_c.Platinum > 0)
+            {
+                bool has = Progression.ArcadePlatinum.Has(_c.Id);
+                if (NewPlatinum)
+                {
+                    stars.Add(new Stamp("PLATINUM!", 1.3f + 0.38f * _stars + 0.4f));
+                    SquashGame.Audio.GameSfx.Play("reveal4", 0.8f, 0f);
+                    Fe.Toast("PLATINUM", "+" + Progression.ArcadePlatinum.Coins + " coins" + (AllPlatinum ? "  ·  EVERY LEVEL! +" + Progression.ArcadePlatinum.AllCoins + " coins and the title Arcade Royalty" : ""));
+                }
+                else if (_stars >= 3 && !has)
+                {
+                    var plat = Kit.Box(col, "k-ta-nextbox");
+                    Kit.L(plat, "Platinum at " + _c.Platinum.ToString("N0") + "  ·  " + Progression.ArcadePlatinum.Count + " / " + Progression.ArcadePlatinum.Total + " levels", "k-ta-next-k");
+                    var pbar = Kit.Box(plat, "k-ta-bar");
+                    Kit.Box(pbar, "k-ta-bar-fill").style.width = Length.Percent(Mathf.Clamp01((float)_score / _c.Platinum) * 100f);
+                }
+            }
+            var rec5 = ProfileStore.Record(_c.Id);
+            if (!IsDrill && rec5 != null && rec5.Top != null && rec5.Top.Count > 1)
+                Kit.L(col, "YOUR TOP 5   " + string.Join("  ·  ", rec5.Top.ConvertAll(x => x.ToString("N0"))), "k-ta-res-best");
             if (_stars < 3 && _c.Stars[_stars] > 0)
             {
                 var next = Kit.Box(col, "k-ta-nextbox");

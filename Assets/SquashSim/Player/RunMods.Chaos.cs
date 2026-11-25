@@ -109,6 +109,8 @@ namespace SquashSim
 
         /// <summary>A new game: The World starts it with a full meter.</summary>
         public void NewGame() { ShieldsUsed = 0; RewindsUsed = 0; if (Level("world") > 0) Power = 1; }
+        /// <summary>2026-11-25 a scenario that starts with a full meter ("fullstart"): full at the match's start, then earned.</summary>
+        public void FullStart() { if (Level("fullstart") > 0) Power = 1; }
         /// <summary>2026-11-25 a new rally: the Academy's match drills ("practice") start every rally with a full meter.</summary>
         public void NewRally() { if (Level("practice") > 0) Power = 1; }
 

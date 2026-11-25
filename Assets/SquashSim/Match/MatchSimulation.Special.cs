@@ -95,6 +95,8 @@ namespace SquashSim
         public int SpecialsFired { get; private set; }
         public int SpecialsDefended { get; private set; }
         public int DuelsLost { get; private set; }
+        /// <summary>2026-11-25 per player (the scenarios' stars): Special Shots fired, duels won, dives.</summary>
+        public readonly int[] SpecialsOf = new int[2], DuelsWonBy = new int[2], DivesBy = new int[2];
         /// <summary>The duel: when the ball reaches the defender (sim time; NaN until it's off the front wall); the result (0 none
         /// yet, 1 won, -1 lost - the one press spent early or late).</summary>
         public double DuelAt { get; private set; } = double.NaN;
@@ -282,7 +284,7 @@ namespace SquashSim
             if (Referee.Shots > 0) RallyContacts[i]++;
             OnRacketContact(i, hit);
             mm.Power = 0;                                                     // (the stroke's own meter share: not for this one)
-            SpecialBy = i; SpecialDefended = false; SpecialsFired++;
+            SpecialBy = i; SpecialDefended = false; SpecialsFired++; SpecialsOf[i]++;
             DuelAt = double.NaN; DuelResult = 0; _duelPressed = false;
             var op = ModsOf(Players[1 - i].Player);
             op.ReachCut = SpecialReachCut; op.GraceCut = SpecialGraceCut;
@@ -295,7 +297,7 @@ namespace SquashSim
         {
             var mm = ModsOf(Players[j].Player);
             mm.ReachCut = 0; mm.GraceCut = 0;
-            SpecialDefended = true; SpecialsDefended++; DuelResult = 1;
+            SpecialDefended = true; SpecialsDefended++; DuelsWonBy[j]++; DuelResult = 1;
             _weakReturn[j] = true;
             Note(j, "defend", 0);
         }
@@ -347,7 +349,7 @@ namespace SquashSim
                 mm.Power = System.Math.Max(0, mm.Power - DiveMeterCost);
             }
             c.Arcade.DiveRequest = true; c.Arcade.DivePaid = meter;
-            SmartDives++;
+            SmartDives++; DivesBy[i]++;
             Note(i, "dive", 0);
         }
 

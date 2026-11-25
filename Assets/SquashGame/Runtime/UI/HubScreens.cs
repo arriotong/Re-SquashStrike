@@ -101,7 +101,7 @@ namespace SquashGame.UI
                 var play = Kit.Box(Page("PLAY"), "k-row");
                 AddTo(play, new CardItem("QUICK MATCH", "PLAY NOW", () => Fe.Push(new QuickMatchScreen()), CardSize.Hero).Vignette("versus")
                     .Line(() => "You v " + SquashSim.Career.Stars.Describe(C.OpponentId).name + "  ·  " + MatchChoices.LengthLabels[C.Length] + (MatchChoices.QuickMatchAbilities && C.Abilities ? "  ·  abilities on" : ""))
-                    .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "W " + q.Won + "  ·  L " + (q.Played - q.Won); }, true));
+                    .Badge(() => { var q = ProfileStore.Current.Progress.Stats.Quick; return q.Played == 0 ? "NEW" : "BEATEN " + QuickLadder.Count + " / " + QuickLadder.Total; }, true));   // 2026-11-25 the ladder
                 AddTo(play, new CardItem("LOCAL VERSUS", "COUCH", () => Fe.Push(new LocalVersusScreen())).Drawn("split", new Color32(24, 36, 72, 255), new Color32(72, 24, 24, 255))
                     .Line("Controllers, keyboards - any mix").Badge(() => MatchRunner.CanPlayTwoPlayer ? "2 PLAYERS" : "PLUG IN A CONTROLLER"));
             }
@@ -503,6 +503,7 @@ namespace SquashGame.UI
             ProfileStore.Save();
             KitDirector.OpponentPreview = null;
             if (!TwoPlayer && Machines.Locked(C.OpponentId)) C.OpponentId = "star:s11";       // 2026-11-25 (a locked pro: the best one open)
+            if (TwoPlayer) VersusRecord.NewSeries(C.VsSeries);                                  // 2026-11-25 a series from the start
             if (TwoPlayer)
                 Fe.StartMatch(new MatchSettings { TwoPlayer = true, GamesToWin = MatchChoices.LengthGames[C.VsLength], Scoring = MatchChoices.ScoringValues[C.VsScoring], WarmUp = S.WarmUp,
                                                   Court = Courts.Pickable[Mathf.Clamp(C.VsCourt, 0, Courts.Pickable.Length - 1)].Id,
@@ -635,6 +636,16 @@ namespace SquashGame.UI
             var online = m.OnlineMatch;
             bool playedOut = online == null || online.EndReason == "";
             Reward = playedOut ? Rewards.Match(st.Facts(m), tier) : null;           // online: a forfeit or a desync earns nothing
+            // 2026-11-25 Quick Match's ladder; Local Versus's head to head and series
+            bool quick = playedOut && !m.Settings.TwoPlayer && !m.Settings.Career && !m.Settings.Gauntlet && m.Settings.Scenario == null && !m.Settings.Online &&
+                         m.Settings.Drill == null && m.Settings.GauntletFloor == null;
+            if (quick) Ladder = QuickLadder.Record(m.Settings.Opponent, m.Sim.Score.MatchWinner == m.HumanIndex);
+            if (m.Settings.TwoPlayer && !m.Settings.Online && m.Sim.Score.MatchWinner >= 0)
+            {
+                int g0 = 0, g1 = 0; foreach (var g in st.Games) { if (g[0] > g[1]) g0++; else if (g[1] > g[0]) g1++; }
+                VersusRecord.RecordMatch(m.Sim.Score.MatchWinner, g0, g1, st.Players[0].Rallies, st.Players[1].Rallies, st.LongestRally);
+                VersusDone = true;
+            }
 
             // the primary first (it has the focus): Rematch, or Continue in a career
             bool won = m.Sim.Score.MatchWinner == m.HumanIndex;
@@ -642,6 +653,10 @@ namespace SquashGame.UI
             else if (m.Settings.Career) AddTo(Root, new PrimaryItem("Continue", () => Career.Record(Fe, won, false)));
             else if (m.Settings.Gauntlet) AddTo(Root, new PrimaryItem("Continue", () => GauntletFlow.AfterMatch(Fe, won, Margin())));
             else if (m.Settings.Scenario != null) AddTo(Root, new PrimaryItem("Continue", () => ScenarioFlow.AfterMatch(Fe, st.Facts(m))));
+            else if (VersusDone && VersusRecord.InSeries)
+                AddTo(Root, new PrimaryItem("Next match  (" + VersusRecord.SeriesWins[0] + " – " + VersusRecord.SeriesWins[1] + ")", () => Fe.Restart()));
+            else if (VersusDone && VersusRecord.Need > 1)
+                AddTo(Root, new PrimaryItem("New series", () => { VersusRecord.NewSeries(ProfileStore.Current.Choices.VsSeries); Fe.Restart(); }));
             else AddTo(Root, new PrimaryItem("Rematch", () => Fe.Restart()));
 
             // the score line: names, games, each game as a chip
@@ -670,6 +685,8 @@ namespace SquashGame.UI
             // THE MATCH already)
             Kit.L(chips, "LONGEST POINT  " + st.LongestRally + " HITS     ·     FASTEST BALL  " + (System.Math.Max(a.TopPace, b.TopPace) * 3.6).ToString("0") + " KM/H", "k-ft-highline");
             if (m.Settings.Online) OnlinePanel(right, m);
+            if (Ladder != null) LadderPanel(right, m);
+            if (VersusDone) VersusPanel(right, m);
             if (Reward != null) { right.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }
 
             if (m.Settings.Online) { }
@@ -695,6 +712,41 @@ namespace SquashGame.UI
                     if (e != null) Fe.Push(new MatchReplayScreen(e, true));
                 }, "▶"));
             }
+        }
+
+        // ---- 2026-11-25 Quick Match's ladder, Local Versus's head to head ----
+        /// <summary>What this Quick Match did on the ladder (null: not a Quick Match) - tests.</summary>
+        public QuickLadder.Result Ladder { get; private set; }
+        /// <summary>A Local Versus match: recorded in the head to head (and the series) - tests.</summary>
+        public bool VersusDone { get; private set; }
+
+        void LadderPanel(VisualElement right, MatchRunner m)
+        {
+            var l = Ladder;
+            var p = Kit.Panel(right, "THE LADDER  ·  " + QuickLadder.Count + " / " + QuickLadder.Total + " BEATEN");
+            if (l.First) Kit.L(p, "First win against " + SquashSim.Career.Stars.Describe(m.Settings.Opponent).name + "!  +" + l.FirstCoins + " coins", "pk-good");
+            if (l.Card != null) Kit.L(p, "Their pro card: " + (l.CardUp == "NEW" ? "NEW!" : l.CardUp != null ? l.CardUp + "!" : "+1 copy"), "pk-good");
+            if (l.Reached != null) { Kit.L(p, "★  " + l.Reached.Beaten + " BEATEN  ·  +" + l.Reached.Coins + " coins and the title " + l.Reached.Name, "pk-perk"); Fe.Toast("THE LADDER", l.Reached.Name + "!"); }
+            if (l.Won) Kit.L(p, l.Streak > 1 ? l.Streak + " wins in a row  ·  +" + l.StreakCoins + " coins" : "Win the next one for a streak bonus", "k-cr-note");
+            else Kit.L(p, QuickLadder.Beaten(m.Settings.Opponent) ? "You've beaten them before - the streak starts again." : "Beat them for the first time: +" + QuickLadder.FirstWinCoins(m.Settings.Opponent) + " coins" + (m.Settings.Opponent.StartsWith("star:") ? " and their pro card" : ""), "k-cr-note");
+            var next = QuickLadder.Next;
+            if (next != null) Kit.L(p, "Next: beat " + next.Beaten + " different players  ·  " + next.Name, "k-cr-note");
+            foreach (var set in Machines.JustCompleted) Fe.Toast("SET COMPLETE", set.Name + ": " + set.Coins.ToString("N0") + " coins and the title " + Cosmetics.Find(set.Title).Name);
+            Machines.JustCompleted.Clear();
+        }
+
+        void VersusPanel(VisualElement right, MatchRunner m)
+        {
+            var r = VersusRecord.Record;
+            var p = Kit.Panel(right, "HEAD TO HEAD");
+            Kit.L(p, VersusRecord.Line(m.Names[0], m.Names[1]), "pk-name");
+            if (VersusRecord.Need > 1)
+            {
+                int w = VersusRecord.SeriesWinner;
+                Kit.L(p, (w >= 0 ? m.Names[w] + " wins the series " : "Series ") + VersusRecord.SeriesWins[0] + " – " + VersusRecord.SeriesWins[1] + "   (first to " + VersusRecord.Need + ")", w >= 0 ? "pk-good" : "pk-perk");
+            }
+            Kit.L(p, "Games " + r.Games0 + " – " + r.Games1 + "  ·  points " + r.Points0 + " – " + r.Points1 + "  ·  series " + r.Series0 + " – " + r.Series1, "k-cr-note");
+            Kit.L(p, "Longest rally " + r.Longest + "  ·  best run of wins " + r.BestRun0 + " – " + r.BestRun1 + "  ·  " + r.Matches + " matches", "k-cr-note");
         }
 
         // ---- P2-M8: online ----

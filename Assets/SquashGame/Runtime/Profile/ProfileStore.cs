@@ -68,7 +68,7 @@ namespace SquashGame.Profile
         public string OpponentId = SquashSim.Career.Stars.AllOpponents[0];   // (2026-11-22 evening: the easiest of the 100)
         /// <summary>Batch 2: Quick Match with the arcade abilities (MatchChoices.AbilityKit; off: the plain game).</summary>
         public bool Abilities;
-        public int VsLength = 2, VsScoring = 0;
+        public int VsLength = 2, VsScoring = 0, VsSeries = 0;        // (2026-11-25 VsSeries: one match, best of 3, best of 5)
         public int Court = 0, VsCourt = 0;       // 2026-10-24: Courts.Pickable index (the game's courts, then the World Tour's stages)
         /// <summary>2026-11-22 your class (SquashSim.PlayerClasses id) and player 2's in local versus.</summary>
         public string Class = SquashSim.PlayerClasses.Default, VsClass2 = SquashSim.PlayerClasses.Default;
@@ -83,6 +83,8 @@ namespace SquashGame.Profile
         public string Id;
         public int Best, Stars, Plays;
         public string When;
+        public List<int> Top = new List<int>();          // 2026-11-25: your five best scores
+        public bool Platinum;                             // 2026-11-25: the platinum score reached
     }
 
     /// <summary>P2-M2: the practice court's Coach panel, as last left.</summary>
@@ -133,6 +135,9 @@ namespace SquashGame.Profile
         public List<string> Perks = new List<string>();                                       // 2026-11-24: the perks you train with (3 at most)
         public string ProCard;                                                                // 2026-11-25: your card (shown on your tag, your coach)
         public List<string> CardSets = new List<string>();                                    // 2026-11-25: the pro card sets completed (rewarded)
+        public List<string> Beaten = new List<string>();                                      // 2026-11-25: Quick Match - the opponents beaten (QuickLadder)
+        public int QuickStreak, BestQuickStreak;
+        public Progression.VersusH2H H2H = new Progression.VersusH2H();                       // 2026-11-25: Local Versus head to head
     }
 
     /// <summary>P3-R6: a scenario's best stars.</summary>
@@ -268,6 +273,8 @@ namespace SquashGame.Profile
             if (g.Copies == null) g.Copies = new List<Progression.ItemCount>();
             if (g.Perks == null) g.Perks = new List<string>();
             if (g.CardSets == null) g.CardSets = new List<string>();
+            if (g.Beaten == null) g.Beaten = new List<string>();
+            if (g.H2H == null) g.H2H = new Progression.VersusH2H();
             if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.Special)) g.Loadout.Special = "sp_classic";
             if (g.Loadout != null && string.IsNullOrEmpty(g.Loadout.WalkOn)) g.Loadout.WalkOn = "wo_classic";
             if (g.Loadout == null) g.Loadout = new Progression.Loadout();
@@ -322,6 +329,8 @@ namespace SquashGame.Profile
             r.Plays++;
             bool best = score > r.Best;
             if (best) { r.Best = score; r.When = DateTime.Now.ToString("yyyy-MM-dd"); }
+            if (r.Top == null) r.Top = new List<int>();                               // 2026-11-25 the top five
+            r.Top.Add(score); r.Top.Sort((a, b) => b.CompareTo(a)); if (r.Top.Count > 5) r.Top.RemoveRange(5, r.Top.Count - 5);
             if (stars > r.Stars) r.Stars = stars;
             Save();
             return best;

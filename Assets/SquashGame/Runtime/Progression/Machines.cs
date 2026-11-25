@@ -292,6 +292,8 @@ namespace SquashGame.Progression
             _list.Add(Perks(add));
             // 2026-11-25 the card sets' titles
             foreach (var s in Sets) { var t = add(Slot.Title, s.Title, TitleName(s.Id), Color.white, Color.white, UnlockKind.Challenge); t.Achievement = "Pro Cards: " + s.Name.ToLowerInvariant(); }
+            QuickLadder.AddTitles(add);                                                     // 2026-11-25 the Quick Match ladder's titles
+            { var t = add(Slot.Title, ArcadePlatinum.Title, "Arcade Royalty", Color.white, Color.white, UnlockKind.Challenge); t.Achievement = "Target Arcade: platinum on every level"; }
         }
 
         static string TitleName(string set) { switch (set) { case "top10": return "Top Ten Collector"; case "clubs": return "Clubhouse Legend"; case "pros": return "Tour Collector"; default: return "Completionist"; } }

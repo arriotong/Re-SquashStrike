@@ -20,10 +20,10 @@ namespace SquashSim.Tests
     {
         [TearDown] public void Restore() { PhysicsConfig.ResetToDefaults(); }
 
-        [Test] public void FifteenInThreeGroups()
+        [Test] public void TwentyFiveInFiveGroups()                       // 2026-11-25: Specials and Iron Man
         {
             var all = Scenarios.All();
-            Assert.That(all.Count, Is.EqualTo(15));
+            Assert.That(all.Count, Is.EqualTo(25));
             var ids = new HashSet<string>();
             foreach (var s in all)
             {
@@ -32,8 +32,26 @@ namespace SquashSim.Tests
                 Assert.That(s.Difficulty, Is.InRange(0.1, 1.0), s.Id);
                 Assert.That(AiProfile.ByName(s.Opponent), Is.Not.Null, s.Id);
             }
-            for (int g = 0; g < 3; g++) Assert.That(Scenarios.InGroup(g).Count, Is.EqualTo(5));
-            Assert.That(Scenarios.MaxStars, Is.EqualTo(45));
+            for (int g = 0; g < 5; g++) Assert.That(Scenarios.InGroup(g).Count, Is.EqualTo(5));
+            Assert.That(Scenarios.GroupNames.Length, Is.EqualTo(Scenarios.GroupUnlock.Length));
+            Assert.That(Scenarios.MaxStars, Is.EqualTo(75));
+        }
+
+        [Test] public void SpecialsStartWithTheirMeters()
+        {
+            foreach (var s in Scenarios.InGroup(3))
+            {
+                var mine = new List<RunMod> { new RunMod { Id = "special", Level = 1 } }; if (s.YouFull) mine.Add(new RunMod { Id = "fullstart", Level = 1 });
+                var theirs = s.OppSpecial ? new List<RunMod> { new RunMod { Id = "special", Level = 1 } } : null; if (s.OppFull) theirs.Add(new RunMod { Id = "fullstart", Level = 1 });
+                var setup = new ReplaySetup { Opponent = s.Opponent, Difficulty = (float)s.Difficulty, GamesToWin = s.GamesToWin, Scoring = s.Scoring, BotSeed = 3,
+                    StartPoints0 = s.StartPoints0, StartPoints1 = s.StartPoints1, StartGames0 = s.StartGames0, StartGames1 = s.StartGames1, StartServer = s.StartServer,
+                    Mods0 = s.Abilities ? mine : null, Mods1 = theirs };
+                ReplayMatch.Configure(setup);
+                var sim = ReplayMatch.Build(setup);
+                if (s.Abilities) Assert.That(sim.Players[0].Player.Mods.Power, Is.EqualTo(s.YouFull ? 1.0 : 0.0), s.Id + ": your meter");
+                if (s.OppSpecial) Assert.That(sim.Players[1].Player.Mods.Power, Is.EqualTo(s.OppFull ? 1.0 : 0.0), s.Id + ": theirs");
+                Assert.That(s.Stars(new ScenarioResult { Won = true, Specials = 9, DuelsWon = 9, Dives = 9, Tins = 0, Errors = 0, Winners = 20 }), Is.EqualTo(3), s.Id + ": all three can be had");
+            }
         }
 
         [Test] public void EachMatchStartsWhereItsStorySays()

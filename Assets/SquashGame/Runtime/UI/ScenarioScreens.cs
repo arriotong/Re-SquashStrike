@@ -45,7 +45,17 @@ namespace SquashGame.UI
                 Scenario = s.Id, StartPoints0 = s.StartPoints0, StartPoints1 = s.StartPoints1, StartGames0 = s.StartGames0, StartGames1 = s.StartGames1,
                 StartServer = s.StartServer, Court = Courts.ForCareerTier(s.CourtTier), CrowdFill = Courts.CrowdForCareerTier(s.CourtTier),
                 P2Name = star != null ? SquashSim.Career.Stars.LastName(star).ToUpperInvariant() : Roster.StyleName(s.Opponent).ToUpperInvariant(),
+                // 2026-11-25 the Specials group: the Special Shot card (a full meter to start, where it says)
+                Mods = s.Abilities ? Card(s.YouFull) : null, MeterFocus = s.Abilities || s.OppSpecial,
+                OppMods = s.OppSpecial ? Card(s.OppFull) : null,
             };
+        }
+
+        static System.Collections.Generic.List<SquashSim.RunMod> Card(bool full)
+        {
+            var l = new System.Collections.Generic.List<SquashSim.RunMod> { new SquashSim.RunMod { Id = "special", Level = 1 } };
+            if (full) l.Add(new SquashSim.RunMod { Id = "fullstart", Level = 1 });
+            return l;
         }
 
         public static void Play(FrontEnd fe, Scenario s) { fe.StartMatch(Settings(s)); }
@@ -57,6 +67,7 @@ namespace SquashGame.UI
             {
                 Won = f.Won, Rallies = f.Rallies, RalliesWon = f.RalliesWon, Tins = f.Tins, Errors = f.Errors, Winners = f.Winners, Nicks = f.Nicks,
                 Kills = f.Kills, GreatHits = f.GreatHits, LongestRally = f.LongestRally, Margin = last != null ? Mathf.Abs(last[0] - last[1]) : 0,
+                Specials = f.Specials, DuelsWon = f.DuelsWon, Dives = f.Dives,
             };
         }
 

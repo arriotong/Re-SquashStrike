@@ -305,6 +305,9 @@ namespace SquashGame.UI
                 AddTo(board, new SelectorItem("Match", VersusScreen.LengthTiles, () => C.VsLength, v => C.VsLength = v));
                 AddTo(board, new SelectorItem("Scoring", VersusScreen.ScoringTiles, () => C.VsScoring, v => C.VsScoring = v));
                 AddTo(board, new SelectorItem(MatchChoices.ControlName, VersusScreen.AimTiles, () => S.Assisted ? 1 : 0, v => { S.Assisted = v == 1; ProfileStore.Apply(S, false); }));
+                AddTo(board, new SelectorItem("Series", VersusRecord.SeriesLabels, () => C.VsSeries, v => C.VsSeries = v));              // 2026-11-25
+                var h = VersusRecord.Record;
+                Kit.L(board, h.Matches == 0 ? "Head to head: your first match - it's kept from here." : "Head to head:  " + VersusRecord.Line() + "   ·   series " + h.Series0 + " – " + h.Series1, "k-vs-hint");
             }
             AddTo(Root, new PrimaryItem(TwoPlayer ? "Next: the controls" : "Next: your opponent", () => SetupFlow.Next(Fe, this, TwoPlayer)));
         }
@@ -333,7 +336,7 @@ namespace SquashGame.UI
             var star = SquashSim.Career.Stars.Find(id);
             var d = SquashSim.Career.Stars.Describe(id);
             var card = Machines.CardOf(id); int tier = card != null ? Machines.TierOf(card.Id) : -1;
-            return (star != null ? "No. " + star.Rank : "CLUB") + "  ·  " + d.rating + (tier >= 0 ? "  ·  " + Machines.TierNames[tier].ToUpperInvariant() : "");   // 2026-11-25 your card's tier
+            return (QuickLadder.Beaten(id) ? "✓  " : "") + (star != null ? "No. " + star.Rank : "CLUB") + "  ·  " + d.rating + (tier >= 0 ? "  ·  " + Machines.TierNames[tier].ToUpperInvariant() : "");   // 2026-11-25 beaten; your card's tier
         }
         protected override Color TileColour(string id) { return Machines.Locked(id) ? new Color(0.35f, 0.37f, 0.4f) : SetupFlow.ClassColour(SetupFlow.OpponentClass(id)); }
         protected override string TileBadge(string id) { return Machines.Locked(id) ? "LOCKED" : SetupFlow.ClassName(SetupFlow.OpponentClass(id)).ToUpperInvariant(); }
@@ -358,6 +361,7 @@ namespace SquashGame.UI
             // 2026-11-25 your card's tier, or the lock, on the top line (the panel's height stays)
             var card = Machines.CardOf(id); int tier = card != null ? Machines.TierOf(card.Id) : -1;
             string cardNote = Machines.Locked(id) ? "  ·  LOCKED: GET THEIR PRO CARD" : tier >= 0 ? "  ·  YOUR CARD: " + Machines.TierNames[tier].ToUpperInvariant() : "";
+            cardNote += QuickLadder.Beaten(id) ? "  ·  ✓ BEATEN" : "  ·  FIRST WIN +" + QuickLadder.FirstWinCoins(id);           // 2026-11-25 the ladder
             Kit.L(into, (star != null ? "WORLD No. " + star.Rank + "  ·  RATED " + d.rating : "CLUB PLAYER  ·  RATED " + d.rating) + cardNote, "pk-kicker");
             Kit.L(into, d.name, "pk-name");
             var badge = Kit.L(into, SetupFlow.ClassName(cls).ToUpperInvariant() + "  ·  " + SquashSim.Career.Roster.StyleName(d.style).ToUpperInvariant(), "pk-class");

@@ -46,6 +46,7 @@ namespace SquashGame.Progression
         // P2-M7: calls (given to you; "Against": to the opponent)
         public int Lets, Strokes, NoLets, LetsAgainst, StrokesAgainst, NoLetsAgainst;
         public bool WonAfterLet, MatchPointOnAStroke;
+        public int Specials, DuelsWon, Dives;   // 2026-11-25 (the scenarios' Specials group)
     }
 
     public static class Achievements
