@@ -435,6 +435,7 @@ namespace SquashGame
     /// <summary>The island's gentle life: drifting clouds, bobbing islands, running falls, a breathing halo.</summary>
     public sealed class DioramaLife : MonoBehaviour
     {
+        void LateUpdate() { Dioramas.HoldAmbient(); }                              // 2026-11-25 the court's light kept off the world
         public Transform Halo; public Material HaloMat, Falls;
         readonly List<(Transform t, Vector3 at, float speed, float phase, float amp)> _bob = new List<(Transform, Vector3, float, float, float)>();
         readonly List<(Transform t, float speed, float wrap)> _drift = new List<(Transform, float, float)>();

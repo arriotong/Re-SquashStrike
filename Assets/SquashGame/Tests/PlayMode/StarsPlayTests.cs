@@ -83,7 +83,7 @@ namespace SquashGame.Tests
             var op = (OpponentPickScreen)fe.Top;
             // 2026-11-22 evening: 100 - two tabs, the club players (yours to start) and the pros
             Assert.That(MatchChoices.Ladder.Length, Is.EqualTo(100), "50 club players and the 50 pros");
-            Assert.That(op.TabShown, Is.EqualTo(1), "on the club tab (where your opponent is)");
+            Assert.That(op.TabShown, Is.EqualTo(2), "on the club tab (where your opponent is)");
             var tiles = op.Reachable().FindAll(i => i is CardItem);
             Assert.That(tiles.Count, Is.EqualTo(50), "every club player");
             Assert.That(op.FocusedId, Is.EqualTo(MatchChoices.Ladder[0]), "on the one you had");
@@ -91,7 +91,7 @@ namespace SquashGame.Tests
             yield return CaptureUI(fe, "SETUP_2_Club.png");
             op.OnTab(-1);
             yield return null; yield return null;
-            Assert.That(op.TabShown, Is.EqualTo(0), "Q: the pros");
+            Assert.That(op.TabShown, Is.EqualTo(1), "Q: the pros");
             tiles = op.Reachable().FindAll(i => i is CardItem);
             Assert.That(tiles.Count, Is.EqualTo(50), "all 50 pros");
             var top = (CardItem)tiles[0];
@@ -106,7 +106,14 @@ namespace SquashGame.Tests
             // step 3: the court
             Assert.That(fe.Top, Is.InstanceOf<CourtPickScreen>());
             var cp = (CourtPickScreen)fe.Top;
+            Assert.That(cp.TabShown, Is.EqualTo(0), "ALL");
             Assert.That(cp.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(Courts.Pickable.Length), "every court");
+            cp.OnTab(1); yield return null; yield return null;
+            Assert.That(cp.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(Courts.All.Length), "LEGACY");
+            cp.OnTab(1); yield return null; yield return null;
+            Assert.That(cp.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(Courts.Pickable.Length - Courts.All.Length), "LOCATION");
+            cp.OnTab(1); yield return null; yield return null;
+            Assert.That(cp.TabShown, Is.EqualTo(0), "round to ALL");
             yield return Wait(0.6f, () => false);
             yield return CaptureUI(fe, "SETUP_3_Court.png");
             ((CardItem)cp.Focused).Submit();
@@ -117,7 +124,7 @@ namespace SquashGame.Tests
             var kp = (ClassPickScreen)fe.Top;
             // 2026-11-22 evening: 35 classes in five family tabs
             int total = 0;
-            for (int t = 0; t < 5; t++)
+            for (int t = 1; t <= 5; t++)                                     // (2026-11-25: ALL is tab 0)
             {
                 while (kp.TabShown != t) { kp.OnTab(1); yield return null; }
                 int n = kp.Reachable().FindAll(i => i is CardItem).Count;
@@ -126,6 +133,9 @@ namespace SquashGame.Tests
             }
             Assert.That(total, Is.EqualTo(35), "35 classes");
             while (kp.TabShown != 0) { kp.OnTab(1); yield return null; }
+            Assert.That(kp.Reachable().FindAll(i => i is CardItem).Count, Is.EqualTo(35), "ALL: every class");
+            yield return CaptureUI(fe, "SETUP_4_ClassAll.png");
+            while (kp.TabShown != 1) { kp.OnTab(1); yield return null; }
             var classes = kp.Reachable().FindAll(i => i is CardItem);
             var power = (CardItem)classes.Find(i => ((CardItem)i).Title == "Power");
             kp.Focus(power);
@@ -297,8 +307,8 @@ namespace SquashGame.Tests
             yield return null; yield return null;
             var pick = (ClassPickScreen)fe.Top;
             Assert.That(pick.FocusedId, Is.EqualTo("allround"), "on the class it has");
-            Assert.That(pick.TabShown, Is.EqualTo(4), "on its family's tab (all-round)");
-            while (pick.TabShown != 3) { pick.OnTab(-1); yield return null; }        // (2026-11-22 evening: Q to the Touch family)
+            Assert.That(pick.TabShown, Is.EqualTo(5), "on its family's tab (all-round)");
+            while (pick.TabShown != 4) { pick.OnTab(-1); yield return null; }        // (2026-11-22 evening: Q to the Touch family)
             var touch = (CardItem)pick.Reachable().Find(i => i is CardItem c && c.Title == "Touch");
             touch.Submit();
             yield return null;

@@ -68,7 +68,34 @@ namespace SquashGame
         static bool _fogSaved, _fogWas;
 
         /// <summary>A new scene (MatchRunner.Awake): the old worlds went with the last one, its fog too.</summary>
-        public static void Reset() { _roots.Clear(); Current = MenuWorld.None; _fogSaved = false; }
+        public static void Reset() { _roots.Clear(); Current = MenuWorld.None; _fogSaved = false; _ambSaved = false; }
+
+        // ---- 2026-11-25 (the user: "some legacy courts have like effects and when i choose the courts they like appear in the background
+        // try to make them not show"): the ambient light every venue sets for the whole scene ----
+        static bool _ambSaved;
+        static UnityEngine.Rendering.AmbientMode _ambMode;
+        static Color _ambSky, _ambEq, _ambGround, _ambFlat;
+        /// <summary>The worlds' ambient: the show court's night (what they were made under).</summary>
+        public static readonly Color NeutralSky = new Color(0.18f, 0.174f, 0.186f), NeutralEquator = new Color(0.162f, 0.144f, 0.132f), NeutralGround = new Color(0.072f, 0.066f, 0.066f);
+        static void SaveAmbient() { _ambMode = RenderSettings.ambientMode; _ambSky = RenderSettings.ambientSkyColor; _ambEq = RenderSettings.ambientEquatorColor; _ambGround = RenderSettings.ambientGroundColor; _ambFlat = RenderSettings.ambientLight; }
+        static void RestoreAmbient() { RenderSettings.ambientMode = _ambMode; RenderSettings.ambientSkyColor = _ambSky; RenderSettings.ambientEquatorColor = _ambEq; RenderSettings.ambientGroundColor = _ambGround; if (_ambMode == UnityEngine.Rendering.AmbientMode.Flat) RenderSettings.ambientLight = _ambFlat; }
+        static void ApplyNeutral() { RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight; RenderSettings.ambientSkyColor = NeutralSky; RenderSettings.ambientEquatorColor = NeutralEquator; RenderSettings.ambientGroundColor = NeutralGround; }
+
+        /// <summary>Each frame a world is up: a court built under it (the court picker) set its own ambient - keep that for later, the
+        /// neutral back on.</summary>
+        public static void HoldAmbient()
+        {
+            if (Current == MenuWorld.None || !_ambSaved) return;
+            if (RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight && RenderSettings.ambientSkyColor == NeutralSky &&
+                RenderSettings.ambientEquatorColor == NeutralEquator && RenderSettings.ambientGroundColor == NeutralGround) return;
+            // a court was built under the world (every court sets its ambient): its light and its fog (the station's haze, the reef's
+            // water, the jungle's mist - it swallowed the world's sky) kept for the court, off here
+            SaveAmbient();
+            if (_fogSaved) { _fogWas = RenderSettings.fog; RenderSettings.fog = false; }
+            ApplyNeutral();
+        }
+        /// <summary>The ambient on now is the worlds' neutral (tests).</summary>
+        public static bool AmbientHeld { get { return RenderSettings.ambientSkyColor == NeutralSky && !RenderSettings.fog; } }
 
         /// <summary>Show this world (built the first time), hide the rest; None: the court again.</summary>
         public static void Show(MenuWorld w)
@@ -77,6 +104,10 @@ namespace SquashGame
             if (w != MenuWorld.None && (!_roots.TryGetValue(w, out var built) || built == null)) w = MenuWorld.None;   // (no court to build in)
             foreach (var kv in _roots) if (kv.Value != null && kv.Value.activeSelf != (kv.Key == w)) kv.Value.SetActive(kv.Key == w);
             Current = w;
+            // 2026-11-25 the court's ambient light (a legacy court's teal sea, green jungle, brass hall...) tinted the world: held
+            // at the show court's while a world is up (HoldAmbient), the court's own back after
+            if (w != MenuWorld.None && !_ambSaved) { SaveAmbient(); _ambSaved = true; ApplyNeutral(); }
+            else if (w == MenuWorld.None && _ambSaved) { RestoreAmbient(); _ambSaved = false; }
             // the arenas' dark fog (it ends ~90 m) would swallow a sky: off while a world is up, back after
             if (w != MenuWorld.None && !_fogSaved) { _fogWas = RenderSettings.fog; _fogSaved = true; RenderSettings.fog = false; }
             else if (w == MenuWorld.None && _fogSaved) { RenderSettings.fog = _fogWas; _fogSaved = false; }

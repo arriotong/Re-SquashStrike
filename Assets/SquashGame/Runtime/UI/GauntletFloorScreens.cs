@@ -154,7 +154,7 @@ namespace SquashGame.UI
         float _t;
         WheelView _wheel;
         Label _head, _result;
-        float _from, _to;
+        float _from, _to, _tickAt;
         bool _landed;
         /// <summary>The prizes (tests).</summary>
         public List<WheelSpin> Spins { get { return _spins; } }
@@ -183,7 +183,7 @@ namespace SquashGame.UI
             _head.EnableInClassList("wh-head--gold", i > 0);
             _result.text = "";
             float slice = 360f / s.Slices.Length;
-            _from = 0f;
+            _from = 0f; _tickAt = 0f;
             _to = 360f * 5f - (s.Slice + 0.5f) * slice;                          // the slice's middle under the pointer
             _wheel.Turn(0f);
         }
@@ -196,7 +196,9 @@ namespace SquashGame.UI
             if (!_landed)
             {
                 float k = Mathf.Clamp01(_t / SpinSeconds), e = 1f - Mathf.Pow(1f - k, 3f);
-                _wheel.Turn(Mathf.Lerp(_from, _to, e));
+                float ang = Mathf.Lerp(_from, _to, e);
+                _wheel.Turn(ang);
+                if (Mathf.Abs(ang - _tickAt) >= 30f) { _tickAt = ang; SquashGame.Audio.GameSfx.Play("wheel_tick", 0.5f, 0.04f); }   // 2026-11-25 a click a segment
                 if (k >= 1f) { _landed = true; _t = 0; _result.text = _spins[_at].Words; Sounds.Play(_spins[_at].Golden ? "star" : "tick"); }
                 return;
             }

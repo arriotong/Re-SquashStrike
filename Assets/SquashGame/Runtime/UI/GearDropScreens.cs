@@ -110,7 +110,9 @@ namespace SquashGame.UI
             if (_shown >= _cards.Count) return;
             var d = _drops[_shown];
             _cards[_shown].RemoveFromClassList("gd-card--hidden");
-            Sounds.Play(d.Rarity >= Rarity.Epic || d.Gold ? "star" : "tick");
+            // 2026-11-25 a card turned, then its rarity's own sound (Common's blip .. Legendary's fanfare; gold: the fanfare)
+            SquashGame.Audio.GameSfx.Play("flip", 0.5f, 0.1f);
+            SquashGame.Audio.GameSfx.Play("reveal" + (d.Gold ? 4 : Mathf.Clamp((int)d.Rarity, 0, 4)), d.Rarity >= Rarity.Epic || d.Gold ? 0.95f : 0.6f, 0.02f);
             _shown++;
         }
 

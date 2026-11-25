@@ -191,6 +191,9 @@ namespace SquashGame.UI
                 card.Root.AddToClassList("gt-card");
             }
             AddTo(Root, new PrimaryItem("Back to the store", () => Fe.Pop()));
+            // 2026-11-25 the pack opens to its best card's sound
+            int best = 0; foreach (var id in _got) { var a = GauntletAbilities.Find(id); if (a != null) best = Mathf.Max(best, (int)a.Rarity); }
+            SquashGame.Audio.GameSfx.Play("flip", 0.6f); SquashGame.Audio.GameSfx.Play("reveal" + Mathf.Clamp(best, 0, 4), 0.85f, 0.02f);
             var more = Kit.Box(Content, "gt-more");
             AddTo(more, new ActionItem("Your cards", () => Fe.Replace(new DeckScreen()), "▶"));
         }

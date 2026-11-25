@@ -181,6 +181,47 @@ namespace SquashGame.Audio
         int _next;
         readonly Vector3[] _lastVel = new Vector3[2];
         readonly float[] _squeakCooldown = new float[2];
+        readonly float[] _stepT = new float[2];
+        readonly bool[] _swung = new bool[2];
+        // 2026-11-25 the moments' sounds (GameSfx): what was so last frame
+        MatchSimulation _momFor;
+        readonly bool[] _focusWas = new bool[2];
+        readonly int[] _divesWas = new int[2];
+        int _chargeWas = -1, _zoneWas = -1, _defendedWas, _lostWas;
+        bool _cutWas;
+
+        /// <summary>2026-11-25 (the user: "i want more variety of sound effects"): Focus in and out, a dive, the Special Shot's
+        /// charge, time stopping, the cut-in, the duel won or lost.</summary>
+        void Moments(MatchRunner mr, MatchSimulation m)
+        {
+            if (mr.Demo || mr.ReplayActive) { _momFor = null; return; }
+            int me = mr.HumanIndex >= 0 ? mr.HumanIndex : 0;
+            bool fresh = !ReferenceEquals(_momFor, m);
+            _momFor = m;
+            for (int i = 0; i < 2; i++)
+            {
+                bool f = m.Focusing(i);
+                int d = m.Players[i].Arcade != null ? m.Players[i].Arcade.DiveCount : 0;
+                if (!fresh)
+                {
+                    float k = i == me ? 0.85f : 0.45f;
+                    if (f && !_focusWas[i]) GameSfx.Play("focus_in", k);
+                    else if (!f && _focusWas[i]) GameSfx.Play("focus_out", k * 0.8f);
+                    if (d > _divesWas[i]) GameSfx.Play("dive", 0.75f * k + 0.2f);
+                }
+                _focusWas[i] = f; _divesWas[i] = d;
+            }
+            bool cut = GameplayCameraRig.CutInShowing;
+            if (!fresh)
+            {
+                if (m.ChargeBy >= 0 && _chargeWas < 0) GameSfx.Play("charge", 0.75f);
+                if (m.ZoneBy >= 0 && _zoneWas < 0) GameSfx.Play("timestop", 0.85f, 0.02f);
+                if (cut && !_cutWas) GameSfx.Play("cutin", 0.9f);
+                if (m.SpecialsDefended > _defendedWas) GameSfx.Play("duel_win", 0.9f);
+                if (m.DuelsLost > _lostWas) GameSfx.Play("duel_lose", 0.8f);
+            }
+            _chargeWas = m.ChargeBy; _zoneWas = m.ZoneBy; _cutWas = cut; _defendedWas = m.SpecialsDefended; _lostWas = m.DuelsLost;
+        }
         int _lastRallies = -1;
         MatchPhase _lastPhase;
 
@@ -321,6 +362,15 @@ namespace SquashGame.Audio
                 Vector3 pv = _lastVel[i];
                 _lastVel[i] = v;
                 _squeakCooldown[i] -= dt;
+                // 2026-11-25 more sounds: footsteps as they run (quicker the faster), the racket's whoosh as a swing starts
+                if (mr == null || !mr.Demo)
+                {
+                    float sp = v.magnitude, near = mr != null && i != (mr.HumanIndex >= 0 ? mr.HumanIndex : 0) ? 0.55f : 1f;
+                    _stepT[i] -= dt;
+                    if (sp > 1.8f && _stepT[i] <= 0f) { GameSfx.Play("step", Mathf.Clamp01(0.12f + sp * 0.035f) * near, 0.12f); _stepT[i] = Mathf.Lerp(0.36f, 0.19f, Mathf.Clamp01((sp - 1.8f) / 4f)); }
+                    if (a.Swinging && !_swung[i]) GameSfx.Play("swing", 0.32f * near, 0.1f);
+                    _swung[i] = a.Swinging;
+                }
                 float decel = (pv.magnitude - v.magnitude) / dt;
                 float turn = Vector3.Angle(pv, v);
                 // v3 (the squeal annoyed): only real hard stops and cuts, rarer, and quiet
@@ -337,6 +387,7 @@ namespace SquashGame.Audio
             if (mr != null)
             {
                 MatchSimulation m = mr.Sim;
+                Moments(mr, m);
                 if (_lastRallies < 0 || m.History.Count < _lastRallies) _lastRallies = m.History.Count;
                 Vector3 refPos = SimToWorld.Pos(0, 3.0, CourtDimensions.LENGTH + 1.5);
                 if (m.History.Count > _lastRallies)
@@ -375,9 +426,9 @@ namespace SquashGame.Audio
                 for (; _notesRead < m.Chaos.Count; _notesRead++)
                 {
                     var n = m.Chaos[_notesRead];
-                    if (n.Kind == "review") Say("review");
-                    else if (n.Kind == "overturned") { Say("overturned"); Say(CallLine(m.LastOutcome, true), 0.15f); }
-                    else if (n.Kind == "upheld") Say("stands");
+                    if (n.Kind == "review") { Say("review"); GameSfx.Play("review", 0.6f, 0f); }
+                    else if (n.Kind == "overturned") { Say("overturned"); Say(CallLine(m.LastOutcome, true), 0.15f); GameSfx.Play("overturn", 0.6f, 0f); }
+                    else if (n.Kind == "upheld") { Say("stands"); GameSfx.Play("upheld", 0.6f, 0f); }
                 }
                 _lastPhase = m.Phase;
             }

@@ -153,6 +153,12 @@ namespace SquashGame.UI
         /// <summary>2026-11-22 evening: tabs over the grid (Q / E, LB / RB) - null: one grid. Which tab a tile is on, its order there.</summary>
         protected virtual string[] TabNames { get { return null; } }
         protected virtual int TabOf(string id) { return 0; }
+        /// <summary>2026-11-25 (the user: "an ALL tab that shows every class"): a tile shows on its own tab and on ALL (tab 0) when
+        /// the screen has one.</summary>
+        protected virtual bool HasAll { get { return false; } }
+        bool InTab(string id, int tab) { return TabOf(id) == tab || (HasAll && tab == 0); }
+        /// <summary>The tab it opens on: the one the current pick is on.</summary>
+        protected virtual int StartTab(string current) { return TabOf(current); }
         protected virtual int TabOrder(string id) { return 0; }
         TabBar _tabBar;
         /// <summary>The tab shown (tests).</summary>
@@ -160,10 +166,10 @@ namespace SquashGame.UI
         void ShowTab(int t)
         {
             TabShown = t;
-            foreach (var tile in Tiles) tile.item.Root.style.display = TabOf(tile.id) == t ? DisplayStyle.Flex : DisplayStyle.None;
+            foreach (var tile in Tiles) tile.item.Root.style.display = InTab(tile.id, t) ? DisplayStyle.Flex : DisplayStyle.None;
             var f = Focused;
             if (f == null || f.Root.style.display == DisplayStyle.None)
-                foreach (var tile in Tiles) if (TabOf(tile.id) == t) { Focus(tile.item); break; }
+                foreach (var tile in Tiles) if (InTab(tile.id, t)) { Focus(tile.item); break; }
             if (_scroll != null) _scroll.scrollOffset = Vector2.zero;
         }
         public override void OnTab(int d) { if (_tabBar != null) _tabBar.Step(d); }
@@ -206,7 +212,7 @@ namespace SquashGame.UI
             MenuCinematics.Scene = TwoPlayer ? 1 : 0;
             MatchRunner.Showcase = true; MatchRunner.Studio = true; MatchRunner.StudioPair = true; KitStudio.Show(true);
             string cur = Current;
-            if (_tabBar != null) { int want = TabOf(cur); _tabBar.Select(want); ShowTab(want); }
+            if (_tabBar != null) { int want = StartTab(cur); _tabBar.Select(want); ShowTab(want); }
             foreach (var t in Tiles) if (t.id == cur) { Focus(t.item); break; }
             _shown = null;
         }
@@ -315,8 +321,9 @@ namespace SquashGame.UI
 
         protected override IEnumerable<string> Ids { get { return MatchChoices.Ladder; } }
         // 2026-11-22 evening (the user's answer: tabs, Pros / Club): the pros by world rank, the club players by rating
-        protected override string[] TabNames { get { return new[] { "PROS", "CLUB" }; } }
-        protected override int TabOf(string id) { return id != null && id.StartsWith("star:") ? 0 : 1; }
+        protected override string[] TabNames { get { return new[] { "ALL", "PROS", "CLUB" }; } }          // 2026-11-25 ALL
+        protected override bool HasAll { get { return true; } }
+        protected override int TabOf(string id) { return id != null && id.StartsWith("star:") ? 1 : 2; }
         protected override int TabOrder(string id) { var s = SquashSim.Career.Stars.Find(id); return s != null ? s.Rank : -SquashSim.Career.Stars.Describe(id).rating; }
         protected override string TileName(string id) { var d = SquashSim.Career.Stars.Describe(id); return d.name; }
         protected override string TileKicker(string id)
@@ -377,12 +384,33 @@ namespace SquashGame.UI
         protected override IEnumerable<string> Ids { get { foreach (var c in Courts.Pickable) yield return c.Id; } }
         static int Index(string id) { return Array.FindIndex(Courts.Pickable, c => c.Id == id); }
         protected override string TileName(string id) { var i = Index(id); return i >= 0 ? Courts.Pickable[i].Name : id; }
-        protected override string TileKicker(string id) { var i = Index(id); return i >= 0 ? Courts.SectionOf(i).ToUpperInvariant() : ""; }
+        protected override string TileKicker(string id) { var i = Index(id); if (i < 0) return ""; var t = Courts.Pickable[i]; return i < Courts.All.Length ? "LEGACY" : (t.Blurb ?? "").ToUpperInvariant(); }
+        // 2026-11-25 (the user: "make the court cards more colourful like how it is for the opponent selection ... another ALL tab ...
+        // LEGACY, and LOCATION tab for courts")
+        protected override string[] TabNames { get { return new[] { "ALL", "LEGACY", "LOCATION" }; } }
+        protected override bool HasAll { get { return true; } }
+        protected override int TabOf(string id) { return Index(id) < Courts.All.Length ? 1 : 2; }
+        protected override int TabOrder(string id) { return Index(id); }
+        protected override int StartTab(string current) { return 0; }                  // (every court, as before)
+        protected override string TileBadge(string id) { var i = Index(id); if (i < 0) return ""; var t = Courts.Pickable[i]; return t.Outdoor ? "OUTDOOR" : t.Walls == WallStyle.Plaster ? "CLUB" : "GLASS"; }
+        /// <summary>Each legacy court's own colour (its look: lava, aurora, neon...); a tour venue's, its front wall's - brightened.</summary>
+        static readonly Dictionary<string, Color32> LegacyColours = new Dictionary<string, Color32>
+        {
+            { "show", new Color32(70, 120, 255, 255) }, { "club", new Color32(235, 70, 60, 255) }, { "desert", new Color32(255, 150, 50, 255) },
+            { "station", new Color32(225, 180, 90, 255) }, { "rooftop", new Color32(190, 110, 255, 255) }, { "arena", new Color32(40, 220, 255, 255) },
+            { "warehouse", new Color32(80, 210, 120, 255) }, { "leisure", new Color32(255, 110, 80, 255) }, { "county", new Color32(90, 140, 255, 255) },
+            { "peak", new Color32(110, 255, 190, 255) }, { "beach", new Color32(255, 190, 70, 255) }, { "orbit", new Color32(130, 170, 255, 255) },
+            { "neon", new Color32(255, 60, 200, 255) }, { "reef", new Color32(40, 230, 210, 255) }, { "temple", new Color32(140, 220, 60, 255) },
+            { "volcano", new Color32(255, 80, 30, 255) },
+        };
         protected override Color TileColour(string id)
         {
             var i = Index(id); if (i < 0) return Color.white;
-            var t = Courts.Pickable[i];
-            return t.Walls == WallStyle.Plaster ? new Color32(230, 230, 236, 255) : t.Walls == WallStyle.Glass ? new Color32(120, 200, 255, 255) : new Color32(70, 110, 255, 255);
+            if (LegacyColours.TryGetValue(id, out var c)) return c;
+            var v = id.StartsWith(Courts.TourPrefix) ? TourVenues.Find(id.Substring(Courts.TourPrefix.Length)) : null;
+            if (v == null) return new Color32(120, 200, 255, 255);
+            Color.RGBToHSV(v.Mid, out float h, out float s, out float b);
+            return Color.HSVToRGB(h, Mathf.Max(s, 0.55f), Mathf.Max(b, 0.9f));
         }
         protected override string Current { get { var p = Courts.Pickable; int i = Mathf.Clamp(_two ? C.VsCourt : C.Court, 0, p.Length - 1); return p[i].Id; } }
         protected override void Choose(string id) { int i = Mathf.Max(0, Index(id)); if (_two) C.VsCourt = i; else C.Court = i; Courts.CurrentId = id; }
@@ -436,8 +464,9 @@ namespace SquashGame.UI
         protected override IEnumerable<string> Ids { get { foreach (var c in PlayerClasses.All) yield return c.Id; } }
         // 2026-11-22 evening: 35 classes - a tab for each family (Q / E), seven or so in each
         static readonly string[] Families = { "power", "accuracy", "speed", "touch", "allround" };
-        protected override string[] TabNames { get { return new[] { "POWER", "ACCURACY", "SPEED", "TOUCH", "ALL-ROUND" }; } }
-        protected override int TabOf(string id) { return System.Math.Max(0, System.Array.IndexOf(Families, PlayerClasses.FamilyOf(id))); }
+        protected override string[] TabNames { get { return new[] { "ALL", "POWER", "ACCURACY", "SPEED", "TOUCH", "ALL-ROUND" }; } }   // 2026-11-25 ALL
+        protected override bool HasAll { get { return true; } }
+        protected override int TabOf(string id) { return 1 + System.Math.Max(0, System.Array.IndexOf(Families, PlayerClasses.FamilyOf(id))); }
         protected override int TabOrder(string id) { return System.Array.FindIndex(PlayerClasses.All, c => c.Id == id); }
         protected override string TileName(string id) { return SetupFlow.ClassName(id); }
         protected override string TileKicker(string id) { var d = PlayerClasses.Find(id); return d != null ? d.Short.ToUpperInvariant() : ""; }

@@ -42,6 +42,7 @@ namespace SquashGame.UI
             if (fx == _style) return;
             Stop();
             _style = fx; _a = a; _b = b; _t = 0; _next = 0;
+            if (fx == 1 || fx == 2) SquashGame.Audio.GameSfx.Play("pop", 0.5f);                 // 2026-11-25 a pop as it starts
             if (fx == 4) for (int i = 0; i < 3; i++) Spot(i);
         }
 
@@ -100,6 +101,7 @@ namespace SquashGame.UI
                         var c = Pick();
                         for (int k = 0; k < 26; k++) { float ang = k / 26f * Mathf.PI * 2; var b = Add(6, c, true); b.P = at; b.V = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * (220 + R() * 90); b.Life = 1.3f; }
                         _next = _t + 0.55f + R() * 0.3f;
+                        SquashGame.Audio.GameSfx.Play("firework", 0.35f, 0.08f);
                     }
                     break;
             }

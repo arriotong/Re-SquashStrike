@@ -132,7 +132,7 @@ namespace SquashGame.UI
                 Juice.Rumble(0.5f, 0.5f, 0.25f);
                 _level.AddToClassList("rw-level--burst");
             }
-            if (u >= 1f && !_counted && Juice.On) { _counted = true; Juice.Bump(_xp); }
+            if (u >= 1f && !_counted && Juice.On) { _counted = true; Juice.Bump(_xp); if (_r.Coins > 0) SquashGame.Audio.GameSfx.Play("coin", 0.7f); }   // 2026-11-25 the coins
             _fill.style.width = Length.Percent(100f * Rewards.Into(xp));
         }
     }
