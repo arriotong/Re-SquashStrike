@@ -202,6 +202,7 @@ namespace SquashGame
 
             bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
             if (ctrl && shift && kb.f12Key.wasPressedThisFrame) { DevMode = !DevMode; Debug.Log("[Dev] developer mode " + (DevMode ? "on" : "off")); }
+            if (!DevMode && SquashGame.Profile.DevMode.DebugKeys) DevMode = true;          // 2026-11-25 the code's debug keys (Profile > Enter a code)
             if (!DevMode) { PanelVisible = false; DebugView = false; return; }
             if (kb.f1Key.wasPressedThisFrame || kb.backquoteKey.wasPressedThisFrame) PanelVisible = !PanelVisible;
             if (kb.f2Key.wasPressedThisFrame || kb.backslashKey.wasPressedThisFrame) DebugView = !DebugView;

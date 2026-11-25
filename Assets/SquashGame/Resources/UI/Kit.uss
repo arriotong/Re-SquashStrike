@@ -965,6 +965,12 @@
 }
 .hud-intro--in { translate: -50% 0; opacity: 1; }
 .hud-intro-names { font-size: 44px; color: rgb(255, 255, 255); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+/* 2026-11-25 the Academy's match drills: the coach, top middle */
+.hud-drill { position: absolute; left: 50%; top: 18px; translate: -50% 0; width: 860px; align-items: center; padding: 10px 22px 12px 22px;
+    background-color: rgba(12, 13, 16, 0.86); border-top-width: 4px; border-top-color: rgb(200, 255, 61); border-radius: 6px; }
+.hud-drill-head { font-size: 16px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
+.hud-drill-text { margin-top: 4px; font-size: 19px; color: rgb(255, 255, 255); white-space: normal; -unity-text-align: middle-center; -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
+.hud-drill-note { margin-top: 4px; font-size: 30px; letter-spacing: 4px; color: rgb(255, 214, 64); -unity-font-definition: resource("UI/Fonts/Rajdhani-Bold"); }
 .hud-intro-line { font-size: 15px; letter-spacing: 6px; margin-bottom: 2px; -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }   /* 2026-11-24 your walk-on's line */
 .hud-intro-sub { font-size: 13px; letter-spacing: 3px; color: rgb(200, 255, 61); -unity-font-definition: resource("UI/Fonts/JetBrainsMono-Bold"); }
 

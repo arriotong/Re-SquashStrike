@@ -128,6 +128,9 @@ namespace SquashGame.UI
         public static IEnumerable<string> AllIds() { foreach (var l in Lessons.All()) yield return l.Id; }
 
         public static List<Lesson> InChapter(Chapter ch) { return Lessons.All().FindAll(l => l.Chapter == ch); }
+        /// <summary>2026-11-25 three chapters: the controls, the rules, the match skills (drills).</summary>
+        public static string ChapterTitle(Chapter ch) { return ch == Chapter.Controls ? "CHAPTER 1  ·  THE CONTROLS" : ch == Chapter.Rules ? "CHAPTER 2  ·  THE RULES OF SQUASH" : "CHAPTER 3  ·  MATCH SKILLS"; }
+        public static string ChapterShort(Chapter ch) { return ch == Chapter.Controls ? "THE CONTROLS" : ch == Chapter.Rules ? "THE RULES" : "MATCH SKILLS"; }
 
         VisualElement _card;
         MenuItem _shown;
@@ -138,11 +141,11 @@ namespace SquashGame.UI
         {
             var stage = Kit.Box(Content, "k-ac-stage");
             var left = Kit.Box(stage, "k-ac-left");
-            foreach (var ch in new[] { SquashSim.Academy.Chapter.Controls, SquashSim.Academy.Chapter.Rules })
+            foreach (var ch in new[] { SquashSim.Academy.Chapter.Controls, SquashSim.Academy.Chapter.Rules, SquashSim.Academy.Chapter.Match })
             {
                 var list = InChapter(ch);
                 int done = list.FindAll(l => ProfileStore.LessonDone(l.Id)).Count;
-                var panel = Kit.Panel(left, (ch == SquashSim.Academy.Chapter.Controls ? "CHAPTER 1  ·  THE CONTROLS" : "CHAPTER 2  ·  THE RULES OF SQUASH") + "   " + done + " / " + list.Count);
+                var panel = Kit.Panel(left, ChapterTitle(ch) + "   " + done + " / " + list.Count);
                 panel.AddToClassList("k-ac-chapter");
                 var trail = new TrailView(i => ProfileStore.LessonDone(list[i].Id));
                 panel.Add(trail);
@@ -167,6 +170,11 @@ namespace SquashGame.UI
         {
             base.OnShow();
             MenuCinematics.Scene = 5;
+            if (MatchDrills.Pending != null && Fe.Match != null)                  // 2026-11-25 a drill asked for from the lesson scene
+            {
+                var d = Lessons.Find(MatchDrills.Pending); MatchDrills.Pending = null;
+                if (d != null) { MatchDrills.Launch(Fe, d); return; }
+            }
             if (_placed) return;
             _placed = true;
             if (_next != null) Focus(_next);
@@ -178,7 +186,7 @@ namespace SquashGame.UI
             _shown = n;
             var l = n.Lesson;
             _card.Clear();
-            Kit.L(_card, l.Chapter == SquashSim.Academy.Chapter.Controls ? "THE CONTROLS  ·  LESSON " + (InChapter(l.Chapter).IndexOf(l) + 1) : "THE RULES  ·  LESSON " + (InChapter(l.Chapter).IndexOf(l) + 1), "k-panel-title");
+            Kit.L(_card, ChapterShort(l.Chapter) + "  ·  " + (l.IsDrill ? "DRILL " : "LESSON ") + (InChapter(l.Chapter).IndexOf(l) + 1), "k-panel-title");
             Kit.L(_card, l.Title, "k-ac-title");
             var st = Kit.L(_card, n.Done ? "✓  PASSED" : l == NextUp() ? "NEXT UP" : "NOT YET", "k-ac-status");
             if (n.Done) st.AddToClassList("k-ac-status--done");
@@ -194,6 +202,7 @@ namespace SquashGame.UI
                 Kit.L(row, s.Text, "k-ac-step-t");
             }
             if (l.HasQuiz) Kit.L(_card, "Ends with 3 calls to make: get 2 right.", "k-ac-quiz");
+            if (l.IsDrill) Kit.L(_card, "Played in a real match against an easy opponent.", "k-ac-quiz");
             if (keys != null) { var k = Kit.Box(_card, "k-ac-keys"); Kit.L(k, "KEYS", "k-ac-keys-k"); Kit.L(k, keys, "k-ac-keys-v"); }
         }
     }
@@ -429,7 +438,7 @@ namespace SquashGame.UI
             var next = Lessons.Next(_l);
             bool academyIsPrimary = false;
             if (_finished) AddTo(Root, new PrimaryItem("Play a Quick Match", () => FrontEnd.LaunchQuickMatch(0)));
-            else if (next != null) AddTo(Root, new PrimaryItem("Next: " + next.Title, () => { Fe.Clear(); Fe.Academy.Play(next); }));
+            else if (next != null) AddTo(Root, new PrimaryItem("Next: " + next.Title, () => Play(next)));
             else { AddTo(Root, new PrimaryItem("Academy", () => Fe.BackToAcademyMenu())); academyIsPrimary = true; }
 
             var col = Kit.Box(Content, "k-cr-result");
@@ -439,7 +448,7 @@ namespace SquashGame.UI
             if (_finished) Kit.L(col, "You know the controls and the rules. Try a match against an Easy opponent.", "k-cr-res-v");
 
             var list = AcademyScreen.InChapter(_l.Chapter);
-            var panel = Kit.Panel(col, (_l.Chapter == Chapter.Controls ? "THE CONTROLS" : "THE RULES") + "   " + list.FindAll(x => ProfileStore.LessonDone(x.Id)).Count + " / " + list.Count);
+            var panel = Kit.Panel(col, AcademyScreen.ChapterShort(_l.Chapter) + "   " + list.FindAll(x => ProfileStore.LessonDone(x.Id)).Count + " / " + list.Count);
             panel.AddToClassList("k-ac-mini");
             var trail = new TrailView(i => ProfileStore.LessonDone(list[i].Id));
             panel.Add(trail);
@@ -465,10 +474,18 @@ namespace SquashGame.UI
             if (Reward.Any) { col.Add(new RewardStrip(Reward)); Fe.ToastAchievements(Reward); }
 
             var acts = Kit.Box(col, "k-cr-pv-acts");
-            AddTo(acts, new ActionItem("Play it again", () => { Fe.Clear(); Fe.Academy.Restart(); }));
+            AddTo(acts, new ActionItem("Play it again", () => { if (_l.IsDrill || Fe.Academy == null) Play(_l); else { Fe.Clear(); Fe.Academy.Restart(); } }));
             if (!academyIsPrimary) AddTo(acts, new ActionItem("Academy", () => Fe.BackToAcademyMenu()));
         }
 
         public override void Back() { Fe.BackToAcademyMenu(); }
+
+        /// <summary>2026-11-25 a lesson from here: a match drill starts its match; a lesson plays in the Academy (here, or its scene).</summary>
+        void Play(Lesson l)
+        {
+            if (l.IsDrill) { MatchDrills.Launch(Fe, l); return; }
+            if (Fe.Academy != null) { Fe.Clear(); Fe.Academy.Play(l); }
+            else FrontEnd.LaunchLesson(l.Id);
+        }
     }
 }

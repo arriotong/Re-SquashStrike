@@ -6,7 +6,13 @@
 //
 //   Controls  Move, Aim, Hit, Height picks the shot, Charge, Boast,
 //             Serve, Get set early, Assisted or not
-//   Rules     The court, Serving, How a rally ends, Scoring, Lets
+//   Rules     The court, Serving, How a rally ends, Scoring, Lets,
+//             Nicks, the Special Shot & video review
+//   Match     2026-11-25 (the user: "in the learning how to play thing
+//             consider adding all those new machenics we have added like
+//             special shots diving focusing everything"): drills played as
+//             a real match (the game's MatchDrills) - Focus, the smart dive,
+//             the Special Shot, the duel, holding the T
 // ===========================================================
 
 using System.Collections.Generic;
@@ -14,12 +20,14 @@ using SquashSim.Arcade;
 
 namespace SquashSim.Academy
 {
-    public enum Chapter { Controls, Rules }
+    public enum Chapter { Controls, Rules, Match }
     public enum StepSetup { NoBall, Feed, Serve, Demo }
     public enum GoalKind
     {
         ReachSpots, SprintTo, Dive, ReticleRings, FrontWallHits, ShotType, PaceOver, Boast, Serve, FaultThenServe,
-        GreatHits, ModeDrive, Card, Quiz
+        GreatHits, ModeDrive, Card, Quiz,
+        // 2026-11-25 the match drills (Chapter.Match: played in a match, watched by the game's MatchDrills)
+        FocusUses, SmartDives, SpecialShots, DuelWins, OnTheT
     }
     public enum QuizKind { Wall, Serve, RallyEnd, Scoring, Interference }
 
@@ -74,6 +82,8 @@ namespace SquashSim.Academy
         /// <summary>A challenge's rules quiz (QuizMaker), not one of the Academy's lessons.</summary>
         public bool IsChallengeQuiz { get { return Id != null && Id.StartsWith(QuizMaker.Prefix); } }
         public bool HasQuiz { get { return QuizCount > 0; } }
+        /// <summary>2026-11-25 a match drill: played as a real match, not in the Academy's own session.</summary>
+        public bool IsDrill { get { return Chapter == Chapter.Match; } }
         /// <summary>How many calls its quiz has (3 in a lesson, 5 or 10 in a challenge).</summary>
         public int QuizCount { get { int n = 0; foreach (var s in Steps) if (s.Goal == GoalKind.Quiz) n++; return n; } }
     }
@@ -107,7 +117,7 @@ namespace SquashSim.Academy
             var sprint = S(GoalKind.SprintTo, "Hold sprint and get to the far corner in time.", "Shift / LB", count: 1).Spot(-2.3, 8.3).From(2.3, 2.0);
             sprint.Seconds = 4.0;
             move.Steps.Add(sprint);
-            move.Steps.Add(S(GoalKind.Dive, "Dive - it throws you the way you're moving. Dive twice.", "Space / B", count: 2));
+            move.Steps.Add(S(GoalKind.Dive, "Dive - it throws you the way you're moving. Dive twice. (In a match, Space is Focus: let go of it to dive - see Match skills.)", "Space / RT", count: 2));
             _all.Add(move);
 
             var aim = L("aim", Chapter.Controls, "Aim", "Your side of the front wall: straight. The other side: cross-court. The height picks the shot.");
@@ -202,6 +212,35 @@ namespace SquashSim.Academy
             lets.Steps.Add(Q(new QuizQuestion { Intended = "No let", Kind = QuizKind.Interference, Text = "Nobody in your way. Your call?", Choices = new[] { "Let", "No let", "Stroke" }, Stage = InterferenceStage.OpponentClear(), Explain = "They were clear: no let, their point." }));
             lets.Steps.Add(Q(new QuizQuestion { Intended = "Stroke", Kind = QuizKind.Interference, Text = "They stand on your path and stay there. Your call?", Choices = new[] { "Let", "No let", "Stroke" }, Stage = InterferenceStage.InTheWay(), Explain = "They did not clear: a stroke, your point." }));
             _all.Add(lets);
+
+            // 2026-11-25 the newer rules: a nick, the Special Shot, the referee's mistakes and the video
+            var calls = L("calls", Chapter.Rules, "Nicks & video review", "The shot that can't come back, the Special Shot, and asking for the video.");
+            calls.Steps.Add(Card("A nick: the ball hits the crack where the wall meets the floor and rolls out flat. Nobody can return it - NICK! - it wins the point.", "floor"));
+            calls.Steps.Add(Card("The Special Shot: fill your meter by playing well (mistakes cost some). Full? Press Special as their shot comes: you squat, jump, time stops - aim anywhere."));
+            calls.Steps.Add(Card("Their Special Shot is coming? Hold Focus and let go of Hit as the ring closes on the target. Win the duel and you send it back."));
+            calls.Steps.Add(Card("The referee can get a line call wrong. Think it was? Press F / D-pad down within 3 seconds to ask for the video - right, and you keep your challenge; one a game."));
+            _all.Add(calls);
+
+            // ---------------- 2026-11-25 match skills: drills in a real match ----------------
+            var focus = L("focus", Chapter.Match, "Focus", "Slow the game down as their shot comes - you see it early and get there.");
+            focus.Steps.Add(S(GoalKind.FocusUses, "Hold Focus as their shot comes off the front wall: the game slows down. It uses your meter - here it fills every rally. Focus 3 times.", "hold SPACE / RT", count: 3));
+            _all.Add(focus);
+
+            var dive = L("smartdive", Chapter.Match, "The dive", "Out of reach? Let go of Focus and you throw yourself at it.");
+            dive.Steps.Add(S(GoalKind.SmartDives, "Hold Focus as their shot comes. If the ball is out of reach, let go: you dive for it. Dive twice.", "hold SPACE / RT, then let go", count: 2));
+            _all.Add(dive);
+
+            var special = L("special", Chapter.Match, "The Special Shot", "A full meter: squat, jump, time stops - aim anywhere on the wall.");
+            special.Steps.Add(S(GoalKind.SpecialShots, "Your meter is full. As their shot comes to you, press Special: you squat and jump, time stops. Aim anywhere, then hit. Fire it twice.", "Q / D-pad up, then aim and hit", count: 2));
+            _all.Add(special);
+
+            var duel = L("duel", Chapter.Match, "The duel", "Their Special Shot is coming: hold Focus, let go of Hit as the ring closes.");
+            duel.Steps.Add(S(GoalKind.DuelWins, "They have a full meter too. When their Special Shot comes, hold Focus and let go of Hit as the ring closes on the target. Win one duel.", "hold SPACE / RT  +  let go of LMB / A on the ring", count: 1));
+            _all.Add(duel);
+
+            var tee = L("thet", Chapter.Match, "Hold the T", "Running far and standing off the T tires you; the T and the breaks get it back.");
+            tee.Steps.Add(S(GoalKind.OnTheT, "After your shot, get back to the T - the middle, where the lines cross. Be on it as they hit: 4 times. Watch your stamina bar stay up.", "WASD / left stick", count: 4));
+            _all.Add(tee);
 
             return _all;
         }

@@ -378,7 +378,7 @@ namespace SquashSim
             for (int i = 0; i < 2; i++) { var cm = Players[i].Player.Mods; if (cm != null) { cm.FreezeTimer = 0; cm.HasteTimer = 0; cm.ReachCut = 0; cm.GraceCut = 0; cm.FocusBoost = 1; } }
             _struckAt[0] = _struckAt[1] = -1e9;
             if (!_gameInit) { _gameInit = true; for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.NewGame(); }
-            for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) Players[i].Player.Mods.GhostUsed = false;
+            for (int i = 0; i < 2; i++) if (Players[i].Player.Mods != null) { Players[i].Player.Mods.GhostUsed = false; Players[i].Player.Mods.NewRally(); }
             HoldBallForServe(keepTemperature: true);
             Phase = MatchPhase.AwaitToss;
             PhaseTime = 0;

@@ -68,6 +68,7 @@ namespace SquashSim
             if (list == null) return null;
             var m = new RunMods();
             foreach (var x in list) if (x != null && !string.IsNullOrEmpty(x.Id) && x.Level > 0) m.Set(x.Id, x.Level);
+            m.NewRally();                                                       // 2026-11-25 a practice meter is full from the first rally
             return m.Empty ? null : m;
         }
 

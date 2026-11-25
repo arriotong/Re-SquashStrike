@@ -39,6 +39,19 @@ namespace SquashGame.Replays
         /// <summary>The two angles a reel shows a winning shot again from (slow).</summary>
         public static Shot EndingAngle(int pass, int variant) { return pass == 0 ? Shot.FrontWall : (variant & 1) == 0 ? Shot.Shoulder : Shot.Corner; }
 
+        /// <summary>The margin a camera keeps from the walls, floor and the top of the court.</summary>
+        public const float WallMargin = 0.3f;
+
+        /// <summary>2026-11-25 (the user: "some replay scenes like glitches the camera to the back of the wall so like the view is
+        /// blocked"): a point kept inside the court - the walls' faces, the floor and the out line's height (world space).</summary>
+        public static Vector3 Inside(Vector3 p)
+        {
+            float hw = (float)SquashSim.CourtDimensions.HALF_W - WallMargin;
+            float len = (float)SquashSim.CourtDimensions.LENGTH;
+            float h = (float)SquashSim.CourtDimensions.CEILING_H;
+            return new Vector3(Mathf.Clamp(p.x, -hw, hw), Mathf.Clamp(p.y, WallMargin, h - WallMargin), Mathf.Clamp(p.z, WallMargin, len - WallMargin));
+        }
+
         /// <summary>Where a shot puts the camera for this frame (world space).</summary>
         public static void Frame(Shot shot, RenderSnapshot v, Vector3 ballDir, int striker, float side, out Vector3 pos, out Vector3 look, out float fov)
         {
@@ -67,7 +80,7 @@ namespace SquashGame.Replays
                     var toFront = frontWall - a; toFront.y = 0;
                     toFront = toFront.sqrMagnitude > 0.01f ? toFront.normalized : (frontWall - backWall).normalized;
                     var right = Vector3.Cross(Vector3.up, toFront);
-                    pos = a - toFront * 1.7f + Vector3.up * 1.8f + right * 0.45f;
+                    pos = Inside(a - toFront * 1.7f + Vector3.up * 1.8f + right * 0.45f);     // 2026-11-25 (near the back or a side wall: kept in the court)
                     look = Vector3.Lerp(ball, new Vector3(ball.x, 1.0f, frontWall.z), 0.35f); fov = 60f; break;
                 }
                 case Shot.BallCam:                                  // chasing the ball, low behind it
@@ -75,6 +88,7 @@ namespace SquashGame.Replays
                     var d = ballDir.sqrMagnitude > 0.01f ? ballDir.normalized : (frontWall - backWall).normalized;
                     pos = ball - d * 1.7f + Vector3.up * 0.45f;
                     pos.y = Mathf.Max(pos.y, 0.35f);
+                    pos = Inside(pos);                              // 2026-11-25: off the front wall it was behind the wall
                     look = ball + d * 2.2f; fov = 68f; break;
                 }
                 case Shot.Overhead:                                 // the drone

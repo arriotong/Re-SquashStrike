@@ -407,6 +407,7 @@ namespace SquashGame.UI
             ClearToasts(NowPlaying);                                              // batch 6: the menus' "now playing" doesn't follow you on court
             if (_note != null) _note.style.display = DisplayStyle.None;
             Stats.Reset();
+            if (s.Drill == null) MatchDrills.Current = null;                       // 2026-11-25 (a drill sets its own tracker first)
             Match.BeginMatch(s);
             ClearEdges();
         }
@@ -616,6 +617,8 @@ namespace SquashGame.UI
             return Match.Demo || Match.InSetup || Top is TitleScreen ? 1f : 0f;
         }
 
+        float _drillDoneFor;
+
         void MatchScreens(float dt)
         {
             var m = Match;
@@ -628,6 +631,17 @@ namespace SquashGame.UI
                 if (Top == null && m.WheelDue) { Push(new WheelScreen()); return; }
                 if (Top == null && m.FloorOver) { Push(new FloorResultScreen()); return; }
                 if (Top is WheelScreen || Top is FloorResultScreen) return;
+            }
+            // 2026-11-25 an Academy match drill: count what it asks for; passed - the lesson's result, the match stopped under it
+            var drill = MatchDrills.Current;
+            if (playing && drill != null && m.Settings.Drill == drill.Lesson.Id)
+            {
+                if (!m.ReplayActive) drill.See(MatchDrills.Observe(m));
+                if (drill.Passed && Top == null)
+                {
+                    _drillDoneFor += dt;
+                    if (_drillDoneFor > 1.2f) { _drillDoneFor = 0; m.Clock.Pause(); MatchDrills.Current = null; Push(new LessonCompleteScreen(drill.Lesson)); return; }
+                }
             }
             if (playing && Top == null && m.Clock.Paused && m.DeviceLost == null && !m.ReplayActive) Push(new PauseScreen());
             if (Top is PauseScreen && !m.Clock.Paused) Pop();                      // resumed with Esc / Start

@@ -37,6 +37,7 @@ namespace SquashSim.Tests
         {
             foreach (var lesson in Lessons.All())
             {
+                if (lesson.IsDrill) continue;                                   // 2026-11-25 the match drills are played in a match (MatchDrills)
                 var s = Run(lesson);
                 UnityEngine.Debug.Log("[Academy] " + lesson.Id + ": " + (s.Done ? "passed" : "STUCK on step " + (s.StepIndex + 1) + " (" + s.Current.Goal + ", " + s.Progress + "/" + s.Current.Count + ")") +
                                       " in " + s.Time.ToString("0") + " s");

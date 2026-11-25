@@ -101,6 +101,13 @@ namespace SquashGame.UI
         {
             var l = SquashSim.Academy.Lessons.Find(id);
             if (l == null) { FrontEnd.LaunchLesson(id); return; }
+            if (l.IsDrill)                                                           // 2026-11-25 a match drill: played in a match
+            {
+                fe.Push(new BriefingScreen(MenuWorld.Training, "MATCH SKILLS", l.Title, l.Blurb, "trail", new Color32(26, 20, 40, 255), new Color32(200, 255, 61, 255),
+                    new[] { Short(l.Steps[0].Text), "A real match against an easy opponent - your meter fills every rally.", "The drill ends the moment you've done it." },
+                    "Do it " + l.Steps[0].Count + (l.Steps[0].Count == 1 ? " time." : " times."), l.Steps[0].Keys, () => MatchDrills.Launch(fe, l)));
+                return;
+            }
             var steps = new List<string>(); var keys = new List<string>();
             foreach (var s in l.Steps)
             {

@@ -346,9 +346,13 @@ namespace SquashGame.UI
                     { "Straight or across", "aim at your side of the wall = straight  ·  the other side = across", "" },
                     { "Hit the side wall first (a boast)", "tap " + K("Boast"), P("Boast") },
                     { "Focus (slow motion) - let go to dive", "hold " + K("Focus") + " as their shot comes  ·  let go: a dive if it's out of reach", "hold " + P("Focus") + ", let go" },
+                    // 2026-11-25 the newer skills (the Academy's MATCH SKILLS teaches them)
+                    { "Special Shot (when your meter is full)", K("Special") + " as their shot comes, then aim and hit", P("Special") },
+                    { "Their Special Shot: the duel", "hold " + K("Focus") + ", let go of the " + K("Hit") + " as the ring closes", "" },
                     { "Run faster", K("Sprint"), P("Sprint") },
                     { "Serve", "tap = high and slow  ·  hold = hard and fast", "" },
                     { "Ask to play the point again (a let)", K("Appeal") + " when LET? shows", P("Appeal") },
+                    { "Ask for the video (a wrong call?)", K("Challenge") + " within 3 seconds of the call", P("Challenge") },
                     { "See the last call again", "V", "View" },
                     { "Pause", "Esc", "Start" },
                 };

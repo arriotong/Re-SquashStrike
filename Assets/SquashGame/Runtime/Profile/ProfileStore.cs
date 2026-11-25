@@ -179,6 +179,18 @@ namespace SquashGame.Profile
         public AcademyProgress Academy = new AcademyProgress();
         public Progress Progress = new Progress();
         public OnlineIdentity Online = new OnlineIdentity();
+        /// <summary>2026-11-25 the developer's code (Profile > Enter a code) and its tools.</summary>
+        public DevState Dev = new DevState();
+    }
+
+    /// <summary>2026-11-25 (the user: "in the profile can you add a password button if i enter 0908 it gives me infinite money and
+    /// dev tools so i can test the game easier"): the right code entered on this profile, and the tools' switches.</summary>
+    [Serializable]
+    public sealed class DevState
+    {
+        public bool Code;                 // the code was entered (DevMode.On)
+        public bool FullMeter;            // your Special meter full every rally (Quick Match, career, the Gauntlet)
+        public bool DebugKeys;            // the debug panel's keys in the built game (DebugOverlay.DevMode)
     }
 
     public static class ProfileStore
@@ -247,6 +259,7 @@ namespace SquashGame.Profile
             if (p.Academy.Done == null) p.Academy.Done = new List<string>();
             if (p.Progress == null) p.Progress = new Progress();
             if (p.Online == null) p.Online = new OnlineIdentity();
+            if (p.Dev == null) p.Dev = new DevState();
             var g = p.Progress;
             if (g.Owned == null) g.Owned = new List<string>();
             if (g.Seen == null) g.Seen = new List<string>();

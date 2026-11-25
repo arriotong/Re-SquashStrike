@@ -89,6 +89,8 @@ namespace SquashGame
         public string Class = "", Class2 = "";
         /// <summary>2026-11-24 your training perks on top (Quick Match, career, the Gauntlet; never versus or online).</summary>
         public bool Perks;
+        /// <summary>2026-11-25 an Academy match drill's lesson id (MatchDrills); null otherwise.</summary>
+        public string Drill;
 
         public MatchSettings Clone() { return (MatchSettings)MemberwiseClone(); }
 
@@ -266,7 +268,15 @@ namespace SquashGame
                 setup.Mods0 = PlayerClasses.Mods(setup.Mods0, s.Class);
                 setup.Class0 = s.Class;
             }
-            if (s.Perks && !setup.TwoPlayer) setup.Attr0 = Progression.Machines.Boost(setup.Attr0);      // 2026-11-24 (recorded with the match)
+            if (s.Perks && !setup.TwoPlayer) setup.Attr0 = Progression.Machines.Boost(setup.Attr0);
+            // 2026-11-25 the developer's tool: your Special meter full every rally (the Special card and "practice"; recorded with the match)
+            if (Profile.DevMode.FullMeter && !s.Online && !setup.TwoPlayer)
+            {
+                var mods = setup.Mods0 != null ? new List<RunMod>(setup.Mods0) : new List<RunMod>();
+                if (!mods.Exists(x => x.Id == "special")) mods.Add(new RunMod { Id = "special", Level = 1 });
+                if (!mods.Exists(x => x.Id == "practice")) mods.Add(new RunMod { Id = "practice", Level = 1 });
+                setup.Mods0 = mods;
+            }      // 2026-11-24 (recorded with the match)
             if (setup.TwoPlayer && !string.IsNullOrEmpty(s.Class2))
             {
                 setup.Attr1 = PlayerClasses.Attributes(setup.Attr1, s.Class2);

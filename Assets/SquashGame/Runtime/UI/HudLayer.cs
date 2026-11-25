@@ -156,6 +156,10 @@ namespace SquashGame
             _chat.AddToClassList("hud-chat"); _chat.pickingMode = PickingMode.Ignore; Add(_chat);
             _intro.AddToClassList("hud-intro"); _intro.pickingMode = PickingMode.Ignore;
             _introNames.AddToClassList("hud-intro-names"); _introSub.AddToClassList("hud-intro-sub");
+            _drill.AddToClassList("hud-drill"); _drill.pickingMode = PickingMode.Ignore; _drill.style.display = DisplayStyle.None;
+            _drillHead.AddToClassList("hud-drill-head"); _drillText.AddToClassList("hud-drill-text"); _drillNote.AddToClassList("hud-drill-note");
+            foreach (var l in new[] { _drillHead, _drillText, _drillNote }) { l.pickingMode = PickingMode.Ignore; _drill.Add(l); }
+            Add(_drill);
             _introLine.AddToClassList("hud-intro-line"); _introLine.pickingMode = PickingMode.Ignore; _introLine.style.display = DisplayStyle.None;
             Add(_woFx);                                                                                  // 2026-11-24 the walk-on's effects, under its card
             _intro.Add(_introLine); _intro.Add(_introNames); _intro.Add(_introSub); _intro.style.display = DisplayStyle.None; Add(_intro);
@@ -212,6 +216,24 @@ namespace SquashGame
         // 2026-11-24 the machines: your Special Shot's look on your cut-in; your walk-on's line and effects
         readonly System.Collections.Generic.List<VisualElement> _cutLines = new System.Collections.Generic.List<VisualElement>();
         readonly Label _introLine = new Label();
+        readonly VisualElement _drill = new VisualElement();
+        readonly Label _drillHead = new Label(), _drillText = new Label(), _drillNote = new Label();
+        /// <summary>The drill's head line on screen (null: no drill) - tests.</summary>
+        public string DrillText { get { return _drill.style.display == DisplayStyle.Flex ? _drillHead.text : null; } }
+
+        /// <summary>2026-11-25 the Academy's match drill: what to do, how many so far, the last thing seen.</summary>
+        void DrillCoach(MatchRunner r)
+        {
+            var t = MatchDrills.Current;
+            bool on = t != null && r.Settings.Drill == t.Lesson.Id && !r.ReplayActive;
+            _drill.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!on) return;
+            _drillHead.text = MatchDrills.Head(t);
+            _drillText.text = t.Passed ? "DONE!" : t.Step.Text + "   ·   " + t.Step.Keys;
+            bool note = t.Note != null && Time.unscaledTime - t.NoteAt < 1.4f;
+            _drillNote.text = note ? t.Note : "";
+            _drillNote.style.display = note ? DisplayStyle.Flex : DisplayStyle.None;
+        }
         readonly WalkOnFx _woFx = new WalkOnFx();
         SquashGame.Progression.Item _cutStyle;
         /// <summary>The Special Shot look on the cut-in now (null: the plain one) and the walk-on effect playing - tests.</summary>
@@ -457,6 +479,7 @@ namespace SquashGame
             var names = r.Names;
             bool twoPlayer = r.Settings.TwoPlayer;
             _floorBar.Set(r);
+            DrillCoach(r);                                                                      // 2026-11-25 an Academy match drill
             _bug.style.display = r.Floor != null ? DisplayStyle.None : DisplayStyle.Flex;       // a floor: its bar, not a game's score
 
             // ---- score bug ----

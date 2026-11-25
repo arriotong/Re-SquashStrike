@@ -121,6 +121,9 @@ namespace SquashGame.UI
             AddTo(more, new ActionItem("Your kit", () => { Save(); Fe.Push(new LockerRoomScreen()); }, "▶"));
             AddTo(more, new ActionItem("All stats", () => { Save(); Fe.Push(new StatsScreen()); }, "▶"));
             AddTo(more, new ActionItem("Player names", () => { Save(); Fe.Push(new PlayerEditorScreen()); }, "▶"));      // P6: rename the stars
+            // 2026-11-25 the developer's code: entered once, the tools from then on
+            AddTo(more, DevMode.On ? new ActionItem("Dev tools", () => { Save(); Fe.Push(new DevToolsScreen()); }, "▶")
+                                   : new ActionItem("Enter a code", () => { Save(); Fe.Push(new CodeScreen()); }, "▶"));
             AddTo(Root, new PrimaryItem("Save", () => { Save(); Fe.Pop(); }));
         }
 
