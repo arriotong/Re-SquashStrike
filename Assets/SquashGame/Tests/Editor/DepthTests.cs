@@ -87,6 +87,23 @@ namespace SquashGame.Tests
         }
 
         [Test]
+        public void OnlineCanBeTakenOut()
+        {
+            // 2026-11-25 v0.7.0 ships without a server: the ONLINE section goes with Features.Online
+            bool was = Features.Online;
+            try
+            {
+                Features.Online = false;
+                Assert.That(SquashGame.UI.MainMenuScreen.PlaySections, Does.Not.Contain("ONLINE"));
+                Assert.That(SquashGame.UI.MainMenuScreen.PlaySections, Does.Contain("PLAY"));
+                Features.Online = true;
+                Assert.That(SquashGame.UI.MainMenuScreen.PlaySections, Does.Contain("ONLINE"));
+            }
+            finally { Features.Online = was; }
+            Assert.That(Features.ReleaseOnline, Is.False, "v0.7.0: no online in the built game");
+        }
+
+        [Test]
         public void ArcadePlatinumAndTopFive()
         {
             var c = SquashSim.Arcade.Challenges.Get(SquashSim.Arcade.ArcadeMode.TimeAttack, 0);

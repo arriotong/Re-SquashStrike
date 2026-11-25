@@ -77,7 +77,9 @@ namespace SquashGame.UI
         /// 2026-10-29 ("instead of dumping everything in one singular ui ... split into 2 separate ui like things involve
         /// playing is PLAY and others are like OTHERS"): two hubs from the home screen - PlaySections and OtherSections.
         /// 2026-11-20 (the user couldn't find the pulls from the main page): PACKS, the store's mystery packs, on PLAY's strip too.
-        public static readonly string[] PlaySections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };   // (2026-11-21 PACKS gone: the shop is the Others hub's STORE)
+        static readonly string[] PlayAll = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING" };   // (2026-11-21 PACKS gone: the shop is the Others hub's STORE)
+        /// <summary>PLAY's sections - without ONLINE while it's off (Features.Online, 2026-11-25: v0.7.0 ships without a server).</summary>
+        public static string[] PlaySections { get { return Features.Online ? PlayAll : System.Array.FindAll(PlayAll, s => s != "ONLINE"); } }
         public static readonly string[] OtherSections = { "STORE", "YOU", "REPLAYS" };
         /// <summary>Every section, both hubs (PLAY's first).</summary>
         public static readonly string[] Sections = { "PLAY", "CAREER", "CHALLENGES", "MODES", "ONLINE", "TRAINING", "STORE", "YOU", "REPLAYS" };

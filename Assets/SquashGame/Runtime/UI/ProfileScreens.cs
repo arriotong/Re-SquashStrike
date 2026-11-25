@@ -114,7 +114,7 @@ namespace SquashGame.UI
             Row(rec, "Scenarios", "★ " + ScenarioFlow.TotalStars() + " / " + SquashSim.Modes.Scenarios.MaxStars);
             Row(rec, "Gauntlet", "best floor " + GauntletFlow.State.BestFloor);
             var on = ProfileStore.Current.Online;
-            Row(rec, "Online", on.Games == 0 ? "unrated" : on.Rating + (on.Rank > 0 ? "  ·  #" + on.Rank : "") + "  ·  " + on.Games + " ranked");
+            if (Features.Online) Row(rec, "Online", on.Games == 0 ? "unrated" : on.Rating + (on.Rank > 0 ? "  ·  #" + on.Rank : "") + "  ·  " + on.Games + " ranked");
             if (c != null) Row(rec, "Career", Career.Rank(c.RankOf(SquashSim.Career.CareerSession.You)) + "  ·  " + c.S.Titles + (c.S.Titles == 1 ? " title" : " titles"));
 
             var more = Kit.Box(names, "pf-more");
